@@ -1,3 +1,0 @@
-
-config charlietalk 'usb0'
-	option disabled '1'
