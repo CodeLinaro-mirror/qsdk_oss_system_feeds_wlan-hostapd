@@ -1,21 +1,17 @@
-diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index d36691b687bf..549a290bbcfc 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3476,6 +3476,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -3501,6 +3501,8 @@ static int hostapd_config_fill(struct ho
  		conf->he_phy_capab.he_su_beamformee = atoi(pos);
  	} else if (os_strcmp(buf, "he_mu_beamformer") == 0) {
  		conf->he_phy_capab.he_mu_beamformer = atoi(pos);
 +	} else if (os_strcmp(buf, "he_ul_mumimo") == 0) {
 +		conf->he_phy_capab.he_ul_mumimo = atoi(pos);
  	} else if (os_strcmp(buf, "he_bss_color") == 0) {
- 		conf->he_op.he_bss_color = atoi(pos);
- 	} else if (os_strcmp(buf, "he_default_pe_duration") == 0) {
-diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index 4cbe45190a49..9a3729daa3dc 100644
+ 		conf->he_op.he_bss_color = atoi(pos) & 0x3f;
+ 		conf->he_op.he_bss_color_disabled = 0;
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -788,6 +788,12 @@ wmm_ac_vo_acm=0
+@@ -801,6 +801,12 @@ wmm_ac_vo_acm=0
  # 1 = supported
  #he_mu_beamformer=1
  
@@ -28,36 +24,30 @@ index 4cbe45190a49..9a3729daa3dc 100644
  # he_bss_color: BSS color (1-63)
  #he_bss_color=1
  
-diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
-index 58fc3e988023..74f6807a3718 100644
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -251,6 +251,8 @@ struct hostapd_config * hostapd_config_defaults(void)
+@@ -261,6 +261,8 @@ struct hostapd_config * hostapd_config_d
  		HE_OPERATION_RTS_THRESHOLD_OFFSET;
  	/* Set default basic MCS/NSS set to single stream MCS 0-7 */
  	conf->he_op.he_basic_mcs_nss_set = 0xfffc;
 +	/* Set default to be decided by Driver/underlying HW */
 +	conf->he_phy_capab.he_ul_mumimo = -1;
- #endif /* CONFIG_IEEE80211AX */
- 
- 	/* The third octet of the country string uses an ASCII space character
-diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index 1dcd1b53e75c..d1978ae9b863 100644
+ 	conf->he_op.he_bss_color_disabled = 1;
+ 	conf->he_op.he_bss_color_partial = 0;
+ 	conf->he_op.he_bss_color = 1;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -845,6 +845,7 @@ struct he_phy_capabilities_info {
- 	Boolean he_su_beamformer;
- 	Boolean he_su_beamformee;
- 	Boolean he_mu_beamformer;
+@@ -873,6 +873,7 @@ struct he_phy_capabilities_info {
+ 	bool he_su_beamformer;
+ 	bool he_su_beamformee;
+ 	bool he_mu_beamformer;
 +	int he_ul_mumimo;
  };
  
  /**
-diff --git a/src/ap/hw_features.c b/src/ap/hw_features.c
-index a4af1eecdbbc..ccb143bf5c1c 100644
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -711,9 +711,10 @@ static int ieee80211ax_supported_he_capab(struct hostapd_iface *iface)
+@@ -714,9 +714,10 @@ static int ieee80211ax_supported_he_capa
  	HE_CAP_CHECK(hw->phy_cap, HE_PHYCAP_SPR_SR_CAPB,
  		     HE_PHYCAP_SPR_SR_CAPB_IDX, conf->spr.sr_control);
  
@@ -71,11 +61,9 @@ index a4af1eecdbbc..ccb143bf5c1c 100644
  
  	HE_CAP_CHECK2(hw->mac_cap, HE_MACCAP_TWT_REQUESTER, HE_MACCAP_TWT_REQUESTER_IDX,
  		      HE_MACCAP_TWT_RESPONDER, HE_MACCAP_TWT_RESPONDER_IDX,
-diff --git a/src/ap/ieee802_11_he.c b/src/ap/ieee802_11_he.c
-index 3d54e999aa76..46249e702c4e 100644
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -151,6 +151,13 @@ u8 * hostapd_eid_he_capab(struct hostapd_data *hapd, u8 *eid,
+@@ -151,6 +151,13 @@ u8 * hostapd_eid_he_capab(struct hostapd
  		cap->he_phy_capab_info[HE_PHYCAP_MU_BEAMFORMER_CAPAB_IDX] &=
  			~HE_PHYCAP_MU_BEAMFORMER_CAPAB;
  
@@ -89,6 +77,3 @@ index 3d54e999aa76..46249e702c4e 100644
  	cap->he_phy_capab_info[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &=
  		he_oper_chwidth;
  
--- 
-2.17.1
-

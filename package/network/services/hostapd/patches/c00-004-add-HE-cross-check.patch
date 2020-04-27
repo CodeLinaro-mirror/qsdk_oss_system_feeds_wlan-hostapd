@@ -13,7 +13,7 @@ Signed-off-by: Miles Hu <milehu@codeaurora.org>
 
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -657,8 +657,60 @@ static int ieee80211ac_supported_vht_cap
+@@ -660,8 +660,60 @@ static int ieee80211ac_supported_vht_cap
  
  
  #ifdef CONFIG_IEEE80211AX
@@ -74,29 +74,21 @@ Signed-off-by: Miles Hu <milehu@codeaurora.org>
  	return 1;
  }
  #endif /* CONFIG_IEEE80211AX */
-@@ -670,6 +722,7 @@ int hostapd_check_ht_capab(struct hostap
- {
- #ifdef CONFIG_IEEE80211N
- 	int ret;
-+
- 	if (!iface->conf->ieee80211n)
- 		return 0;
- 
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2150,7 +2150,10 @@ struct ieee80211_spatial_reuse {
+@@ -2168,7 +2168,10 @@ struct ieee80211_spatial_reuse {
  
  /* HE Capabilities Information defines */
  
--#define HE_MACCAP_TWT_RESPONDER			((u8) BIT(3))
-+#define HE_MACCAP_TWT_REQUESTER_IDX	0
-+#define HE_MACCAP_TWT_REQUESTER		((u8) BIT(1))
-+#define HE_MACCAP_TWT_RESPONDER_IDX	0
+-#define HE_MACCAP_TWT_RESPONDER			((u8) BIT(2))
++#define HE_MACCAP_TWT_REQUESTER_IDX     0
++#define HE_MACCAP_TWT_REQUESTER         ((u8) BIT(1))
++#define HE_MACCAP_TWT_RESPONDER_IDX     0
 +#define HE_MACCAP_TWT_RESPONDER		((u8) BIT(2))
  
  #define HE_PHYCAP_CHANNEL_WIDTH_SET_IDX		0
  #define HE_PHYCAP_CHANNEL_WIDTH_MASK		((u8) (BIT(1) | BIT(2) | \
-@@ -2167,6 +2170,13 @@ struct ieee80211_spatial_reuse {
+@@ -2185,6 +2188,13 @@ struct ieee80211_spatial_reuse {
  #define HE_PHYCAP_MU_BEAMFORMER_CAPAB_IDX	4
  #define HE_PHYCAP_MU_BEAMFORMER_CAPAB		((u8) BIT(1))
  
