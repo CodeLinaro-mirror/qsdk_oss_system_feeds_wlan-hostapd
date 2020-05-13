@@ -1,8 +1,6 @@
-Index: hostapd-2019-11-04/hostapd/config_file.c
-===================================================================
---- hostapd-2019-11-04.orig/hostapd/config_file.c
-+++ hostapd-2019-11-04/hostapd/config_file.c
-@@ -4085,10 +4085,12 @@ static int hostapd_config_fill(struct ho
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -4122,10 +4122,12 @@ static int hostapd_config_fill(struct ho
  #ifdef CONFIG_MBO
  	} else if (os_strcmp(buf, "mbo") == 0) {
  		bss->mbo_enabled = atoi(pos);
@@ -17,11 +15,9 @@ Index: hostapd-2019-11-04/hostapd/config_file.c
  #endif /* CONFIG_MBO */
  #ifdef CONFIG_TESTING_OPTIONS
  #define PARSE_TEST_PROBABILITY(_val)				\
-Index: hostapd-2019-11-04/hostapd/ctrl_iface.c
-===================================================================
---- hostapd-2019-11-04.orig/hostapd/ctrl_iface.c
-+++ hostapd-2019-11-04/hostapd/ctrl_iface.c
-@@ -878,10 +878,11 @@ static int hostapd_ctrl_iface_bss_tm_req
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -880,10 +880,11 @@ static int hostapd_ctrl_iface_bss_tm_req
  	if (pos) {
  		pos += 10;
  		req_mode |= WNM_BSS_TM_REQ_BSS_TERMINATION_INCLUDED;
@@ -35,11 +31,9 @@ Index: hostapd-2019-11-04/hostapd/ctrl_iface.c
  		end = os_strchr(pos, ',');
  		if (end == NULL) {
  			wpa_printf(MSG_DEBUG, "Invalid bss_term data");
-Index: hostapd-2019-11-04/src/ap/ap_config.h
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/ap_config.h
-+++ hostapd-2019-11-04/src/ap/ap_config.h
-@@ -688,6 +688,11 @@ struct hostapd_bss_config {
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -711,6 +711,11 @@ struct hostapd_bss_config {
  	 *  - Set BIT(2) to enable OCE in AP mode
  	 */
  	unsigned int oce;
@@ -51,23 +45,8 @@ Index: hostapd-2019-11-04/src/ap/ap_config.h
  	int mbo_cell_data_conn_pref;
  #endif /* CONFIG_MBO */
  
-Index: hostapd-2019-11-04/src/ap/beacon.c
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/beacon.c
-+++ hostapd-2019-11-04/src/ap/beacon.c
-@@ -36,7 +36,7 @@
- 
- #ifdef NEED_AP_MLME
- 
--static u8 * hostapd_eid_rm_enabled_capab(struct hostapd_data *hapd, u8 *eid,
-+u8 * hostapd_eid_rm_enabled_capab(struct hostapd_data *hapd, u8 *eid,
- 					 size_t len)
- {
- 	size_t i;
-Index: hostapd-2019-11-04/src/ap/gas_serv.c
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/gas_serv.c
-+++ hostapd-2019-11-04/src/ap/gas_serv.c
+--- a/src/ap/gas_serv.c
++++ b/src/ap/gas_serv.c
 @@ -19,6 +19,7 @@
  #include "dpp_hostapd.h"
  #include "sta_info.h"
@@ -127,10 +106,8 @@ Index: hostapd-2019-11-04/src/ap/gas_serv.c
  	default:
  #ifdef CONFIG_FILS
  		if (info_id == ANQP_FILS_REALM_INFO &&
-Index: hostapd-2019-11-04/src/ap/gas_serv.h
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/gas_serv.h
-+++ hostapd-2019-11-04/src/ap/gas_serv.h
+--- a/src/ap/gas_serv.h
++++ b/src/ap/gas_serv.h
 @@ -40,6 +40,8 @@
  	(1 << (ANQP_TDLS_CAPABILITY - ANQP_QUERY_LIST))
  #define ANQP_REQ_EMERGENCY_NAI \
@@ -140,24 +117,9 @@ Index: hostapd-2019-11-04/src/ap/gas_serv.h
  /*
   * First 15 Hotspot 2.0 vendor specific ANQP-elements can be included in the
   * optimized bitmap.
-Index: hostapd-2019-11-04/src/ap/ieee802_11.c
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/ieee802_11.c
-+++ hostapd-2019-11-04/src/ap/ieee802_11.c
-@@ -3691,6 +3691,8 @@ static u16 send_assoc_resp(struct hostap
- 	if (sta && status_code == WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY)
- 		p = hostapd_eid_assoc_comeback_time(hapd, sta, p);
- 
-+	p = hostapd_eid_rm_enabled_capab(hapd, p, buf + buflen - p);
-+
- #ifdef CONFIG_IEEE80211N
- 	p = hostapd_eid_ht_capabilities(hapd, p);
- 	p = hostapd_eid_ht_operation(hapd, p);
-Index: hostapd-2019-11-04/src/ap/ieee802_11.h
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/ieee802_11.h
-+++ hostapd-2019-11-04/src/ap/ieee802_11.h
-@@ -128,6 +128,9 @@ static inline void sae_clear_retransmit_
+--- a/src/ap/ieee802_11.h
++++ b/src/ap/ieee802_11.h
+@@ -129,6 +129,9 @@ static inline void sae_clear_retransmit_
  }
  #endif /* CONFIG_SAE */
  
@@ -167,11 +129,9 @@ Index: hostapd-2019-11-04/src/ap/ieee802_11.h
  #ifdef CONFIG_MBO
  
  u8 * hostapd_eid_mbo(struct hostapd_data *hapd, u8 *eid, size_t len);
-Index: hostapd-2019-11-04/src/ap/ieee802_11_shared.c
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/ieee802_11_shared.c
-+++ hostapd-2019-11-04/src/ap/ieee802_11_shared.c
-@@ -740,11 +740,13 @@ u8 * hostapd_eid_mbo(struct hostapd_data
+--- a/src/ap/ieee802_11_shared.c
++++ b/src/ap/ieee802_11_shared.c
+@@ -756,11 +756,13 @@ u8 * hostapd_eid_mbo(struct hostapd_data
  	    !OCE_STA_CFON_ENABLED(hapd) && !OCE_AP_ENABLED(hapd))
  		return eid;
  
@@ -188,11 +148,9 @@ Index: hostapd-2019-11-04/src/ap/ieee802_11_shared.c
  	}
  
  	if (hapd->conf->mbo_enabled && hapd->mbo_assoc_disallow) {
-Index: hostapd-2019-11-04/src/ap/neighbor_db.c
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/neighbor_db.c
-+++ hostapd-2019-11-04/src/ap/neighbor_db.c
-@@ -106,6 +106,24 @@ fail:
+--- a/src/ap/neighbor_db.c
++++ b/src/ap/neighbor_db.c
+@@ -160,6 +160,24 @@ fail:
  	return -1;
  }
  
@@ -217,21 +175,9 @@ Index: hostapd-2019-11-04/src/ap/neighbor_db.c
  
  int hostapd_neighbor_remove(struct hostapd_data *hapd, const u8 *bssid,
  			    const struct wpa_ssid_value *ssid)
-@@ -204,6 +222,9 @@ void hostapd_neighbor_set_own_report(str
- 			bssid_info |= NEI_REP_BSSID_INFO_VHT;
- 	}
- 
-+	if (he)
-+		bssid_info |= NEI_REP_BSSID_INFO_HE;
-+
- 	/* TODO: Set NEI_REP_BSSID_INFO_MOBILITY_DOMAIN if MDE is set */
- 
- 	if (ieee80211_freq_to_channel_ext(hapd->iface->freq,
-Index: hostapd-2019-11-04/src/ap/neighbor_db.h
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/neighbor_db.h
-+++ hostapd-2019-11-04/src/ap/neighbor_db.h
-@@ -18,6 +18,8 @@ int hostapd_neighbor_set(struct hostapd_
+--- a/src/ap/neighbor_db.h
++++ b/src/ap/neighbor_db.h
+@@ -19,6 +19,8 @@ int hostapd_neighbor_set(struct hostapd_
  			 const struct wpabuf *nr, const struct wpabuf *lci,
  			 const struct wpabuf *civic, int stationary);
  void hostapd_neighbor_set_own_report(struct hostapd_data *hapd);
@@ -240,10 +186,8 @@ Index: hostapd-2019-11-04/src/ap/neighbor_db.h
  int hostapd_neighbor_remove(struct hostapd_data *hapd, const u8 *bssid,
  			    const struct wpa_ssid_value *ssid);
  void hostapd_free_neighbor_db(struct hostapd_data *hapd);
-Index: hostapd-2019-11-04/src/ap/wnm_ap.c
-===================================================================
---- hostapd-2019-11-04.orig/src/ap/wnm_ap.c
-+++ hostapd-2019-11-04/src/ap/wnm_ap.c
+--- a/src/ap/wnm_ap.c
++++ b/src/ap/wnm_ap.c
 @@ -20,6 +20,7 @@
  #include "ap/wpa_auth.h"
  #include "mbo_ap.h"
@@ -252,7 +196,7 @@ Index: hostapd-2019-11-04/src/ap/wnm_ap.c
  
  #define MAX_TFS_IE_LEN  1024
  
-@@ -340,11 +341,26 @@ static int ieee802_11_send_bss_trans_mgm
+@@ -354,11 +355,26 @@ static int ieee802_11_send_bss_trans_mgm
  						  u8 dialog_token)
  {
  	struct ieee80211_mgmt *mgmt;
@@ -282,7 +226,7 @@ Index: hostapd-2019-11-04/src/ap/wnm_ap.c
  	if (mgmt == NULL)
  		return -1;
  	os_memcpy(mgmt->da, addr, ETH_ALEN);
-@@ -355,7 +371,11 @@ static int ieee802_11_send_bss_trans_mgm
+@@ -369,7 +385,11 @@ static int ieee802_11_send_bss_trans_mgm
  	mgmt->u.action.category = WLAN_ACTION_WNM;
  	mgmt->u.action.u.bss_tm_req.action = WNM_BSS_TRANS_MGMT_REQ;
  	mgmt->u.action.u.bss_tm_req.dialog_token = dialog_token;
@@ -295,7 +239,7 @@ Index: hostapd-2019-11-04/src/ap/wnm_ap.c
  	mgmt->u.action.u.bss_tm_req.disassoc_timer = host_to_le16(0);
  	mgmt->u.action.u.bss_tm_req.validity_interval = 1;
  	pos = mgmt->u.action.u.bss_tm_req.variable;
-@@ -368,6 +388,25 @@ static int ieee802_11_send_bss_trans_mgm
+@@ -382,6 +402,25 @@ static int ieee802_11_send_bss_trans_mgm
  		   le_to_host16(mgmt->u.action.u.bss_tm_req.disassoc_timer),
  		   mgmt->u.action.u.bss_tm_req.validity_interval);
  
@@ -321,15 +265,3 @@ Index: hostapd-2019-11-04/src/ap/wnm_ap.c
  	len = pos - &mgmt->u.action.category;
  	res = hostapd_drv_send_action(hapd, hapd->iface->freq, 0,
  				      mgmt->da, &mgmt->u.action.category, len);
-Index: hostapd-2019-11-04/src/common/ieee802_11_defs.h
-===================================================================
---- hostapd-2019-11-04.orig/src/common/ieee802_11_defs.h
-+++ hostapd-2019-11-04/src/common/ieee802_11_defs.h
-@@ -2101,6 +2101,7 @@ enum phy_type {
- #define NEI_REP_BSSID_INFO_HT BIT(11)
- #define NEI_REP_BSSID_INFO_VHT BIT(12)
- #define NEI_REP_BSSID_INFO_FTM BIT(13)
-+#define NEI_REP_BSSID_INFO_HE BIT(14)
- 
- /*
-  * IEEE P802.11-REVmc/D5.0 Table 9-152 - HT/VHT Operation Information
