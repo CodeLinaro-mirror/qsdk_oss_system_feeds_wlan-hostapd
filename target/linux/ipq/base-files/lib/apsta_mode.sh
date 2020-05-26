@@ -2,18 +2,17 @@
 #
 # Copyright (c) 2018, 2020 The Linux Foundation. All rights reserved.
 #
-# Permission to use, copy, modify, and/or distribute this software for any 
-# purpose with or without fee is hereby granted, provided that the above 
-# copyright notice and this permission notice appear in all copies. 
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
 #
-# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES 
-# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF 
-# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR 
-# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES 
-# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN 
-# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF 
-# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. 
-
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 sta_intf="$1"
 ap_intf="$2"
@@ -21,50 +20,51 @@ hostapd_conf="$3"
 
 ap_ht_capab=$(cat $hostapd_conf 2> /dev/null | grep ht_capab | grep -v vht | cut -d'=' -f 2)
 
-# Hostapd VHT calculations
-hostapd_vht_oper_chwidth() {
+# Hostapd VHT and HE calculations
+hostapd_vht_he_oper_chwidth() {
 	local sta_width="$1"
 	case $sta_width in
 		"80")
-			ap_vht_oper_chwidth=1;;
+			ap_vht_he_oper_chwidth=1;;
 		"160")
-			ap_vht_oper_chwidth=2;;
+			ap_vht_he_oper_chwidth=2;;
 		"80+80")
-			ap_vht_oper_chwidth=3;;
+			ap_vht_he_oper_chwidth=3;;
 		"20"|"40"|*)
-			ap_vht_oper_chwidth=0;;
+			ap_vht_he_oper_chwidth=0;;
 	esac
 }
 
-hostapd_vht_oper_centr_freq_seg0_idx() {
+
+hostapd_vht_he_oper_centr_freq_seg0_idx() {
 	local sta_width="$1"
 	local sta_channel="$2"
 
-	case $ap_vht_oper_chwidth in
+	case $ap_vht_he_oper_chwidth in
 		"0")
 			case $sta_width in
 			"20")
-				ap_vht_oper_centr_freq_seg0_idx=$sta_channel;;
+				ap_vht_he_oper_centr_freq_seg0_idx=$sta_channel;;
 			"40")
 				case "$(( ($sta_channel / 4) % 2 ))" in
-					1) ap_vht_oper_centr_freq_seg0_idx=$(($sta_channel + 2));;
-					0) ap_vht_oper_centr_freq_seg0_idx=$(($sta_channel - 2));;
+					1) ap_vht_he_oper_centr_freq_seg0_idx=$(($sta_channel + 2));;
+					0) ap_vht_he_oper_centr_freq_seg0_idx=$(($sta_channel - 2));;
 				esac
 			;;
 			esac
 		;;
 		"1")
 			case "$(( ($sta_channel / 4) % 4 ))" in
-				1) ap_vht_oper_centr_freq_seg0_idx=$(($sta_channel + 6));;
-				2) ap_vht_oper_centr_freq_seg0_idx=$(($sta_channel + 2));;
-				3) ap_vht_oper_centr_freq_seg0_idx=$(($sta_channel - 2));;
-				0) ap_vht_oper_centr_freq_seg0_idx=$(($sta_channel - 6));;
+				1) ap_vht_he_oper_centr_freq_seg0_idx=$(($sta_channel + 6));;
+				2) ap_vht_he_oper_centr_freq_seg0_idx=$(($sta_channel + 2));;
+				3) ap_vht_he_oper_centr_freq_seg0_idx=$(($sta_channel - 2));;
+				0) ap_vht_he_oper_centr_freq_seg0_idx=$(($sta_channel - 6));;
 			esac
 		;;
 		"2")
 			case "$sta_channel" in
-				36|40|44|48|52|56|60|64) ap_vht_oper_centr_freq_seg0_idx=50;;
-				100|104|108|112|116|120|124|128) ap_vht_oper_centr_freq_seg0_idx=114;;
+				36|40|44|48|52|56|60|64) ap_vht_he_oper_centr_freq_seg0_idx=50;;
+				100|104|108|112|116|120|124|128) ap_vht_he_oper_centr_freq_seg0_idx=114;;
 			esac
 	esac
 }
@@ -120,7 +120,7 @@ hostapd_ht20_mode() {
 hostapd_adjust_config() {
 	sta_channel=$(iw $sta_intf info 2> /dev/null | grep channel | cut -d' ' -f 2)
 	sta_width=$(wpa_cli -i $sta_intf signal_poll 2> /dev/null | grep WIDTH | cut -d'=' -f 2 | grep MHz | cut -d' ' -f 1)
-	sta_80211ac=$(wpa_cli -i $sta_intf status 2> /dev/null | grep ieee80211ac | cut -d'=' -f 2)
+	wifi_gen=$(wpa_cli -i $sta_intf status 2> /dev/null | grep wifi_generation | cut -d'=' -f 2)
 
 	#echo "STA associated in Channel $sta_channel, Width $sta_width MHz" > /dev/ttyMSM0
 	hostapd_cli -i $ap_intf set channel $sta_channel 2> /dev/null
@@ -137,24 +137,61 @@ hostapd_adjust_config() {
 		#echo "STA associated in No HT mode, downgrading AP as well" > /dev/ttyMSM0
 		hostapd_cli -i $ap_intf set ieee80211ac 0 2> /dev/null
 		hostapd_cli -i $ap_intf set ieee80211n 0 2> /dev/null
+		hostapd_cli -i $ap_intf set ieee80211ax 0 2> /dev/null
 
-	elif [ ! -z $sta_80211ac ]; then
+	 elif [ $wifi_gen == 6 ]; then
+		#echo "STA associated in HE$sta_width mode, applying same config to AP" > /dev/ttyMSM0
+                local ap_vht_he_oper_chwidth
+                local ap_vht_he_oper_centr_freq_seg0_idx
+
+                hostapd_vht_he_oper_chwidth "$sta_width"
+
+                hostapd_cli -i $ap_intf set ieee80211ax 1 2> /dev/null
+
+                #echo "he_oper_chwidth is $ap_vht_he_oper_chwidth for HE$sta_width mode" > /dev/ttyMSM0
+
+                hostapd_vht_he_oper_centr_freq_seg0_idx "$sta_width" "$sta_channel"
+
+                #echo "New he_oper_chwidth is $ap_vht_he_oper_chwidth, he_oper_centr_freq_seg0_idx is $ap_vht_he_oper_centr_freq_seg0_idx" > /dev/ttyMSM0
+
+                hostapd_cli -i $ap_intf set he_oper_chwidth $ap_vht_he_oper_chwidth
+                hostapd_cli -i $ap_intf set he_oper_centr_freq_seg0_idx $ap_vht_he_oper_centr_freq_seg0_idx
+
+                if [ $sta_channel -ge 36 ]; then
+                        hostapd_cli -i $ap_intf set ieee80211ac 1 2> /dev/null
+                        hostapd_cli -i $ap_intf set ieee80211n 1 2> /dev/null
+                        hostapd_cli -i $ap_intf set vht_oper_chwidth $ap_vht_he_oper_chwidth
+                        hostapd_cli -i $ap_intf set vht_oper_centr_freq_seg0_idx $ap_vht_he_oper_centr_freq_seg0_idx
+		else
+			hostapd_cli -i $ap_intf set ieee80211ac 0 2> /dev/null
+                        hostapd_cli -i $ap_intf set ieee80211n 0 2> /dev/null
+                fi
+
+                if [ $sta_width = "20" ]; then
+                        #echo "Setting HE20 mode to AP" > /dev/ttyMSM0
+                        hostapd_ht20_mode
+                else
+                        hostapd_ht40_mode "$sta_channel"
+                fi
+
+	elif [ $wifi_gen == 5 ]; then
 		#echo "STA associated in VHT$sta_width mode, applying same config to AP" > /dev/ttyMSM0
-		local ap_vht_oper_chwidth
-		local ap_vht_oper_centr_freq_seg0_idx
+		local ap_vht_he_oper_chwidth
+		local ap_vht_he_oper_centr_freq_seg0_idx
 
-		hostapd_vht_oper_chwidth "$sta_width"
+		hostapd_vht_he_oper_chwidth "$sta_width"
 
 		hostapd_cli -i $ap_intf set ieee80211ac 1 2> /dev/null
 		hostapd_cli -i $ap_intf set ieee80211n 1 2> /dev/null
+		hostapd_cli -i $ap_intf set ieee80211ax 0 2> /dev/null
 
-		#echo "vht_oper_chwidth is $ap_vht_oper_chwidth for VHT$sta_width mode" > /dev/ttyMSM0
+		#echo "vht_oper_chwidth is $ap_vht_he_oper_chwidth for VHT$sta_width mode" > /dev/ttyMSM0
 
-		hostapd_vht_oper_centr_freq_seg0_idx "$sta_width" "$sta_channel"
+		hostapd_vht_he_oper_centr_freq_seg0_idx "$sta_width" "$sta_channel"
 
-		#echo "New vht_oper_chwidth is $ap_vht_oper_chwidth, vht_oper_centr_freq_seg0_idx is $ap_vht_oper_centr_freq_seg0_idx" > /dev/ttyMSM0
-		hostapd_cli -i $ap_intf set vht_oper_chwidth $ap_vht_oper_chwidth
-		hostapd_cli -i $ap_intf set vht_oper_centr_freq_seg0_idx $ap_vht_oper_centr_freq_seg0_idx
+		#echo "New vht_oper_chwidth is $ap_vht_he_oper_chwidth, vht_oper_centr_freq_seg0_idx is $ap_vht_he_oper_centr_freq_seg0_idx" > /dev/ttyMSM0
+		hostapd_cli -i $ap_intf set vht_oper_chwidth $ap_vht_he_oper_chwidth
+		hostapd_cli -i $ap_intf set vht_oper_centr_freq_seg0_idx $ap_vht_he_oper_centr_freq_seg0_idx
 
 		if [ $sta_width = "20" ]; then
                         #echo "Setting VHT20 mode to AP" > /dev/ttyMSM0
@@ -166,6 +203,7 @@ hostapd_adjust_config() {
 		#echo "STA associated in HT$sta_width mode, applying same config to AP" > /dev/ttyMSM0
 		hostapd_cli -i $ap_intf set ieee80211n 1
 		hostapd_cli -i $ap_intf set ieee80211ac 0
+		hostapd_cli -i $ap_intf set ieee80211ax 0
 
 		if [ $sta_width = "20" ]; then
                         #echo "Setting HT20 mode to AP" > /dev/ttyMSM0
