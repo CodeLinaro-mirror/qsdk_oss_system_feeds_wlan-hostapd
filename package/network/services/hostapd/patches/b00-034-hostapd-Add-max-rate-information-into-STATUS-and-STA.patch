@@ -157,7 +157,7 @@ Date:   Thu Dec 6 15:17:46 2018 +0800
  	return len;
  }
  
-@@ -761,6 +894,20 @@ int hostapd_ctrl_iface_status(struct hos
+@@ -800,6 +933,20 @@ int hostapd_ctrl_iface_status(struct hos
  		if (os_snprintf_error(buflen - len, ret))
  			return len;
  		len += ret;
@@ -178,7 +178,7 @@ Date:   Thu Dec 6 15:17:46 2018 +0800
  	}
  
  	if (iface->conf->ieee80211n && !hapd->conf->disable_11n) {
-@@ -795,8 +942,33 @@ int hostapd_ctrl_iface_status(struct hos
+@@ -834,8 +981,33 @@ int hostapd_ctrl_iface_status(struct hos
  		if (os_snprintf_error(buflen - len, ret))
  			return len;
  		len += ret;
@@ -191,8 +191,8 @@ Date:   Thu Dec 6 15:17:46 2018 +0800
 +				return len;
 +			len += ret;
 +		}
-+	}
-+
+ 	}
+ 
 +	if (mode && mode->rates && mode->num_rates &&
 +	    mode->num_rates <= WLAN_SUPP_RATES_MAX) {
 +		ret = os_snprintf(buf + len, buflen - len,
@@ -201,8 +201,8 @@ Date:   Thu Dec 6 15:17:46 2018 +0800
 +		if (os_snprintf_error(buflen - len, ret))
 +			return len;
 +		len += ret;
- 	}
- 
++	}
++
 +	ret = os_snprintf(buf + len, buflen - len, "max_nss=%u\n",
 +			  hostapd_maxnss(hapd, NULL));
 +	if (os_snprintf_error(buflen - len, ret))
@@ -214,7 +214,7 @@ Date:   Thu Dec 6 15:17:46 2018 +0800
  			ret = os_snprintf(buf + len, buflen - len,
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -45,6 +45,7 @@
+@@ -46,6 +46,7 @@
  /* Maximum number of supported rates (from both Supported Rates and Extended
   * Supported Rates IEs). */
  #define WLAN_SUPP_RATES_MAX 32

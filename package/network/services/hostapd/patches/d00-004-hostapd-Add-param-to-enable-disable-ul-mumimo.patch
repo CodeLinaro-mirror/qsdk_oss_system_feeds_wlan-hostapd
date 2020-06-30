@@ -1,6 +1,6 @@
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3501,6 +3501,8 @@ static int hostapd_config_fill(struct ho
+@@ -3444,6 +3444,8 @@ static int hostapd_config_fill(struct ho
  		conf->he_phy_capab.he_su_beamformee = atoi(pos);
  	} else if (os_strcmp(buf, "he_mu_beamformer") == 0) {
  		conf->he_phy_capab.he_mu_beamformer = atoi(pos);
@@ -26,7 +26,7 @@
  
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -261,6 +261,8 @@ struct hostapd_config * hostapd_config_d
+@@ -265,6 +265,8 @@ struct hostapd_config * hostapd_config_d
  		HE_OPERATION_RTS_THRESHOLD_OFFSET;
  	/* Set default basic MCS/NSS set to single stream MCS 0-7 */
  	conf->he_op.he_basic_mcs_nss_set = 0xfffc;
@@ -37,7 +37,7 @@
  	conf->he_op.he_bss_color = 1;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -873,6 +873,7 @@ struct he_phy_capabilities_info {
+@@ -874,6 +874,7 @@ struct he_phy_capabilities_info {
  	bool he_su_beamformer;
  	bool he_su_beamformee;
  	bool he_mu_beamformer;

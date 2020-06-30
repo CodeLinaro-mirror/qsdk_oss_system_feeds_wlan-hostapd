@@ -1,6 +1,6 @@
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1194,6 +1194,12 @@ struct wpa_driver_associate_params {
+@@ -1195,6 +1195,12 @@ struct wpa_driver_associate_params {
  	 * fils_erp_rrk_len - Length of fils_erp_rrk in bytes
  	 */
  	size_t fils_erp_rrk_len;
@@ -15,7 +15,7 @@
  enum hide_ssid {
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2740,6 +2740,9 @@ static const struct parse_data ssid_fiel
+@@ -2741,6 +2741,9 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(owe_ptk_workaround, 0, 1) },
  	{ INT_RANGE(multi_ap_backhaul_sta, 0, 1) },
  	{ INT_RANGE(ft_eap_pmksa_caching, 0, 1) },
@@ -24,10 +24,10 @@
 +#endif
  	{ INT_RANGE(beacon_prot, 0, 1) },
  	{ INT_RANGE(transition_disable, 0, 255) },
- };
+ 	{ INT_RANGE(sae_pk, 0, 2) },
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1093,7 +1093,12 @@ struct wpa_ssid {
+@@ -1104,7 +1104,12 @@ struct wpa_ssid {
  	 * FT initial mobility domain association.
  	 */
  	int ft_eap_pmksa_caching;
@@ -55,7 +55,7 @@
  
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2409,11 +2409,15 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2423,11 +2423,15 @@ void ibss_mesh_setup_freq(struct wpa_sup
  		return;
  
  	/* Allow HE on 2.4 GHz without VHT: see nl80211_put_freq_params() */
@@ -74,7 +74,7 @@
  #endif /* CONFIG_HE_OVERRIDES */
  
  	/* Setup higher BW only for 5 GHz */
-@@ -2508,6 +2512,10 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2522,6 +2526,10 @@ void ibss_mesh_setup_freq(struct wpa_sup
  
  		wpa_scan_results_free(scan_res);
  	}

@@ -1,6 +1,6 @@
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3353,7 +3353,30 @@ static int hostapd_fill_csa_settings(str
+@@ -3466,7 +3466,30 @@ static int hostapd_fill_csa_settings(str
  	if (!iface || !iface->freq || hapd->csa_in_progress)
  		return -1;
  

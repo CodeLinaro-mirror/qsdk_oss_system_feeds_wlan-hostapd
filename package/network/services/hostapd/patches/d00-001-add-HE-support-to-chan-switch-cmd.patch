@@ -1,6 +1,6 @@
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2609,9 +2609,9 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2658,9 +2658,9 @@ static int hostapd_ctrl_iface_chan_switc
  
  	for (i = 0; i < iface->num_bss; i++) {
  
@@ -15,7 +15,7 @@
  		if (ret) {
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1038,6 +1038,13 @@ struct hostapd_config {
+@@ -1039,6 +1039,13 @@ struct hostapd_config {
  	u8 he_oper_centr_freq_seg1_idx;
  #endif /* CONFIG_IEEE80211AX */
  
@@ -41,7 +41,7 @@
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3517,15 +3517,22 @@ void hostapd_cleanup_cs_params(struct ho
+@@ -3546,15 +3546,22 @@ void hostapd_cleanup_cs_params(struct ho
  }
  
  
@@ -69,7 +69,7 @@
  
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -769,10 +769,10 @@ enum hostapd_hw_mode ieee80211_freq_to_c
+@@ -870,10 +870,10 @@ enum hostapd_hw_mode ieee80211_freq_to_c
  
  /**
   * ieee80211_freq_to_channel_ext - Convert frequency into channel info
@@ -84,7 +84,7 @@
   * Returns: hw_mode on success, NUM_HOSTAPD_MODES on failure
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -194,7 +194,7 @@ int hostapd_config_wmm_ac(struct hostapd
+@@ -209,7 +209,7 @@ int hostapd_config_tx_queue(struct hosta
  enum hostapd_hw_mode ieee80211_freq_to_chan(int freq, u8 *channel);
  int ieee80211_chan_to_freq(const char *country, u8 op_class, u8 chan);
  enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
@@ -95,7 +95,7 @@
  				  int sec_channel, u8 *op_class, u8 *channel);
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -1288,7 +1288,7 @@ struct ieee80211_ampe_ie {
+@@ -1293,7 +1293,7 @@ struct ieee80211_ampe_ie {
  
  #define VHT_RX_NSS_MAX_STREAMS			    8
  
@@ -106,7 +106,7 @@
  #define CHANWIDTH_160MHZ	2
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -864,9 +864,10 @@ void hostapd_event_ch_switch(struct host
+@@ -862,9 +862,10 @@ void hostapd_event_ch_switch(struct host
  
  	hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
  		       HOSTAPD_LEVEL_INFO,
@@ -119,7 +119,7 @@
  		       width, channel_width_to_string(width), cf1, cf2);
  
  	if (!hapd->iface->current_mode) {
-@@ -921,16 +922,30 @@ void hostapd_event_ch_switch(struct host
+@@ -919,16 +920,30 @@ void hostapd_event_ch_switch(struct host
  	hapd->iconf->ieee80211n = ht;
  	if (!ht) {
  		hapd->iconf->ieee80211ac = 0;
@@ -160,7 +160,7 @@
  	hostapd_set_oper_chwidth(hapd->iconf, chwidth);
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -611,7 +611,7 @@ void hostapd_channel_list_updated(struct
+@@ -627,7 +627,7 @@ void hostapd_channel_list_updated(struct
  void hostapd_set_state(struct hostapd_iface *iface, enum hostapd_iface_state s);
  const char * hostapd_state_text(enum hostapd_iface_state s);
  int hostapd_csa_in_progress(struct hostapd_iface *iface);
@@ -169,141 +169,9 @@
  int hostapd_switch_channel(struct hostapd_data *hapd,
  			   struct csa_settings *settings);
  void
---- a/src/ap/ieee802_11_vht.c
-+++ b/src/ap/ieee802_11_vht.c
-@@ -166,60 +166,6 @@ static int check_valid_vht_mcs(struct ho
- 	return 0;
- }
- 
--
--u8 * hostapd_eid_wb_chsw_wrapper(struct hostapd_data *hapd, u8 *eid)
--{
--	u8 bw, chan1, chan2 = 0;
--	int freq1;
--
--	if (!hapd->cs_freq_params.channel ||
--	    !hapd->cs_freq_params.vht_enabled)
--		return eid;
--
--	/* bandwidth: 0: 40, 1: 80, 2: 160, 3: 80+80 */
--	switch (hapd->cs_freq_params.bandwidth) {
--	case 40:
--		bw = 0;
--		break;
--	case 80:
--		/* check if it's 80+80 */
--		if (!hapd->cs_freq_params.center_freq2)
--			bw = 1;
--		else
--			bw = 3;
--		break;
--	case 160:
--		bw = 2;
--		break;
--	default:
--		/* not valid VHT bandwidth or not in CSA */
--		return eid;
--	}
--
--	freq1 = hapd->cs_freq_params.center_freq1 ?
--		hapd->cs_freq_params.center_freq1 :
--		hapd->cs_freq_params.freq;
--	if (ieee80211_freq_to_chan(freq1, &chan1) !=
--	    HOSTAPD_MODE_IEEE80211A)
--		return eid;
--
--	if (hapd->cs_freq_params.center_freq2 &&
--	    ieee80211_freq_to_chan(hapd->cs_freq_params.center_freq2,
--				   &chan2) != HOSTAPD_MODE_IEEE80211A)
--		return eid;
--
--	*eid++ = WLAN_EID_VHT_CHANNEL_SWITCH_WRAPPER;
--	*eid++ = 5; /* Length of Channel Switch Wrapper */
--	*eid++ = WLAN_EID_VHT_WIDE_BW_CHSWITCH;
--	*eid++ = 3; /* Length of Wide Bandwidth Channel Switch element */
--	*eid++ = bw; /* New Channel Width */
--	*eid++ = chan1; /* New Channel Center Frequency Segment 0 */
--	*eid++ = chan2; /* New Channel Center Frequency Segment 1 */
--
--	return eid;
--}
--
--
- u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
- {
- 	struct hostapd_iface *iface = hapd->iface;
---- a/src/ap/ieee802_11.c
-+++ b/src/ap/ieee802_11.c
-@@ -5517,5 +5517,58 @@ void ieee802_11_rx_from_unknown(struct h
- 			WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
- }
- 
-+u8 * hostapd_eid_wb_chsw_wrapper(struct hostapd_data *hapd, u8 *eid)
-+{
-+        u8 bw, chan1, chan2 = 0;
-+        int freq1;
-+
-+        if (!hapd->cs_freq_params.channel ||
-+            (!hapd->cs_freq_params.vht_enabled &&
-+            !hapd->cs_freq_params.he_enabled))
-+                return eid;
-+
-+        /* bandwidth: 0: 40, 1: 80, 2: 160, 3: 80+80 */
-+        switch (hapd->cs_freq_params.bandwidth) {
-+        case 40:
-+                bw = 0;
-+                break;
-+        case 80:
-+                /* check if it's 80+80 */
-+                if (!hapd->cs_freq_params.center_freq2)
-+                        bw = 1;
-+                else
-+                        bw = 3;
-+                break;
-+        case 160:
-+                bw = 2;
-+                break;
-+        default:
-+                /* not valid VHT bandwidth or not in CSA */
-+                return eid;
-+        }
-+
-+        freq1 = hapd->cs_freq_params.center_freq1 ?
-+                hapd->cs_freq_params.center_freq1 :
-+                hapd->cs_freq_params.freq;
-+        if (ieee80211_freq_to_chan(freq1, &chan1) !=
-+            HOSTAPD_MODE_IEEE80211A)
-+                return eid;
-+
-+        if (hapd->cs_freq_params.center_freq2 &&
-+            ieee80211_freq_to_chan(hapd->cs_freq_params.center_freq2,
-+                                   &chan2) != HOSTAPD_MODE_IEEE80211A)
-+                return eid;
-+
-+        *eid++ = WLAN_EID_VHT_CHANNEL_SWITCH_WRAPPER;
-+        *eid++ = 5; /* Length of Channel Switch Wrapper */
-+        *eid++ = WLAN_EID_VHT_WIDE_BW_CHSWITCH;
-+        *eid++ = 3; /* Length of Wide Bandwidth Channel Switch element */
-+        *eid++ = bw; /* New Channel Width */
-+        *eid++ = chan1; /* New Channel Center Frequency Segment 0 */
-+        *eid++ = chan2; /* New Channel Center Frequency Segment 1 */
-+
-+        return eid;
-+}
-+
- 
- #endif /* CONFIG_NATIVE_WINDOWS */
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -557,7 +557,6 @@ static u8 * hostapd_gen_probe_resp(struc
- 		pos = hostapd_eid_vht_capabilities(hapd, pos, 0);
- 		pos = hostapd_eid_vht_operation(hapd, pos);
- 		pos = hostapd_eid_txpower_envelope(hapd, pos);
--		pos = hostapd_eid_wb_chsw_wrapper(hapd, pos);
- 	}
- #endif /* CONFIG_IEEE80211AC */
- 
-@@ -573,6 +572,10 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -580,6 +580,10 @@ static u8 * hostapd_gen_probe_resp(struc
  	}
  #endif /* CONFIG_IEEE80211AX */
  
@@ -314,15 +182,7 @@
  #ifdef CONFIG_IEEE80211AC
  	if (hapd->conf->vendor_vht)
  		pos = hostapd_eid_vendor_vht(hapd, pos);
-@@ -1286,7 +1289,6 @@ int ieee802_11_build_ap_params(struct ho
- 		tailpos = hostapd_eid_vht_capabilities(hapd, tailpos, 0);
- 		tailpos = hostapd_eid_vht_operation(hapd, tailpos);
- 		tailpos = hostapd_eid_txpower_envelope(hapd, tailpos);
--		tailpos = hostapd_eid_wb_chsw_wrapper(hapd, tailpos);
- 	}
- #endif /* CONFIG_IEEE80211AC */
- 
-@@ -1303,6 +1305,10 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1317,6 +1321,10 @@ int ieee802_11_build_ap_params(struct ho
  	}
  #endif /* CONFIG_IEEE80211AX */
  
@@ -335,7 +195,7 @@
  		tailpos = hostapd_eid_vendor_vht(hapd, tailpos);
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4545,7 +4545,7 @@ static int nl80211_put_freq_params(struc
+@@ -4672,7 +4672,7 @@ static int nl80211_put_freq_params(struc
  		     nla_put_u32(msg, NL80211_ATTR_CENTER_FREQ2,
  				 freq->center_freq2)))
  			return -ENOBUFS;

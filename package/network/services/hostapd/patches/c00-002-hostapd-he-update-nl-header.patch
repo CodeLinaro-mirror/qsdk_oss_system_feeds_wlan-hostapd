@@ -14,7 +14,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
 
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -4285,6 +4285,10 @@ enum nl80211_chan_width {
+@@ -4447,6 +4447,10 @@ enum nl80211_chan_width {
  	NL80211_CHAN_WIDTH_160,
  	NL80211_CHAN_WIDTH_5,
  	NL80211_CHAN_WIDTH_10,
@@ -27,7 +27,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  /**
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -920,13 +920,17 @@ static int hostapd_dfs_testmode_set_beac
+@@ -1048,13 +1048,17 @@ static int hostapd_dfs_testmode_set_beac
  				      iface->conf->hw_mode,
  				      iface->freq,
  				      iface->conf->channel,

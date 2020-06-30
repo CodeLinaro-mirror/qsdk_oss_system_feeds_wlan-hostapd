@@ -1,6 +1,6 @@
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2420,10 +2420,6 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2434,10 +2434,6 @@ void ibss_mesh_setup_freq(struct wpa_sup
  		freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
  #endif /* CONFIG_HE_OVERRIDES */
  
@@ -11,7 +11,7 @@
  	for (chan_idx = 0; chan_idx < mode->num_channels; chan_idx++) {
  		pri_chan = &mode->channels[chan_idx];
  		if (pri_chan->chan == channel)
-@@ -2513,6 +2509,7 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2527,6 +2523,7 @@ void ibss_mesh_setup_freq(struct wpa_sup
  		wpa_scan_results_free(scan_res);
  	}
  #ifdef CONFIG_HE_OVERRIDES
@@ -19,7 +19,7 @@
  	if (ssid->disable_he)
  		vht_freq.he_enabled = 0;
  #endif /* CONFIG_HE_OVERRIDES */
-@@ -2548,6 +2545,11 @@ skip_ht40:
+@@ -2562,6 +2559,11 @@ skip_ht40:
  	/* Enable HE with VHT for 5 GHz */
  	freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
  

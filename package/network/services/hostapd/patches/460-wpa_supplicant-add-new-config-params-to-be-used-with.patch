@@ -22,7 +22,7 @@ Signed-hostap: Antonio Quartulli <ordex@autistici.org>
  #include "common/defs.h"
  #include "common/ieee802_11_defs.h"
  #include "common/wpa_common.h"
-@@ -850,6 +851,9 @@ struct wpa_driver_associate_params {
+@@ -851,6 +852,9 @@ struct wpa_driver_associate_params {
  	 * responsible for selecting with which BSS to associate. */
  	const u8 *bssid;
  
@@ -170,7 +170,7 @@ Signed-hostap: Antonio Quartulli <ordex@autistici.org>
  
  #define DEFAULT_EAP_WORKAROUND ((unsigned int) -1)
  #define DEFAULT_EAPOL_FLAGS (EAPOL_FLAG_REQUIRE_KEY_UNICAST | \
-@@ -827,6 +827,9 @@ struct wpa_ssid {
+@@ -838,6 +838,9 @@ struct wpa_ssid {
  	 */
  	void *parent_cred;
  
@@ -182,7 +182,7 @@ Signed-hostap: Antonio Quartulli <ordex@autistici.org>
  	 * macsec_policy - Determines the policy for MACsec secure session
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -3375,7 +3375,7 @@ static void wpas_start_assoc_cb(struct w
+@@ -3400,7 +3400,7 @@ static void wpas_start_assoc_cb(struct w
  	struct wpa_supplicant *wpa_s = work->wpa_s;
  	u8 *wpa_ie;
  	const u8 *edmg_ie_oper;
@@ -191,7 +191,7 @@ Signed-hostap: Antonio Quartulli <ordex@autistici.org>
  	unsigned int cipher_pairwise, cipher_group, cipher_group_mgmt;
  	struct wpa_driver_associate_params params;
  #if defined(CONFIG_WEP) || defined(IEEE8021X_EAPOL)
-@@ -3562,6 +3562,13 @@ static void wpas_start_assoc_cb(struct w
+@@ -3587,6 +3587,13 @@ static void wpas_start_assoc_cb(struct w
  			params.beacon_int = ssid->beacon_int;
  		else
  			params.beacon_int = wpa_s->conf->beacon_int;

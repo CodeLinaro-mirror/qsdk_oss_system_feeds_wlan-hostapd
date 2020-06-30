@@ -61,7 +61,7 @@
  	eloop_run();
  
  	return 0;
-@@ -643,8 +641,7 @@ int main(int argc, char *argv[])
+@@ -644,8 +642,7 @@ int main(int argc, char *argv[])
  	struct hapd_interfaces interfaces;
  	int ret = 1;
  	size_t i, j;
