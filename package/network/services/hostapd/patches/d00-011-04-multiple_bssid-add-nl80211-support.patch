@@ -1,0 +1,165 @@
+From b62d9ed47fc4b9efd54dd2023aae09a79647e7c7 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Mon, 6 Jul 2020 14:50:28 +0200
+Subject: [PATCH 4/8] multiple_bssid: add nl80211 support
+
+Add the code required to send the multiple bssid setup info to the kernel.
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ src/drivers/driver_nl80211.c         | 49 +++++++++++++++++++++++-----
+ src/drivers/driver_nl80211.h         |  4 ++-
+ src/drivers/driver_nl80211_monitor.c |  2 +-
+ 3 files changed, 45 insertions(+), 10 deletions(-)
+
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 6bf057a73dea..f54d82088305 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -4641,6 +4641,13 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+ 		goto fail;
+ #endif /* CONFIG_FILS */
+ 
++	if (params->multiple_bssid_count) {
++		nla_put_u32(msg, NL80211_ATTR_MULTI_BSSID_INDEX,
++			    params->multiple_bssid_index);
++		nla_put_u32(msg, NL80211_ATTR_MULTI_BSSID_COUNT,
++			    params->multiple_bssid_count);
++	}
++
+ 	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
+ 				       NULL, NULL, NULL, NULL);
+ 	if (ret) {
+@@ -5236,7 +5243,8 @@ static int nl80211_create_iface_once(struct wpa_driver_nl80211_data *drv,
+ 				     enum nl80211_iftype iftype,
+ 				     const u8 *addr, int wds,
+ 				     int (*handler)(struct nl_msg *, void *),
+-				     void *arg)
++				     void *arg, int multiple_bssid_mode,
++				     const char *multiple_bssid_parent)
+ {
+ 	struct nl_msg *msg;
+ 	int ifidx;
+@@ -5265,6 +5273,26 @@ static int nl80211_create_iface_once(struct wpa_driver_nl80211_data *drv,
+ 			goto fail;
+ 	}
+ 
++	switch (multiple_bssid_mode) {
++	case HOSTAPD_BSSID_TRANSMITTED:
++		nla_put_u8(msg, NL80211_ATTR_MULTI_BSSID_MODE,
++			   NL80211_MULTIPLE_BSSID_TRANSMITTED);
++		break;
++	case HOSTAPD_BSSID_NON_TRANSMITTED:
++		if (!multiple_bssid_parent)
++			goto fail;
++		ifidx = if_nametoindex(multiple_bssid_parent);
++		if (ifidx <= 0)
++			goto fail;
++		nla_put_u8(msg, NL80211_ATTR_MULTI_BSSID_MODE,
++			   NL80211_MULTIPLE_BSSID_NON_TRANSMITTED);
++		nla_put_u32(msg, NL80211_ATTR_MULTI_BSSID_PARENT,
++			    ifidx);
++		break;
++	default:
++		break;
++	}
++
+ 	/*
+ 	 * Tell cfg80211 that the interface belongs to the socket that created
+ 	 * it, and the interface should be deleted when the socket is closed.
+@@ -5318,12 +5346,14 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
+ 			 const char *ifname, enum nl80211_iftype iftype,
+ 			 const u8 *addr, int wds,
+ 			 int (*handler)(struct nl_msg *, void *),
+-			 void *arg, int use_existing)
++			 void *arg, int use_existing,
++			 int multiple_bssid_mode,
++			 const char *multiple_bssid_parent)
+ {
+ 	int ret;
+ 
+ 	ret = nl80211_create_iface_once(drv, ifname, iftype, addr, wds, handler,
+-					arg);
++					arg, multiple_bssid_mode, multiple_bssid_parent);
+ 
+ 	/* if error occurred and interface exists already */
+ 	if (ret == -ENFILE && if_nametoindex(ifname)) {
+@@ -5349,7 +5379,7 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
+ 
+ 		/* Try to create the interface again */
+ 		ret = nl80211_create_iface_once(drv, ifname, iftype, addr,
+-						wds, handler, arg);
++						wds, handler, arg, multiple_bssid_mode, multiple_bssid_parent);
+ 	}
+ 
+ 	if (ret >= 0 && is_p2p_net_interface(iftype)) {
+@@ -7345,7 +7375,7 @@ static int i802_set_wds_sta(void *priv, const u8 *addr, int aid, int val,
+ 		if (!if_nametoindex(name)) {
+ 			if (nl80211_create_iface(drv, name,
+ 						 NL80211_IFTYPE_AP_VLAN,
+-						 bss->addr, 1, NULL, NULL, 0) <
++						 bss->addr, 1, NULL, NULL, 0, 0, NULL) <
+ 			    0)
+ 				return -1;
+ 			if (bridge_ifname &&
+@@ -7692,7 +7722,8 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
+ 				     void *bss_ctx, void **drv_priv,
+ 				     char *force_ifname, u8 *if_addr,
+ 				     const char *bridge, int use_existing,
+-				     int setup_ap)
++				     int setup_ap, int multiple_bssid_mode,
++				     const char *multiple_bssid_parent)
+ {
+ 	enum nl80211_iftype nlmode;
+ 	struct i802_bss *bss = priv;
+@@ -7709,7 +7740,8 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
+ 		os_memset(&p2pdev_info, 0, sizeof(p2pdev_info));
+ 		ifidx = nl80211_create_iface(drv, ifname, nlmode, addr,
+ 					     0, nl80211_wdev_handler,
+-					     &p2pdev_info, use_existing);
++					     &p2pdev_info, use_existing,
++					     0, NULL);
+ 		if (!p2pdev_info.wdev_id_set || ifidx != 0) {
+ 			wpa_printf(MSG_ERROR, "nl80211: Failed to create a P2P Device interface %s",
+ 				   ifname);
+@@ -7725,7 +7757,8 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
+ 			   (long long unsigned int) p2pdev_info.wdev_id);
+ 	} else {
+ 		ifidx = nl80211_create_iface(drv, ifname, nlmode, addr,
+-					     0, NULL, NULL, use_existing);
++					     0, NULL, NULL, use_existing,
++					     multiple_bssid_mode, multiple_bssid_parent);
+ 		if (use_existing && ifidx == -ENFILE) {
+ 			added = 0;
+ 			ifidx = if_nametoindex(ifname);
+diff --git a/src/drivers/driver_nl80211.h b/src/drivers/driver_nl80211.h
+index 017c025a0d75..bc662479fcb7 100644
+--- a/src/drivers/driver_nl80211.h
++++ b/src/drivers/driver_nl80211.h
+@@ -240,7 +240,9 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
+ 			 const char *ifname, enum nl80211_iftype iftype,
+ 			 const u8 *addr, int wds,
+ 			 int (*handler)(struct nl_msg *, void *),
+-			 void *arg, int use_existing);
++			 void *arg, int use_existing,
++			 int multi_bssid_mode,
++			 const char *multi_bssid_parent);
+ void nl80211_remove_iface(struct wpa_driver_nl80211_data *drv, int ifidx);
+ unsigned int nl80211_get_assoc_freq(struct wpa_driver_nl80211_data *drv);
+ int nl80211_get_assoc_ssid(struct wpa_driver_nl80211_data *drv, u8 *ssid);
+diff --git a/src/drivers/driver_nl80211_monitor.c b/src/drivers/driver_nl80211_monitor.c
+index 7ff55f149a61..ac935d87343b 100644
+--- a/src/drivers/driver_nl80211_monitor.c
++++ b/src/drivers/driver_nl80211_monitor.c
+@@ -381,7 +381,7 @@ int nl80211_create_monitor_interface(struct wpa_driver_nl80211_data *drv)
+ 
+ 	drv->monitor_ifidx =
+ 		nl80211_create_iface(drv, buf, NL80211_IFTYPE_MONITOR, NULL,
+-				     0, NULL, NULL, 0);
++				     0, NULL, NULL, 0, 0, NULL);
+ 
+ 	if (drv->monitor_ifidx == -EOPNOTSUPP) {
+ 		/*
+-- 
+2.25.0
+

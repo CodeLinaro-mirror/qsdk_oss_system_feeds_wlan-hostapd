@@ -1,0 +1,70 @@
+From 34e0b2edee02c07227c3b687b172241d37017ae8 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Mon, 3 Aug 2020 15:36:19 -0700
+Subject: [PATCH 8/8] multiple_bssid: Match netlink attribute definitions
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ src/drivers/nl80211_copy.h | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
+index d27f27e30273..6397f00b56bc 100644
+--- a/src/drivers/nl80211_copy.h
++++ b/src/drivers/nl80211_copy.h
+@@ -2522,6 +2522,17 @@ enum nl80211_commands {
+  *	unsolicited broadcast probe response. It is a nested attribute, see
+  *	&enum nl80211_unsol_bcast_probe_resp_attributes.
+  *
++ * @NL80211_ATTR_MULTI_BSSID_MODE: Set the (Non-)Transmitted flag for this
++ *	BSSIDs beacon.
++ *
++ * @NL80211_ATTR_MULTI_BSSID_PARENT: If this is a Non-Transmitted BSSID, define
++ *	the parent interface.
++ *
++ * @NL80211_ATTR_MULTI_BSSID_INDEX: The index of this BSS inside the multi bssid
++ *	IE.
++ *
++ * @NL80211_ATTR_MULTI_BSSID_COUNT: The number of BSSs inside the multi bssid IE.
++ *
+  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
+  * @NL80211_ATTR_MAX: highest attribute number currently defined
+  * @__NL80211_ATTR_AFTER_LAST: internal use
+@@ -3010,6 +3021,11 @@ enum nl80211_attrs {
+ 
+ 	NL80211_ATTR_UNSOL_BCAST_PROBE_RESP,
+ 
++	NL80211_ATTR_MULTI_BSSID_MODE,
++	NL80211_ATTR_MULTI_BSSID_PARENT,
++	NL80211_ATTR_MULTI_BSSID_INDEX,
++	NL80211_ATTR_MULTI_BSSID_COUNT,
++
+ 	/* add attributes here, update the policy in nl80211.c */
+ 
+ 	__NL80211_ATTR_AFTER_LAST,
+@@ -6814,6 +6830,22 @@ enum nl80211_peer_measurement_ftm_failure_reasons {
+ 	NL80211_PMSR_FTM_FAILURE_BAD_CHANGED_PARAMS,
+ };
+ 
++/**
++ * enum nl80211_multi_bssid_mode - Multiple BSSID beacon type
++ *
++ * Used by cfg80211_ap_settings
++ *
++ * @MULTIPLE_BSSID_LEGACY: This BSS is not part of a multiple BSSID group
++ * @MULTIPLE_BSSID_TRANSMITTED: This BSS is broadcasting a multiple BSSID
++ *                                    beacon
++ * @MULTIPLE_BSSID_NON_TRANSMITTED: This BSS is not broadcasting a beacon
++ */
++enum nl80211_multi_bssid_mode {
++	NL80211_MULTIPLE_BSSID_LEGACY = 0,
++	NL80211_MULTIPLE_BSSID_TRANSMITTED,
++	NL80211_MULTIPLE_BSSID_NON_TRANSMITTED,
++};
++
+ /**
+  * enum nl80211_peer_measurement_ftm_resp - FTM response attributes
+  * @__NL80211_PMSR_FTM_RESP_ATTR_INVALID: invalid
+-- 
+2.25.0
+
