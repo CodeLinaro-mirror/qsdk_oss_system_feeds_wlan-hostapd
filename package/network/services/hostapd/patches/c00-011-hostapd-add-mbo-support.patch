@@ -210,7 +210,7 @@
 -	mgmt = os_zalloc(sizeof(*mgmt));
 +#ifdef CONFIG_MBO
 +	struct hostapd_neighbor_entry *nr;
-+	struct wpabuf *nrbuf;
++	struct wpabuf *nrbuf = NULL;
 +	if (hapd->conf->mbo_enabled) {
 +		dl_list_for_each(nr, &hapd->nr_db, struct hostapd_neighbor_entry,
 +				 list)

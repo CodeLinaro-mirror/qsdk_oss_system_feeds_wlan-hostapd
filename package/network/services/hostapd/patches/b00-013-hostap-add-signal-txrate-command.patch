@@ -7,7 +7,7 @@
 +static int hostapd_ctrl_iface_signal_txrate(struct hostapd_data *hapd,
 +					    char *cmd)
 +{
-+	char *pos, *token, *context = NULL;
++	char *pos;
 +	unsigned int low_thold = 0, high_thold = 0;
 +
 +	pos = os_strstr(cmd, "LOW=");
@@ -141,7 +141,7 @@
  	struct wpa_signal_info sig;
 -	int res, rssi_level;
 +	int res, rssi_level, txrate_level;
- 	u8 *addr;
+ 	u8 *addr = NULL;
  
  	if (tb[NL80211_ATTR_CQM] == NULL ||
 @@ -1324,19 +1327,41 @@ static void nl80211_cqm_event(struct wpa
