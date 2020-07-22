@@ -12,7 +12,7 @@
  	struct wpa_signal_info sig;
 -	int res;
 +	int res, rssi_level;
-+	u8 *addr;
++	u8 *addr = NULL;
  
  	if (tb[NL80211_ATTR_CQM] == NULL ||
  	    nla_parse_nested(cqm, NL80211_ATTR_CQM_MAX, tb[NL80211_ATTR_CQM],
