@@ -103,7 +103,7 @@
  
  void sta_track_del(struct hostapd_sta_info *info)
  {
-@@ -1140,6 +1155,261 @@ void sta_track_del(struct hostapd_sta_in
+@@ -1140,6 +1155,271 @@ void sta_track_del(struct hostapd_sta_in
  }
  
  
@@ -171,7 +171,9 @@
 +	int i;
 +
 +	cap_info = FILS_DISCOVERY_CAP_ESS |
-+		   (hapd->conf->wpa ? FILS_DISCOVERY_CAP_PRIVACY : 0);
++		   (hapd->conf->wpa ? FILS_DISCOVERY_CAP_PRIVACY : 0) |
++		   (hapd->iconf->multiple_bssid ?
++		    FILS_DISCOVERY_CAP_MULTIPLE_BSSID_PRESENT : 0);
 +
 +	if (is_6ghz_op_class(hapd->iconf->op_class)) {
 +		cap_info |= (FILS_DISCOVERY_CAP_PHY_INDEX_HE <<
@@ -271,6 +273,8 @@
 +		total_len += 3;
 +	}
 +
++	total_len += hostapd_eid_reduced_neighbor_report_len(hapd);
++
 +	pos = hostapd_eid_fils_indic(hapd, buf, 0);
 +	buf_len = pos - buf;
 +	total_len += buf_len;
@@ -326,6 +330,9 @@
 +	/* Fill the FILS discovery information element length */
 +	*length_pos = pos - (length_pos + 1);
 +
++	/* Reduced Neighbor Report element */
++	pos = hostapd_eid_reduced_neighbor_report(hapd, pos);
++
 +	/* FILS indication element */
 +	if (buf_len) {
 +		os_memcpy(pos, buf, buf_len);
@@ -337,10 +344,13 @@
 +}
 +
 +
-+/* Configure FILS discovery response transmission */
++/* Configure FILS discovery transmission */
 +static u8 * hostapd_fils_discovery(struct hostapd_data *hapd,
 +				  struct wpa_driver_ap_params *params)
 +{
++	if (hapd->iconf->multiple_bssid && hapd != hapd->iface->bss[0])
++		return NULL;
++
 +#define VALID_INTERVAL(x,y) { x = (x > y) ? y : x; }
 +
 +	params->fils_discovery_max_int = hapd->conf->fils_discovery_max_int;
@@ -365,7 +375,7 @@
  int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  			       struct wpa_driver_ap_params *params)
  {
-@@ -1481,6 +1751,14 @@ void ieee802_11_free_ap_params(struct wp
+@@ -1481,6 +1761,14 @@ void ieee802_11_free_ap_params(struct wp
  	params->head = NULL;
  	os_free(params->proberesp);
  	params->proberesp = NULL;
@@ -380,7 +390,7 @@
  }
  
  
-@@ -1525,9 +1803,15 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -1525,9 +1813,15 @@ int ieee802_11_set_beacon(struct hostapd
  	params.he_bss_color = hapd->iface->conf->he_op.he_bss_color;
  	params.twt_responder = hostapd_get_he_twt_responder(hapd,
  							    IEEE80211_MODE_AP);
@@ -398,7 +408,7 @@
  				    iconf->channel, iconf->enable_edmg,
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2350,4 +2350,39 @@ enum edmg_bw_config {
+@@ -2350,4 +2350,40 @@ enum edmg_bw_config {
  /* DPP Public Action frame identifiers - OUI_WFA */
  #define DPP_OUI_TYPE 0x1A
  
@@ -422,6 +432,7 @@
 + */
 +#define FILS_DISCOVERY_CAP_ESS                            BIT(0)
 +#define FILS_DISCOVERY_CAP_PRIVACY                        BIT(1)
++#define FILS_DISCOVERY_CAP_MULTIPLE_BSSID_PRESENT         BIT(9)
 +#define FILS_DISCOVERY_CAP_BSS_CHWIDTH_20                 0
 +#define FILS_DISCOVERY_CAP_BSS_CHWIDTH_40                 1
 +#define FILS_DISCOVERY_CAP_BSS_CHWIDTH_80                 2
