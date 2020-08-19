@@ -1,6 +1,6 @@
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1747,6 +1747,34 @@ static void hostapd_event_wds_sta_interf
+@@ -1747,6 +1747,39 @@ static void hostapd_event_wds_sta_interf
  		ifname, MAC2STR(addr));
  }
  
@@ -22,10 +22,15 @@
 +						params->he_mu_ac_vi_param[i];
 +	}
 +
-+	/* Increment Parameter Set Update Count */
-+	updated_count = (hapd->iface->conf->he_mu_edca.he_qos_info & 0xf) + 1;
-+	hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
-+	hapd->iface->conf->he_mu_edca.he_qos_info |= updated_count;
++	/* Increment Parameter Set Update Count for MU-EDCA and WME EDCA only
++	 * if any STA is connected
++	 */
++	if (hapd->num_sta) {
++		updated_count = (hapd->iface->conf->he_mu_edca.he_qos_info + 1) & 0xf;
++		hapd->iface->conf->he_mu_edca.he_qos_info &= 0xf0;
++		hapd->iface->conf->he_mu_edca.he_qos_info |= updated_count;
++		hapd->parameter_set_count++;
++	}
 +
 +	/* Update beacon with updated MU-EDCA parameters */
 +	if (ieee802_11_update_beacons(hapd->iface))
@@ -35,7 +40,7 @@
  
  #ifdef CONFIG_OWE
  static int hostapd_notif_update_dh_ie(struct hostapd_data *hapd,
-@@ -2055,6 +2083,9 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2055,6 +2088,9 @@ void hostapd_wpa_event(void *ctx, enum w
  			data->wds_sta_interface.ifname,
  			data->wds_sta_interface.sta_addr);
  		break;
@@ -186,3 +191,43 @@
  	}
  
  	return "UNKNOWN";
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3541,6 +3541,10 @@ static int hostapd_fill_csa_settings(str
+ 	hapd->cs_count = settings->cs_count;
+ 	hapd->cs_block_tx = settings->block_tx;
+ 
++	/* reset MU-EDCA and WME EDCA parameter set count */
++	hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
++	hapd->parameter_set_count = 0;
++
+ 	ret = hostapd_build_beacon_data(hapd, &settings->beacon_csa);
+ 	if (ret) {
+ 		free_beacon_data(&settings->beacon_after);
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -1471,6 +1471,11 @@ static int hostapd_ctrl_iface_set(struct
+ 		} else if (os_strncmp(cmd, "wme_ac_", 7) == 0 ||
+ 			   os_strncmp(cmd, "wmm_ac_", 7) == 0) {
+ 			hapd->parameter_set_count++;
++			/* Incrementing MU-EDCA Parameter Set Update Count*/
++			hapd->iface->conf->he_mu_edca.he_qos_info =
++			 hapd->iface->conf->he_mu_edca.he_qos_info & 0xf0 |
++			 ((hapd->iface->conf->he_mu_edca.he_qos_info + 1) &
++			  0xf);
+ 			if (ieee802_11_update_beacons(hapd->iface))
+ 				wpa_printf(MSG_DEBUG,
+ 					   "Failed to update beacons with WMM parameters");
+--- a/src/ap/wmm.c
++++ b/src/ap/wmm.c
+@@ -98,6 +98,10 @@ static void wmm_calc_regulatory_limit(st
+ 		os_memcpy(hapd->iface->prev_wmm, acp,
+ 			  sizeof(hapd->iconf->wmm_ac_params));
+ 		hapd->parameter_set_count++;
++		/* Incrementing MU-EDCA Parameter Set Update Count*/
++		hapd->iface->conf->he_mu_edca.he_qos_info =
++		 hapd->iface->conf->he_mu_edca.he_qos_info & 0xf0 |
++		 ((hapd->iface->conf->he_mu_edca.he_qos_info + 1) & 0xf);
+ 	}
+ }
+ 
