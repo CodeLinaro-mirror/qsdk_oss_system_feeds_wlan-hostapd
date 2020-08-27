@@ -1,0 +1,40 @@
+From 7b74944cbb6f7367a991304d18a16cc53f971b51 Mon Sep 17 00:00:00 2001
+From: John Crispin <john@phrozen.org>
+Date: Mon, 6 Jul 2020 14:50:30 +0200
+Subject: [PATCH 6/8] multiple_bssid: always use the transmitting BSSs when
+ generating the beacons
+
+When generating a beacon or probe response for a non transmitting BSS,
+always use the transmittings BSSs data. If thie is a legacy beacon, the
+helper becomes a no-op.
+
+Signed-off-by: John Crispin <john@phrozen.org>
+---
+ src/ap/beacon.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index 469215eaab5d..43169f5273e3 100644
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -1058,7 +1058,7 @@ void handle_probe_req(struct hostapd_data *hapd,
+ 	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
+ 		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
+ 
+-	resp = hostapd_gen_probe_resp(hapd, mgmt, elems.p2p != NULL,
++	resp = hostapd_gen_probe_resp(hostapd_get_primary_bss(hapd), mgmt, elems.p2p != NULL,
+ 				      &resp_len);
+ 	if (resp == NULL)
+ 		return;
+@@ -1081,7 +1081,7 @@ void handle_probe_req(struct hostapd_data *hapd,
+ 				hapd->cs_c_off_ecsa_proberesp;
+ 	}
+ 
+-	ret = hostapd_drv_send_mlme(hapd, resp, resp_len, noack,
++	ret = hostapd_drv_send_mlme(hostapd_get_primary_bss(hapd), resp, resp_len, noack,
+ 				    csa_offs_len ? csa_offs : NULL,
+ 				    csa_offs_len, 0);
+ 
+-- 
+2.25.0
+
