@@ -59,3 +59,14 @@ Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
  static u32 wpa_key_mgmt_suite(struct wpa_sm *sm)
  {
  	switch (sm->key_mgmt) {
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -4855,7 +4855,7 @@ static int wpa_driver_nl80211_sta_add(vo
+ 
+ 		if (params->he_capab) {
+ 			wpa_hexdump(MSG_DEBUG, "  * he_capab",
+-				    params->he_capab, params->he_capab_len);
++				    (u8 *) params->he_capab, params->he_capab_len);
+ 			if (nla_put(msg, NL80211_ATTR_HE_CAPABILITY,
+ 				    params->he_capab_len, params->he_capab))
+ 				goto fail;

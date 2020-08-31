@@ -1,14 +1,12 @@
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 16df104268dd..791ada3b7903 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4948,6 +4948,14 @@ static int wpa_driver_nl80211_sta_add(void *priv,
+@@ -4946,6 +4946,14 @@ static int wpa_driver_nl80211_sta_add(vo
  				goto fail;
  		}
  
 +                if (params->he_6ghz_capab) {
 +                        wpa_hexdump(MSG_DEBUG, "  * he_6ghz_capab",
-+                                    params->he_6ghz_capab, sizeof(*params->he_6ghz_capab));
++                                    (u8 *) params->he_6ghz_capab, sizeof(*params->he_6ghz_capab));
 +                        if (nla_put(msg, NL80211_ATTR_HE_6GHZ_CAPABILITY,
 +                                    sizeof(*params->he_6ghz_capab), params->he_6ghz_capab))
 +                                goto fail;
@@ -17,11 +15,9 @@ index 16df104268dd..791ada3b7903 100644
  		if (params->ext_capab) {
  			wpa_hexdump(MSG_DEBUG, "  * ext_capab",
  				    params->ext_capab, params->ext_capab_len);
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index bbb2c642bd19..7ceaf5e2b8e5 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1709,6 +1709,9 @@ static int setup_interface2(struct hostapd_iface *iface)
+@@ -1716,6 +1716,9 @@ static int setup_interface2(struct hosta
  
  			ch_width = op_class_to_ch_width(iface->conf->op_class);
  			hostapd_set_oper_chwidth(iface->conf, ch_width);
@@ -31,11 +27,9 @@ index bbb2c642bd19..7ceaf5e2b8e5 100644
  		}
  
  		ret = hostapd_select_hw_mode(iface);
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index 28c2b5264e2e..3a66abd5754a 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -884,6 +884,7 @@ enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
+@@ -884,6 +884,7 @@ enum hostapd_hw_mode ieee80211_freq_to_c
  						   u8 *op_class, u8 *channel)
  {
  	u8 vht_opclass;
@@ -43,7 +37,7 @@ index 28c2b5264e2e..3a66abd5754a 100644
  
  	/* TODO: more operating classes */
  
-@@ -931,15 +932,19 @@ enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
+@@ -931,15 +932,19 @@ enum hostapd_hw_mode ieee80211_freq_to_c
  	switch (chanwidth) {
  	case CHANWIDTH_80MHZ:
  		vht_opclass = 128;
@@ -63,7 +57,7 @@ index 28c2b5264e2e..3a66abd5754a 100644
  		break;
  	}
  
-@@ -1030,15 +1035,17 @@ enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
+@@ -1030,15 +1035,17 @@ enum hostapd_hw_mode ieee80211_freq_to_c
  	}
  
  	if (freq > 5950 && freq <= 7115) {

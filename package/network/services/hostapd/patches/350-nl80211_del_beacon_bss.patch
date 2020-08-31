@@ -1,6 +1,6 @@
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -2860,10 +2860,14 @@ static int wpa_driver_nl80211_del_beacon
+@@ -2860,8 +2860,12 @@ static int wpa_driver_nl80211_del_beacon
  	struct nl_msg *msg;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
  
@@ -12,11 +12,8 @@
 -		   drv->ifindex);
 +		   bss->ifindex);
  	nl80211_put_wiphy_data_ap(bss);
--	msg = nl80211_drv_msg(drv, 0, NL80211_CMD_DEL_BEACON);
-+	msg = nl80211_drv_msg(bss, 0, NL80211_CMD_DEL_BEACON);
+ 	msg = nl80211_drv_msg(drv, 0, NL80211_CMD_DEL_BEACON);
  	return send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
- }
- 
 @@ -5335,7 +5339,7 @@ static void nl80211_teardown_ap(struct i
  		nl80211_mgmt_unsubscribe(bss, "AP teardown");
  
