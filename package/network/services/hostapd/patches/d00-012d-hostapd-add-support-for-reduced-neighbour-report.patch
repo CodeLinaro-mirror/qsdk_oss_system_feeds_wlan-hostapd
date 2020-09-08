@@ -16,11 +16,9 @@ Signed-off-by: John Crispin <john@phrozen.org>
  src/common/ieee802_11_defs.h | 14 ++++++
  7 files changed, 113 insertions(+)
 
-diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index 95cd779ec8a0..3fe179274a70 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4592,6 +4592,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -4592,6 +4592,8 @@ static int hostapd_config_fill(struct ho
  #endif /* CONFIG_MACSEC */
  	} else if (os_strcmp(buf, "multiple_bssid") == 0) {
  		conf->multiple_bssid = atoi(pos);
@@ -29,8 +27,6 @@ index 95cd779ec8a0..3fe179274a70 100644
  	} else {
  		wpa_printf(MSG_ERROR,
  			   "Line %d: unknown configuration item '%s'",
-diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index 42a94d2cd126..7b2d0cc58724 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
 @@ -2786,6 +2786,9 @@ own_ip_addr=127.0.0.1
@@ -43,8 +39,6 @@ index 42a94d2cd126..7b2d0cc58724 100644
  ##### Airtime policy configuration ###########################################
  
  # Set the airtime policy operating mode:
-diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index 6a30affd5517..4314d5ada62a 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
 @@ -869,6 +869,7 @@ struct hostapd_bss_config {
@@ -55,19 +49,17 @@ index 6a30affd5517..4314d5ada62a 100644
  };
  
  /**
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index ba0d12b95c2d..b72724fee6a7 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1458,6 +1458,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1475,6 +1475,7 @@ int ieee802_11_build_ap_params(struct ho
+ 	tail_len += hostapd_mbo_ie_len(hapd);
  	tail_len += hostapd_eid_owe_trans_len(hapd);
  	tail_len += hostapd_eid_dpp_cc_len(hapd);
- 	tail_len += hostapd_eid_multiple_bssid_len(hapd);
 +	tail_len += hostapd_eid_reduced_neighbor_report_len(hapd);
  
  	tailpos = tail = os_malloc(tail_len);
  	if (head == NULL || tail == NULL) {
-@@ -1634,6 +1635,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1648,6 +1649,7 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_owe_trans(hapd, tailpos,
  					tail + tail_len - tailpos);
  	tailpos = hostapd_eid_dpp_cc(hapd, tailpos, tail + tail_len - tailpos);
@@ -75,11 +67,9 @@ index ba0d12b95c2d..b72724fee6a7 100644
  
  	if (hapd->conf->vendor_elements) {
  		os_memcpy(tailpos, wpabuf_head(hapd->conf->vendor_elements),
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index bdfd8eacd749..5228ec230b8f 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5749,4 +5749,93 @@ u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd, u8 *eid, u8 *end)
+@@ -5762,4 +5762,93 @@ u8 * hostapd_eid_multiple_bssid(struct h
  	return eid;
  }
  
@@ -173,21 +163,17 @@ index bdfd8eacd749..5228ec230b8f 100644
 +}
 +
  #endif /* CONFIG_NATIVE_WINDOWS */
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 4ae18e7ee935..de40ff8b9a44 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -121,6 +121,8 @@ void hostapd_client_poll_ok(struct hostapd_data *hapd, const u8 *addr);
- u8 * hostapd_eid_bss_max_idle_period(struct hostapd_data *hapd, u8 *eid);
- u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd, u8 *eid, u8 *end);
+@@ -123,6 +123,8 @@ u8 * hostapd_eid_multiple_bssid(struct h
+ 				u8 is_beacon, u8 **eid_offsets, int *eid_count,
+ 				int eid_max);
  int hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd);
 +u8 * hostapd_eid_reduced_neighbor_report(struct hostapd_data *hapd, u8 *eid);
 +size_t hostapd_eid_reduced_neighbor_report_len(struct hostapd_data *hapd);
- 
  int auth_sae_init_committed(struct hostapd_data *hapd, struct sta_info *sta);
  #ifdef CONFIG_SAE
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 41fbd20b0c2b..b194393396a8 100644
+ void sae_clear_retransmit_timer(struct hostapd_data *hapd,
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -2387,4 +2387,18 @@ enum edmg_bw_config {
@@ -209,6 +195,3 @@ index 41fbd20b0c2b..b194393396a8 100644
 +#define TBTT_BSS_PARAM_20_TU_PROBE_RESP_ACTIVE	BIT(5)
 +
  #endif /* IEEE802_11_DEFS_H */
--- 
-2.17.1
-
