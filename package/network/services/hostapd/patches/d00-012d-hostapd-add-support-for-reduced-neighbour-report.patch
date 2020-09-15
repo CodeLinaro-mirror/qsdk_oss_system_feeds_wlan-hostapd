@@ -5,7 +5,10 @@ Subject: [PATCH 4/4] RNR: add reduced neighbor reporting
 The Reduced Neighbor Report (RNR) element contains channel and other
 information related to neighbor APs. It is part of the OCE requirement.
 
+Fix bssid field in RNR when there are multiple BSS.
+
 Signed-off-by: John Crispin <john@phrozen.org>
+Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
 ---
  hostapd/config_file.c        |  2 +
  hostapd/hostapd.conf         |  3 ++
@@ -123,7 +126,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
 +			if (hapd->iface->bss[i] == hapd)
 +				continue;
 +			*eid++ = TBTT_AP_OFFSET_UNKNOWN;
-+			os_memcpy(eid, hapd->iface->bss[i]->own_addr, ETH_ALEN);
++			os_memcpy(eid, hapd->iface->bss[i]->conf->bssid, ETH_ALEN);
 +			eid += 6;
 +			os_memcpy(eid, &hapd->iface->bss[i]->conf->ssid.short_ssid, 4);
 +			eid += 4;
