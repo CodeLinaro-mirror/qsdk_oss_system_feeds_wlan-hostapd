@@ -141,7 +141,7 @@ hostapd_common_add_bss_config() {
 	config_add_string wps_config
 
 	config_add_boolean rsn_preauth auth_cache
-	config_add_int ieee80211w
+	config_add_int ieee80211w sae_pwe
 
 	config_add_string 'auth_server:host' 'server:host'
 	config_add_string auth_secret
@@ -364,12 +364,19 @@ hostapd_set_bss_options() {
 	case "$auth_type" in
 		sae)
 			append bss_conf "ieee80211w=2" "$N"
-			 wpa_key_mgmt="SAE"
+			wpa_key_mgmt="SAE"
+			json_get_var sae_pwe sae_pwe
+			[ -n "$sae_pwe" ] && append bss_conf "sae_pwe=$sae_pwe" "$N"
 		;;
 		sae-mixed)
 			append bss_conf "ieee80211w=1" "$N"
 			append bss_conf "sae_require_mfp=1" "$N"
 			append wpa_key_mgmt "SAE"
+		;;
+		owe)
+			append wpa_key_mgmt "OWE"
+			json_get_var ieee80211w ieee80211w
+			[ -n "$ieee80211w" ] && append bss_conf "ieee80211w=$ieee80211w" "$N"
 		;;
 	esac
 
