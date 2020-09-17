@@ -70,3 +70,14 @@ Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
  			if (nla_put(msg, NL80211_ATTR_HE_CAPABILITY,
  				    params->he_capab_len, params->he_capab))
  				goto fail;
+--- a/src/tls/tlsv1_client_ocsp.c
++++ b/src/tls/tlsv1_client_ocsp.c
+@@ -322,7 +322,7 @@ tls_process_ocsp_responses(struct tlsv1_
+ {
+ 	struct asn1_hdr hdr;
+ 	const u8 *pos, *end;
+-	enum tls_ocsp_result res;
++	enum tls_ocsp_result res = TLS_OCSP_NO_RESPONSE;
+ 
+ 	pos = resp;
+ 	end = resp + len;
