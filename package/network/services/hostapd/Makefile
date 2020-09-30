@@ -123,6 +123,17 @@ define Package/hostapd/description
  Authenticator.
 endef
 
+define Package/hostapd-macsec
+$(call Package/hostapd/Default)
+  TITLE+= (macsec)
+  DEPENDS+= @TARGET_ipq +kmod-qca-nss-macsec +libopenssl
+  VARIANT:=macsec
+endef
+
+define Package/hostapd-macsec/description
+ This package is Hostapd Authenticator for macsec support.
+endef
+
 define Package/hostapd-mini
 $(call Package/hostapd/Default)
   TITLE+= (WPA-PSK only)
@@ -204,6 +215,18 @@ endef
 
 define Package/wpa-supplicant/config
 	source "$(SOURCE)/Config.in"
+endef
+
+define Package/wpa-supplicant-macsec
+  $(call Package/wpa-supplicant)
+  TITLE:=WPA Supplicant (MACSEC)
+  DEPENDS+= @TARGET_ipq +kmod-qca-nss-macsec
+  CONFLICTS:=
+  VARIANT:=supplicant-macsec
+endef
+
+define Package/wpa-supplicant-macsec/Description
+  WPA Supplicant with MACSEC support.
 endef
 
 define Package/wpa-supplicant-p2p
@@ -309,6 +332,12 @@ ifdef CONFIG_PACKAGE_kmod-cfg80211
   TARGET_LDFLAGS += -lm -lnl-3 -lnl-genl-3 -lnl-route-3
 endif
 
+ifeq ($(LOCAL_VARIANT),macsec)
+	TARGET_LDFLAGS += -lcrypto -lssl -lfal -L$(STAGING_DIR)/usr/lib
+	TARGET_CPPFLAGS += \
+	-I$(STAGING_DIR)/usr/include/qca-nss-macsec
+endif
+
 define Build/RunMake
 	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS)" \
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/$(1) \
@@ -373,7 +402,9 @@ define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/lib/
 	$(CP) $(PKG_BUILD_DIR)/src/common/wpa_ctrl.h $(1)/usr/include
 ifneq ($(CONFIG_PACKAGE_hostapd-utils),)
+ifneq ($(LOCAL_VARIANT),macsec)
 	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/libwpa_client.so $(1)/usr/lib
+endif
 endif
 endef
 
@@ -402,6 +433,12 @@ define Package/hostapd/install
 	$(call Install/hostapd,$(1))
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd $(1)/usr/sbin/
 endef
+
+define Package/hostapd-macsec/install
+	$(call Install/hostapd,$(1))
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd $(1)/usr/sbin/hostapd-macsec
+endef
+
 Package/hostapd-mini/install = $(Package/hostapd/install)
 
 ifneq ($(LOCAL_TYPE),supplicant)
@@ -429,6 +466,12 @@ define Package/wpa-supplicant/install
 	$(call Install/supplicant,$(1))
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant $(1)/usr/sbin/
 endef
+
+define Package/wpa-supplicant-macsec/install
+	$(call Install/supplicant,$(1))
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant $(1)/usr/sbin/wpa_supplicant-macsec
+endef
+
 Package/wpa-supplicant-mini/install = $(Package/wpa-supplicant/install)
 Package/wpa-supplicant-p2p/install = $(Package/wpa-supplicant/install)
 
@@ -448,10 +491,12 @@ endif
 
 $(eval $(call BuildPackage,hostapd))
 $(eval $(call BuildPackage,hostapd-mini))
+$(eval $(call BuildPackage,hostapd-macsec))
 $(eval $(call BuildPackage,wpad))
 $(eval $(call BuildPackage,wpad-mesh))
 $(eval $(call BuildPackage,wpad-mini))
 $(eval $(call BuildPackage,wpa-supplicant))
+$(eval $(call BuildPackage,wpa-supplicant-macsec))
 $(eval $(call BuildPackage,wpa-supplicant-mesh))
 $(eval $(call BuildPackage,wpa-supplicant-mini))
 $(eval $(call BuildPackage,wpa-supplicant-p2p))
