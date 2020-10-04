@@ -129,9 +129,9 @@ EOF
 
 hostapd_common_add_bss_config() {
 	config_add_string 'bssid:macaddr' 'ssid:string'
-	config_add_boolean wds wmm uapsd hidden
+	config_add_boolean wds wmm uapsd
 
-	config_add_int maxassoc max_inactivity
+	config_add_int maxassoc max_inactivity hidden
 	config_add_boolean disassoc_low_ack isolate short_preamble
 
 	config_add_int \
