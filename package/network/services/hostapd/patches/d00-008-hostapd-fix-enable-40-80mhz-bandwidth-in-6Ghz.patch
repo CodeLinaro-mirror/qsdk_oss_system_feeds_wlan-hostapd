@@ -10,6 +10,8 @@ Also, currently 6GHz AP is setting unicast destination address
 for probe response which need to be set to broadcast address
 according to spec IEEE P802.11ax/D6.1. So fix that.
 
+Make management frame protection required as default for 6Ghz band.
+
 Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
 ---
  src/common/hw_features_common.c |  2 +-
@@ -218,3 +220,16 @@ index 668d9094e28d..ff17b2f00e85 100644
  	os_memcpy(resp->sa, hapd->own_addr, ETH_ALEN);
  
  	os_memcpy(resp->bssid, hapd->own_addr, ETH_ALEN);
+diff --git a/wpa_supplicant/mesh.c b/wpa_supplicant/mesh.c
+index c1630d09a254..56f40edc0fdc 100644
+--- a/wpa_supplicant/mesh.c
++++ b/wpa_supplicant/mesh.c
+@@ -512,6 +512,8 @@ int wpa_supplicant_join_mesh(struct wpa_supplicant *wpa_s,
+ 		params->flags |= WPA_DRIVER_MESH_FLAG_SAE_AUTH;
+ 		params->flags |= WPA_DRIVER_MESH_FLAG_AMPE;
+ 		wpa_s->conf->user_mpm = 1;
++		if (is_6ghz_freq(ssid->frequency))
++			ssid->ieee80211w = MGMT_FRAME_PROTECTION_REQUIRED;
+ 	}
+ 
+ 	if (wpa_s->conf->user_mpm) {
