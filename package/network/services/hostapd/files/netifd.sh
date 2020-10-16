@@ -129,7 +129,7 @@ EOF
 
 hostapd_common_add_bss_config() {
 	config_add_string 'bssid:macaddr' 'ssid:string'
-	config_add_boolean wds wmm uapsd
+	config_add_boolean wds wmm uapsd rnr
 
 	config_add_int maxassoc max_inactivity hidden
 	config_add_boolean disassoc_low_ack isolate short_preamble
@@ -218,7 +218,8 @@ hostapd_set_bss_options() {
 		wps_model_name wps_model_number wps_serial_number \
 		macfilter ssid wmm uapsd hidden short_preamble rsn_preauth \
 		iapp_interface obss_interval vendor_elements \
-		bss_load_update_period rrm wnm wnm_sleep chan_util_avg_period
+		bss_load_update_period rrm wnm wnm_sleep chan_util_avg_period \
+		rnr
 
 	json_get_vars airtime_bss_weight airtime_bss_limit
 	json_get_values airtime_sta_weight_list airtime_sta_weight
@@ -234,6 +235,7 @@ hostapd_set_bss_options() {
 	set_default obss_interval 0
 	set_default airtime_bss_weight 0
 	set_default airtime_bss_limit 0
+	set_default rnr 0
 
 	append bss_conf "ctrl_interface=/var/run/hostapd"
 	if [ "$isolate" -gt 0 ]; then
@@ -254,6 +256,7 @@ hostapd_set_bss_options() {
 	append bss_conf "wmm_enabled=$wmm" "$N"
 	append bss_conf "ignore_broadcast_ssid=$hidden" "$N"
 	append bss_conf "uapsd_advertisement_enabled=$uapsd" "$N"
+	[ $rnr -gt 0 ] && append bss_conf "rnr_beacon=$rnr" "$N"
 
 	[ "$wpa" -gt 0 ] && {
 		[ -n "$wpa_group_rekey"  ] && append bss_conf "wpa_group_rekey=$wpa_group_rekey" "$N"
