@@ -1,4 +1,4 @@
-From 9f9e06f614fcab249b948a89f6c85e2c608fd580 Mon Sep 17 00:00:00 2001
+From 5653e8a04d12cb08b642ba66824834bba600e48a Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Tue, 6 Oct 2020 15:03:13 -0700
 Subject: [PATCH 1/4] co-located: add a config option to indicate co locate
@@ -53,10 +53,10 @@ index 440384136b74..0c1afced5cfe 100644
  
  #ifdef CONFIG_IEEE80211AX
 -- 
-2.7.4
+2.25.0
 
 
-From 4ffed8ba1ac038bcda4d58a4077a53d6ea584ebd Mon Sep 17 00:00:00 2001
+From 12eff967667de7f55c87483ba94557f9eba8d489 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Tue, 6 Oct 2020 15:05:24 -0700
 Subject: [PATCH 2/4] neighbor_db: set the co-locate bit
@@ -98,10 +98,10 @@ index b7d0787280e9..94dd677b3308 100644
  /*
   * IEEE P802.11-REVmc/D5.0 Table 9-152 - HT/VHT Operation Information
 -- 
-2.7.4
+2.25.0
 
 
-From 62c7f5936e5f151f67e2fe493065f0ea3810d43a Mon Sep 17 00:00:00 2001
+From 6d38dc79346737d14b9cf38eeccb757968dbdfc5 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Mon, 21 Sep 2020 13:50:58 +0200
 Subject: [PATCH 3/4] rrm: add handling for co-located BSS
@@ -111,7 +111,7 @@ request.
 
 Signed-off-by: John Crispin <john@phrozen.org>
 ---
- src/ap/rrm.c | 117 +++++++++++++++++++++++++++++++++++++----------------------
+ src/ap/rrm.c | 117 ++++++++++++++++++++++++++++++++-------------------
  1 file changed, 74 insertions(+), 43 deletions(-)
 
 diff --git a/src/ap/rrm.c b/src/ap/rrm.c
@@ -261,12 +261,12 @@ index f2d5cd16e885..c9d51dfa7132 100644
  	}
  
 -- 
-2.7.4
+2.25.0
 
 
-From 471024a2f9ea4e887993e16b92f8556471de6ef3 Mon Sep 17 00:00:00 2001
+From cd38f6752427b41e0d53a54bfb6192a56b6b037a Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
-Date: Thu, 15 Oct 2020 12:44:13 -0700
+Date: Wed, 21 Oct 2020 11:47:22 -0700
 Subject: [PATCH 4/4] rnr: add reduced neighbor reporting
 
 The Reduced Neighbor Report (rnr) element contains channel and other
@@ -275,11 +275,11 @@ information related to neighbor APs. It is part of the OCE requirement.
 Signed-off-by: John Crispin <john@phrozen.org>
 Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 ---
- src/ap/beacon.c              |  14 +++-
- src/ap/ieee802_11.c          | 175 +++++++++++++++++++++++++++++++------------
+ src/ap/beacon.c              |  14 ++-
+ src/ap/ieee802_11.c          | 177 ++++++++++++++++++++++++++---------
  src/ap/ieee802_11.h          |   4 +-
  src/common/ieee802_11_defs.h |   6 +-
- 4 files changed, 144 insertions(+), 55 deletions(-)
+ 4 files changed, 147 insertions(+), 54 deletions(-)
 
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
 index 808a2d939cbe..2a95faf0d03d 100644
@@ -342,10 +342,10 @@ index 808a2d939cbe..2a95faf0d03d 100644
  	if (hapd->conf->vendor_elements) {
  		os_memcpy(tailpos, wpabuf_head(hapd->conf->vendor_elements),
 diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 9c0f38fc0bf1..df47400785da 100644
+index 9c0f38fc0bf1..023be9d2652e 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5841,73 +5841,118 @@ u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
+@@ -5841,14 +5841,45 @@ u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
  }
  
  
@@ -394,10 +394,10 @@ index 9c0f38fc0bf1..df47400785da 100644
  	if (len)
  		len += 2; /* Element ID and length */
  
- 	return len;
+@@ -5856,58 +5887,76 @@ size_t hostapd_eid_reduced_neighbor_report_len(struct hostapd_data *hapd)
  }
  
--
+ 
 -u8 * hostapd_eid_reduced_neighbor_report(struct hostapd_data *hapd, u8 *eid)
 +static u8 *hostapd_eid_reduced_neighbor_report_iface(struct hostapd_data *hapd,
 +						     struct hostapd_data *reporting_hapd,
@@ -487,6 +487,9 @@ index 9c0f38fc0bf1..df47400785da 100644
 +		if (hapd->iface->bss[i]->iconf->he_co_locate)
 +			bss_param |= TBTT_BSS_PARAM_CO_LOCATED;
 +
++		if (hapd->iface->bss[i]->conf->unsol_bcast_probe_resp_interval)
++			bss_param |= TBTT_BSS_PARAM_20_TU_PROBE_RESP_ACTIVE;
++
 +		*eid++ = bss_param;
 +		/* Setting 20 MHz PSD */
 +		*eid++ = TBTT_PSD_MAX_TXPOWER;
@@ -510,7 +513,7 @@ index 9c0f38fc0bf1..df47400785da 100644
  	dl_list_for_each(nr, &hapd->nr_db, struct hostapd_neighbor_entry,
  			 list) {
  		if (!nr->nr || wpabuf_len(nr->nr) < 12)
-@@ -5924,9 +5969,45 @@ nr_db:
+@@ -5924,9 +5973,45 @@ nr_db:
  		os_memcpy(eid, &nr->short_ssid, 4);
  		eid += 4;
  		*eid++ = nr->bss_parameters;
@@ -573,7 +576,7 @@ index 1145210dbfc7..2f45b615f15d 100644
  #ifdef CONFIG_SAE
  void sae_clear_retransmit_timer(struct hostapd_data *hapd,
 diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 94dd677b3308..683a75e95737 100644
+index 94dd677b3308..fd30d5b1e11d 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -2393,7 +2393,7 @@ enum edmg_bw_config {
@@ -597,5 +600,5 @@ index 94dd677b3308..683a75e95737 100644
  
  #endif /* IEEE802_11_DEFS_H */
 -- 
-2.7.4
+2.25.0
 
