@@ -1,4 +1,4 @@
-From 5653e8a04d12cb08b642ba66824834bba600e48a Mon Sep 17 00:00:00 2001
+From 147810b51909c31fe9483190996190b6a89252fd Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Tue, 6 Oct 2020 15:03:13 -0700
 Subject: [PATCH 1/4] co-located: add a config option to indicate co locate
@@ -53,10 +53,10 @@ index 440384136b74..0c1afced5cfe 100644
  
  #ifdef CONFIG_IEEE80211AX
 -- 
-2.25.0
+2.7.4
 
 
-From 12eff967667de7f55c87483ba94557f9eba8d489 Mon Sep 17 00:00:00 2001
+From 7624ae547dc5623a8e9e7d7e891b5968f73cf9db Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Tue, 6 Oct 2020 15:05:24 -0700
 Subject: [PATCH 2/4] neighbor_db: set the co-locate bit
@@ -98,10 +98,10 @@ index b7d0787280e9..94dd677b3308 100644
  /*
   * IEEE P802.11-REVmc/D5.0 Table 9-152 - HT/VHT Operation Information
 -- 
-2.25.0
+2.7.4
 
 
-From 6d38dc79346737d14b9cf38eeccb757968dbdfc5 Mon Sep 17 00:00:00 2001
+From a2ec27dae137affda5f033c0dc26d3cf6a5ca6ed Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Mon, 21 Sep 2020 13:50:58 +0200
 Subject: [PATCH 3/4] rrm: add handling for co-located BSS
@@ -111,7 +111,7 @@ request.
 
 Signed-off-by: John Crispin <john@phrozen.org>
 ---
- src/ap/rrm.c | 117 ++++++++++++++++++++++++++++++++-------------------
+ src/ap/rrm.c | 117 +++++++++++++++++++++++++++++++++++++----------------------
  1 file changed, 74 insertions(+), 43 deletions(-)
 
 diff --git a/src/ap/rrm.c b/src/ap/rrm.c
@@ -261,10 +261,10 @@ index f2d5cd16e885..c9d51dfa7132 100644
  	}
  
 -- 
-2.25.0
+2.7.4
 
 
-From cd38f6752427b41e0d53a54bfb6192a56b6b037a Mon Sep 17 00:00:00 2001
+From 9e0865b8135bf1286c864ae3da601c40e3325153 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Wed, 21 Oct 2020 11:47:22 -0700
 Subject: [PATCH 4/4] rnr: add reduced neighbor reporting
@@ -274,15 +274,16 @@ information related to neighbor APs. It is part of the OCE requirement.
 
 Signed-off-by: John Crispin <john@phrozen.org>
 Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
+Signed-off-by: Muna Sinada <msinada@codeaurora.org>
 ---
- src/ap/beacon.c              |  14 ++-
- src/ap/ieee802_11.c          | 177 ++++++++++++++++++++++++++---------
+ src/ap/beacon.c              |  40 ++++++++--
+ src/ap/ieee802_11.c          | 177 ++++++++++++++++++++++++++++++++-----------
  src/ap/ieee802_11.h          |   4 +-
  src/common/ieee802_11_defs.h |   6 +-
- 4 files changed, 147 insertions(+), 54 deletions(-)
+ 4 files changed, 171 insertions(+), 56 deletions(-)
 
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 808a2d939cbe..2a95faf0d03d 100644
+index 808a2d939cbe..b6592f219e65 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
 @@ -481,6 +481,8 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
@@ -303,7 +304,61 @@ index 808a2d939cbe..2a95faf0d03d 100644
  
  	if (hapd->conf->vendor_elements) {
  		os_memcpy(pos, wpabuf_head(hapd->conf->vendor_elements),
-@@ -1343,7 +1347,7 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, u32 *len)
+@@ -654,7 +658,8 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+ enum ssid_match_result {
+ 	NO_SSID_MATCH,
+ 	EXACT_SSID_MATCH,
+-	WILDCARD_SSID_MATCH
++	WILDCARD_SSID_MATCH,
++	CO_LOCATED_SSID_MATCH
+ };
+ 
+ static enum ssid_match_result ssid_match(struct hostapd_data *hapd,
+@@ -666,6 +671,7 @@ static enum ssid_match_result ssid_match(struct hostapd_data *hapd,
+ {
+ 	const u8 *pos, *end;
+ 	int wildcard = 0;
++	size_t i, j;
+ 
+ 	if (ssid_len == 0)
+ 		wildcard = 1;
+@@ -699,6 +705,25 @@ static enum ssid_match_result ssid_match(struct hostapd_data *hapd,
+ 		}
+ 	}
+ 
++	/* Case of probe request from STA with SSID matching the SSID of a
++	 * co-located AP
++	 */
++	if (!wildcard && hapd->conf->rnr_beacon) {
++		for (i = 0; i < hapd->iface->interfaces->count; i++) {
++			struct hostapd_iface *iface = hapd->iface->interfaces->iface[i];
++
++			if (iface == hapd->iface || !iface->conf->he_co_locate)
++				continue;
++
++			struct hostapd_iface *iface2 = iface->bss[0]->iface;
++			for (j = 0; j < iface2->num_bss; j++){
++				if (ssid_len == iface2->bss[j]->conf->ssid.ssid_len &&
++				    os_memcmp(ssid, iface2->bss[j]->conf->ssid.ssid, ssid_len) == 0)
++					return CO_LOCATED_SSID_MATCH;
++			}
++		}
++	}
++
+ 	return wildcard ? WILDCARD_SSID_MATCH : NO_SSID_MATCH;
+ }
+ 
+@@ -1069,7 +1094,8 @@ void handle_probe_req(struct hostapd_data *hapd,
+ 		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
+ 
+ 	if (hapd->iconf->multiple_bssid &&
+-	    hapd != hostapd_get_primary_bss(hapd) && res != EXACT_SSID_MATCH)
++	    hapd != hostapd_get_primary_bss(hapd) &&
++	    (res != EXACT_SSID_MATCH && res != CO_LOCATED_SSID_MATCH))
+ 		return;
+ 
+ 	resp = hostapd_gen_probe_resp(hapd, mgmt, elems.p2p != NULL,
+@@ -1343,7 +1369,7 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, u32 *len)
  		total_len += 3;
  	}
  
@@ -312,7 +367,7 @@ index 808a2d939cbe..2a95faf0d03d 100644
  
  	pos = hostapd_eid_fils_indic(hapd, buf, 0);
  	buf_len = pos - buf;
-@@ -1401,7 +1405,7 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, u32 *len)
+@@ -1401,7 +1427,7 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, u32 *len)
  	*length_pos = pos - (length_pos + 1);
  
  	/* Reduced Neighbor Report element */
@@ -321,7 +376,7 @@ index 808a2d939cbe..2a95faf0d03d 100644
  
  	/* FILS indication element */
  	if (buf_len) {
-@@ -1496,7 +1500,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1496,7 +1522,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  	tail_len += hostapd_mbo_ie_len(hapd);
  	tail_len += hostapd_eid_owe_trans_len(hapd);
  	tail_len += hostapd_eid_dpp_cc_len(hapd);
@@ -331,7 +386,7 @@ index 808a2d939cbe..2a95faf0d03d 100644
  
  	tailpos = tail = os_malloc(tail_len);
  	if (head == NULL || tail == NULL) {
-@@ -1668,7 +1673,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1668,7 +1695,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  	tailpos = hostapd_eid_owe_trans(hapd, tailpos,
  					tail + tail_len - tailpos);
  	tailpos = hostapd_eid_dpp_cc(hapd, tailpos, tail + tail_len - tailpos);
@@ -342,7 +397,7 @@ index 808a2d939cbe..2a95faf0d03d 100644
  	if (hapd->conf->vendor_elements) {
  		os_memcpy(tailpos, wpabuf_head(hapd->conf->vendor_elements),
 diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 9c0f38fc0bf1..023be9d2652e 100644
+index 9c0f38fc0bf1..3be299a477b9 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
 @@ -5841,14 +5841,45 @@ u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
@@ -576,7 +631,7 @@ index 1145210dbfc7..2f45b615f15d 100644
  #ifdef CONFIG_SAE
  void sae_clear_retransmit_timer(struct hostapd_data *hapd,
 diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 94dd677b3308..fd30d5b1e11d 100644
+index 94dd677b3308..2ac497db067e 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -2393,7 +2393,7 @@ enum edmg_bw_config {
@@ -600,5 +655,5 @@ index 94dd677b3308..fd30d5b1e11d 100644
  
  #endif /* IEEE802_11_DEFS_H */
 -- 
-2.25.0
+2.7.4
 
