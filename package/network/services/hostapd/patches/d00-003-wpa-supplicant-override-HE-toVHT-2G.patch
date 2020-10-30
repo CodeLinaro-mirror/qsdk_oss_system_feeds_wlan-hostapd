@@ -15,7 +15,7 @@
  enum hide_ssid {
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2741,6 +2741,9 @@ static const struct parse_data ssid_fiel
+@@ -2742,6 +2742,9 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(owe_ptk_workaround, 0, 1) },
  	{ INT_RANGE(multi_ap_backhaul_sta, 0, 1) },
  	{ INT_RANGE(ft_eap_pmksa_caching, 0, 1) },
@@ -27,7 +27,7 @@
  	{ INT_RANGE(sae_pk, 0, 2) },
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1104,7 +1104,12 @@ struct wpa_ssid {
+@@ -1114,7 +1114,12 @@ struct wpa_ssid {
  	 * FT initial mobility domain association.
  	 */
  	int ft_eap_pmksa_caching;
@@ -55,7 +55,7 @@
  
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2423,17 +2423,17 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2440,17 +2440,17 @@ void ibss_mesh_setup_freq(struct wpa_sup
  		return;
  
  	/* Allow HE on 2.4 GHz without VHT: see nl80211_put_freq_params() */
@@ -80,7 +80,7 @@
  	for (chan_idx = 0; chan_idx < mode->num_channels; chan_idx++) {
  		pri_chan = &mode->channels[chan_idx];
  		if (pri_chan->chan == channel)
-@@ -2522,6 +2522,11 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2539,6 +2539,11 @@ void ibss_mesh_setup_freq(struct wpa_sup
  
  		wpa_scan_results_free(scan_res);
  	}
@@ -92,7 +92,7 @@
  
  #ifdef CONFIG_HT_OVERRIDES
  skip_ht40:
-@@ -2554,6 +2559,11 @@ skip_ht40:
+@@ -2571,6 +2576,11 @@ skip_ht40:
  	/* Enable HE with VHT for 5 GHz */
  	freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
  
