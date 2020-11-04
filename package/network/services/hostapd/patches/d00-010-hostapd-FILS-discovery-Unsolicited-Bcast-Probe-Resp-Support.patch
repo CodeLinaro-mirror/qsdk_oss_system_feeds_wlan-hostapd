@@ -104,10 +104,10 @@ index 9ddb5b7c7481..526995ff2e71 100644
  
  /**
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 11a547fb1637..5fa15885999c 100644
+index 11a547fb1637..ebbcb00cc603 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1127,6 +1127,21 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
+@@ -1127,6 +1127,25 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
  
  #endif /* NEED_AP_MLME */
  
@@ -117,6 +117,10 @@ index 11a547fb1637..5fa15885999c 100644
 +					  struct wpa_driver_ap_params *params)
 +{
 +	if (!is_6ghz_op_class(hapd->iconf->op_class))
++		return NULL;
++
++	if (hapd->iconf->multiple_bssid &&
++	    hapd != hostapd_get_primary_bss(hapd))
 +		return NULL;
 +
 +	params->unsol_bcast_probe_resp_interval =
@@ -129,7 +133,7 @@ index 11a547fb1637..5fa15885999c 100644
  
  void sta_track_del(struct hostapd_sta_info *info)
  {
-@@ -1138,6 +1153,271 @@ void sta_track_del(struct hostapd_sta_info *info)
+@@ -1138,6 +1157,272 @@ void sta_track_del(struct hostapd_sta_info *info)
  }
  
  
@@ -374,7 +378,8 @@ index 11a547fb1637..5fa15885999c 100644
 +static u8 * hostapd_fils_discovery(struct hostapd_data *hapd,
 +				  struct wpa_driver_ap_params *params)
 +{
-+	if (hapd->iconf->multiple_bssid && hapd != hapd->iface->bss[0])
++	if (hapd->iconf->multiple_bssid &&
++	    hapd != hostapd_get_primary_bss(hapd))
 +		return NULL;
 +
 +#define VALID_INTERVAL(x,y) { x = (x > y) ? y : x; }
@@ -401,7 +406,7 @@ index 11a547fb1637..5fa15885999c 100644
  int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  			       struct wpa_driver_ap_params *params)
  {
-@@ -1475,6 +1755,14 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
+@@ -1475,6 +1760,14 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
  	params->head = NULL;
  	os_free(params->proberesp);
  	params->proberesp = NULL;
@@ -416,7 +421,7 @@ index 11a547fb1637..5fa15885999c 100644
  }
  
  
-@@ -1519,9 +1807,15 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+@@ -1519,9 +1812,15 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
  	params.he_bss_color = hapd->iface->conf->he_op.he_bss_color;
  	params.twt_responder = hostapd_get_he_twt_responder(hapd,
  							    IEEE80211_MODE_AP);
@@ -524,7 +529,7 @@ index 971a780eacf4..2c42f2de0de9 100644
  
  struct wpa_driver_mesh_bss_params {
 diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 4c544e025697..e1f0183aff98 100644
+index 4c544e025697..797003d1f9dd 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
 @@ -4254,7 +4254,6 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, const u64 flags,
@@ -535,19 +540,34 @@ index 4c544e025697..e1f0183aff98 100644
  static int nl80211_set_multicast_to_unicast(struct i802_bss *bss,
  					    int multicast_to_unicast)
  {
-@@ -4301,6 +4300,75 @@ static int nl80211_set_multicast_to_unicast(struct i802_bss *bss,
+@@ -4301,6 +4300,112 @@ static int nl80211_set_multicast_to_unicast(struct i802_bss *bss,
  }
  
  
 +#ifdef CONFIG_FILS
-+static int nl80211_fils_discovery(struct i802_bss *bss, struct nl_msg *msg,
++static int nl80211_fils_discovery(struct i802_bss *bss,
 +				  struct wpa_driver_ap_params *params)
 +{
 +	struct nlattr *attr;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	struct nl_msg *msg;
++	int ret;
++
++	if (!params->fils_discovery_max_int)
++		return 0;
++
++	wpa_printf(MSG_DEBUG,
++		   "nl80211: FILS discovery maximum interval=%u, minimum interval=%u",
++		   params->fils_discovery_max_int,
++		   params->fils_discovery_min_int);
++
++	msg = nl80211_bss_msg(bss, 0, NL80211_CMD_SET_FILS_DISCOVERY);
++	if (!msg)
++		return -ENOBUFS;
 +
 +	attr = nla_nest_start(msg, NL80211_ATTR_FILS_DISCOVERY);
 +	if (!attr)
-+		return -1;
++		goto error;
 +
 +	if (nla_put_u32(msg, NL80211_FILS_DISCOVERY_INT_MIN,
 +			params->fils_discovery_min_int) ||
@@ -556,7 +576,7 @@ index 4c544e025697..e1f0183aff98 100644
 +		wpa_printf(MSG_ERROR,
 +			   "nl80211: Failed to build FILS discovery msg for %s\n",
 +			   bss->ifname);
-+		return -1;
++		goto error;
 +	}
 +
 +	if (params->fils_discovery_tmpl &&
@@ -566,31 +586,49 @@ index 4c544e025697..e1f0183aff98 100644
 +		wpa_printf(MSG_ERROR,
 +			   "nl80211: Failed to build FILS discovery msg for %s\n",
 +			   bss->ifname);
-+		return -1;
++		goto error;
 +	}
 +
 +	nla_nest_end(msg, attr);
-+	return 0;
++
++	return send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
++
++error:
++	nlmsg_free(msg);
++	return -1;
 +}
 +#endif /* CONFIG_FILS */
 +
 +#ifdef CONFIG_IEEE80211AX
 +static int nl80211_unsol_bcast_probe_resp(struct i802_bss *bss,
-+					  struct nl_msg *msg,
 +					  struct wpa_driver_ap_params *params)
 +{
 +	struct nlattr *attr;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	struct nl_msg *msg;
++	int ret;
++
++	if (!params->unsol_bcast_probe_resp_interval)
++		return 0;
++
++	wpa_printf(MSG_DEBUG,
++		   "nl80211: Unsolicited broadcast probe response interval=%u",
++		   params->unsol_bcast_probe_resp_interval);
++
++	msg = nl80211_bss_msg(bss, 0, NL80211_CMD_SET_UNSOL_BCAST_PROBE_RESP);
++	if (!msg)
++		return -ENOBUFS;
 +
 +	attr = nla_nest_start(msg, NL80211_ATTR_UNSOL_BCAST_PROBE_RESP);
 +	if (!attr)
-+		return -1;
++		goto error;
 +
 +	if (nla_put_u32(msg, NL80211_UNSOL_BCAST_PROBE_RESP_INT,
 +			params->unsol_bcast_probe_resp_interval)) {
 +		wpa_printf(MSG_ERROR,
 +			   "nl80211: Failed to build unsolicited broadcast probe response msg for %s\n",
 +			   bss->ifname);
-+		return -1;
++		goto error;
 +	}
 +
 +	if (params->unsol_bcast_probe_resp_tmpl &&
@@ -600,41 +638,72 @@ index 4c544e025697..e1f0183aff98 100644
 +		wpa_printf(MSG_ERROR,
 +			   "nl80211: Failed to build unsolicited broadcast probe response msg for %s\n",
 +			   bss->ifname);
-+		return -1;
++		goto error;
 +	}
 +
 +	nla_nest_end(msg, attr);
-+	return 0;
++	return send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
++
++error:
++	nlmsg_free(msg);
++	return -1;
 +}
 +#endif /* CONFIG_IEEE80211AX */
 +
  static int wpa_driver_nl80211_set_ap(void *priv,
  				     struct wpa_driver_ap_params *params)
  {
-@@ -4559,8 +4627,18 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4559,6 +4664,7 @@ static int wpa_driver_nl80211_set_ap(void *priv,
  		if (nla_put_flag(msg, NL80211_ATTR_TWT_RESPONDER))
  			goto fail;
  	}
 +
-+	ret = nl80211_unsol_bcast_probe_resp(bss, msg, params);
-+	if (ret < 0)
-+		goto fail;
  #endif /* CONFIG_IEEE80211AX */
  
-+#ifdef CONFIG_FILS
-+	ret = nl80211_fils_discovery(bss, msg, params);
-+	if (ret < 0)
-+		goto fail;
-+#endif /* CONFIG_FILS */
-+
  	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
- 				       NULL, NULL, NULL, NULL);
- 	if (ret) {
+@@ -4573,6 +4679,13 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+ 				params->isolate, params->basic_rates);
+ 		nl80211_set_multicast_to_unicast(bss,
+ 						 params->multicast_to_unicast);
++#ifdef CONFIG_FILS
++		nl80211_fils_discovery(bss, params);
++#endif /* CONFIG_FILS */
++#ifdef CONFIG_IEEE80211AX
++		nl80211_unsol_bcast_probe_resp(bss, params);
++#endif /* CONFIG_IEEE80211AX */
++
+ 		if (beacon_set && params->freq &&
+ 		    params->freq->bandwidth != bss->bandwidth) {
+ 			wpa_printf(MSG_DEBUG,
 diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
-index 0ea69d7382f0..5f32533d22d4 100644
+index 0ea69d7382f0..9af62af9ac02 100644
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -2514,6 +2514,14 @@ enum nl80211_commands {
+@@ -1175,6 +1175,12 @@
+  *	were indicated by driver and now need to be reflected in
+  *	Beacon frame.
+  *
++ * @NL80211_CMD_SET_FILS_DISCOVERY: Command to set FILS discovery transmission
++ *	parameters.
++ *
++ * @NL80211_CMD_SET_UNSOL_BCAST_PROBE_RESP: Command to set unsolicited
++ *	broadcast probe response transmission parameters.
++ *
+  * @NL80211_CMD_MAX: highest used command number
+  * @__NL80211_CMD_AFTER_LAST: internal use
+  */
+@@ -1406,6 +1412,10 @@ enum nl80211_commands {
+ 	NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS,
+ 
+ 	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS,
++
++	NL80211_CMD_SET_FILS_DISCOVERY,
++	NL80211_CMD_SET_UNSOL_BCAST_PROBE_RESP,
++
+ 	/* add new commands above here */
+ 
+ 	/* used to define NL80211_CMD_MAX below */
+@@ -2514,6 +2524,14 @@ enum nl80211_commands {
   * @NL80211_ATTR_HE_MUEDCA_PARAMS: MU-EDCA AC parameters for the
  	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS command.
   *
@@ -649,7 +718,7 @@ index 0ea69d7382f0..5f32533d22d4 100644
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -2997,6 +3005,11 @@ enum nl80211_attrs {
+@@ -2997,6 +3015,11 @@ enum nl80211_attrs {
  	NL80211_ATTR_HE_6GHZ_CAPABILITY,
  
  	NL80211_ATTR_HE_MUEDCA_PARAMS,
@@ -661,7 +730,7 @@ index 0ea69d7382f0..5f32533d22d4 100644
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
-@@ -6936,4 +6949,61 @@ enum nl80211_iftype_akm_attributes {
+@@ -6936,4 +6959,61 @@ enum nl80211_iftype_akm_attributes {
  	NL80211_IFTYPE_AKM_ATTR_MAX = __NL80211_IFTYPE_AKM_ATTR_LAST - 1,
  };
  
