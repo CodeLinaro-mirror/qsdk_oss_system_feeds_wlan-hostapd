@@ -20,20 +20,9 @@ Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
  src/rsn_supp/wpa.c  | 2 +-
  3 files changed, 6 insertions(+), 2 deletions(-)
 
---- a/src/ap/ieee802_11.c
-+++ b/src/ap/ieee802_11.c
-@@ -4159,7 +4159,7 @@ static void handle_assoc(struct hostapd_
- {
- 	u16 capab_info, listen_interval, seq_ctrl, fc;
- 	int resp = WLAN_STATUS_SUCCESS;
--	u16 reply_res;
-+	u16 reply_res = WLAN_STATUS_UNSPECIFIED_FAILURE;
- 	const u8 *pos;
- 	int left, i;
- 	struct sta_info *sta;
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -4446,12 +4446,13 @@ void wpa_gtk_rekey(struct wpa_authentica
+@@ -4454,12 +4454,13 @@ void wpa_gtk_rekey(struct wpa_authentica
  }
  
  
@@ -50,7 +39,7 @@ Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
  #define RSN_SUITE_ARG(s) \
 --- a/src/rsn_supp/wpa.c
 +++ b/src/rsn_supp/wpa.c
-@@ -2689,7 +2689,7 @@ out:
+@@ -2701,7 +2701,7 @@ out:
  }
  
  
@@ -61,7 +50,7 @@ Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
  	switch (sm->key_mgmt) {
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4855,7 +4855,7 @@ static int wpa_driver_nl80211_sta_add(vo
+@@ -4859,7 +4859,7 @@ static int wpa_driver_nl80211_sta_add(vo
  
  		if (params->he_capab) {
  			wpa_hexdump(MSG_DEBUG, "  * he_capab",

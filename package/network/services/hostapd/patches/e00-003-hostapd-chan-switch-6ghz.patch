@@ -14,19 +14,26 @@ Signed-off-by: Muna Sinada <msinada@codeaurora.org>
  src/ap/drv_callbacks.c | 14 ++------------
  1 file changed, 2 insertions(+), 12 deletions(-)
 
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index 35ee8fff8cca..f1d0b26678c7 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -903,18 +903,8 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
+@@ -922,27 +922,8 @@ void hostapd_event_ch_switch(struct host
  		break;
  	}
  
 -	switch (hapd->iface->current_mode->mode) {
 -	case HOSTAPD_MODE_IEEE80211A:
--		if (cf1 > 5000)
+-		if (cf1 == 5935)
+-			seg0_idx = (cf1 - 5925) / 5;
+-		else if (cf1 > 5950)
+-			seg0_idx = (cf1 - 5950) / 5;
+-		else if (cf1 > 5000)
 -			seg0_idx = (cf1 - 5000) / 5;
--		if (cf2 > 5000)
+-
+-		if (cf2 == 5935)
+-			seg1_idx = (cf2 - 5925) / 5;
+-		else if (cf2 > 5950)
+-			seg1_idx = (cf2 - 5950) / 5;
+-		else if (cf2 > 5000)
 -			seg1_idx = (cf2 - 5000) / 5;
 -		break;
 -	default:
@@ -39,6 +46,3 @@ index 35ee8fff8cca..f1d0b26678c7 100644
  
  	hapd->iconf->channel = channel;
  	hapd->iconf->ieee80211n = ht;
--- 
-2.7.4
-

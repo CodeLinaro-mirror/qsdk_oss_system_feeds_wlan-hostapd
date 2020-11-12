@@ -18,11 +18,9 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  wpa_supplicant/ap.c          |   1 +
  4 files changed, 144 insertions(+), 13 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 26422b65f321..3094979907c3 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1699,6 +1699,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1693,6 +1693,8 @@ int ieee802_11_build_ap_params(struct ho
  	params->auth_algs = hapd->conf->auth_algs;
  	params->wpa_version = hapd->conf->wpa;
  	params->privacy = hapd->conf->wpa;
@@ -31,8 +29,6 @@ index 26422b65f321..3094979907c3 100644
  #ifdef CONFIG_WEP
  	params->privacy |= hapd->conf->ssid.wep.keys_set ||
  		(hapd->conf->ieee802_1x &&
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 1a44254405ef..d574d8179c65 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
 @@ -1201,6 +1201,10 @@ struct wpa_driver_associate_params {
@@ -63,11 +59,9 @@ index 1a44254405ef..d574d8179c65 100644
  };
  
  struct wpa_driver_mesh_bss_params {
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 89607cfa3ecb..1c79c54c4018 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4369,6 +4369,46 @@ static int nl80211_unsol_bcast_probe_resp(struct i802_bss *bss,
+@@ -4373,6 +4373,46 @@ static int nl80211_unsol_bcast_probe_res
  }
  #endif /* CONFIG_IEEE80211AX */
  
@@ -114,7 +108,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  static int wpa_driver_nl80211_set_ap(void *priv,
  				     struct wpa_driver_ap_params *params)
  {
-@@ -4380,7 +4420,7 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4384,7 +4424,7 @@ static int wpa_driver_nl80211_set_ap(voi
  	int beacon_set;
  	int num_suites;
  	u32 suites[20], suite;
@@ -123,7 +117,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  #ifdef CONFIG_MESH
  	struct wpa_driver_mesh_bss_params mesh_params;
  #endif /* CONFIG_MESH */
-@@ -4461,12 +4501,25 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4465,12 +4505,25 @@ static int wpa_driver_nl80211_set_ap(voi
  			goto fail;
  	}
  
@@ -149,7 +143,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  	if (ver &&
  	    nla_put_u32(msg, NL80211_ATTR_WPA_VERSIONS, ver))
  		goto fail;
-@@ -4479,10 +4532,17 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4483,10 +4536,17 @@ static int wpa_driver_nl80211_set_ap(voi
  		wpa_printf(MSG_DEBUG,
  			   "nl80211: Not enough room for all AKM suites (num_suites=%d > NL80211_MAX_NR_AKM_SUITES)",
  			   num_suites);
@@ -171,7 +165,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  
  	if (params->key_mgmt_suites & WPA_KEY_MGMT_IEEE8021X_NO_WPA &&
  	    (!params->pairwise_ciphers ||
-@@ -4500,17 +4560,31 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4504,17 +4564,31 @@ static int wpa_driver_nl80211_set_ap(voi
  		   params->pairwise_ciphers);
  	num_suites = wpa_cipher_to_cipher_suites(params->pairwise_ciphers,
  						 suites, ARRAY_SIZE(suites));
@@ -209,7 +203,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  
  	if (params->beacon_ies) {
  		wpa_hexdump_buf(MSG_DEBUG, "nl80211: beacon_ies",
-@@ -5977,6 +6051,8 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
+@@ -5981,6 +6055,8 @@ static int nl80211_connect_common(struct
  				  struct wpa_driver_associate_params *params,
  				  struct nl_msg *msg)
  {
@@ -218,7 +212,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  	if (nla_put_flag(msg, NL80211_ATTR_IFACE_SOCKET_OWNER))
  		return -1;
  
-@@ -6001,6 +6077,10 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
+@@ -6005,6 +6081,10 @@ static int nl80211_connect_common(struct
  				params->freq.freq))
  			return -1;
  		drv->assoc_freq = params->freq.freq;
@@ -229,7 +223,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  	} else
  		drv->assoc_freq = 0;
  
-@@ -6048,6 +6128,19 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
+@@ -6052,6 +6132,19 @@ static int nl80211_connect_common(struct
  	    nla_put(msg, NL80211_ATTR_IE, params->wpa_ie_len, params->wpa_ie))
  		return -1;
  
@@ -249,7 +243,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  	if (params->wpa_proto) {
  		enum nl80211_wpa_versions ver = 0;
  
-@@ -6064,6 +6157,13 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
+@@ -6068,6 +6161,13 @@ static int nl80211_connect_common(struct
  	if (params->pairwise_suite != WPA_CIPHER_NONE) {
  		u32 cipher = wpa_cipher_to_cipher_suite(params->pairwise_suite);
  		wpa_printf(MSG_DEBUG, "  * pairwise=0x%x", cipher);
@@ -263,7 +257,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  		if (nla_put_u32(msg, NL80211_ATTR_CIPHER_SUITES_PAIRWISE,
  				cipher))
  			return -1;
-@@ -6076,10 +6176,17 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
+@@ -6080,10 +6180,17 @@ static int nl80211_connect_common(struct
  		 * advertise support for operations without GTK.
  		 */
  		wpa_printf(MSG_DEBUG, "  * skip group cipher configuration for GTK_NOT_USED due to missing driver support advertisement");
@@ -283,7 +277,7 @@ index 89607cfa3ecb..1c79c54c4018 100644
  			return -1;
  	}
  
-@@ -6165,6 +6272,13 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
+@@ -6169,6 +6276,13 @@ static int nl80211_connect_common(struct
  			break;
  		}
  		wpa_printf(MSG_DEBUG, "  * akm=0x%x", mgmt);
@@ -297,11 +291,9 @@ index 89607cfa3ecb..1c79c54c4018 100644
  		if (nla_put_u32(msg, NL80211_ATTR_AKM_SUITES, mgmt))
  			return -1;
  	}
-diff --git a/wpa_supplicant/ap.c b/wpa_supplicant/ap.c
-index e961ff2983c0..0a0bc22fc514 100644
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -810,6 +810,7 @@ int wpa_supplicant_create_ap(struct wpa_supplicant *wpa_s,
+@@ -810,6 +810,7 @@ int wpa_supplicant_create_ap(struct wpa_
  	}
  	params.pairwise_suite = wpa_s->pairwise_cipher;
  	params.group_suite = params.pairwise_suite;
@@ -309,6 +301,3 @@ index e961ff2983c0..0a0bc22fc514 100644
  
  #ifdef CONFIG_P2P
  	if (ssid->mode == WPAS_MODE_P2P_GO ||
--- 
-2.25.0
-

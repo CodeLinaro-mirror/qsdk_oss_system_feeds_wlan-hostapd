@@ -22,7 +22,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
 
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2338,6 +2338,22 @@ static int drv_supports_vht(struct wpa_s
+@@ -2355,6 +2355,22 @@ static int drv_supports_vht(struct wpa_s
  	return mode->vht_capab != 0;
  }
  
@@ -45,7 +45,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  
  void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
  			  const struct wpa_ssid *ssid,
-@@ -2351,6 +2367,7 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2368,6 +2384,7 @@ void ibss_mesh_setup_freq(struct wpa_sup
  	unsigned int bw80[] = { 5180, 5260, 5500, 5580, 5660, 5745, 5955,
  				6035, 6115, 6195, 6275, 6355, 6435, 6515,
  				6595, 6675, 6755, 6835, 6915, 6995 };
@@ -53,7 +53,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  	struct hostapd_channel_data *pri_chan = NULL, *sec_chan = NULL;
  	u8 channel;
  	int i, chan_idx, ht40 = -1, res, obss_scan = 1;
-@@ -2583,22 +2600,33 @@ skip_to_6ghz:
+@@ -2600,22 +2617,33 @@ skip_to_6ghz:
  	if (j == ARRAY_SIZE(bw80))
  		return;
  
