@@ -322,7 +322,7 @@ TARGET_CPPFLAGS := \
 	-D_GNU_SOURCE \
 	$(if $(CONFIG_WPA_MSG_MIN_PRIORITY),-DCONFIG_MSG_MIN_PRIORITY=$(CONFIG_WPA_MSG_MIN_PRIORITY))
 
-TARGET_CFLAGS += -ffunction-sections -fdata-sections
+TARGET_CFLAGS += -ffunction-sections -fdata-sections  -Wall -Werror -Wno-pointer-sign
 TARGET_LDFLAGS += -Wl,--gc-sections
 ifeq ($(findstring supplicant,$(BUILD_VARIANT)),)
   TARGET_LDFLAGS += -lubox -lubus
