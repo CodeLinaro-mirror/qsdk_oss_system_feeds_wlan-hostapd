@@ -212,7 +212,7 @@
  			hapd->parameter_set_count++;
 +			/* Incrementing MU-EDCA Parameter Set Update Count*/
 +			hapd->iface->conf->he_mu_edca.he_qos_info =
-+			 hapd->iface->conf->he_mu_edca.he_qos_info & 0xf0 |
++			 (hapd->iface->conf->he_mu_edca.he_qos_info & 0xf0) |
 +			 ((hapd->iface->conf->he_mu_edca.he_qos_info + 1) &
 +			  0xf);
  			if (ieee802_11_update_beacons(hapd->iface))
@@ -226,7 +226,7 @@
  		hapd->parameter_set_count++;
 +		/* Incrementing MU-EDCA Parameter Set Update Count*/
 +		hapd->iface->conf->he_mu_edca.he_qos_info =
-+		 hapd->iface->conf->he_mu_edca.he_qos_info & 0xf0 |
++		 (hapd->iface->conf->he_mu_edca.he_qos_info & 0xf0) |
 +		 ((hapd->iface->conf->he_mu_edca.he_qos_info + 1) & 0xf);
  	}
  }

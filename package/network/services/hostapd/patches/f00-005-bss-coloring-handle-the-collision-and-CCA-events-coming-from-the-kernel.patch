@@ -169,8 +169,8 @@ Signed-off-by: John Crispin <john@phrozen.org>
 +	os_memset(&data, 0, sizeof(data));
 +	data.bss_color_collision.bitmap = nla_get_u64(tb[NL80211_ATTR_OBSS_COLOR_BITMAP]);
 +
-+	wpa_printf(MSG_DEBUG, "nl80211: BSS color collision - bitmap %08lx",
-+		   data.bss_color_collision.bitmap);
++	wpa_printf(MSG_DEBUG, "nl80211: BSS color collision - bitmap %08llx",
++		   (long long unsigned int)data.bss_color_collision.bitmap);
 +
 +	wpa_supplicant_event(drv->ctx, EVENT_BSS_COLOR_COLLISION, &data);
 +}

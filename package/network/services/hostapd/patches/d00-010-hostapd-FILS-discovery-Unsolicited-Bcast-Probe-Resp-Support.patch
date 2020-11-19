@@ -42,11 +42,9 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  src/drivers/nl80211_copy.h   |  80 ++++++++++
  9 files changed, 594 insertions(+), 1 deletion(-)
 
-diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index 056a14e9503c..9552fbe6bd50 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3561,6 +3561,10 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -3561,6 +3561,10 @@ static int hostapd_config_fill(struct ho
  		conf->he_oper_centr_freq_seg0_idx = atoi(pos);
  	} else if (os_strcmp(buf, "he_oper_centr_freq_seg1_idx") == 0) {
  		conf->he_oper_centr_freq_seg1_idx = atoi(pos);
@@ -57,7 +55,7 @@ index 056a14e9503c..9552fbe6bd50 100644
  #endif /* CONFIG_IEEE80211AX */
  	} else if (os_strcmp(buf, "max_listen_interval") == 0) {
  		bss->max_listen_interval = atoi(pos);
-@@ -4371,6 +4375,10 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -4371,6 +4375,10 @@ static int hostapd_config_fill(struct ho
  		bss->dhcp_server_port = atoi(pos);
  	} else if (os_strcmp(buf, "dhcp_relay_port") == 0) {
  		bss->dhcp_relay_port = atoi(pos);
@@ -68,8 +66,6 @@ index 056a14e9503c..9552fbe6bd50 100644
  #endif /* CONFIG_FILS */
  	} else if (os_strcmp(buf, "multicast_to_unicast") == 0) {
  		bss->multicast_to_unicast = atoi(pos);
-diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index c160d736c72f..4c00ad95683e 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
 @@ -873,6 +873,12 @@ wmm_ac_vo_acm=0
@@ -97,11 +93,9 @@ index c160d736c72f..4c00ad95683e 100644
  # Transition Disable indication
  # The AP can notify authenticated stations to disable transition mode in their
  # network profiles when the network has completed transition steps, i.e., once
-diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
-index 61136c450761..ebea19b8f9fc 100644
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -131,6 +131,7 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
+@@ -131,6 +131,7 @@ void hostapd_config_defaults_bss(struct
  	bss->fils_hlp_wait_time = 30;
  	bss->dhcp_server_port = DHCP_SERVER_PORT;
  	bss->dhcp_relay_port = DHCP_SERVER_PORT;
@@ -109,7 +103,7 @@ index 61136c450761..ebea19b8f9fc 100644
  #endif /* CONFIG_FILS */
  
  	bss->broadcast_deauth = 1;
-@@ -1344,6 +1345,15 @@ static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
+@@ -1344,6 +1345,15 @@ static int hostapd_config_check_bss(stru
  	}
  #endif /* CONFIG_SAE_PK */
  
@@ -125,8 +119,6 @@ index 61136c450761..ebea19b8f9fc 100644
  	return 0;
  }
  
-diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index 4e1c58629d87..f32e9151708e 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
 @@ -734,6 +734,8 @@ struct hostapd_bss_config {
@@ -147,11 +139,9 @@ index 4e1c58629d87..f32e9151708e 100644
  };
  
  /**
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 11a547fb1637..7540e18bc9eb 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1127,6 +1127,25 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
+@@ -1127,6 +1127,25 @@ static u8 * hostapd_probe_resp_offloads(
  
  #endif /* NEED_AP_MLME */
  
@@ -177,7 +167,7 @@ index 11a547fb1637..7540e18bc9eb 100644
  
  void sta_track_del(struct hostapd_sta_info *info)
  {
-@@ -1138,6 +1157,269 @@ void sta_track_del(struct hostapd_sta_info *info)
+@@ -1138,6 +1157,269 @@ void sta_track_del(struct hostapd_sta_in
  }
  
  
@@ -437,7 +427,7 @@ index 11a547fb1637..7540e18bc9eb 100644
 +
 +	if (params->fils_discovery_max_int)
 +		return hostapd_gen_fils_discovery(hapd,
-+						  &params->fils_discovery_tmpl_len);
++						  (u32 *)&params->fils_discovery_tmpl_len);
 +
 +	return NULL;
 +}
@@ -447,7 +437,7 @@ index 11a547fb1637..7540e18bc9eb 100644
  int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  			       struct wpa_driver_ap_params *params)
  {
-@@ -1475,6 +1757,14 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
+@@ -1475,6 +1757,14 @@ void ieee802_11_free_ap_params(struct wp
  	params->head = NULL;
  	os_free(params->proberesp);
  	params->proberesp = NULL;
@@ -462,7 +452,7 @@ index 11a547fb1637..7540e18bc9eb 100644
  }
  
  
-@@ -1519,9 +1809,15 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+@@ -1519,9 +1809,15 @@ int ieee802_11_set_beacon(struct hostapd
  	params.he_bss_color = hapd->iface->conf->he_op.he_bss_color;
  	params.twt_responder = hostapd_get_he_twt_responder(hapd,
  							    IEEE80211_MODE_AP);
@@ -478,8 +468,6 @@ index 11a547fb1637..7540e18bc9eb 100644
  	if (cmode &&
  	    hostapd_set_freq_params(&freq, iconf->hw_mode, iface->freq,
  				    iconf->channel, iconf->enable_edmg,
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 5e98d39a2bf1..6e6f74d60a39 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -2374,4 +2374,40 @@ enum mscs_description_subelem {
@@ -523,8 +511,6 @@ index 5e98d39a2bf1..6e6f74d60a39 100644
 +#define FILS_DISCOVERY_CAP_PHY_INDEX_HE                   4
 +#define FILS_DISCOVERY_MAX_INTERVAL_6GHZ                  20
  #endif /* IEEE802_11_DEFS_H */
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 444b2fe64c8c..7c63e8879187 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
 @@ -1520,6 +1520,41 @@ struct wpa_driver_ap_params {
@@ -569,11 +555,9 @@ index 444b2fe64c8c..7c63e8879187 100644
  };
  
  struct wpa_driver_mesh_bss_params {
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 599e6bcbc322..38660b72f161 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4258,7 +4258,6 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, const u64 flags,
+@@ -4258,7 +4258,6 @@ static int nl80211_put_beacon_rate(struc
  	return 0;
  }
  
@@ -581,7 +565,7 @@ index 599e6bcbc322..38660b72f161 100644
  static int nl80211_set_multicast_to_unicast(struct i802_bss *bss,
  					    int multicast_to_unicast)
  {
-@@ -4305,6 +4304,112 @@ static int nl80211_set_multicast_to_unicast(struct i802_bss *bss,
+@@ -4305,6 +4304,110 @@ static int nl80211_set_multicast_to_unic
  }
  
  
@@ -592,7 +576,6 @@ index 599e6bcbc322..38660b72f161 100644
 +	struct nlattr *attr;
 +	struct wpa_driver_nl80211_data *drv = bss->drv;
 +	struct nl_msg *msg;
-+	int ret;
 +
 +	if (!params->fils_discovery_max_int)
 +		return 0;
@@ -647,7 +630,6 @@ index 599e6bcbc322..38660b72f161 100644
 +	struct nlattr *attr;
 +	struct wpa_driver_nl80211_data *drv = bss->drv;
 +	struct nl_msg *msg;
-+	int ret;
 +
 +	if (!params->unsol_bcast_probe_resp_interval)
 +		return 0;
@@ -694,7 +676,7 @@ index 599e6bcbc322..38660b72f161 100644
  static int wpa_driver_nl80211_set_ap(void *priv,
  				     struct wpa_driver_ap_params *params)
  {
-@@ -4563,6 +4668,7 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4563,6 +4666,7 @@ static int wpa_driver_nl80211_set_ap(voi
  		if (nla_put_flag(msg, NL80211_ATTR_TWT_RESPONDER))
  			goto fail;
  	}
@@ -702,7 +684,7 @@ index 599e6bcbc322..38660b72f161 100644
  #endif /* CONFIG_IEEE80211AX */
  
  	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
-@@ -4577,6 +4683,13 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4577,6 +4681,13 @@ static int wpa_driver_nl80211_set_ap(voi
  				params->isolate, params->basic_rates);
  		nl80211_set_multicast_to_unicast(bss,
  						 params->multicast_to_unicast);
@@ -716,8 +698,6 @@ index 599e6bcbc322..38660b72f161 100644
  		if (beacon_set && params->freq &&
  		    params->freq->bandwidth != bss->bandwidth) {
  			wpa_printf(MSG_DEBUG,
-diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
-index 0ea69d7382f0..9af62af9ac02 100644
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
 @@ -1175,6 +1175,12 @@
@@ -833,6 +813,3 @@ index 0ea69d7382f0..9af62af9ac02 100644
 +		__NL80211_UNSOL_BCAST_PROBE_RESP_LAST - 1
 +};
  #endif /* __LINUX_NL80211_H */
--- 
-2.25.0
-

@@ -132,7 +132,15 @@ Signed-off-by: Nishant Pandey <nishpand@codeaurora.org>
  
  #include "utils/includes.h"
  #ifdef CONFIG_TESTING_OPTIONS
-@@ -3284,6 +3285,18 @@ static int wpa_supplicant_ctrl_iface_mes
+@@ -56,6 +57,7 @@
+ #include "mesh.h"
+ #include "dpp_supplicant.h"
+ #include "sme.h"
++#include "ap/ieee802_11.h"
+ 
+ #ifdef __NetBSD__
+ #include <net/if_ether.h>
+@@ -3284,6 +3286,18 @@ static int wpa_supplicant_ctrl_iface_mes
  	return wpas_mesh_peer_remove(wpa_s, addr);
  }
  
@@ -151,7 +159,7 @@ Signed-off-by: Nishant Pandey <nishpand@codeaurora.org>
  
  static int wpa_supplicant_ctrl_iface_mesh_peer_add(
  	struct wpa_supplicant *wpa_s, char *cmd)
-@@ -10655,6 +10668,38 @@ char * wpa_supplicant_ctrl_iface_process
+@@ -10655,6 +10669,38 @@ char * wpa_supplicant_ctrl_iface_process
  			reply_len = -1;
  #endif /* CONFIG_IBSS_RSN */
  #ifdef CONFIG_MESH
