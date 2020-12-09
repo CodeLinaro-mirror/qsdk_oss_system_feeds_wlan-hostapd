@@ -442,11 +442,13 @@ endef
 Package/hostapd-mini/install = $(Package/hostapd/install)
 
 ifneq ($(LOCAL_TYPE),supplicant)
+ifneq ($(LOCAL_VARIANT),macsec)
   define Package/hostapd-utils/install
 	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/rc.button
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd_cli $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/wps-hotplug.sh $(1)/etc/rc.button/wps
   endef
+endif
 endif
 
 define Package/wpad/install
@@ -476,10 +478,12 @@ Package/wpa-supplicant-mini/install = $(Package/wpa-supplicant/install)
 Package/wpa-supplicant-p2p/install = $(Package/wpa-supplicant/install)
 
 ifneq ($(LOCAL_TYPE),hostapd)
+ifneq ($(LOCAL_VARIANT),macsec)
   define Package/wpa-cli/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/wpa_cli $(1)/usr/sbin/
   endef
+endif
 endif
 
 ifeq ($(BUILD_VARIANT),supplicant-full)
