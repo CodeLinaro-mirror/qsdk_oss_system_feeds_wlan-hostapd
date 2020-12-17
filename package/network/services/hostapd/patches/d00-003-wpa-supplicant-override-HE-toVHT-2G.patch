@@ -55,31 +55,31 @@
  
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2440,17 +2440,17 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2440,16 +2440,16 @@ void ibss_mesh_setup_freq(struct wpa_sup
  		return;
  
  	/* Allow HE on 2.4 GHz without VHT: see nl80211_put_freq_params() */
-+#ifdef CONFIG_HE_OVERRIDES
+-	if (is_24ghz)
+-		freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
 +	if (is_24ghz) {
+ #ifdef CONFIG_HE_OVERRIDES
+-	if (is_24ghz && ssid->disable_he)
+-		freq->he_enabled = 0;
 +		if (ssid->disable_he)
 +			freq->he_enabled = 0;
 +		else
 +			freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
 +#else
- 	if (is_24ghz)
- 		freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
--#ifdef CONFIG_HE_OVERRIDES
--	if (is_24ghz && ssid->disable_he)
--		freq->he_enabled = 0;
++		freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
  #endif /* CONFIG_HE_OVERRIDES */
- 
+-
 -	/* Setup higher BW only for 5 GHz */
 -	if (mode->mode != HOSTAPD_MODE_IEEE80211A)
 -		return;
--
++	}
+ 
  	for (chan_idx = 0; chan_idx < mode->num_channels; chan_idx++) {
  		pri_chan = &mode->channels[chan_idx];
- 		if (pri_chan->chan == channel)
 @@ -2539,6 +2539,11 @@ void ibss_mesh_setup_freq(struct wpa_sup
  
  		wpa_scan_results_free(scan_res);
