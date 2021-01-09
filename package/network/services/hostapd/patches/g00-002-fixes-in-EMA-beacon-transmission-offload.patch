@@ -1,4 +1,4 @@
-From 49917ca0fea0927451bcf2c7717d83f0e2cf1b8c Mon Sep 17 00:00:00 2001
+From 1707f3b2a60c387aa8c8c139db547e313f23a62e Mon Sep 17 00:00:00 2001
 From: Aloka Dixit <alokad@codeaurora.org>
 Date: Fri, 23 Oct 2020 14:52:24 -0700
 Subject: [PATCH] hostapd: Fixes in EMA beacon transmission offload
@@ -14,15 +14,16 @@ Subject: [PATCH] hostapd: Fixes in EMA beacon transmission offload
 
 Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 ---
- hostapd/ctrl_iface.c |  3 ---
- src/ap/ieee802_11.c  | 19 +++++++++++++------
- 2 files changed, 13 insertions(+), 9 deletions(-)
+ hostapd/ctrl_iface.c       |  3 ---
+ src/ap/ieee802_11.c        | 19 +++++++++++++------
+ src/ap/ieee802_11_shared.c | 15 ++++++++++++++-
+ 3 files changed, 27 insertions(+), 10 deletions(-)
 
 diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index 437388c0ecbe..f81eec7e5b39 100644
+index 1bccaa8f0e1e..a2cad3beecd1 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2690,9 +2690,6 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
+@@ -2704,9 +2704,6 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
  			 * submitting multi-BSS CSA requests? */
  			return ret;
  		}
@@ -33,10 +34,10 @@ index 437388c0ecbe..f81eec7e5b39 100644
  
  	return 0;
 diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index b3b77da14b75..0fe7fd271cae 100644
+index e8e84b57100e..1d72c83d8a78 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5764,6 +5764,8 @@ static int hostapd_eid_multiple_bssid_chunk_len(struct hostapd_data *hapd,
+@@ -5786,6 +5786,8 @@ static int hostapd_eid_multiple_bssid_chunk_len(struct hostapd_data *hapd,
  
  		if (wpa_auth_get_wpa_ie(bss->wpa_auth, &ies_len))
  			nontx_profile_len += ies_len;
@@ -45,7 +46,7 @@ index b3b77da14b75..0fe7fd271cae 100644
  
  		if (len + nontx_profile_len > 255) {
  			goto multiple_bssid_too_big;
-@@ -5846,12 +5848,17 @@ static u8 * hostapd_eid_multiple_bssid_chunk(struct hostapd_data *hapd,
+@@ -5868,12 +5870,17 @@ static u8 * hostapd_eid_multiple_bssid_chunk(struct hostapd_data *hapd,
  
  		rsn = hostapd_get_rsne(bss, eid, end - eid);
  		if (rsn == eid) {
@@ -69,6 +70,46 @@ index b3b77da14b75..0fe7fd271cae 100644
  		} else {
  			eid = rsn;
  			eid = hostapd_get_rsnxe(bss, eid, end - eid);
+diff --git a/src/ap/ieee802_11_shared.c b/src/ap/ieee802_11_shared.c
+index f7aa175af5a6..c91fc2ac3ae1 100644
+--- a/src/ap/ieee802_11_shared.c
++++ b/src/ap/ieee802_11_shared.c
+@@ -445,6 +445,16 @@ static void hostapd_ext_capab_byte(struct hostapd_data *hapd, u8 *pos, int idx)
+ }
+ 
+ 
++void hostapd_eid_ext_capab_multiple_bssid(struct hostapd_data *hapd, u8 *eid,
++					  u8 len)
++{
++	if (!hapd->iconf->ema_beacon && (len >= 11))
++		eid[10] &= 0xF6;
++	if (!hapd->iconf->multiple_bssid && (len >= 3))
++		eid[2] &= 0xBF;
++}
++
++
+ u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid)
+ {
+ 	u8 *pos = eid;
+@@ -457,7 +467,8 @@ u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid)
+ 	    (hapd->conf->time_advertisement == 2 || hapd->conf->interworking))
+ 		len = 4;
+ 	if (len < 3 &&
+-	    (hapd->conf->wnm_sleep_mode || hapd->conf->bss_transition))
++	    (hapd->conf->wnm_sleep_mode || hapd->conf->bss_transition ||
++	     hapd->iconf->multiple_bssid))
+ 		len = 3;
+ 	if (len < 1 &&
+ 	    (hapd->iconf->obss_interval ||
+@@ -523,6 +534,8 @@ u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid)
+ 		}
+ 	}
+ 
++	hostapd_eid_ext_capab_multiple_bssid(hapd, eid + 2, len);
++
+ 	while (len > 0 && eid[1 + len] == 0) {
+ 		len--;
+ 		eid[1] = len;
 -- 
 2.25.0
 

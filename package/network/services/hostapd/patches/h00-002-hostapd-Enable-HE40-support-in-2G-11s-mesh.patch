@@ -72,21 +72,21 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  static bool ibss_mesh_is_80mhz_avail(int channel, struct hostapd_hw_modes *mode)
  {
  	int i;
-@@ -2475,6 +2526,11 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2474,6 +2525,11 @@ void ibss_mesh_setup_freq(struct wpa_sup
+ 		else
+ #endif /* CONFIG_HE_OVERRIDES */
  			freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
- #else
- 		freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
++
 +		if (freq->he_enabled)
 +			ibss_mesh_setup_2G_he40(freq, mode, wpa_s,
 +						ssid, ieee80211_mode);
-+
 +		return;
- #endif /* CONFIG_HE_OVERRIDES */
  	}
  
+ 	for (chan_idx = 0; chan_idx < mode->num_channels; chan_idx++) {
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1205,6 +1205,10 @@ struct wpa_driver_associate_params {
+@@ -1199,6 +1199,10 @@ struct wpa_driver_associate_params {
  	 * PWE derivation mechanism for SAE
  	 */
  	int sae_pwe;
@@ -99,7 +99,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  enum hide_ssid {
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2753,6 +2753,7 @@ static const struct parse_data ssid_fiel
+@@ -2750,6 +2750,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(beacon_prot, 0, 1) },
  	{ INT_RANGE(transition_disable, 0, 255) },
  	{ INT_RANGE(sae_pk, 0, 2) },
@@ -120,7 +120,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  #undef INT_DEF
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1171,6 +1171,11 @@ struct wpa_ssid {
+@@ -1165,6 +1165,11 @@ struct wpa_ssid {
  	 * configuration.
  	 */
  	bool was_recently_reconfigured;
@@ -134,16 +134,12 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  #endif /* CONFIG_SSID_H */
 --- a/wpa_supplicant/wpa_cli.c
 +++ b/wpa_supplicant/wpa_cli.c
-@@ -1479,10 +1479,11 @@ static const char *network_fields[] = {
+@@ -1479,7 +1479,8 @@ static const char *network_fields[] = {
  #ifdef CONFIG_HS20
  	"update_identifier",
  #endif /* CONFIG_HS20 */
 -	"mac_addr", "pbss", "wps_disabled"
 +	"mac_addr", "pbss", "wps_disabled",
- #ifdef CONFIG_HE_OVERRIDES
--	"disable_he"
-+	"disable_he",
- #endif /* CONFIG_HE_OVERRIDES */
 +	"disable_40mhz_scan",
  };
  

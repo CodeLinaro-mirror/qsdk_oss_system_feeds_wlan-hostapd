@@ -142,6 +142,7 @@ hostapd_common_add_bss_config() {
 
 	config_add_boolean rsn_preauth auth_cache
 	config_add_int ieee80211w sae_pwe
+	config_add_string sae_password
 
 	config_add_string 'auth_server:host' 'server:host'
 	config_add_string auth_secret
@@ -375,6 +376,8 @@ hostapd_set_bss_options() {
 			append bss_conf "ieee80211w=1" "$N"
 			append bss_conf "sae_require_mfp=1" "$N"
 			append wpa_key_mgmt "SAE"
+			json_get_vars sae_password
+			[ -n "$sae_password" ] && append bss_conf "sae_password=$sae_password" "$N"
 		;;
 		owe)
 			append wpa_key_mgmt "OWE"
