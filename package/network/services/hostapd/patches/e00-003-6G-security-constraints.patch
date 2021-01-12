@@ -92,7 +92,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 +		for (i = 0; i < n_suite; i++) {
 +			if (suite[i] == RSN_CIPHER_SUITE_NONE ||
 +			    suite[i] == RSN_CIPHER_SUITE_WEP40 ||
-+			    suite[i] == WPA_CIPHER_WEP104 ||
++			    suite[i] == RSN_CIPHER_SUITE_WEP104 ||
 +			    suite[i] == RSN_CIPHER_SUITE_TKIP) {
 +				wpa_printf(MSG_DEBUG,
 +					   "nl80211: Invalid cipher suite\n");
