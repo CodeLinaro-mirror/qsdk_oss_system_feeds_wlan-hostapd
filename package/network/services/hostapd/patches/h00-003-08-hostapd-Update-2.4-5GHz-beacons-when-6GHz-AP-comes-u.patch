@@ -1,0 +1,40 @@
+From 9fb46450d96c3fc4e6c9b8ff39557957eef5e00a Mon Sep 17 00:00:00 2001
+From: Aloka Dixit <alokad@codeaurora.org>
+Date: Mon, 14 Dec 2020 10:57:55 -0800
+Subject: [PATCH 8/9] hostapd: Update 2.4/5GHz beacons when 6GHz AP comes up
+
+This code change makes sure that if 6GHz AP is brought up after 2.4/5GHz
+APs are already running then the beacons for the latter are updated to
+include RNR element with 6GHz APs.
+
+Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
+---
+ src/ap/hostapd.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index 2c2c2fcd86d8..c7b96fb52bf6 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -2165,6 +2165,18 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+ 		}
+ 	}
+ 
++	if (is_6ghz_op_class(hapd->iconf->op_class) &&
++	    (iface->interfaces->count > 1)) {
++		struct hostapd_iface *colocated_iface;
++		for (j = 0; j < iface->interfaces->count; j++) {
++			colocated_iface = iface->interfaces->iface[j];
++			if (is_6ghz_op_class(colocated_iface->conf->op_class))
++				continue;
++
++			ieee802_11_update_beacons(colocated_iface);
++		}
++	}
++
+ 	hapd = iface->bss[0];
+ 
+ 	hostapd_tx_queue_params(iface);
+-- 
+2.25.0
+
