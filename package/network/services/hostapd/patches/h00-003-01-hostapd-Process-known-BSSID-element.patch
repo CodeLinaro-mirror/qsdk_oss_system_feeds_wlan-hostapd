@@ -1,4 +1,4 @@
-From b64183309c428e49e663c951a0ce975a2dc0d818 Mon Sep 17 00:00:00 2001
+From f99298047901a3c4e447149320a94a1f20b0848f Mon Sep 17 00:00:00 2001
 From: Aloka Dixit <alokad@codeaurora.org>
 Date: Tue, 1 Dec 2020 16:22:55 -0800
 Subject: [PATCH 1/9] hostapd: Process known BSSID element
@@ -21,7 +21,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  6 files changed, 76 insertions(+), 36 deletions(-)
 
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 6945e27021b8..6cbd3022e126 100644
+index 9df5eb35e5fb..c663fb3a9e4b 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
 @@ -8,6 +8,7 @@
@@ -43,7 +43,7 @@ index 6945e27021b8..6cbd3022e126 100644
 -	struct hostapd_data *hidden = NULL;
 +	struct hostapd_data *req_bss = NULL;
  	struct ieee80211_mgmt *resp;
- 	u8 *pos, *epos, *csa_pos, *ext_cap_pos;
+ 	u8 *pos, *epos, *csa_pos;
  	size_t buflen;
  
  	if (hapd->iconf->multiple_bssid &&
@@ -76,7 +76,7 @@ index 6945e27021b8..6cbd3022e126 100644
  
  	/* eCSA IE */
  	csa_pos = hostapd_eid_ecsa(hapd, pos);
-@@ -1100,12 +1105,13 @@ void handle_probe_req(struct hostapd_data *hapd,
+@@ -1097,12 +1102,13 @@ void handle_probe_req(struct hostapd_data *hapd,
  		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
  
  	if (hapd->iconf->multiple_bssid &&
@@ -92,7 +92,7 @@ index 6945e27021b8..6cbd3022e126 100644
  	if (resp == NULL)
  		return;
  
-@@ -1174,7 +1180,7 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
+@@ -1171,7 +1177,7 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
  			   "this");
  
  	/* Generate a Probe Response template for the non-P2P case */
@@ -101,7 +101,7 @@ index 6945e27021b8..6cbd3022e126 100644
  }
  
  #endif /* NEED_AP_MLME */
-@@ -1195,7 +1201,8 @@ static u8 *hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
+@@ -1192,7 +1198,8 @@ static u8 *hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
  				hapd->conf->unsol_bcast_probe_resp_interval;
  
  	return hostapd_gen_probe_resp(hapd, NULL, 0,
@@ -111,7 +111,7 @@ index 6945e27021b8..6cbd3022e126 100644
  }
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -1812,7 +1819,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1809,7 +1816,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  	}
  
  	if (hapd->iconf->multiple_bssid) {
@@ -120,7 +120,7 @@ index 6945e27021b8..6cbd3022e126 100644
  		u8 *end;
  
  		params->multiple_bssid_index = hostapd_get_bss_index(hapd);
-@@ -1820,6 +1827,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1817,6 +1824,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  		params->ema_beacon = hapd->iconf->ema_beacon;
  		if (hapd != hapd->iface->bss[0])
  			params->multiple_bssid_parent = hapd->iface->bss[0]->conf->iface;
@@ -129,7 +129,7 @@ index 6945e27021b8..6cbd3022e126 100644
  		params->multiple_bssid_ies = os_zalloc(len);
  		if (params->multiple_bssid_ies == NULL)
  			return -1;
-@@ -1829,7 +1838,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1826,7 +1835,8 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  						 1, params->multiple_bssid_ie_offsets,
  						 &params->multiple_bssid_ie_count,
  						 MULTIPLE_BSSID_IE_MAX,
@@ -137,7 +137,7 @@ index 6945e27021b8..6cbd3022e126 100644
 +						 hapd->iconf->ema_beacon, NULL,
 +						 0);
  		params->multiple_bssid_ie_len = end - params->multiple_bssid_ies;
- 		if ((params->multiple_bssid_ie_count <= 1) &&
+ 		if ((params->multiple_bssid_ie_count > 1) &&
  		    (ext_cap_len >= 13) && (ext_cap_pos[12] & 0x08))
 diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
 index f8018dc3263b..3cfac129d6fd 100644
@@ -304,10 +304,10 @@ index a7b3afdb4a8d..73d3670944b2 100644
  size_t hostapd_eid_reduced_neighbor_report_len(struct hostapd_data *hapd, bool probe_resp);
  int auth_sae_init_committed(struct hostapd_data *hapd, struct sta_info *sta);
 diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index 06530cc933af..8a9883334034 100644
+index 114322d8d4e7..d7524befd9d6 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -314,6 +314,10 @@ static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
+@@ -303,6 +303,10 @@ static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
  			break;
  		elems->he_6ghz_band_cap = pos;
  		break;
