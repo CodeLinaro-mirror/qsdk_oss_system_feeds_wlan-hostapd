@@ -14,11 +14,9 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  src/ap/ieee802_11.h |  4 ++--
  3 files changed, 23 insertions(+), 27 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 6cbd3022e126..9c7532aaeec4 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -486,7 +486,7 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -486,7 +486,7 @@ static u8 * hostapd_gen_probe_resp(struc
  							 known_bssids,
  							 known_bssids_len);
  	if (hapd->conf->rnr_beacon)
@@ -27,7 +25,7 @@ index 6cbd3022e126..9c7532aaeec4 100644
  
  	resp = os_zalloc(buflen);
  	if (resp == NULL)
-@@ -653,7 +653,7 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -656,7 +656,7 @@ static u8 * hostapd_gen_probe_resp(struc
  	pos = hostapd_eid_owe_trans(hapd, pos, (u8 *) resp + buflen - pos);
  	pos = hostapd_eid_dpp_cc(hapd, pos, (u8 *) resp + buflen - pos);
  	if (hapd->conf->rnr_beacon)
@@ -36,7 +34,7 @@ index 6cbd3022e126..9c7532aaeec4 100644
  
  	if (hapd->conf->vendor_elements) {
  		os_memcpy(pos, wpabuf_head(hapd->conf->vendor_elements),
-@@ -1379,7 +1379,7 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, u32 *len)
+@@ -1354,7 +1354,7 @@ static u8 * hostapd_gen_fils_discovery(s
  		total_len += 3;
  	}
  
@@ -45,16 +43,16 @@ index 6cbd3022e126..9c7532aaeec4 100644
  
  	pos = hostapd_eid_fils_indic(hapd, buf, 0);
  	buf_len = pos - buf;
-@@ -1437,7 +1437,7 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, u32 *len)
+@@ -1424,7 +1424,7 @@ static u8 * hostapd_gen_fils_discovery(s
+ 	/* Fill in the Length field value */
  	*length_pos = pos - (length_pos + 1);
  
- 	/* Reduced Neighbor Report element */
 -	pos = hostapd_eid_reduced_neighbor_report(hapd, pos, 0);
 +	pos = hostapd_eid_rnr(hapd, pos, 0);
  
- 	/* FILS indication element */
+ 	/* FILS Indication element */
  	if (buf_len) {
-@@ -1533,7 +1533,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1516,7 +1516,7 @@ int ieee802_11_build_ap_params(struct ho
  	tail_len += hostapd_eid_owe_trans_len(hapd);
  	tail_len += hostapd_eid_dpp_cc_len(hapd);
  	if (hapd->conf->rnr_beacon)
@@ -63,7 +61,7 @@ index 6cbd3022e126..9c7532aaeec4 100644
  
  	tailpos = tail = os_malloc(tail_len);
  	if (head == NULL || tail == NULL) {
-@@ -1712,7 +1712,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1702,7 +1702,7 @@ int ieee802_11_build_ap_params(struct ho
  					tail + tail_len - tailpos);
  	tailpos = hostapd_eid_dpp_cc(hapd, tailpos, tail + tail_len - tailpos);
  	if (hapd->conf->rnr_beacon)
@@ -72,11 +70,9 @@ index 6cbd3022e126..9c7532aaeec4 100644
  
  	if (hapd->conf->vendor_elements) {
  		os_memcpy(tailpos, wpabuf_head(hapd->conf->vendor_elements),
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 3cfac129d6fd..4f40961f5a84 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5984,8 +5984,8 @@ u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
+@@ -7279,8 +7279,8 @@ u8 * hostapd_eid_multiple_bssid(struct h
  }
  
  
@@ -87,7 +83,7 @@ index 3cfac129d6fd..4f40961f5a84 100644
  {
  	size_t len = 0;
  	int i;
-@@ -5999,15 +5999,14 @@ size_t hostapd_eid_reduced_neighbor_report_iface_len(struct hostapd_data *hapd,
+@@ -7294,15 +7294,14 @@ size_t hostapd_eid_reduced_neighbor_repo
  }
  
  
@@ -105,7 +101,7 @@ index 3cfac129d6fd..4f40961f5a84 100644
  
  	for (i = 0; i < hapd->iface->interfaces->count; i++) {
  		struct hostapd_iface *iface = hapd->iface->interfaces->iface[i];
-@@ -6016,8 +6015,7 @@ size_t hostapd_eid_reduced_neighbor_report_len(struct hostapd_data *hapd, bool p
+@@ -7311,8 +7310,7 @@ size_t hostapd_eid_reduced_neighbor_repo
  			continue;
  
  		len += (TBTT_HEADER_LENGTH +
@@ -115,7 +111,7 @@ index 3cfac129d6fd..4f40961f5a84 100644
  	}
  
  	if (!probe_resp && !dl_list_empty(&hapd->nr_db))
-@@ -6030,9 +6028,9 @@ size_t hostapd_eid_reduced_neighbor_report_len(struct hostapd_data *hapd, bool p
+@@ -7325,9 +7323,9 @@ size_t hostapd_eid_reduced_neighbor_repo
  }
  
  
@@ -128,7 +124,7 @@ index 3cfac129d6fd..4f40961f5a84 100644
  {
  	u8 *eid_start = eid, *tbtt_count_pos;
  	u8 tbtt_count = 0;
-@@ -6096,7 +6094,8 @@ static u8 *hostapd_eid_reduced_neighbor_report_iface(struct hostapd_data *hapd,
+@@ -7391,7 +7389,8 @@ static u8 *hostapd_eid_reduced_neighbor_
  }
  
  
@@ -138,7 +134,7 @@ index 3cfac129d6fd..4f40961f5a84 100644
  {
  	struct hostapd_neighbor_entry *nr;
  
-@@ -6125,9 +6124,9 @@ static u8 *hostapd_eid_reduced_neighbor_report_nr_db(struct hostapd_data *hapd,
+@@ -7420,9 +7419,9 @@ static u8 *hostapd_eid_reduced_neighbor_
  }
  
  
@@ -150,7 +146,7 @@ index 3cfac129d6fd..4f40961f5a84 100644
  	int i, count = 0;
  	u8 *size_offset;
  
-@@ -6138,8 +6137,7 @@ u8 * hostapd_eid_reduced_neighbor_report(struct hostapd_data *hapd, u8 *eid, boo
+@@ -7433,8 +7432,7 @@ u8 * hostapd_eid_reduced_neighbor_report
  	size_offset = eid++;
  
  	if (hapd->iface->num_bss > 1)
@@ -160,7 +156,7 @@ index 3cfac129d6fd..4f40961f5a84 100644
  
  	for (i = 0; i < hapd->iface->interfaces->count; i++) {
  		struct hostapd_iface *iface = hapd->iface->interfaces->iface[i];
-@@ -6147,13 +6145,11 @@ u8 * hostapd_eid_reduced_neighbor_report(struct hostapd_data *hapd, u8 *eid, boo
+@@ -7442,13 +7440,11 @@ u8 * hostapd_eid_reduced_neighbor_report
  		if (iface == hapd->iface || !iface->conf->he_co_locate)
  			continue;
  
@@ -176,11 +172,9 @@ index 3cfac129d6fd..4f40961f5a84 100644
  
  	if (!count)
  		eid -= 2;
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 73d3670944b2..dc26f5da1722 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -137,8 +137,8 @@ u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
+@@ -137,8 +137,8 @@ u8 * hostapd_eid_multiple_bssid(struct h
  int hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd,
  				   struct hostapd_data *req_bss, u8 is_beacon,
  				   const u8 *known_bssids, u8 known_bssids_len);
@@ -191,6 +185,3 @@ index 73d3670944b2..dc26f5da1722 100644
  int auth_sae_init_committed(struct hostapd_data *hapd, struct sta_info *sta);
  #ifdef CONFIG_SAE
  void sae_clear_retransmit_timer(struct hostapd_data *hapd,
--- 
-2.25.0
-

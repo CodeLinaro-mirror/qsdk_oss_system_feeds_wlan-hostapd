@@ -20,11 +20,9 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  src/drivers/driver.h |  23 ++++++++
  4 files changed, 166 insertions(+), 41 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index fcc3b7517bcb..37ac54514eda 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -482,9 +482,11 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -482,9 +482,11 @@ static u8 * hostapd_gen_probe_resp(struc
  	buflen += hostapd_eid_owe_trans_len(hapd);
  	buflen += hostapd_eid_dpp_cc_len(hapd);
  	if (hapd->iconf->multiple_bssid)
@@ -38,7 +36,7 @@ index fcc3b7517bcb..37ac54514eda 100644
  	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP);
  
  	resp = os_zalloc(buflen);
-@@ -544,9 +546,11 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -544,9 +546,11 @@ static u8 * hostapd_gen_probe_resp(struc
  	pos = hostapd_get_mde(hapd, pos, epos - pos);
  
          if (hapd->iconf->multiple_bssid)
@@ -53,7 +51,7 @@ index fcc3b7517bcb..37ac54514eda 100644
  
  	/* eCSA IE */
  	csa_pos = hostapd_eid_ecsa(hapd, pos);
-@@ -1824,18 +1828,32 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1812,18 +1816,32 @@ int ieee802_11_build_ap_params(struct ho
  		if (hapd != hapd->iface->bss[0])
  			params->multiple_bssid_parent = hapd->iface->bss[0]->conf->iface;
  
@@ -88,22 +86,20 @@ index fcc3b7517bcb..37ac54514eda 100644
 -						 0);
 +						 WLAN_FC_STYPE_BEACON);
  		params->multiple_bssid_ie_len = end - params->multiple_bssid_ies;
- 		if ((params->multiple_bssid_ie_count <= 1) &&
+ 		if ((params->multiple_bssid_ie_count > 1) &&
  		    (ext_cap_len >= 13) && (ext_cap_pos[12] & 0x08))
-@@ -1857,6 +1875,8 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
+@@ -1845,6 +1863,8 @@ void ieee802_11_free_ap_params(struct wp
  	params->proberesp = NULL;
  	os_free(params->multiple_bssid_ies);
  	params->multiple_bssid_ies = NULL;
 +	os_free(params->rnr_ies);
 +	params->rnr_ies = NULL;
  #ifdef CONFIG_FILS
- 	os_free(params->fils_discovery_tmpl);
- 	params->fils_discovery_tmpl = NULL;
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index b13f6ee47b8a..4681568ba98f 100644
+ 	os_free(params->fd_frame_tmpl);
+ 	params->fd_frame_tmpl = NULL;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -72,6 +72,20 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -90,6 +90,20 @@ static void handle_auth(struct hostapd_d
  			struct hostapd_frame_info *fi);
  
  
@@ -124,7 +120,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  u8 * hostapd_eid_multi_ap(struct hostapd_data *hapd, u8 *eid)
  {
  	u8 multi_ap_val = 0;
-@@ -5755,7 +5769,7 @@ int hostapd_config_read_maclist(const char *fname,
+@@ -7050,7 +7064,7 @@ int hostapd_config_read_maclist(const ch
  
  static size_t hostapd_eid_multiple_bssid_chunk_len(struct hostapd_data *hapd,
  						   struct hostapd_data *req_bss,
@@ -133,7 +129,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  						   const u8 *known_bssids,
  						   u8 known_bssids_len)
  {
-@@ -5789,7 +5803,7 @@ static size_t hostapd_eid_multiple_bssid_chunk_len(struct hostapd_data *hapd,
+@@ -7084,7 +7098,7 @@ static size_t hostapd_eid_multiple_bssid
  		    conf->ignore_broadcast_ssid == 2 || bss == req_bss)
  			nontx_profile_len += conf->ssid.ssid_len;
  
@@ -142,7 +138,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  			nontx_profile_len += 2;
  
  		if (wpa_auth_get_wpa_ie(bss->wpa_auth, &ies_len))
-@@ -5811,19 +5825,34 @@ multiple_bssid_too_big:
+@@ -7106,19 +7120,34 @@ multiple_bssid_too_big:
  
  
  size_t hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd,
@@ -184,7 +180,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  	return len;
  }
  
-@@ -5831,7 +5860,7 @@ size_t hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd,
+@@ -7126,7 +7155,7 @@ size_t hostapd_eid_multiple_bssid_len(st
  static u8 * hostapd_eid_multiple_bssid_chunk(struct hostapd_data *hapd,
  					     struct hostapd_data *req_bss,
  					     u8 *eid, u8 *end, int *count,
@@ -193,7 +189,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  					     const u8 *known_bssids,
  					     u8 known_bssids_len)
  {
-@@ -5881,7 +5910,7 @@ static u8 * hostapd_eid_multiple_bssid_chunk(struct hostapd_data *hapd,
+@@ -7176,7 +7205,7 @@ static u8 * hostapd_eid_multiple_bssid_c
  		*eid++ = WLAN_EID_MULTIPLE_BSSID_INDEX;
  		index_size_offset = eid++;
  		*eid++ = i;
@@ -202,7 +198,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  			dtim_offset[i] = eid;
  			*eid++ = conf->dtim_period;
  			*eid++ = 0xFF;
-@@ -5927,30 +5956,63 @@ multiple_bssid_too_big:
+@@ -7222,30 +7251,63 @@ multiple_bssid_too_big:
  
  u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
  				struct hostapd_data *req_bss, u8 *eid, u8 *end,
@@ -271,7 +267,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  	}
  
  	if (!eid_count || !(*eid_count)) {
-@@ -5985,9 +6047,10 @@ u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
+@@ -7280,9 +7342,10 @@ u8 * hostapd_eid_multiple_bssid(struct h
  }
  
  
@@ -284,7 +280,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  {
  	size_t total_len = 0;
  	int i, tbtt_count = 0, start = 0;
-@@ -6008,6 +6071,10 @@ size_t hostapd_eid_rnr_iface_len(struct hostapd_data *hapd,
+@@ -7303,6 +7366,10 @@ size_t hostapd_eid_rnr_iface_len(struct
  			    hapd->conf->ignore_broadcast_ssid)
  				continue;
  
@@ -295,7 +291,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  			if ((*current_len + TBTT_INFO_LENGTH > 255) ||
  			    (tbtt_count >= TBTT_INFO_COUNT_MAX))
  				break;
-@@ -6043,7 +6110,7 @@ static size_t hostapd_eid_rnr_colocation_len(struct hostapd_data *hapd,
+@@ -7338,7 +7405,7 @@ static size_t hostapd_eid_rnr_colocation
  			continue;
  
  		len += hostapd_eid_rnr_iface_len(iface->bss[0], hapd,
@@ -304,7 +300,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  	}
  	return len;
  }
-@@ -6106,9 +6173,18 @@ size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type)
+@@ -7401,9 +7468,18 @@ size_t hostapd_eid_rnr_len(struct hostap
  	size_t len = 0, current_len = 0;
  
  	if (hapd->conf->rnr_beacon) {
@@ -325,7 +321,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  
  		if ((type == WLAN_FC_STYPE_BEACON) &&
  		     !dl_list_empty(&hapd->nr_db))
-@@ -6125,7 +6201,8 @@ size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type)
+@@ -7420,7 +7496,8 @@ size_t hostapd_eid_rnr_len(struct hostap
  
  static u8 *hostapd_eid_rnr_iface(struct hostapd_data *hapd,
  				 struct hostapd_data *reporting_hapd,
@@ -335,7 +331,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  {
  	u8 *eid_start = eid, *tbtt_count_pos = NULL;
  	u8 tbtt_count = 0, op_class, channel, bss_param;
-@@ -6169,6 +6246,10 @@ static u8 *hostapd_eid_rnr_iface(struct hostapd_data *hapd,
+@@ -7464,6 +7541,10 @@ static u8 *hostapd_eid_rnr_iface(struct
  			    hapd->conf->ignore_broadcast_ssid)
  				continue;
  
@@ -346,7 +342,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  			if ((*current_len + TBTT_INFO_LENGTH > 255) ||
  			    (tbtt_count >= TBTT_INFO_COUNT_MAX))
  				break;
-@@ -6228,7 +6309,7 @@ static u8 * hostapd_eid_rnr_colocation(struct hostapd_data *hapd, u8 *eid,
+@@ -7523,7 +7604,7 @@ static u8 * hostapd_eid_rnr_colocation(s
  			continue;
  
  		eid = hostapd_eid_rnr_iface(iface->bss[0], hapd, eid,
@@ -355,7 +351,7 @@ index b13f6ee47b8a..4681568ba98f 100644
  	}
  	return eid;
  }
-@@ -6283,10 +6364,9 @@ u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
+@@ -7578,10 +7659,9 @@ u8 * hostapd_eid_rnr(struct hostapd_data
  	size_t current_len = 0;
  
  	if (hapd->conf->rnr_beacon) {
@@ -368,11 +364,9 @@ index b13f6ee47b8a..4681568ba98f 100644
  		if (type == WLAN_FC_STYPE_BEACON)
  			eid = hostapd_eid_neighbor_report_db(hapd, eid,
  							     &current_len);
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 8e70bc3aa84a..e8ce776561e4 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -129,15 +129,17 @@ u8 * hostapd_eid_time_zone(struct hostapd_data *hapd, u8 *eid);
+@@ -129,15 +129,17 @@ u8 * hostapd_eid_time_zone(struct hostap
  int hostapd_update_time_adv(struct hostapd_data *hapd);
  void hostapd_client_poll_ok(struct hostapd_data *hapd, const u8 *addr);
  u8 * hostapd_eid_bss_max_idle_period(struct hostapd_data *hapd, u8 *eid);
@@ -396,11 +390,9 @@ index 8e70bc3aa84a..e8ce776561e4 100644
  size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type);
  int auth_sae_init_committed(struct hostapd_data *hapd, struct sta_info *sta);
  #ifdef CONFIG_SAE
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 1ed380b019b3..acbed383f924 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1227,6 +1227,7 @@ struct wowlan_triggers {
+@@ -1232,6 +1232,7 @@ struct wowlan_triggers {
  };
  
  #define MULTIPLE_BSSID_IE_MAX	8
@@ -408,11 +400,10 @@ index 1ed380b019b3..acbed383f924 100644
  
  struct wpa_driver_ap_params {
  	/**
-@@ -1626,6 +1627,28 @@ struct wpa_driver_ap_params {
- 	 * PWE derivation mechanism for SAE
+@@ -1630,6 +1631,27 @@ struct wpa_driver_ap_params {
  	 */
- 	int sae_pwe;
-+
+ 	int ema_beacon;
+ 
 +	/**
 +	 * rnr_ies - This buffer contains all of RNR elements
 +	 */
@@ -437,6 +428,11 @@ index 1ed380b019b3..acbed383f924 100644
  };
  
  struct wpa_driver_mesh_bss_params {
--- 
-2.25.0
-
+@@ -2292,6 +2314,7 @@ struct wpa_bss_params {
+ 	int wpa_key_mgmt;
+ 	int rsn_preauth;
+ 	enum mfp_options ieee80211w;
++
+ };
+ 
+ #define WPA_STA_AUTHORIZED BIT(0)
