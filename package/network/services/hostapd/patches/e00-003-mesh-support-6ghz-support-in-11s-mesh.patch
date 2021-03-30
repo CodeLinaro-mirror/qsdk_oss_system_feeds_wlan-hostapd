@@ -23,9 +23,11 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  wpa_supplicant/wpa_supplicant.c | 54 +++++++++++++++++++++------------
  2 files changed, 41 insertions(+), 21 deletions(-)
 
---- a/wpa_supplicant/mesh.c
-+++ b/wpa_supplicant/mesh.c
-@@ -333,6 +333,12 @@ static int wpa_supplicant_mesh_init(stru
+Index: hostapd-2021-02-08/wpa_supplicant/mesh.c
+===================================================================
+--- hostapd-2021-02-08.orig/wpa_supplicant/mesh.c
++++ hostapd-2021-02-08/wpa_supplicant/mesh.c
+@@ -472,6 +472,12 @@ static int wpa_supplicant_mesh_init(stru
  			   frequency);
  		goto out_free;
  	}
@@ -35,12 +37,14 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
 +	if (is_6ghz_freq(frequency))
 +		conf->op_class = 133;
 +
- 	if (ssid->ht40)
- 		conf->secondary_channel = ssid->ht40;
- 	if (conf->hw_mode == HOSTAPD_MODE_IEEE80211A && ssid->vht) {
---- a/wpa_supplicant/wpa_supplicant.c
-+++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2365,7 +2365,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
+ 
+ 	if (ssid->mesh_basic_rates == NULL) {
+ 		/*
+Index: hostapd-2021-02-08/wpa_supplicant/wpa_supplicant.c
+===================================================================
+--- hostapd-2021-02-08.orig/wpa_supplicant/wpa_supplicant.c
++++ hostapd-2021-02-08/wpa_supplicant/wpa_supplicant.c
+@@ -2371,7 +2371,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
  	struct hostapd_hw_modes *mode = NULL;
  	int ht40plus[] = { 36, 44, 52, 60, 100, 108, 116, 124, 132, 149, 157,
  			   184, 192 };
@@ -51,7 +55,7 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  	struct hostapd_channel_data *pri_chan = NULL, *sec_chan = NULL;
  	u8 channel;
  	int i, chan_idx, ht40 = -1, res, obss_scan = 1;
-@@ -2373,7 +2375,7 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2379,7 +2381,7 @@ void ibss_mesh_setup_freq(struct wpa_sup
  	struct hostapd_freq_params vht_freq;
  	int chwidth, seg0, seg1;
  	u32 vht_caps = 0;
@@ -60,7 +64,7 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  
  	freq->freq = ssid->frequency;
  
-@@ -2425,9 +2427,16 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2431,9 +2433,16 @@ void ibss_mesh_setup_freq(struct wpa_sup
  	if (!mode)
  		return;
  
@@ -77,7 +81,7 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  #ifdef CONFIG_HT_OVERRIDES
  	if (ssid->disable_ht) {
  		freq->ht_enabled = 0;
-@@ -2560,8 +2569,6 @@ skip_ht40:
+@@ -2564,8 +2573,6 @@ skip_ht40:
  	    !(wpa_s->drv_flags & WPA_DRIVER_FLAGS_VHT_IBSS))
  		return;
  
@@ -86,7 +90,7 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  #ifdef CONFIG_VHT_OVERRIDES
  	if (ssid->disable_vht) {
  		freq->vht_enabled = 0;
-@@ -2569,12 +2576,16 @@ skip_ht40:
+@@ -2573,12 +2580,16 @@ skip_ht40:
  	}
  #endif /* CONFIG_VHT_OVERRIDES */
  
@@ -105,7 +109,7 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  
  #ifdef CONFIG_HE_OVERRIDES
  	if (is_24ghz)
-@@ -2582,16 +2593,14 @@ skip_ht40:
+@@ -2586,16 +2597,14 @@ skip_ht40:
  #endif /* CONFIG_HE_OVERRIDES */
  
  	/* setup center_freq1, bandwidth */
@@ -126,7 +130,7 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  		struct hostapd_channel_data *chan;
  
  		chan = hw_get_channel_chan(mode, i, NULL);
-@@ -2604,16 +2613,20 @@ skip_ht40:
+@@ -2608,16 +2617,20 @@ skip_ht40:
  	}
  
  	chwidth = CHANWIDTH_80MHZ;
@@ -151,7 +155,7 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  				struct hostapd_channel_data *chan;
  
  				chan = hw_get_channel_chan(mode, i, NULL);
-@@ -2627,9 +2640,10 @@ skip_ht40:
+@@ -2631,9 +2644,10 @@ skip_ht40:
  
  				/* Found a suitable second segment for 80+80 */
  				chwidth = CHANWIDTH_80P80MHZ;
@@ -165,7 +169,7 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  			}
  
  			if (chwidth == CHANWIDTH_80P80MHZ)
-@@ -2647,7 +2661,7 @@ skip_ht40:
+@@ -2651,7 +2665,7 @@ skip_ht40:
  		}
  	} else if (ssid->max_oper_chwidth == CHANWIDTH_USE_HT) {
  		chwidth = CHANWIDTH_USE_HT;
@@ -174,16 +178,27 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  #ifdef CONFIG_HT_OVERRIDES
  		if (ssid->disable_ht40)
  			seg0 = 0;
---- a/wpa_supplicant/ap.c
-+++ b/wpa_supplicant/ap.c
-@@ -237,11 +237,11 @@ int wpa_supplicant_conf_ap_ht(struct wpa
- 				wpas_conf_ap_vht(wpa_s, ssid, conf, mode);
- 			}
+Index: hostapd-2021-02-08/wpa_supplicant/ap.c
+===================================================================
+--- hostapd-2021-02-08.orig/wpa_supplicant/ap.c
++++ hostapd-2021-02-08/wpa_supplicant/ap.c
+@@ -295,20 +295,16 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+ 				 HT_CAP_INFO_TX_STBC |
+ 				 HT_CAP_INFO_MAX_AMSDU_SIZE);
  
+-			/* check this before VHT, because setting oper chan
+-			 * width and friends is the same call for HE and VHT
+-			 * and checks if conf->ieee8021ax == 1 */
 -			if (mode->he_capab[wpas_mode_to_ieee80211_mode(
 -					    ssid->mode)].he_supported &&
 -			    ssid->he)
 -				conf->ieee80211ax = 1;
+-
+ 			if (mode->vht_capab && ssid->vht) {
+ 				conf->ieee80211ac = 1;
+ 				conf->vht_capab |= mode->vht_capab;
+ 				wpas_conf_ap_vht(wpa_s, ssid, conf, mode);
+ 			}
  		}
 +		if (mode->he_capab[wpas_mode_to_ieee80211_mode(
 +				    ssid->mode)].he_supported && ssid->he)
@@ -192,8 +207,10 @@ Signed-off-by: Pradeep Kumar Chitrapu <pradeepc@codeaurora.org>
  	}
  
  	if (conf->secondary_channel) {
---- a/wpa_supplicant/mesh_mpm.c
-+++ b/wpa_supplicant/mesh_mpm.c
+Index: hostapd-2021-02-08/wpa_supplicant/mesh_mpm.c
+===================================================================
+--- hostapd-2021-02-08.orig/wpa_supplicant/mesh_mpm.c
++++ hostapd-2021-02-08/wpa_supplicant/mesh_mpm.c
 @@ -251,6 +251,9 @@ static void mesh_mpm_send_plink_action(s
  			   HE_MAX_MCS_CAPAB_SIZE +
  			   HE_MAX_PPET_CAPAB_SIZE;

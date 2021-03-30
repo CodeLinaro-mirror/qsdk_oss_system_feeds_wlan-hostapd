@@ -12,9 +12,11 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  wpa_supplicant/wpa_supplicant.c | 30 ++++++++++++++++++++++++++++++
  1 file changed, 30 insertions(+)
 
---- a/wpa_supplicant/wpa_supplicant.c
-+++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2356,6 +2356,57 @@ static int drv_supports_vht(struct wpa_s
+Index: hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.c
+===================================================================
+--- hostapd-2021-02-18.orig/wpa_supplicant/wpa_supplicant.c
++++ hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.c
+@@ -2378,6 +2378,57 @@ static int drv_supports_vht(struct wpa_s
  	return mode->vht_capab != 0;
  }
  
@@ -72,7 +74,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  static bool ibss_mesh_is_80mhz_avail(int channel, struct hostapd_hw_modes *mode)
  {
  	int i;
-@@ -2474,6 +2525,11 @@ void ibss_mesh_setup_freq(struct wpa_sup
+@@ -2498,6 +2549,11 @@ void ibss_mesh_setup_freq(struct wpa_sup
  		else
  #endif /* CONFIG_HE_OVERRIDES */
  			freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
@@ -84,12 +86,15 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  	}
  
  	for (chan_idx = 0; chan_idx < mode->num_channels; chan_idx++) {
---- a/src/drivers/driver.h
-+++ b/src/drivers/driver.h
-@@ -1199,6 +1199,10 @@ struct wpa_driver_associate_params {
- 	 * PWE derivation mechanism for SAE
+Index: hostapd-2021-02-18/src/drivers/driver.h
+===================================================================
+--- hostapd-2021-02-18.orig/src/drivers/driver.h
++++ hostapd-2021-02-18/src/drivers/driver.h
+@@ -1203,6 +1203,11 @@ struct wpa_driver_associate_params {
+ 	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
  	 */
  	int sae_pwe;
++
 +	/**
 +	 * Disable HE40MHz coexistence scan
 +	 */
@@ -97,9 +102,11 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  };
  
  enum hide_ssid {
---- a/wpa_supplicant/config.c
-+++ b/wpa_supplicant/config.c
-@@ -2750,6 +2750,7 @@ static const struct parse_data ssid_fiel
+Index: hostapd-2021-02-18/wpa_supplicant/config.c
+===================================================================
+--- hostapd-2021-02-18.orig/wpa_supplicant/config.c
++++ hostapd-2021-02-18/wpa_supplicant/config.c
+@@ -2804,6 +2804,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(beacon_prot, 0, 1) },
  	{ INT_RANGE(transition_disable, 0, 255) },
  	{ INT_RANGE(sae_pk, 0, 2) },
@@ -107,9 +114,11 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  };
  
  #undef OFFSET
---- a/wpa_supplicant/config_file.c
-+++ b/wpa_supplicant/config_file.c
-@@ -982,7 +982,7 @@ static void wpa_config_write_network(FIL
+Index: hostapd-2021-02-18/wpa_supplicant/config_file.c
+===================================================================
+--- hostapd-2021-02-18.orig/wpa_supplicant/config_file.c
++++ hostapd-2021-02-18/wpa_supplicant/config_file.c
+@@ -885,7 +885,7 @@ static void wpa_config_write_network(FIL
  #ifdef CONFIG_HE_OVERRIDES
  	INT(disable_he);
  #endif /* CONFIG_HE_OVERRIDES */
@@ -118,8 +127,10 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  #undef STR
  #undef INT
  #undef INT_DEF
---- a/wpa_supplicant/config_ssid.h
-+++ b/wpa_supplicant/config_ssid.h
+Index: hostapd-2021-02-18/wpa_supplicant/config_ssid.h
+===================================================================
+--- hostapd-2021-02-18.orig/wpa_supplicant/config_ssid.h
++++ hostapd-2021-02-18/wpa_supplicant/config_ssid.h
 @@ -1165,6 +1165,11 @@ struct wpa_ssid {
  	 * configuration.
  	 */
@@ -132,9 +143,11 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  };
  
  #endif /* CONFIG_SSID_H */
---- a/wpa_supplicant/wpa_cli.c
-+++ b/wpa_supplicant/wpa_cli.c
-@@ -1479,7 +1479,8 @@ static const char *network_fields[] = {
+Index: hostapd-2021-02-18/wpa_supplicant/wpa_cli.c
+===================================================================
+--- hostapd-2021-02-18.orig/wpa_supplicant/wpa_cli.c
++++ hostapd-2021-02-18/wpa_supplicant/wpa_cli.c
+@@ -1482,7 +1482,8 @@ static const char *network_fields[] = {
  #ifdef CONFIG_HS20
  	"update_identifier",
  #endif /* CONFIG_HS20 */
@@ -144,8 +157,10 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  };
  
  
---- a/wpa_supplicant/wpa_supplicant.conf
-+++ b/wpa_supplicant/wpa_supplicant.conf
+Index: hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.conf
+===================================================================
+--- hostapd-2021-02-18.orig/wpa_supplicant/wpa_supplicant.conf
++++ hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.conf
 @@ -158,6 +158,9 @@ ap_scan=1
  # 1 = deny unless in accept list
  macaddr_acl=0
@@ -156,7 +171,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  # Accept/deny lists are read from separate files (containing list of
  # MAC addresses, one per line). Use absolute path name to make sure that the
  # files can be read on SIGHUP configuration reloads.
-@@ -1969,6 +1972,15 @@ network={
+@@ -1983,6 +1986,15 @@ network={
  	psk="very secret passphrase"
  }
  

@@ -6,29 +6,30 @@ Subject: [PATCH 1/7] multiple_bssid: add the config file
 This patch adds a new config option to enable this feature.
 
 Signed-off-by: John Crispin <john@phrozen.org>
+
 ---
  hostapd/config_file.c | 2 ++
  src/ap/ap_config.h    | 2 ++
  2 files changed, 4 insertions(+)
 
 diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index 9552fbe6bd50..4e60ca78e773 100644
+index a8b152a..6c87d60 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4589,6 +4589,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -4663,6 +4663,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
  		}
  		bss->mka_psk_set |= MKA_PSK_SET_CKN;
  #endif /* CONFIG_MACSEC */
 +	} else if (os_strcmp(buf, "multiple_bssid") == 0) {
 +		conf->multiple_bssid = atoi(pos);
- 	} else {
- 		wpa_printf(MSG_ERROR,
- 			   "Line %d: unknown configuration item '%s'",
+ 	} else if (os_strcmp(buf, "disable_11n") == 0) {
+ 		bss->disable_11n = !!atoi(pos);
+ 	} else if (os_strcmp(buf, "disable_11ac") == 0) {
 diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index f32e9151708e..25fb84a62b29 100644
+index 59d4646..7aa4abf 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1000,6 +1000,8 @@ struct hostapd_config {
+@@ -1015,6 +1015,8 @@ struct hostapd_config {
  	u8 vht_oper_centr_freq_seg1_idx;
  	u8 ht40_plus_minus_allowed;
  
@@ -38,10 +39,9 @@ index f32e9151708e..25fb84a62b29 100644
  	u8 use_driver_iface_addr;
  
 -- 
-2.25.0
+2.7.4
 
-
-From ff5f726d1076a81adb1b6a496d7d54911b710baf Mon Sep 17 00:00:00 2001
+From 48631921e18420675715c6d84f17f127f159f3b3 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
 Date: Mon, 24 Aug 2020 22:50:54 -0700
 Subject: [PATCH 2/7] multiple_bssid: add 2 new helper functions
@@ -57,7 +57,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  2 files changed, 22 insertions(+)
 
 diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 20945dcc05ac..9f55865da9d0 100644
+index 3f3731b..1a4a6c2 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
 @@ -87,6 +87,26 @@ int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
@@ -88,10 +88,10 @@ index 20945dcc05ac..9f55865da9d0 100644
  {
  	if (hapd->wpa_auth)
 diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index e3b6d8c2b15d..cab845714135 100644
+index 0a422b6..f040035 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -599,6 +599,8 @@ struct hostapd_iface {
+@@ -604,6 +604,8 @@ struct hostapd_iface {
  int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
  			       int (*cb)(struct hostapd_iface *iface,
  					 void *ctx), void *ctx);
@@ -101,8 +101,7 @@ index e3b6d8c2b15d..cab845714135 100644
  void hostapd_reconfig_encryption(struct hostapd_data *hapd);
  struct hostapd_data *
 -- 
-2.25.0
-
+2.7.4
 
 From 30f1951fa7c548d81b5662bda3a36e876f543245 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
@@ -123,7 +122,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  6 files changed, 29 insertions(+), 7 deletions(-)
 
 diff --git a/src/ap/ap_drv_ops.c b/src/ap/ap_drv_ops.c
-index f1576594522b..3a46b5745a2a 100644
+index d1642d7..08bd81b 100644
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
 @@ -321,7 +321,7 @@ int hostapd_vlan_if_add(struct hostapd_data *hapd, const char *ifname)
@@ -154,7 +153,7 @@ index f1576594522b..3a46b5745a2a 100644
  
  
 diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
-index 5738c1c97192..651b77e9acfc 100644
+index 582ab61..c97daec 100644
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
 @@ -54,7 +54,8 @@ int hostapd_set_ssid(struct hostapd_data *hapd, const u8 *buf, size_t len);
@@ -168,25 +167,25 @@ index 5738c1c97192..651b77e9acfc 100644
  		      const char *ifname);
  int hostapd_set_ieee8021x(struct hostapd_data *hapd,
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index d91419c42571..5b5e8669805f 100644
+index 510670d..05fefd3 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1812,6 +1812,10 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+@@ -1807,6 +1807,10 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
  	params.unsol_bcast_probe_resp_tmpl =
- 				hostapd_unsol_bcast_probe_resp(hapd, &params);
+ 		hostapd_unsol_bcast_probe_resp(hapd, &params);
  #endif /* CONFIG_IEEE80211AX */
 +        if (hapd->iconf->multiple_bssid) {
 +		params.multiple_bssid_index = hostapd_get_bss_index(hapd);
 +		params.multiple_bssid_count = iface->num_bss;
 +	}
  	hapd->reenable_beacon = 0;
- 
- #ifdef CONFIG_FILS
+ #ifdef CONFIG_SAE
+ 	params.sae_pwe = hapd->conf->sae_pwe;
 diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 9f55865da9d0..95bb27410b85 100644
+index 1a4a6c2..a4b1635 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1150,6 +1150,13 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
+@@ -1152,6 +1152,13 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
  
  	if (!first || first == -1) {
  		u8 *addr = hapd->own_addr;
@@ -200,7 +199,7 @@ index 9f55865da9d0..95bb27410b85 100644
  
  		if (!is_zero_ether_addr(conf->bssid)) {
  			/* Allocate the configured BSSID. */
-@@ -1177,7 +1184,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
+@@ -1179,7 +1186,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
  				   conf->iface, addr, hapd,
  				   &hapd->drv_priv, force_ifname, if_addr,
  				   conf->bridge[0] ? conf->bridge : NULL,
@@ -210,11 +209,11 @@ index 9f55865da9d0..95bb27410b85 100644
  				   MACSTR ")", MAC2STR(hapd->own_addr));
  			hapd->interface_added = 0;
 diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 7c63e8879187..fdb92da7a287 100644
+index 8ea88b1..e427007 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1555,6 +1555,13 @@ struct wpa_driver_ap_params {
- 	 * Unsolicited broadcast probe response template length
+@@ -1582,6 +1582,13 @@ struct wpa_driver_ap_params {
+ 	 * Unsolicited broadcast Probe Response template length
  	 */
  	size_t unsol_bcast_probe_resp_tmpl_len;
 +
@@ -227,7 +226,7 @@ index 7c63e8879187..fdb92da7a287 100644
  };
  
  struct wpa_driver_mesh_bss_params {
-@@ -3292,7 +3299,8 @@ struct wpa_driver_ops {
+@@ -3344,7 +3351,8 @@ struct wpa_driver_ops {
  	int (*if_add)(void *priv, enum wpa_driver_if_type type,
  		      const char *ifname, const u8 *addr, void *bss_ctx,
  		      void **drv_priv, char *force_ifname, u8 *if_addr,
@@ -238,7 +237,7 @@ index 7c63e8879187..fdb92da7a287 100644
  	/**
  	 * if_remove - Remove a virtual interface
 diff --git a/wpa_supplicant/driver_i.h b/wpa_supplicant/driver_i.h
-index 0852b9929428..996bf11ab6a6 100644
+index e97af75..73d34ea 100644
 --- a/wpa_supplicant/driver_i.h
 +++ b/wpa_supplicant/driver_i.h
 @@ -444,7 +444,7 @@ static inline int wpa_drv_if_add(struct wpa_supplicant *wpa_s,
@@ -251,8 +250,7 @@ index 0852b9929428..996bf11ab6a6 100644
  }
  
 -- 
-2.25.0
-
+2.7.4
 
 From 1b43dccf472a6d3067831cab41c7d3f8860e06db Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
@@ -263,18 +261,18 @@ Add the code required to send the multiple bssid setup info to the kernel.
 
 Signed-off-by: John Crispin <john@phrozen.org>
 ---
- src/drivers/driver.h                 | 34 +++++++++++++++-
- src/drivers/driver_nl80211.c         | 60 +++++++++++++++++++++++-----
- src/drivers/driver_nl80211.h         |  4 +-
+ src/drivers/driver.h                 | 34 ++++++++++++++++++--
+ src/drivers/driver_nl80211.c         | 60 ++++++++++++++++++++++++++++++------
+ src/drivers/driver_nl80211.h         |  4 ++-
  src/drivers/driver_nl80211_monitor.c |  2 +-
- src/drivers/nl80211_copy.h           | 23 +++++++++++
- 5 files changed, 110 insertions(+), 13 deletions(-)
+ src/drivers/nl80211_copy.h           | 21 +++++++++++++
+ 5 files changed, 108 insertions(+), 13 deletions(-)
 
 diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index fdb92da7a287..bfbb938ea01c 100644
+index e427007..50324f9 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1224,6 +1224,8 @@ struct wowlan_triggers {
+@@ -1226,6 +1226,8 @@ struct wowlan_triggers {
  	u8 rfkill_release;
  };
  
@@ -283,7 +281,7 @@ index fdb92da7a287..bfbb938ea01c 100644
  struct wpa_driver_ap_params {
  	/**
  	 * head - Beacon head from IEEE 802.11 header to IEs before TIM IE
-@@ -1557,11 +1559,39 @@ struct wpa_driver_ap_params {
+@@ -1584,11 +1586,39 @@ struct wpa_driver_ap_params {
  	size_t unsol_bcast_probe_resp_tmpl_len;
  
  	/**
@@ -326,12 +324,12 @@ index fdb92da7a287..bfbb938ea01c 100644
  
  struct wpa_driver_mesh_bss_params {
 diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 38660b72f161..e1b337448ee0 100644
+index f4c6461..41962eb 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4671,6 +4671,27 @@ static int wpa_driver_nl80211_set_ap(void *priv,
- 
- #endif /* CONFIG_IEEE80211AX */
+@@ -4763,6 +4763,27 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+ 		goto fail;
+ #endif /* CONFIG_FILS */
  
 +	if (params->multiple_bssid_count) {
 +		nla_put_u8(msg, NL80211_ATTR_MULTIPLE_BSSID_INDEX,
@@ -357,7 +355,7 @@ index 38660b72f161..e1b337448ee0 100644
  	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
  				       NULL, NULL, NULL, NULL);
  	if (ret) {
-@@ -5267,13 +5288,13 @@ const char * nl80211_iftype_str(enum nl80211_iftype mode)
+@@ -5362,13 +5383,13 @@ const char * nl80211_iftype_str(enum nl80211_iftype mode)
  	}
  }
  
@@ -373,7 +371,7 @@ index 38660b72f161..e1b337448ee0 100644
  {
  	struct nl_msg *msg;
  	int ifidx;
-@@ -5302,6 +5323,17 @@ static int nl80211_create_iface_once(struct wpa_driver_nl80211_data *drv,
+@@ -5397,6 +5418,17 @@ static int nl80211_create_iface_once(struct wpa_driver_nl80211_data *drv,
  			goto fail;
  	}
  
@@ -391,7 +389,7 @@ index 38660b72f161..e1b337448ee0 100644
  	/*
  	 * Tell cfg80211 that the interface belongs to the socket that created
  	 * it, and the interface should be deleted when the socket is closed.
-@@ -5355,12 +5387,15 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
+@@ -5454,12 +5486,15 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
  			 const char *ifname, enum nl80211_iftype iftype,
  			 const u8 *addr, int wds,
  			 int (*handler)(struct nl_msg *, void *),
@@ -409,7 +407,7 @@ index 38660b72f161..e1b337448ee0 100644
  
  	/* if error occurred and interface exists already */
  	if (ret == -ENFILE && if_nametoindex(ifname)) {
-@@ -5386,7 +5421,9 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
+@@ -5485,7 +5520,9 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
  
  		/* Try to create the interface again */
  		ret = nl80211_create_iface_once(drv, ifname, iftype, addr,
@@ -420,7 +418,7 @@ index 38660b72f161..e1b337448ee0 100644
  	}
  
  	if (ret >= 0 && is_p2p_net_interface(iftype)) {
-@@ -7382,7 +7419,7 @@ static int i802_set_wds_sta(void *priv, const u8 *addr, int aid, int val,
+@@ -7491,7 +7528,7 @@ static int i802_set_wds_sta(void *priv, const u8 *addr, int aid, int val,
  		if (!if_nametoindex(name)) {
  			if (nl80211_create_iface(drv, name,
  						 NL80211_IFTYPE_AP_VLAN,
@@ -429,7 +427,7 @@ index 38660b72f161..e1b337448ee0 100644
  			    0)
  				return -1;
  			if (bridge_ifname &&
-@@ -7729,7 +7766,9 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
+@@ -7838,7 +7875,9 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
  				     void *bss_ctx, void **drv_priv,
  				     char *force_ifname, u8 *if_addr,
  				     const char *bridge, int use_existing,
@@ -440,7 +438,7 @@ index 38660b72f161..e1b337448ee0 100644
  {
  	enum nl80211_iftype nlmode;
  	struct i802_bss *bss = priv;
-@@ -7746,7 +7785,8 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
+@@ -7855,7 +7894,8 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
  		os_memset(&p2pdev_info, 0, sizeof(p2pdev_info));
  		ifidx = nl80211_create_iface(drv, ifname, nlmode, addr,
  					     0, nl80211_wdev_handler,
@@ -450,7 +448,7 @@ index 38660b72f161..e1b337448ee0 100644
  		if (!p2pdev_info.wdev_id_set || ifidx != 0) {
  			wpa_printf(MSG_ERROR, "nl80211: Failed to create a P2P Device interface %s",
  				   ifname);
-@@ -7762,7 +7802,9 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
+@@ -7871,7 +7911,9 @@ static int wpa_driver_nl80211_if_add(void *priv, enum wpa_driver_if_type type,
  			   (long long unsigned int) p2pdev_info.wdev_id);
  	} else {
  		ifidx = nl80211_create_iface(drv, ifname, nlmode, addr,
@@ -462,10 +460,10 @@ index 38660b72f161..e1b337448ee0 100644
  			added = 0;
  			ifidx = if_nametoindex(ifname);
 diff --git a/src/drivers/driver_nl80211.h b/src/drivers/driver_nl80211.h
-index 017c025a0d75..bc662479fcb7 100644
+index 940d82c..389767d 100644
 --- a/src/drivers/driver_nl80211.h
 +++ b/src/drivers/driver_nl80211.h
-@@ -240,7 +240,9 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
+@@ -251,7 +251,9 @@ int nl80211_create_iface(struct wpa_driver_nl80211_data *drv,
  			 const char *ifname, enum nl80211_iftype iftype,
  			 const u8 *addr, int wds,
  			 int (*handler)(struct nl_msg *, void *),
@@ -477,7 +475,7 @@ index 017c025a0d75..bc662479fcb7 100644
  unsigned int nl80211_get_assoc_freq(struct wpa_driver_nl80211_data *drv);
  int nl80211_get_assoc_ssid(struct wpa_driver_nl80211_data *drv, u8 *ssid);
 diff --git a/src/drivers/driver_nl80211_monitor.c b/src/drivers/driver_nl80211_monitor.c
-index 7ff55f149a61..ac935d87343b 100644
+index 7ff55f1..ac935d8 100644
 --- a/src/drivers/driver_nl80211_monitor.c
 +++ b/src/drivers/driver_nl80211_monitor.c
 @@ -381,7 +381,7 @@ int nl80211_create_monitor_interface(struct wpa_driver_nl80211_data *drv)
@@ -490,12 +488,12 @@ index 7ff55f149a61..ac935d87343b 100644
  	if (drv->monitor_ifidx == -EOPNOTSUPP) {
  		/*
 diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
-index 9af62af9ac02..24d0f64a3884 100644
+index a4a6119..7c386fd 100644
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -2532,6 +2532,20 @@ enum nl80211_commands {
-  *	unsolicited broadcast probe response. It is a nested attribute, see
-  *	&enum nl80211_unsol_bcast_probe_resp_attributes.
+@@ -2566,6 +2566,20 @@ enum nl80211_commands {
+  * @NL80211_ATTR_HE_MUEDCA_PARAMS: MU-EDCA AC parameters for the
+ 	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS command.
   *
 + * @NL80211_ATTR_MULTIPLE_BSSID_NON_TRANSMITTING: Set the Non-Transmitted flag for this
 + *	BSSIDs beacon.
@@ -514,12 +512,10 @@ index 9af62af9ac02..24d0f64a3884 100644
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -3020,6 +3034,15 @@ enum nl80211_attrs {
+@@ -3064,6 +3078,13 @@ enum nl80211_attrs {
+ 	NL80211_ATTR_DISABLE_HE,
  
- 	NL80211_ATTR_UNSOL_BCAST_PROBE_RESP,
- 
-+	NL80211_ATTR_S1G_CAPABILITY,
-+	NL80211_ATTR_S1G_CAPABILITY_MASK,
+ 	NL80211_ATTR_HE_MUEDCA_PARAMS,
 +
 +	NL80211_ATTR_MULTIPLE_BSSID_NON_TRANSMITTING,
 +	NL80211_ATTR_MULTIPLE_BSSID_PARENT,
@@ -531,8 +527,7 @@ index 9af62af9ac02..24d0f64a3884 100644
  
  	__NL80211_ATTR_AFTER_LAST,
 -- 
-2.25.0
-
+2.7.4
 
 From dab7f91edbc5b0207a02656ccb55845f746c1c9f Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
@@ -547,13 +542,13 @@ up over multiple IEs of the same type.
 Signed-off-by: John Crispin <john@phrozen.org>
 Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 ---
- src/ap/ieee802_11.c          | 114 +++++++++++++++++++++++++++++++++++
- src/ap/ieee802_11.h          |   6 +-
+ src/ap/ieee802_11.c          | 114 +++++++++++++++++++++++++++++++++++++++++++
+ src/ap/ieee802_11.h          |   6 ++-
  src/common/ieee802_11_defs.h |   2 +
  3 files changed, 121 insertions(+), 1 deletion(-)
 
 diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 923ff9668e1b..ce1b4c167a16 100644
+index e821066..98968f6 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
 @@ -6,6 +6,7 @@
@@ -564,7 +559,7 @@ index 923ff9668e1b..ce1b4c167a16 100644
  #include "utils/includes.h"
  
  #ifndef CONFIG_NATIVE_WINDOWS
-@@ -5666,4 +5667,117 @@ u8 * hostapd_eid_wb_chsw_wrapper(struct hostapd_data *hapd, u8 *eid)
+@@ -6961,4 +6962,117 @@ u8 * hostapd_eid_wb_chsw_wrapper(struct hostapd_data *hapd, u8 *eid)
  	return eid;
  }
  
@@ -683,7 +678,7 @@ index 923ff9668e1b..ce1b4c167a16 100644
 +
  #endif /* CONFIG_NATIVE_WINDOWS */
 diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index ad330d497832..5a424396064c 100644
+index ad330d4..5a42439 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
 @@ -119,7 +119,10 @@ u8 * hostapd_eid_time_zone(struct hostapd_data *hapd, u8 *eid);
@@ -706,10 +701,10 @@ index ad330d497832..5a424396064c 100644
  
  #endif /* IEEE802_11_H */
 diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 6e6f74d60a39..cfc52a80baf0 100644
+index c887cbb..5611e9f 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -452,6 +452,8 @@
+@@ -457,6 +457,8 @@
  #define WLAN_EID_RSNX 244
  #define WLAN_EID_EXTENSION 255
  
@@ -719,8 +714,7 @@ index 6e6f74d60a39..cfc52a80baf0 100644
  #define WLAN_EID_EXT_ASSOC_DELAY_INFO 1
  #define WLAN_EID_EXT_FILS_REQ_PARAMS 2
 -- 
-2.25.0
-
+2.7.4
 
 From fccd886d293446f75bef20ef7325f5657a3ebe35 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
@@ -744,7 +738,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  2 files changed, 30 insertions(+), 2 deletions(-)
 
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 5b5e8669805f..57a9f7e2e8d0 100644
+index 05fefd3..a6b1e19 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
 @@ -293,7 +293,7 @@ static const u8 * hostapd_vendor_wpa_ie(struct hostapd_data *hapd,
@@ -785,7 +779,7 @@ index 5b5e8669805f..57a9f7e2e8d0 100644
  	/* eCSA IE */
  	csa_pos = hostapd_eid_ecsa(hapd, pos);
  	if (csa_pos != pos)
-@@ -826,6 +834,10 @@ void handle_probe_req(struct hostapd_data *hapd,
+@@ -836,6 +844,10 @@ void handle_probe_req(struct hostapd_data *hapd,
                 .frame_info = fi,
         };
  
@@ -796,7 +790,7 @@ index 5b5e8669805f..57a9f7e2e8d0 100644
  	if (len < IEEE80211_HDRLEN)
  		return;
  	ie = ((const u8 *) mgmt) + IEEE80211_HDRLEN;
-@@ -1075,7 +1087,7 @@ void handle_probe_req(struct hostapd_data *hapd,
+@@ -1085,7 +1097,7 @@ void handle_probe_req(struct hostapd_data *hapd,
  				hapd->cs_c_off_ecsa_proberesp;
  	}
  
@@ -805,17 +799,17 @@ index 5b5e8669805f..57a9f7e2e8d0 100644
  				    csa_offs_len ? csa_offs : NULL,
  				    csa_offs_len, 0);
  
-@@ -1757,6 +1769,8 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
+@@ -1746,6 +1758,8 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
  	params->head = NULL;
  	os_free(params->proberesp);
  	params->proberesp = NULL;
 +	os_free(params->multiple_bssid_ies);
 +	params->multiple_bssid_ies = NULL;
  #ifdef CONFIG_FILS
- 	os_free(params->fils_discovery_tmpl);
- 	params->fils_discovery_tmpl = NULL;
-@@ -1813,8 +1827,20 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
- 				hostapd_unsol_bcast_probe_resp(hapd, &params);
+ 	os_free(params->fd_frame_tmpl);
+ 	params->fd_frame_tmpl = NULL;
+@@ -1808,8 +1822,20 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+ 		hostapd_unsol_bcast_probe_resp(hapd, &params);
  #endif /* CONFIG_IEEE80211AX */
          if (hapd->iconf->multiple_bssid) {
 +		int len = hostapd_eid_multiple_bssid_len(hapd);
@@ -834,9 +828,9 @@ index 5b5e8669805f..57a9f7e2e8d0 100644
 +		params.multiple_bssid_ie_len = end - params.multiple_bssid_ies;
  	}
  	hapd->reenable_beacon = 0;
- 
+ #ifdef CONFIG_SAE
 diff --git a/src/ap/ieee802_11_shared.c b/src/ap/ieee802_11_shared.c
-index b054d568324c..b9c04f040d43 100644
+index 7c20f3b..ac25963 100644
 --- a/src/ap/ieee802_11_shared.c
 +++ b/src/ap/ieee802_11_shared.c
 @@ -357,6 +357,8 @@ static void hostapd_ext_capab_byte(struct hostapd_data *hapd, u8 *pos, int idx)
@@ -849,8 +843,7 @@ index b054d568324c..b9c04f040d43 100644
  	case 3: /* Bits 24-31 */
  #ifdef CONFIG_WNM_AP
 -- 
-2.25.0
-
+2.7.4
 
 From 65a6aa2616be3589a0549c83ed7b1774344625a2 Mon Sep 17 00:00:00 2001
 From: John Crispin <john@phrozen.org>
@@ -867,10 +860,10 @@ Signed-off-by: John Crispin <john@phrozen.org>
  1 file changed, 6 insertions(+), 2 deletions(-)
 
 diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index ce1b4c167a16..b043676720dd 100644
+index 98968f6..45924bb 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -2717,7 +2717,11 @@ int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -3863,7 +3863,11 @@ int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
  	}
  	if (j == 32)
  		return -1;
@@ -883,7 +876,7 @@ index ce1b4c167a16..b043676720dd 100644
  	if (aid > 2007)
  		return -1;
  
-@@ -4410,7 +4414,7 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -5556,7 +5560,7 @@ static void handle_assoc(struct hostapd_data *hapd,
  		goto fail;
  	omit_rsnxe = !get_ie(pos, left, WLAN_EID_RSNX);
  
@@ -893,5 +886,5 @@ index ce1b4c167a16..b043676720dd 100644
  			       HOSTAPD_LEVEL_INFO, "No room for more AIDs");
  		resp = WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA;
 -- 
-2.25.0
+2.7.4
 

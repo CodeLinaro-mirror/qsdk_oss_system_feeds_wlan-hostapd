@@ -16,11 +16,11 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  src/drivers/nl80211_copy.h   | 38 ++++++++++++++++++++++++++++++++++++
  2 files changed, 69 insertions(+)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index b5c7abb3a063..f45ae51e0e46 100644
---- a/src/drivers/driver_nl80211.c
-+++ b/src/drivers/driver_nl80211.c
-@@ -4823,6 +4823,37 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+Index: hostapd-2021-02-18/src/drivers/driver_nl80211.c
+===================================================================
+--- hostapd-2021-02-18.orig/src/drivers/driver_nl80211.c
++++ hostapd-2021-02-18/src/drivers/driver_nl80211.c
+@@ -4867,6 +4867,37 @@ static int wpa_driver_nl80211_set_ap(voi
  		nla_nest_end(msg, ies);
  	}
  
@@ -58,13 +58,13 @@ index b5c7abb3a063..f45ae51e0e46 100644
  	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
  				       NULL, NULL, NULL, NULL);
  	if (ret) {
-diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
-index 3709808fce70..1a30c9382918 100644
---- a/src/drivers/nl80211_copy.h
-+++ b/src/drivers/nl80211_copy.h
-@@ -2559,6 +2559,17 @@ enum nl80211_commands {
+Index: hostapd-2021-02-18/src/drivers/nl80211_copy.h
+===================================================================
+--- hostapd-2021-02-18.orig/src/drivers/nl80211_copy.h
++++ hostapd-2021-02-18/src/drivers/nl80211_copy.h
+@@ -2587,6 +2587,17 @@ enum nl80211_commands {
   *
-  * @NL80211_ATTR_MULTIPLE_BSSID_EMA: Shall the multiple BSS beacons be sent out in EMA mode. 
+  * @NL80211_ATTR_MULTIPLE_BSSID_EMA: Shall the multiple BSS beacons be sent out in EMA mode.
   *
 + * @NL80211_ATTR_RNR_OFFSETS: Offsets for Reduced neighbor element (RNR) of
 + *	type &enum nl80211_rnr_ies_attributes.
@@ -80,21 +80,19 @@ index 3709808fce70..1a30c9382918 100644
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -3061,6 +3072,9 @@ enum nl80211_attrs {
- 	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_COUNT,
+@@ -3098,6 +3109,8 @@ enum nl80211_attrs {
  	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_COLOR,
  	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_IES,
-+
+ 
 +	NL80211_ATTR_RNR_OFFSETS,
 +
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
-@@ -7090,4 +7104,28 @@ enum nl80211_unsol_bcast_probe_resp_attributes {
- 	NL80211_UNSOL_BCAST_PROBE_RESP_MAX =
- 		__NL80211_UNSOL_BCAST_PROBE_RESP_LAST - 1
+@@ -7325,4 +7338,27 @@ enum nl80211_sar_specs_attrs {
+ 	NL80211_SAR_ATTR_SPECS_MAX = __NL80211_SAR_ATTR_SPECS_LAST - 1,
  };
-+
+ 
 +/**
 + * enum nl80211_rnr_ies_attributes - Reduced neighbor report (RNR) offsets.
 + *	Used only when enhanced multi-BSSID advertisements (EMA) are enabled.
@@ -119,6 +117,3 @@ index 3709808fce70..1a30c9382918 100644
 +	NL80211_RNR_IES_ATTR_MAX = __NL80211_RNR_IES_ATTR_LAST - 1
 +};
  #endif /* __LINUX_NL80211_H */
--- 
-2.25.0
-
