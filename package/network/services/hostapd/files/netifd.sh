@@ -661,6 +661,8 @@ EOF
 
 wpa_supplicant_add_network() {
 	local ifname="$1"
+	local noscan="$4"
+	local disable_40mhz_scan=0
 
 	_wpa_supplicant_common "$1"
 	wireless_vif_parse_encryption
@@ -701,6 +703,9 @@ wpa_supplicant_add_network() {
 		}
 		wpa_key_mgmt="SAE"
 		scan_ssid=""
+		[ -n "$noscan" ] && {
+			disable_40mhz_scan=$noscan
+		}
 	}
 
 	[[ "$_w_mode" = "adhoc" -o "$_w_mode" = "mesh" ]] && append network_data "$_w_modestr" "$N$T"
@@ -843,6 +848,7 @@ network={
 	ssid="$ssid"
 	key_mgmt=$key_mgmt
 	$network_data
+	disable_40mhz_scan=$disable_40mhz_scan
 }
 EOF
 	return 0
