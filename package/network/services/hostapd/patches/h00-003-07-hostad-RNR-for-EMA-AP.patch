@@ -1,7 +1,7 @@
-From 5882ec271c404903d564a6ef415b1bfff7e8d5d3 Mon Sep 17 00:00:00 2001
+From 78bf22c80ae49d8721283b683fce8e86a75ec03d Mon Sep 17 00:00:00 2001
 From: Aloka Dixit <alokad@codeaurora.org>
 Date: Thu, 10 Dec 2020 15:13:11 -0800
-Subject: [PATCH 7/9] hostad: RNR for EMA AP
+Subject: [PATCH] hostad: RNR for EMA AP
 
 (1) Enable RNR by default for EMA AP.
 (2) Only for EMA AP, split reduced neighbor report in as many groups as
@@ -14,15 +14,17 @@ Subject: [PATCH 7/9] hostad: RNR for EMA AP
 
 Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 ---
- src/ap/beacon.c      |  38 ++++++++++---
- src/ap/ieee802_11.c  | 132 ++++++++++++++++++++++++++++++++++---------
- src/ap/ieee802_11.h  |  14 +++--
- src/drivers/driver.h |  23 ++++++++
- 4 files changed, 166 insertions(+), 41 deletions(-)
+ src/ap/beacon.c      |  38 ++++++--
+ src/ap/ieee802_11.c  | 222 +++++++++++++++++++++++++++++++++----------
+ src/ap/ieee802_11.h  |  14 +--
+ src/drivers/driver.h |  23 +++++
+ 4 files changed, 230 insertions(+), 67 deletions(-)
 
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index 55266be05b0c..2ed02211bbb3 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -482,9 +482,11 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -482,9 +482,11 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
  	buflen += hostapd_eid_owe_trans_len(hapd);
  	buflen += hostapd_eid_dpp_cc_len(hapd);
  	if (hapd->iconf->multiple_bssid)
@@ -36,7 +38,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP);
  
  	resp = os_zalloc(buflen);
-@@ -544,9 +546,11 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -544,9 +546,11 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
  	pos = hostapd_get_mde(hapd, pos, epos - pos);
  
          if (hapd->iconf->multiple_bssid)
@@ -51,7 +53,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  
  	/* eCSA IE */
  	csa_pos = hostapd_eid_ecsa(hapd, pos);
-@@ -1812,18 +1816,32 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1812,18 +1816,32 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  		if (hapd != hapd->iface->bss[0])
  			params->multiple_bssid_parent = hapd->iface->bss[0]->conf->iface;
  
@@ -88,7 +90,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  		params->multiple_bssid_ie_len = end - params->multiple_bssid_ies;
  		if ((params->multiple_bssid_ie_count > 1) &&
  		    (ext_cap_len >= 13) && (ext_cap_pos[12] & 0x08))
-@@ -1845,6 +1863,8 @@ void ieee802_11_free_ap_params(struct wp
+@@ -1845,6 +1863,8 @@ void ieee802_11_free_ap_params(struct wpa_driver_ap_params *params)
  	params->proberesp = NULL;
  	os_free(params->multiple_bssid_ies);
  	params->multiple_bssid_ies = NULL;
@@ -97,30 +99,38 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  #ifdef CONFIG_FILS
  	os_free(params->fd_frame_tmpl);
  	params->fd_frame_tmpl = NULL;
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 1c7503f2e66e..dda22d71db01 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -90,6 +90,20 @@ static void handle_auth(struct hostapd_d
+@@ -89,6 +89,26 @@ static void handle_auth(struct hostapd_data *hapd,
+ 			int rssi, int from_queue,
  			struct hostapd_frame_info *fi);
  
- 
++enum colocation_mode {
++	NO_COLOCATED_6GHZ,
++	STANDALONE_6GHZ,
++	COLOCATED_6GHZ,
++	COLOCATED_LOWER_BAND,
++};
++
 +static size_t hostapd_eid_rnr_iface_len(struct hostapd_data *hapd,
 +				 struct hostapd_data *reporting_hapd,
 +				 size_t *current_len,
 +				 int skip_ssid_start, int skip_ssid_end);
-+static u8 *hostapd_eid_rnr_iface(struct hostapd_data *hapd,
-+				 struct hostapd_data *reporting_hapd,
-+				 u8 *eid, size_t *current_len,
-+				 int skip_ssid_start, int skip_ssid_end);
++static u8 * hostapd_eid_rnr_iface(struct hostapd_data *hapd,
++				  struct hostapd_data *reporting_hapd,
++				  u8 *eid, size_t *current_len,
++				  int skip_ssid_start, int skip_ssid_end);
 +static u8 * hostapd_eid_rnr_colocation(struct hostapd_data *hapd, u8 *eid,
 +				       size_t *current_len);
-+static u8 *hostapd_eid_neighbor_report_db(struct hostapd_data *hapd, u8 *eid,
-+					 size_t *current_len);
-+static bool is_6ghz_colocated(struct hostapd_data *hapd);
-+
++static u8 * hostapd_eid_neighbor_report_db(struct hostapd_data *hapd, u8 *eid,
++					   size_t *current_len);
++static enum colocation_mode get_colocation_mode(struct hostapd_data *hapd);
+ 
  u8 * hostapd_eid_multi_ap(struct hostapd_data *hapd, u8 *eid)
  {
- 	u8 multi_ap_val = 0;
-@@ -7050,7 +7064,7 @@ int hostapd_config_read_maclist(const ch
+@@ -7050,7 +7070,7 @@ int hostapd_config_read_maclist(const char *fname,
  
  static size_t hostapd_eid_multiple_bssid_chunk_len(struct hostapd_data *hapd,
  						   struct hostapd_data *req_bss,
@@ -129,7 +139,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  						   const u8 *known_bssids,
  						   u8 known_bssids_len)
  {
-@@ -7084,7 +7098,7 @@ static size_t hostapd_eid_multiple_bssid
+@@ -7084,7 +7104,7 @@ static size_t hostapd_eid_multiple_bssid_chunk_len(struct hostapd_data *hapd,
  		    conf->ignore_broadcast_ssid == 2 || bss == req_bss)
  			nontx_profile_len += conf->ssid.ssid_len;
  
@@ -138,7 +148,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  			nontx_profile_len += 2;
  
  		if (wpa_auth_get_wpa_ie(bss->wpa_auth, &ies_len))
-@@ -7106,19 +7120,34 @@ multiple_bssid_too_big:
+@@ -7106,19 +7126,34 @@ multiple_bssid_too_big:
  
  
  size_t hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd,
@@ -180,7 +190,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  	return len;
  }
  
-@@ -7126,7 +7155,7 @@ size_t hostapd_eid_multiple_bssid_len(st
+@@ -7126,7 +7161,7 @@ size_t hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd,
  static u8 * hostapd_eid_multiple_bssid_chunk(struct hostapd_data *hapd,
  					     struct hostapd_data *req_bss,
  					     u8 *eid, u8 *end, int *count,
@@ -189,7 +199,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  					     const u8 *known_bssids,
  					     u8 known_bssids_len)
  {
-@@ -7176,7 +7205,7 @@ static u8 * hostapd_eid_multiple_bssid_c
+@@ -7176,7 +7211,7 @@ static u8 * hostapd_eid_multiple_bssid_chunk(struct hostapd_data *hapd,
  		*eid++ = WLAN_EID_MULTIPLE_BSSID_INDEX;
  		index_size_offset = eid++;
  		*eid++ = i;
@@ -198,7 +208,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  			dtim_offset[i] = eid;
  			*eid++ = conf->dtim_period;
  			*eid++ = 0xFF;
-@@ -7222,30 +7251,63 @@ multiple_bssid_too_big:
+@@ -7222,30 +7257,63 @@ multiple_bssid_too_big:
  
  u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
  				struct hostapd_data *req_bss, u8 *eid, u8 *end,
@@ -261,13 +271,13 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 +		if (hapd->conf->rnr_beacon)
 +			rnr_eid = hostapd_eid_neighbor_report_db(hapd, rnr_eid,
 +								 &current_len);
-+		if (is_6ghz_colocated(hapd) == true)
++		if (get_colocation_mode(hapd) == COLOCATED_LOWER_BAND)
 +			rnr_eid = hostapd_eid_rnr_colocation(hapd, rnr_eid,
 +							     &current_len);
  	}
  
  	if (!eid_count || !(*eid_count)) {
-@@ -7280,9 +7342,10 @@ u8 * hostapd_eid_multiple_bssid(struct h
+@@ -7280,9 +7348,10 @@ u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
  }
  
  
@@ -280,18 +290,20 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  {
  	size_t total_len = 0;
  	int i, tbtt_count = 0, start = 0;
-@@ -7303,6 +7366,10 @@ size_t hostapd_eid_rnr_iface_len(struct
- 			    hapd->conf->ignore_broadcast_ssid)
- 				continue;
+@@ -7300,7 +7369,11 @@ size_t hostapd_eid_rnr_iface_len(struct hostapd_data *hapd,
  
-+			if ((skip_ssid_start != -1) && (skip_ssid_end != -1) &&
-+			    (i >= skip_ssid_start) && (i < skip_ssid_end))
+ 		for (i = start; i < hapd->iface->num_bss; i++) {
+ 			if (hapd->iface->bss[i] == reporting_hapd ||
+-			    hapd->conf->ignore_broadcast_ssid)
++			    hapd->iface->bss[i]->conf->ignore_broadcast_ssid)
 +				continue;
 +
++			if ((skip_ssid_start != -1) && (skip_ssid_end != -1) &&
++			    (i >= skip_ssid_start) && (i < skip_ssid_end))
+ 				continue;
+ 
  			if ((*current_len + TBTT_INFO_LENGTH > 255) ||
- 			    (tbtt_count >= TBTT_INFO_COUNT_MAX))
- 				break;
-@@ -7338,7 +7405,7 @@ static size_t hostapd_eid_rnr_colocation
+@@ -7338,7 +7411,7 @@ static size_t hostapd_eid_rnr_colocation_len(struct hostapd_data *hapd,
  			continue;
  
  		len += hostapd_eid_rnr_iface_len(iface->bss[0], hapd,
@@ -300,28 +312,98 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  	}
  	return len;
  }
-@@ -7401,9 +7468,18 @@ size_t hostapd_eid_rnr_len(struct hostap
- 	size_t len = 0, current_len = 0;
+@@ -7371,48 +7444,69 @@ static size_t hostapd_eid_neighbor_report_db_len(struct hostapd_data *hapd,
+ }
  
- 	if (hapd->conf->rnr_beacon) {
--		if (hapd->iface->num_bss > 1)
-+		if (!hapd->iconf->multiple_bssid && hapd->iface->num_bss > 1)
- 			len += hostapd_eid_rnr_iface_len(hapd, hapd,
--							 &current_len);
-+							 &current_len, -1, -1);
+ 
+-static bool is_6ghz_colocated(struct hostapd_data *hapd)
++static enum colocation_mode get_colocation_mode(struct hostapd_data *hapd)
+ {
+ 	u8 i;
+-	struct hostapd_iface *iface;
++	bool is_6ghz = is_6ghz_op_class(hapd->iconf->op_class);
+ 
+ 	if ((hapd->iface == NULL) || (hapd->iface->interfaces == NULL))
+-		return false;
++		return NO_COLOCATED_6GHZ;
+ 
+-	if (is_6ghz_op_class(hapd->iconf->op_class) ||
+-	    hapd->iface->interfaces->count == 1)
+-		return false;
++	if (is_6ghz && (hapd->iface->interfaces->count == 1))
++		return STANDALONE_6GHZ;
+ 
+ 	for (i = 0; i < hapd->iface->interfaces->count; i++) {
+-		iface = hapd->iface->interfaces->iface[i];
++		struct hostapd_iface *iface = hapd->iface->interfaces->iface[i];
++		bool is_colocated_6ghz = is_6ghz_op_class(iface->conf->op_class);
 +
-+		if (type == WLAN_FC_STYPE_BEACON && hapd->iconf->ema_beacon) {
-+			/*
-+			 * APs from neighbor report and colocated 6GHz APs
-+			 * are added in a separate element for EMA hence
-+			 * current_len is reset to 0.
-+			 */
-+			current_len = 0;
-+		}
+ 		if (iface == hapd->iface)
+ 			continue;
  
- 		if ((type == WLAN_FC_STYPE_BEACON) &&
- 		     !dl_list_empty(&hapd->nr_db))
-@@ -7420,7 +7496,8 @@ size_t hostapd_eid_rnr_len(struct hostap
+-		if (is_6ghz_op_class(iface->bss[0]->iconf->op_class) &&
+-		    iface->conf->he_co_locate)
+-			return true;
++		if (!is_6ghz && is_colocated_6ghz)
++			return COLOCATED_LOWER_BAND;
++		else if (is_6ghz && !is_colocated_6ghz)
++			return COLOCATED_6GHZ;
+ 	}
+-	return false;
++
++	if (is_6ghz)
++		return STANDALONE_6GHZ;
++
++	return NO_COLOCATED_6GHZ;
+ }
+ 
+ 
+ size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type)
+ {
+ 	size_t len = 0, current_len = 0;
++	enum colocation_mode mode = get_colocation_mode(hapd);
+ 
+-	if (hapd->conf->rnr_beacon) {
+-		if (hapd->iface->num_bss > 1)
+-			len += hostapd_eid_rnr_iface_len(hapd, hapd,
+-							 &current_len);
+-
+-		if ((type == WLAN_FC_STYPE_BEACON) &&
+-		     !dl_list_empty(&hapd->nr_db))
++	switch (type) {
++	case WLAN_FC_STYPE_BEACON:
++		if (hapd->conf->rnr_beacon && !dl_list_empty(&hapd->nr_db))
+ 			len += hostapd_eid_neighbor_report_db_len(hapd,
+ 								  &current_len);
+-	}
++		/* fallthrough */
++
++	case WLAN_FC_STYPE_PROBE_RESP:
++		if (mode == COLOCATED_LOWER_BAND)
++			len += hostapd_eid_rnr_colocation_len(hapd,
++							      &current_len);
+ 
+-	if ((true == is_6ghz_colocated(hapd)) && type != WLAN_FC_STYPE_ACTION)
+-		len += hostapd_eid_rnr_colocation_len(hapd, &current_len);
++		if (hapd->conf->rnr_beacon && hapd->iface->num_bss > 1 &&
++		    !hapd->iconf->multiple_bssid)
++			len += hostapd_eid_rnr_iface_len(hapd, hapd,
++							 &current_len, -1, -1);
++		break;
++
++	case WLAN_FC_STYPE_ACTION:
++		if (hapd->iface->num_bss > 1 && mode == STANDALONE_6GHZ)
++			len += hostapd_eid_rnr_iface_len(hapd, hapd,
++							 &current_len, -1, -1);
++		break;
++
++	default:
++		return 0;
++	}
+ 
+ 	return len;
+ }
+@@ -7420,7 +7514,8 @@ size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type)
  
  static u8 *hostapd_eid_rnr_iface(struct hostapd_data *hapd,
  				 struct hostapd_data *reporting_hapd,
@@ -331,18 +413,20 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  {
  	u8 *eid_start = eid, *tbtt_count_pos = NULL;
  	u8 tbtt_count = 0, op_class, channel, bss_param;
-@@ -7464,6 +7541,10 @@ static u8 *hostapd_eid_rnr_iface(struct
- 			    hapd->conf->ignore_broadcast_ssid)
- 				continue;
+@@ -7461,7 +7556,11 @@ static u8 *hostapd_eid_rnr_iface(struct hostapd_data *hapd,
+ 			bss = iface->bss[i];
  
-+			if ((skip_ssid_start != -1) && (skip_ssid_end != -1) &&
-+			    (i >= skip_ssid_start) && (i < skip_ssid_end))
+ 			if (bss == reporting_hapd ||
+-			    hapd->conf->ignore_broadcast_ssid)
++			    bss->conf->ignore_broadcast_ssid)
 +				continue;
 +
++			if ((skip_ssid_start != -1) && (skip_ssid_end != -1) &&
++			    (i >= skip_ssid_start) && (i < skip_ssid_end))
+ 				continue;
+ 
  			if ((*current_len + TBTT_INFO_LENGTH > 255) ||
- 			    (tbtt_count >= TBTT_INFO_COUNT_MAX))
- 				break;
-@@ -7523,7 +7604,7 @@ static u8 * hostapd_eid_rnr_colocation(s
+@@ -7523,7 +7622,7 @@ static u8 * hostapd_eid_rnr_colocation(struct hostapd_data *hapd, u8 *eid,
  			continue;
  
  		eid = hostapd_eid_rnr_iface(iface->bss[0], hapd, eid,
@@ -351,22 +435,58 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  	}
  	return eid;
  }
-@@ -7578,10 +7659,9 @@ u8 * hostapd_eid_rnr(struct hostapd_data
+@@ -7576,19 +7675,38 @@ u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
+ {
+ 	u8 *eid_start = eid;
  	size_t current_len = 0;
++	enum colocation_mode mode = get_colocation_mode(hapd);
  
- 	if (hapd->conf->rnr_beacon) {
+-	if (hapd->conf->rnr_beacon) {
 -		if (hapd->iface->num_bss > 1)
-+		if (!hapd->iconf->multiple_bssid && hapd->iface->num_bss > 1)
- 			eid = hostapd_eid_rnr_iface(hapd, hapd, eid,
+-			eid = hostapd_eid_rnr_iface(hapd, hapd, eid,
 -						    &current_len);
--
-+						    &current_len, -1, -1);
- 		if (type == WLAN_FC_STYPE_BEACON)
++	switch (type) {
++	case WLAN_FC_STYPE_BEACON:
++		if (hapd->iconf->ema_beacon)
++			return eid_start;
+ 
+-		if (type == WLAN_FC_STYPE_BEACON)
++		if (hapd->conf->rnr_beacon)
  			eid = hostapd_eid_neighbor_report_db(hapd, eid,
  							     &current_len);
+-	}
++		/* fallthrough */
++
++	case WLAN_FC_STYPE_PROBE_RESP:
++		if (mode == COLOCATED_LOWER_BAND)
++			eid = hostapd_eid_rnr_colocation(hapd, eid,
++							 &current_len);
+ 
+-	if ((true == is_6ghz_colocated(hapd)) && type != WLAN_FC_STYPE_ACTION)
+-		eid = hostapd_eid_rnr_colocation(hapd, eid, &current_len);
++		if (hapd->conf->rnr_beacon && hapd->iface->num_bss > 1 &&
++		    !hapd->iconf->multiple_bssid)
++			eid = hostapd_eid_rnr_iface(hapd, hapd, eid,
++						    &current_len, -1, -1);
++		break;
++
++	case WLAN_FC_STYPE_ACTION:
++		if (hapd->iface->num_bss > 1 && mode == STANDALONE_6GHZ)
++			eid = hostapd_eid_rnr_iface(hapd, hapd,	eid,
++						    &current_len, -1, -1);
++		break;
++
++	default:
++		return eid_start;
++	}
+ 
+ 	if (eid == (eid_start + 2))
+ 		return eid_start;
+diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
+index 8e70bc3aa84a..e8ce776561e4 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -129,15 +129,17 @@ u8 * hostapd_eid_time_zone(struct hostap
+@@ -129,15 +129,17 @@ u8 * hostapd_eid_time_zone(struct hostapd_data *hapd, u8 *eid);
  int hostapd_update_time_adv(struct hostapd_data *hapd);
  void hostapd_client_poll_ok(struct hostapd_data *hapd, const u8 *addr);
  u8 * hostapd_eid_bss_max_idle_period(struct hostapd_data *hapd, u8 *eid);
@@ -390,6 +510,8 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type);
  int auth_sae_init_committed(struct hostapd_data *hapd, struct sta_info *sta);
  #ifdef CONFIG_SAE
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 9c6f6c753162..caa0c639f38e 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
 @@ -1232,6 +1232,7 @@ struct wowlan_triggers {
@@ -428,7 +550,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  };
  
  struct wpa_driver_mesh_bss_params {
-@@ -2292,6 +2314,7 @@ struct wpa_bss_params {
+@@ -2291,6 +2313,7 @@ struct wpa_bss_params {
  	int wpa_key_mgmt;
  	int rsn_preauth;
  	enum mfp_options ieee80211w;
@@ -436,3 +558,6 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  };
  
  #define WPA_STA_AUTHORIZED BIT(0)
+-- 
+2.31.1
+
