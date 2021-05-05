@@ -159,7 +159,7 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
 ===================================================================
 --- hostapd-2021-02-20.orig/src/ap/ieee802_11.c
 +++ hostapd-2021-02-20/src/ap/ieee802_11.c
-@@ -7049,13 +7049,15 @@ int hostapd_config_read_maclist(const ch
+@@ -7051,13 +7051,15 @@ int hostapd_config_read_maclist(const ch
  
  
  static int hostapd_eid_multiple_bssid_chunk_len(struct hostapd_data *hapd,
@@ -179,7 +179,7 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
  	struct hostapd_data *bss;
  	struct hostapd_bss_config *conf;
  
-@@ -7063,6 +7065,12 @@ static int hostapd_eid_multiple_bssid_ch
+@@ -7065,6 +7067,12 @@ static int hostapd_eid_multiple_bssid_ch
  		bss = hapd->iface->bss[i];
  		conf = bss->conf;
  
@@ -192,7 +192,7 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
  		/*
  		 * Sublement ID: 1 byte
  		 * Length: 1 byte
-@@ -7073,7 +7081,7 @@ static int hostapd_eid_multiple_bssid_ch
+@@ -7075,7 +7083,7 @@ static int hostapd_eid_multiple_bssid_ch
  		nontx_profile_len = 11;
  
  		if (!conf->ignore_broadcast_ssid ||
@@ -201,7 +201,7 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
  			nontx_profile_len += conf->ssid.ssid_len;
  
  		if (is_beacon)
-@@ -7098,38 +7106,49 @@ multiple_bssid_too_big:
+@@ -7105,28 +7113,32 @@ multiple_bssid_too_big:
  
  
  int hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd,
@@ -216,11 +216,11 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
  	while (count < hapd->iface->num_bss)
 -		len += hostapd_eid_multiple_bssid_chunk_len(hapd, hidden,
 -							    &count, is_beacon);
+-
 +		len += hostapd_eid_multiple_bssid_chunk_len(hapd, req_bss,
 +							    &count, is_beacon,
 +							    known_bssids,
 +							    known_bssids_len);
- 
  	return len;
  }
  
@@ -237,19 +237,21 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
  	struct hostapd_data *bss;
  	struct hostapd_bss_config *conf;
 -	u8 *size_offset, *num_offset;
--	int i;
+-	int i, ie_count = 0;
 +	u8 *size_offset, *num_offset, mask;
-+	int i, j;
++	int i, j, ie_count = 0;
+ 	u8 non_inherit_ie[3] = {0};
  
  	*eid++ = WLAN_EID_MULTIPLE_BSSID;
- 	size_offset = eid++;
+@@ -7134,11 +7146,17 @@ static u8 * hostapd_eid_multiple_bssid_c
  	num_offset = eid++;
  
  	for (i = *count; i < hapd->iface->num_bss; i++) {
 -		bss = hapd->iface->bss[i];
 -		conf = bss->conf;
- 		u8 *bss_size_offset, *index_size_offset, *pos = eid, *rsn;
+ 		u8 *bss_size_offset, *index_size_offset, *pos = eid;
  		u16 capab_info;
+ 		ie_count = 0;
 +		bss = hapd->iface->bss[i];
 +		conf = bss->conf;
 +
@@ -261,7 +263,7 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
  
  		*eid++ = WLAN_EID_SUBELEMENT_NONTRANSMITTED_BSSID_PROFILE;
  		bss_size_offset = eid++;
-@@ -7141,7 +7160,7 @@ static u8 * hostapd_eid_multiple_bssid_c
+@@ -7150,7 +7168,7 @@ static u8 * hostapd_eid_multiple_bssid_c
  		eid += sizeof(capab_info);
  
  		*eid++ = WLAN_EID_SSID;
@@ -270,7 +272,7 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
  			*eid++ = conf->ssid.ssid_len;
  			os_memcpy(eid, conf->ssid.ssid, conf->ssid.ssid_len);
  			eid += conf->ssid.ssid_len;
-@@ -7201,9 +7220,10 @@ multiple_bssid_too_big:
+@@ -7226,9 +7244,10 @@ multiple_bssid_too_big:
  
  
  u8 * hostapd_eid_multiple_bssid(struct hostapd_data *hapd,
@@ -283,7 +285,7 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.c
  {
  	int count = 1, dtim_period;
  	u8 remainder, **dtim_offset = NULL;
-@@ -7220,9 +7240,11 @@ u8 * hostapd_eid_multiple_bssid(struct h
+@@ -7245,9 +7264,11 @@ u8 * hostapd_eid_multiple_bssid(struct h
  			eid_offsets[*eid_count] = eid;
  			*eid_count = *eid_count + 1;
  		}
