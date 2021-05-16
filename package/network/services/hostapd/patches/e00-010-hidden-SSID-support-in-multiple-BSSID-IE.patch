@@ -51,19 +51,21 @@ Index: hostapd-2021-02-20/src/ap/beacon.c
  
  	resp = os_zalloc(buflen);
  	if (resp == NULL)
-@@ -502,9 +506,19 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -502,9 +506,21 @@ static u8 * hostapd_gen_probe_resp(struc
  
  	pos = resp->u.probe_resp.variable;
  	*pos++ = WLAN_EID_SSID;
 -	*pos++ = hapd->conf->ssid.ssid_len;
 -	os_memcpy(pos, hapd->conf->ssid.ssid, hapd->conf->ssid.ssid_len);
 -	pos += hapd->conf->ssid.ssid_len;
-+	if (hapd->conf->ignore_broadcast_ssid == 2) {
++	if (hapd->iconf->multiple_bssid && hidden &&
++	    hapd->conf->ignore_broadcast_ssid == 2) {
 +		/* clear the data, but keep the correct length of the SSID */
 +		*pos++ = hapd->conf->ssid.ssid_len;
 +		os_memset(pos, 0, hapd->conf->ssid.ssid_len);
 +		pos += hapd->conf->ssid.ssid_len;
-+	} else if (hapd->conf->ignore_broadcast_ssid) {
++	} else if (hapd->iconf->multiple_bssid && hidden &&
++		   hapd->conf->ignore_broadcast_ssid) {
 +		*pos++ = 0; /* empty SSID */
 +	} else {
 +		*pos++ = hapd->conf->ssid.ssid_len;
@@ -74,7 +76,7 @@ Index: hostapd-2021-02-20/src/ap/beacon.c
  
  	/* Supported rates */
  	pos = hostapd_eid_supp_rates(hapd, pos);
-@@ -535,7 +549,8 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -535,7 +551,8 @@ static u8 * hostapd_gen_probe_resp(struc
  	pos = hostapd_get_mde(hapd, pos, epos - pos);
  
          if (hapd->iconf->multiple_bssid)
@@ -84,7 +86,7 @@ Index: hostapd-2021-02-20/src/ap/beacon.c
  
  	/* eCSA IE */
  	csa_pos = hostapd_eid_ecsa(hapd, pos);
-@@ -847,10 +862,6 @@ void handle_probe_req(struct hostapd_dat
+@@ -847,10 +864,6 @@ void handle_probe_req(struct hostapd_dat
                 .frame_info = fi,
         };
  
@@ -95,7 +97,7 @@ Index: hostapd-2021-02-20/src/ap/beacon.c
  	if (len < IEEE80211_HDRLEN)
  		return;
  	ie = ((const u8 *) mgmt) + IEEE80211_HDRLEN;
-@@ -1077,6 +1088,10 @@ void handle_probe_req(struct hostapd_dat
+@@ -1077,6 +1090,10 @@ void handle_probe_req(struct hostapd_dat
  	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
  		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
  
@@ -106,7 +108,7 @@ Index: hostapd-2021-02-20/src/ap/beacon.c
  	resp = hostapd_gen_probe_resp(hapd, mgmt, elems.p2p != NULL,
  				      &resp_len);
  	if (resp == NULL)
-@@ -1754,7 +1769,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1754,7 +1771,7 @@ int ieee802_11_build_ap_params(struct ho
  	}
  
  	if (hapd->iconf->multiple_bssid) {
@@ -115,7 +117,7 @@ Index: hostapd-2021-02-20/src/ap/beacon.c
  		u8 *end;
  
  		params->multiple_bssid_index = hostapd_get_bss_index(hapd);
-@@ -1762,7 +1777,8 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1762,7 +1779,8 @@ int ieee802_11_build_ap_params(struct ho
  		params->multiple_bssid_ies = os_zalloc(len);
  		if (params->multiple_bssid_ies == NULL)
  			return -1;
