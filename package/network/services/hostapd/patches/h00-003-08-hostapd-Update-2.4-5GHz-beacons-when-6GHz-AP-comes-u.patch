@@ -20,7 +20,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1876,7 +1876,7 @@ void ieee802_11_free_ap_params(struct wp
+@@ -1888,7 +1888,7 @@ void ieee802_11_free_ap_params(struct wp
  }
  
  
@@ -29,7 +29,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  {
  	struct wpa_driver_ap_params params;
  	struct hostapd_freq_params freq;
-@@ -1954,12 +1954,44 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -1966,12 +1966,47 @@ int ieee802_11_set_beacon(struct hostapd
  		wpa_printf(MSG_ERROR, "Failed to set beacon parameters");
  	else
  		ret = 0;
@@ -45,7 +45,7 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 +	struct hostapd_iface *iface = hapd->iface, *colocated = NULL;
 +	int ret = 0;
 +	size_t i, j;
-+	bool is_6g, is_colocated_6g;
++	bool is_6g;
 +
 +	ret = __ieee802_11_set_beacon(hapd);
 +	if (ret != 0)
@@ -58,11 +58,14 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
 +	is_6g = is_6ghz_op_class(iface->conf->op_class);
 +	for (j = 0; j < iface->interfaces->count; j++) {
 +		colocated = iface->interfaces->iface[j];
-+		is_colocated_6g = is_6ghz_op_class(colocated->conf->op_class);
++		if (colocated == iface || !colocated || !colocated->conf)
++			continue;
++
++		if (is_6g == is_6ghz_op_class(colocated->conf->op_class))
++			continue;
 +
 +		for (i = 0; i < colocated->num_bss; i++) {
-+			if ((is_6g != is_colocated_6g) &&
-+			    colocated->bss[i]->started)
++			if (colocated->bss[i] && colocated->bss[i]->started)
 +				__ieee802_11_set_beacon(colocated->bss[i]);
 +		}
 +	}
