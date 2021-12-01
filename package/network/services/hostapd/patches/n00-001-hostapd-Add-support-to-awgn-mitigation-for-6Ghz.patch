@@ -1,6 +1,6 @@
-From af5101e4035e7893a3a933f9e1b79c58def83ecf Mon Sep 17 00:00:00 2001
+From 57342b4c68d80754c3b6e1df4af1a46afc936a90 Mon Sep 17 00:00:00 2001
 From: Hari Chandrakanthan <quic_haric@quicinc.com>
-Date: Wed, 10 Nov 2021 16:11:12 +0530
+Date: Wed, 1 Dec 2021 21:27:36 +0530
 Subject: [PATCH] hostapd : Add support to awgn mitigation for 6Ghz
 
 when awgn interference is detected on operating channel,
@@ -31,14 +31,14 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  hostapd/Makefile                   |   1 +
  src/ap/Makefile                    |   1 +
  src/ap/drv_callbacks.c             |  13 ++
- src/ap/interference.c              | 371 +++++++++++++++++++++++++++++++++++++
+ src/ap/interference.c              | 387 +++++++++++++++++++++++++++++++++++++
  src/ap/interference.h              |  41 ++++
  src/drivers/driver.h               |  13 ++
  src/drivers/driver_common.c        |   1 +
  src/drivers/driver_nl80211_event.c |  30 +++
  src/drivers/nl80211_copy.h         |  13 ++
  wpa_supplicant/Makefile            |   1 +
- 10 files changed, 485 insertions(+)
+ 10 files changed, 501 insertions(+)
  create mode 100644 src/ap/interference.c
  create mode 100644 src/ap/interference.h
 
@@ -106,10 +106,10 @@ index 63672ee..f8c7cb4 100644
  			break;
 diff --git a/src/ap/interference.c b/src/ap/interference.c
 new file mode 100644
-index 0000000..23e13b8
+index 0000000..d5f5d3c
 --- /dev/null
 +++ b/src/ap/interference.c
-@@ -0,0 +1,371 @@
+@@ -0,0 +1,387 @@
 +/*
 + * AWGN - Additive white Gaussian Noise
 + * Copyright (c) 2002-2013, Jouni Malinen <j@w1.fi>
@@ -369,7 +369,7 @@ index 0000000..23e13b8
 +		   cf1, cf2, chan_bw_interference_bitmap);
 +
 +	/* check whether interference has occurred in primary 20Mhz channel */
-+	if (chan_bw_interference_bitmap & SEG_PRI20)
++	if (!chan_bw_interference_bitmap || (chan_bw_interference_bitmap & SEG_PRI20))
 +		channel_switch = 1;
 +
 +	if (channel_switch) {
@@ -390,8 +390,24 @@ index 0000000..23e13b8
 +		intf_awgn_find_channel(iface, &chan_data, chan_idx, chan_width);
 +
 +		if (!chan_data) {
-+			wpa_printf(MSG_ERROR, "AWGN: no random channel found");
++			wpa_printf(MSG_ERROR, "AWGN: no random channel found, chan idx : %d",
++				   chan_idx);
 +			return 0;
++		}
++
++		if(chan_data->freq == freq) {
++			/* New random channel is same as operating channel
++			 * so choose another channel
++			 */
++			chan_data = NULL;
++			chan_idx = (chan_idx + 1) % num_available_chandefs;
++			intf_awgn_find_channel(iface, &chan_data, chan_idx, chan_width);
++			if (!chan_data) {
++				wpa_printf(MSG_ERROR,
++					   "AWGN: random channel not found, chan idx : %d",
++					   chan_idx);
++				return 0;
++			}
 +		}
 +
 +		wpa_printf(MSG_DEBUG, "AWGN: got random channel %d (%d)",
