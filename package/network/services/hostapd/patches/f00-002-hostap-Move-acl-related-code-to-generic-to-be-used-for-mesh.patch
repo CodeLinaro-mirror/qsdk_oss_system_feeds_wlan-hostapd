@@ -168,7 +168,7 @@ Signed-off-by: Nishant Pandey <nishpand@codeaurora.org>
  #endif /* CONFIG_FILE_H */
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -1310,42 +1310,6 @@ static int hostapd_ctrl_iface_get_config
+@@ -1363,42 +1363,6 @@ static int hostapd_ctrl_iface_get_config
  }
  
  
@@ -210,8 +210,8 @@ Signed-off-by: Nishant Pandey <nishpand@codeaurora.org>
 -
  
  static int hostapd_ctrl_iface_set_band(struct hostapd_data *hapd,
- 				       const char *band)
-@@ -3301,81 +3265,6 @@ static int hostapd_ctrl_driver_flags2(st
+ 				       const char *bands)
+@@ -3470,81 +3434,6 @@ static int hostapd_ctrl_driver_flags2(st
  	return pos - buf;
  }
  
@@ -303,7 +303,7 @@ Signed-off-by: Nishant Pandey <nishpand@codeaurora.org>
  
  #ifdef CONFIG_CTRL_IFACE_MIB
  
-@@ -637,6 +638,164 @@ static int p2p_manager_disconnect(struct
+@@ -645,6 +646,164 @@ static int p2p_manager_disconnect(struct
  #endif /* CONFIG_P2P_MANAGER */
  
  
@@ -488,7 +488,7 @@ Signed-off-by: Nishant Pandey <nishpand@codeaurora.org>
  #endif /* CTRL_IFACE_AP_H */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5672,6 +5672,87 @@ u8 * hostapd_eid_wb_chsw_wrapper(struct
+@@ -7099,6 +7099,87 @@ u8 * hostapd_eid_wb_chsw_wrapper(struct
  }
  
  
@@ -501,7 +501,7 @@ Signed-off-by: Nishant Pandey <nishpand@codeaurora.org>
 +}
 +
 +int hostapd_config_read_maclist(const char *fname,
-+			       struct mac_acl_entry **acl, int *num)
++				struct mac_acl_entry **acl, int *num)
 +{
 +	FILE *f;
 +	char buf[128], *pos;
@@ -573,9 +573,9 @@ Signed-off-by: Nishant Pandey <nishpand@codeaurora.org>
 +}
 +
 +
- static int hostapd_eid_multiple_bssid_chunk_len(struct hostapd_data *hapd,
- 						struct hostapd_data *hidden,
- 						int *count,
+ static size_t hostapd_eid_nr_db_len(struct hostapd_data *hapd,
+ 				    size_t *current_len)
+ {
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
 @@ -18,6 +18,7 @@ struct ieee80211_vht_capabilities;

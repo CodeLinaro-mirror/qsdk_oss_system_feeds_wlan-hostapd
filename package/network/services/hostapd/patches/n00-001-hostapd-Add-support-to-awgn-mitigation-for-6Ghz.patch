@@ -1,4 +1,4 @@
-From 57342b4c68d80754c3b6e1df4af1a46afc936a90 Mon Sep 17 00:00:00 2001
+From b581d1e5d5ef4adc4d60bca087942cc45fc653f1 Mon Sep 17 00:00:00 2001
 From: Hari Chandrakanthan <quic_haric@quicinc.com>
 Date: Wed, 1 Dec 2021 21:27:36 +0530
 Subject: [PATCH] hostapd : Add support to awgn mitigation for 6Ghz
@@ -29,19 +29,24 @@ segment 3 - secondary 40Mhz upper
 Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 ---
  hostapd/Makefile                   |   1 +
+ hostapd/config_file.c              |   2 +
  src/ap/Makefile                    |   1 +
- src/ap/drv_callbacks.c             |  13 ++
- src/ap/interference.c              | 387 +++++++++++++++++++++++++++++++++++++
- src/ap/interference.h              |  41 ++++
- src/drivers/driver.h               |  13 ++
+ src/ap/ap_config.c                 |   1 +
+ src/ap/ap_config.h                 |   1 +
+ src/ap/drv_callbacks.c             |  13 +
+ src/ap/interference.c              | 393 +++++++++++++++++++++++++++++
+ src/ap/interference.h              |  41 +++
+ src/drivers/driver.h               |  13 +
  src/drivers/driver_common.c        |   1 +
  src/drivers/driver_nl80211_event.c |  30 +++
- src/drivers/nl80211_copy.h         |  13 ++
+ src/drivers/nl80211_copy.h         |  16 +-
  wpa_supplicant/Makefile            |   1 +
- 10 files changed, 501 insertions(+)
+ 13 files changed, 513 insertions(+), 1 deletion(-)
  create mode 100644 src/ap/interference.c
  create mode 100644 src/ap/interference.h
 
+diff --git a/hostapd/Makefile b/hostapd/Makefile
+index 50f75bf2876a..002d68833c46 100644
 --- a/hostapd/Makefile
 +++ b/hostapd/Makefile
 @@ -1189,6 +1189,7 @@ OBJS += ../src/ap/ap_list.o
@@ -52,6 +57,21 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  CFLAGS += -DNEED_AP_MLME
  endif
  OBJS += ../src/ap/ieee802_11_ht.o
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index afa07ef28f99..9f55bcd6ed2b 100644
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -3564,6 +3564,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 			return 1;
+ 		}
+ 		bss->unsol_bcast_probe_resp_interval = val;
++	} else if (os_strcmp(buf, "discard_6g_awgn_event") == 0) {
++		conf->discard_6g_awgn_event = atoi(pos);
+ #endif /* CONFIG_IEEE80211AX */
+ 	} else if (os_strcmp(buf, "max_listen_interval") == 0) {
+ 		bss->max_listen_interval = atoi(pos);
+diff --git a/src/ap/Makefile b/src/ap/Makefile
+index a1e9b7c44d2f..22a21d31eda6 100644
 --- a/src/ap/Makefile
 +++ b/src/ap/Makefile
 @@ -36,6 +36,7 @@ LIB_OBJS= \
@@ -62,6 +82,32 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	neighbor_db.o \
  	ndisc_snoop.o \
  	p2p_hostapd.o \
+diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
+index 9f86a4701ed4..1e27cb3d9416 100644
+--- a/src/ap/ap_config.c
++++ b/src/ap/ap_config.c
+@@ -281,6 +281,7 @@ struct hostapd_config * hostapd_config_defaults(void)
+ 	conf->he_6ghz_max_ampdu_len_exp = 7;
+ 	conf->he_6ghz_rx_ant_pat = 1;
+ 	conf->he_6ghz_tx_ant_pat = 1;
++	conf->discard_6g_awgn_event = 0;
+ #endif /* CONFIG_IEEE80211AX */
+ 
+ 	/* The third octet of the country string uses an ASCII space character
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index 32107f15bab8..261b1fafd74d 100644
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -1095,6 +1095,7 @@ struct hostapd_config {
+ #define AP_TYPE_6GHZ_STANDARD_POWER_AP 1
+ #define AP_TYPE_6GHZ_VERY_LOW_POWER_AP 2
+ 	u8 he_6ghz_reg_pwr_type;
++	bool discard_6g_awgn_event;
+ #endif /* CONFIG_IEEE80211AX */
+ 
+ 	/* VHT enable/disable config from CHAN_SWITCH */
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index 2c945b6d3f92..bf143beac9ac 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
 @@ -43,6 +43,7 @@
@@ -72,7 +118,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  #ifdef CONFIG_FILS
  void hostapd_notify_assoc_fils_finish(struct hostapd_data *hapd,
-@@ -1700,6 +1701,13 @@ static void hostapd_event_dfs_radar_dete
+@@ -1700,6 +1701,13 @@ static void hostapd_event_dfs_radar_detected(struct hostapd_data *hapd,
  				   radar->cf1, radar->cf2);
  }
  
@@ -86,7 +132,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  static void hostapd_event_dfs_pre_cac_expired(struct hostapd_data *hapd,
  					      struct dfs_event *radar)
-@@ -2084,6 +2092,11 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2084,6 +2092,11 @@ void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
  			break;
  		hostapd_event_dfs_radar_detected(hapd, &data->dfs_event);
  		break;
@@ -98,6 +144,9 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	case EVENT_DFS_PRE_CAC_EXPIRED:
  		if (!data)
  			break;
+diff --git a/src/ap/interference.c b/src/ap/interference.c
+new file mode 100644
+index 000000000000..c51a4bfe9e30
 --- /dev/null
 +++ b/src/ap/interference.c
 @@ -0,0 +1,393 @@
@@ -494,6 +543,9 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 +
 +	return 0;
 +}
+diff --git a/src/ap/interference.h b/src/ap/interference.h
+new file mode 100644
+index 000000000000..047818c0b2f6
 --- /dev/null
 +++ b/src/ap/interference.h
 @@ -0,0 +1,41 @@
@@ -538,9 +590,11 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 +			       int cf1, int cf2,
 +			       u32 chan_bw_interference_bitmap);
 +
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 01f1bc4091ab..57cfac622db5 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5258,6 +5258,7 @@ enum wpa_event_type {
+@@ -5214,6 +5214,7 @@ enum wpa_event_type {
  	 * EVENT_CCA_NOTIFY - Notification that CCA has completed
  	 */
  	EVENT_CCA_NOTIFY,
@@ -548,7 +602,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  };
  
  
-@@ -6167,6 +6168,18 @@ union wpa_event_data {
+@@ -6123,6 +6124,18 @@ union wpa_event_data {
  	struct bss_color_collision {
  		u64 bitmap;
  	} bss_color_collision;
@@ -567,9 +621,11 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  };
  
  /**
+diff --git a/src/drivers/driver_common.c b/src/drivers/driver_common.c
+index b06e7062d25c..198c2713b91e 100644
 --- a/src/drivers/driver_common.c
 +++ b/src/drivers/driver_common.c
-@@ -95,6 +95,7 @@ const char * event_to_string(enum wpa_ev
+@@ -95,6 +95,7 @@ const char * event_to_string(enum wpa_event_type event)
  	E2S(CCA_STARTED_NOTIFY);
  	E2S(CCA_ABORTED_NOTIFY);
  	E2S(CCA_NOTIFY);
@@ -577,9 +633,11 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	}
  
  	return "UNKNOWN";
+diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
+index 7a357c07340f..9a32b7a0e0ca 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -181,6 +181,7 @@ static const char * nl80211_command_to_s
+@@ -179,6 +179,7 @@ static const char * nl80211_command_to_string(enum nl80211_commands cmd)
  	C2S(NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_STARTED)
  	C2S(NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_ABORTED)
  	C2S(NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_COMPLETED)
@@ -587,7 +645,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	C2S(__NL80211_CMD_AFTER_LAST)
  	}
  #undef C2S
-@@ -1858,6 +1859,32 @@ static void nl80211_radar_event(struct w
+@@ -1856,6 +1857,32 @@ static void nl80211_radar_event(struct wpa_driver_nl80211_data *drv,
  	}
  }
  
@@ -620,7 +678,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  static void nl80211_spurious_frame(struct i802_bss *bss, struct nlattr **tb,
  				   int wds)
-@@ -3200,6 +3227,9 @@ static void do_process_drv_event(struct
+@@ -3198,6 +3225,9 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
  		mlme_event_color_change_announcement_completed(drv);
  		break;
  #endif
@@ -630,19 +688,22 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	default:
  		wpa_dbg(drv->ctx, MSG_DEBUG, "nl80211: Ignored unknown event "
  			"(cmd=%d)", cmd);
+diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
+index 85fe14ba9093..ea5fd565bb43 100644
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -1195,6 +1195,9 @@
+@@ -1190,6 +1190,10 @@
+  *	were indicated by driver and now need to be reflected in
+  *	Beacon frame.
   *
-  * @NL80211_CMD_SET_UNSOL_BCAST_PROBE_RESP: Command to set unsolicited
-  *	broadcast probe response transmission parameters.
 + * @NL80211_CMD_AWGN_DETECT: Once AWGN interference is detected on the operating
 + *	channel, userspace is notified with the interference bitmap using
 + *	%NL80211_ATTR_AWGN_INTERFERENCE_BITMAP
-  *
++ *
   * @NL80211_CMD_MAX: highest used command number
   * @__NL80211_CMD_AFTER_LAST: internal use
-@@ -1440,6 +1443,8 @@ enum nl80211_commands {
+  */
+@@ -1431,6 +1435,8 @@ enum nl80211_commands {
  	NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_ABORTED,
  	NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_COMPLETED,
  
@@ -651,7 +712,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	NL80211_CMD_SET_FILS_AAD,
  
  	/* add new commands above here */
-@@ -2605,6 +2610,9 @@ enum nl80211_commands {
+@@ -2583,6 +2589,9 @@ enum nl80211_commands {
   * 	staggered mode or burst mode in %NL80211_CMD_START_AP from
   * 	user-space.
   *
@@ -661,7 +722,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -2700,7 +2708,6 @@ enum nl80211_attrs {
+@@ -2678,7 +2687,6 @@ enum nl80211_attrs {
  
  	NL80211_ATTR_FREQ_FIXED,
  
@@ -669,8 +730,8 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	NL80211_ATTR_WIPHY_RETRY_SHORT,
  	NL80211_ATTR_WIPHY_RETRY_LONG,
  	NL80211_ATTR_WIPHY_FRAG_THRESHOLD,
-@@ -3123,6 +3130,12 @@ enum nl80211_attrs {
- 	//TODO This needs to be corrected after adding EMA changes in mac80211
+@@ -3093,6 +3101,12 @@ enum nl80211_attrs {
+ 
  	NL80211_ATTR_BEACON_TX_MODE,
  
 +	NL80211_ATTR_WIPHY_ANTENNA_GAIN,
@@ -682,6 +743,8 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
+diff --git a/wpa_supplicant/Makefile b/wpa_supplicant/Makefile
+index 9ff1e8d51568..4c6592b62f5b 100644
 --- a/wpa_supplicant/Makefile
 +++ b/wpa_supplicant/Makefile
 @@ -977,6 +977,7 @@ OBJS += ../src/ap/ap_list.o
@@ -692,34 +755,6 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  CFLAGS += -DNEED_AP_MLME
  endif
  ifdef CONFIG_WPS
---- a/hostapd/config_file.c
-+++ b/hostapd/config_file.c
-@@ -3574,6 +3574,8 @@ static int hostapd_config_fill(struct ho
- 		bss->unsol_bcast_probe_resp_interval = val;
- 	} else if (os_strcmp(buf, "he_co_locate") == 0) {
- 		conf->he_co_locate = atoi(pos);
-+	} else if (os_strcmp(buf, "discard_6g_awgn_event") == 0) {
-+		conf->discard_6g_awgn_event = atoi(pos);
- #endif /* CONFIG_IEEE80211AX */
- 	} else if (os_strcmp(buf, "max_listen_interval") == 0) {
- 		bss->max_listen_interval = atoi(pos);
---- a/src/ap/ap_config.c
-+++ b/src/ap/ap_config.c
-@@ -283,6 +283,7 @@ struct hostapd_config * hostapd_config_d
- 	conf->he_6ghz_max_ampdu_len_exp = 7;
- 	conf->he_6ghz_rx_ant_pat = 1;
- 	conf->he_6ghz_tx_ant_pat = 1;
-+	conf->discard_6g_awgn_event = 0;
- #endif /* CONFIG_IEEE80211AX */
- 
- 	/* The third octet of the country string uses an ASCII space character
---- a/src/ap/ap_config.h
-+++ b/src/ap/ap_config.h
-@@ -1097,6 +1097,7 @@ struct hostapd_config {
- 	u8 he_6ghz_rx_ant_pat;
- 	u8 he_6ghz_tx_ant_pat;
- 	bool he_co_locate;
-+	bool discard_6g_awgn_event;
- #define AP_TYPE_6GHZ_INDOOR_AP	0
- #define AP_TYPE_6GHZ_STANDARD_POWER_AP	1
- #define AP_TYPE_6GHZ_VERY_LOW_POWER_AP	2
+-- 
+2.31.1
+

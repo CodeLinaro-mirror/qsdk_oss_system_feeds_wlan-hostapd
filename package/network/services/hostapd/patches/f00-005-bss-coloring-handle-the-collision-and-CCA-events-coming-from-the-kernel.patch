@@ -85,7 +85,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  		break;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5213,6 +5213,26 @@ enum wpa_event_type {
+@@ -5175,6 +5175,26 @@ enum wpa_event_type {
  	 * beacon.
  	 */
  	EVENT_UPDATE_MUEDCA_PARAMS,
@@ -112,7 +112,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  };
  
  
-@@ -6115,6 +6135,13 @@ union wpa_event_data {
+@@ -6077,6 +6097,13 @@ union wpa_event_data {
  		u8 he_mu_ac_vi_param[3];
  		u8 he_mu_ac_vo_param[3];
  	} update_muedca;
@@ -141,10 +141,10 @@ Signed-off-by: John Crispin <john@phrozen.org>
  	return "UNKNOWN";
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -176,6 +176,10 @@ static const char * nl80211_command_to_s
+@@ -175,6 +175,10 @@ static const char * nl80211_command_to_s
+ 	C2S(NL80211_CMD_SET_FILS_AAD)
+ 	C2S(NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS)
  	C2S(NL80211_CMD_COLOR_CHANGE)
-	C2S(NL80211_CMD_SET_FILS_DISCOVERY)
-	C2S(NL80211_CMD_SET_UNSOL_BCAST_PROBE_RESP)
 +	C2S(NL80211_CMD_OBSS_COLOR_COLLISION)
 +	C2S(NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_STARTED)
 +	C2S(NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_ABORTED)
@@ -152,7 +152,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  	C2S(__NL80211_CMD_AFTER_LAST)
  	}
  #undef C2S
-@@ -2864,6 +2868,51 @@ static void nl80211_control_port_frame(s
+@@ -2863,6 +2867,51 @@ static void nl80211_control_port_frame(s
  	}
  }
  
@@ -204,7 +204,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  
  static void
  nl80211_control_port_frame_tx_status(struct wpa_driver_nl80211_data *drv,
-@@ -3136,6 +3185,20 @@ static void do_process_drv_event(struct
+@@ -3135,6 +3184,20 @@ static void do_process_drv_event(struct
  	case NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS:
  		nl80211_update_muedca_params_event(drv, tb);
  		break;
