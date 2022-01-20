@@ -22,17 +22,17 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1070,6 +1070,7 @@ struct hostapd_config {
- 	bool he_co_locate;
- #define AP_TYPE_6GHZ_INDOOR_AP	0
- #define AP_TYPE_6GHZ_STANDARD_POWER_AP	1
-+#define AP_TYPE_6GHZ_VERY_LOW_POWER_AP	2
+@@ -1085,6 +1085,7 @@ struct hostapd_config {
+ 	u8 he_6ghz_tx_ant_pat;
+ #define AP_TYPE_6GHZ_INDOOR_AP 0
+ #define AP_TYPE_6GHZ_STANDARD_POWER_AP 1
++#define AP_TYPE_6GHZ_VERY_LOW_POWER_AP 2
  	u8 he_6ghz_reg_pwr_type;
  #endif /* CONFIG_IEEE80211AX */
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6817,6 +6817,47 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6935,6 +6935,47 @@ void ieee802_11_rx_from_unknown(struct h
  			WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
  }
  
@@ -80,7 +80,7 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
  static u8 * hostapd_add_tpe_info(u8 *eid, u8 tx_pwr_count,
  				 u8 tx_pwr_intrpn, u8 tx_pwr_cat,
  				 u8 tx_pwr)
-@@ -6888,14 +6929,14 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7006,14 +7047,14 @@ u8 * hostapd_eid_txpower_envelope(struct
  		if (ap_type == AP_TYPE_6GHZ_INDOOR_AP) {
  			tx_pwr_cat = REG_SUBORDINATE_CLIENT;
  			/* TODO: extract psd limits from channel data */
@@ -99,7 +99,7 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
  		return eid;
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -1965,9 +1965,15 @@ enum reg_6g_client_type {
+@@ -1987,9 +1987,15 @@ enum reg_6g_client_type {
   * These tx-power macros are present till the 6G regdomains are defined to
   * support tx-power values for various client types.
   */
@@ -120,7 +120,7 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
  
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -585,7 +585,7 @@ wmm_ac_vo_acm=0
+@@ -586,7 +586,7 @@ wmm_ac_vo_acm=0
  
  # 6GHz regulatory AP type
  # This config is to set 6GHz access point type. Possible options

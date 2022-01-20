@@ -257,7 +257,7 @@ hostapd_set_bss_options() {
 	append bss_conf "wmm_enabled=$wmm" "$N"
 	append bss_conf "ignore_broadcast_ssid=$hidden" "$N"
 	append bss_conf "uapsd_advertisement_enabled=$uapsd" "$N"
-	[ $rnr -gt 0 ] && append bss_conf "rnr_beacon=$rnr" "$N"
+	[ $rnr -gt 0 ] && append bss_conf "rnr=$rnr" "$N"
 
 	[ "$wpa" -gt 0 ] && {
 		[ -n "$wpa_group_rekey"  ] && append bss_conf "wpa_group_rekey=$wpa_group_rekey" "$N"
