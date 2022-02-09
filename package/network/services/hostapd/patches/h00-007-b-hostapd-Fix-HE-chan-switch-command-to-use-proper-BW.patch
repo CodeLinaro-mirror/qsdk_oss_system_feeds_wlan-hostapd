@@ -66,3 +66,17 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
  	}
  	hapd->iconf->ch_switch_vht_config = 0;
  	hapd->iconf->ch_switch_he_config = 0;
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3735,6 +3735,11 @@ hostapd_switch_channel_fallback(struct h
+ 	iface->conf->ieee80211ax = freq_params->he_enabled;
+ 
+ 	/*
++	 * Resetting operating class to avoid referring previous values
++	 */
++	iface->conf->op_class = 0;
++
++	/*
+ 	 * cs_params must not be cleared earlier because the freq_params
+ 	 * argument may actually point to one of these.
+ 	 * These params will be cleared during interface disable below.
