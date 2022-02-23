@@ -662,7 +662,9 @@ EOF
 wpa_supplicant_add_network() {
 	local ifname="$1"
 	local noscan="$4"
+	local htmode="$3"
 	local disable_40mhz_scan=0
+	local enable_160mhz_bw=0
 
 	_wpa_supplicant_common "$1"
 	wireless_vif_parse_encryption
@@ -705,6 +707,9 @@ wpa_supplicant_add_network() {
 		scan_ssid=""
 		[ -n "$noscan" ] && {
 			disable_40mhz_scan=$noscan
+		}
+		[[ "$htmode" = "HE160" ]] && {
+			enable_160mhz_bw=1
 		}
 	}
 
@@ -849,6 +854,7 @@ network={
 	key_mgmt=$key_mgmt
 	$network_data
 	disable_40mhz_scan=$disable_40mhz_scan
+	enable_160mhz_bw=$enable_160mhz_bw
 }
 EOF
 	return 0
