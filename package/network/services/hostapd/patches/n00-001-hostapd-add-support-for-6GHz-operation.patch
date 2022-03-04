@@ -72,7 +72,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	}
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1571,7 +1571,11 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1563,7 +1563,11 @@ int ieee802_11_build_ap_params(struct ho
  		if (is_6ghz_op_class(hapd->iconf->op_class)) {
  			tail_len += sizeof(struct ieee80211_he_6ghz_oper_info) +
  				3 + sizeof(struct ieee80211_he_6ghz_band_cap);
@@ -85,7 +85,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  			if (hostapd_get_he_6ghz_reg_pwr_type(hapd->iconf) ==
                              AP_TYPE_6GHZ_INDOOR_AP)
  				tail_len += 4;
-@@ -2012,7 +2016,8 @@ static int __ieee802_11_set_beacon(struc
+@@ -1988,7 +1992,8 @@ static int __ieee802_11_set_beacon(struc
  				    hostapd_get_oper_centr_freq_seg0_idx(iconf),
  				    hostapd_get_oper_centr_freq_seg1_idx(iconf),
  				    cmode->vht_capab,
@@ -97,7 +97,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	res = hostapd_drv_set_ap(hapd, &params);
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1086,7 +1086,8 @@ static int hostapd_dfs_testmode_set_beac
+@@ -1089,7 +1089,8 @@ static int hostapd_dfs_testmode_set_beac
  				      vht_oper_centr_freq_seg0_idx,
  				      vht_oper_centr_freq_seg1_idx,
  				      iface->current_mode->vht_capab,
@@ -107,7 +107,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  	if (err) {
  		wpa_printf(MSG_ERROR, "DFS failed to calculate CSA freq params");
-@@ -1227,7 +1228,8 @@ static int hostapd_dfs_start_channel_swi
+@@ -1230,7 +1231,8 @@ static int hostapd_dfs_start_channel_swi
  				      oper_centr_freq_seg0_idx,
  				      oper_centr_freq_seg1_idx,
  				      cmode->vht_capab,
@@ -119,7 +119,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		wpa_printf(MSG_ERROR, "DFS failed to calculate CSA freq params");
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3503,7 +3503,7 @@ static int hostapd_change_config_freq(st
+@@ -3534,7 +3534,7 @@ static int hostapd_change_config_freq(st
  				    hostapd_get_oper_centr_freq_seg1_idx(conf),
  				    conf->vht_capab,
  				    mode ? &mode->he_capab[IEEE80211_MODE_AP] :
@@ -130,7 +130,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	switch (params->bandwidth) {
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6927,6 +6927,8 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7017,6 +7017,8 @@ u8 * hostapd_eid_txpower_envelope(struct
  	int dfs, i;
  	u8 channel, tx_pwr_count, local_pwr_constraint;
  	u8 tx_pwr, tx_pwr_intrpn, tx_pwr_cat, ap_type;
@@ -139,7 +139,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	int max_tx_power;
  
  	if (!mode)
-@@ -6963,15 +6965,24 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7053,15 +7055,24 @@ u8 * hostapd_eid_txpower_envelope(struct
  		 */
  		if (ap_type == AP_TYPE_6GHZ_INDOOR_AP) {
  			tx_pwr_cat = REG_SUBORDINATE_CLIENT;
@@ -167,7 +167,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		return eid;
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -235,10 +235,16 @@ u8 * hostapd_eid_he_operation(struct hos
+@@ -241,10 +241,16 @@ u8 * hostapd_eid_he_operation(struct hos
  		 * 		 - 1 (Standard Power Access Point)
  		 * 		 - Reserved in 5GHz and 2Ghz bands
  		 */
@@ -188,16 +188,16 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		if (hapd->iconf->he_oper_chwidth == 2) {
 --- a/src/common/hw_features_common.c
 +++ b/src/common/hw_features_common.c
-@@ -403,7 +403,7 @@ int hostapd_set_freq_params(struct hosta
+@@ -386,7 +386,7 @@ int hostapd_set_freq_params(struct hosta
  			    int sec_channel_offset,
  			    int oper_chwidth, int center_segment0,
  			    int center_segment1, u32 vht_caps,
 -			    struct he_capabilities *he_cap)
 +			    struct he_capabilities *he_cap, u8 reg_6g_pwr_mode)
  {
- 	if (!he_cap)
+ 	if (!he_cap || !he_cap->he_supported)
  		he_enabled = 0;
-@@ -486,6 +486,8 @@ int hostapd_set_freq_params(struct hosta
+@@ -477,6 +477,8 @@ int hostapd_set_freq_params(struct hosta
  		data->ht_enabled = 0;
  		data->vht_enabled = 0;
  
@@ -208,7 +208,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
 --- a/src/common/hw_features_common.h
 +++ b/src/common/hw_features_common.h
-@@ -44,7 +44,7 @@ int hostapd_set_freq_params(struct hosta
+@@ -43,7 +43,7 @@ int hostapd_set_freq_params(struct hosta
  			    int sec_channel_offset,
  			    int oper_chwidth, int center_segment0,
  			    int center_segment1, u32 vht_caps,
@@ -219,7 +219,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  int ieee80211ac_cap_check(u32 hw, u32 conf);
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -1963,6 +1963,17 @@ enum reg_6g_client_type {
+@@ -1986,6 +1986,17 @@ enum reg_6g_client_type {
  
  /* same Max Tx Pwr for all 20MHz bands */
  #define DEFAULT_MAX_TX_POWER_COUNT_6G 0
@@ -237,7 +237,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  /*
   * These tx-power macros are present till the 6G regdomains are defined to
   * support tx-power values for various client types.
-@@ -2350,6 +2361,9 @@ struct ieee80211_spatial_reuse {
+@@ -2372,6 +2383,9 @@ struct ieee80211_spatial_reuse {
  #define HE_OPERATION_BSS_COLOR_OFFSET		24
  #define HE_OPERATION_BSS_COLOR_MAX		64
  
@@ -262,7 +262,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  };
  
  
-@@ -777,6 +783,17 @@ struct hostapd_freq_params {
+@@ -783,6 +789,17 @@ struct hostapd_freq_params {
  	 * for IEEE 802.11ay EDMG configuration.
  	 */
  	struct ieee80211_edmg_config edmg;
@@ -280,7 +280,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  };
  
  /**
-@@ -2938,12 +2955,13 @@ struct wpa_driver_ops {
+@@ -2926,12 +2943,13 @@ struct wpa_driver_ops {
  	 * @num_modes: Variable for returning the number of returned modes
  	 * flags: Variable for returning hardware feature flags
  	 * @dfs: Variable for returning DFS region (HOSTAPD_DFS_REGION_*)
@@ -309,7 +309,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	int i, clen, rlen;
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5038,6 +5038,19 @@ static int nl80211_set_channel(struct i8
+@@ -5074,6 +5074,19 @@ static int nl80211_set_channel(struct i8
  		return -1;
  	}
  
@@ -329,7 +329,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
  	if (ret == 0) {
  		bss->freq = freq->freq;
-@@ -8303,7 +8316,7 @@ static int wpa_driver_nl80211_send_actio
+@@ -8353,7 +8366,7 @@ static int wpa_driver_nl80211_send_actio
  		int i;
  
  		modes = nl80211_get_hw_feature_data(bss, &num_modes,
@@ -340,7 +340,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  			offchanok = 0;
 --- a/src/drivers/driver_nl80211.h
 +++ b/src/drivers/driver_nl80211.h
-@@ -285,7 +285,7 @@ int nl80211_send_monitor(struct wpa_driv
+@@ -288,7 +288,7 @@ int nl80211_send_monitor(struct wpa_driv
  int wpa_driver_nl80211_capa(struct wpa_driver_nl80211_data *drv);
  struct hostapd_hw_modes *
  nl80211_get_hw_feature_data(void *priv, u16 *num_modes, u16 *flags,
@@ -351,7 +351,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  int process_bss_event(struct nl_msg *msg, void *arg);
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -1454,6 +1454,7 @@ struct phy_info_arg {
+@@ -1468,6 +1468,7 @@ struct phy_info_arg {
  	int last_mode, last_chan_idx;
  	int failed;
  	u8 dfs_domain;
@@ -359,7 +359,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  };
  
  static void phy_info_ht_capa(struct hostapd_hw_modes *mode, struct nlattr *capa,
-@@ -2102,7 +2103,9 @@ static void nl80211_set_ht40_mode_sec(st
+@@ -2116,7 +2117,9 @@ static void nl80211_set_ht40_mode_sec(st
  
  
  static void nl80211_reg_rule_max_eirp(u32 start, u32 end, u32 max_eirp,
@@ -370,7 +370,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  {
  	u16 m;
  
-@@ -2112,10 +2115,16 @@ static void nl80211_reg_rule_max_eirp(u3
+@@ -2126,10 +2129,16 @@ static void nl80211_reg_rule_max_eirp(u3
  
  		for (c = 0; c < mode->num_channels; c++) {
  			struct hostapd_channel_data *chan = &mode->channels[c];
@@ -387,7 +387,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	}
  }
  
-@@ -2288,6 +2297,7 @@ static int nl80211_get_reg(struct nl_msg
+@@ -2302,6 +2311,7 @@ static int nl80211_get_reg(struct nl_msg
  		[NL80211_ATTR_POWER_RULE_MAX_EIRP] = { .type = NLA_U32 },
  	};
  
@@ -395,7 +395,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
  		  genlmsg_attrlen(gnlh, 0), NULL);
  	if (!tb_msg[NL80211_ATTR_REG_ALPHA2] ||
-@@ -2312,6 +2322,8 @@ static int nl80211_get_reg(struct nl_msg
+@@ -2326,6 +2336,8 @@ static int nl80211_get_reg(struct nl_msg
  	nla_for_each_nested(nl_rule, tb_msg[NL80211_ATTR_REG_RULES], rem_rule)
  	{
  		u32 start, end, max_eirp = 0, max_bw = 0, flags = 0;
@@ -404,7 +404,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		nla_parse(tb_rule, NL80211_FREQUENCY_ATTR_MAX,
  			  nla_data(nl_rule), nla_len(nl_rule), reg_policy);
  		if (tb_rule[NL80211_ATTR_FREQ_RANGE_START] == NULL ||
-@@ -2325,9 +2337,13 @@ static int nl80211_get_reg(struct nl_msg
+@@ -2339,9 +2351,13 @@ static int nl80211_get_reg(struct nl_msg
  			max_bw = nla_get_u32(tb_rule[NL80211_ATTR_FREQ_RANGE_MAX_BW]) / 1000;
  		if (tb_rule[NL80211_ATTR_REG_RULE_FLAGS])
  			flags = nla_get_u32(tb_rule[NL80211_ATTR_REG_RULE_FLAGS]);
@@ -420,7 +420,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  			   flags & NL80211_RRF_NO_OFDM ? " (no OFDM)" : "",
  			   flags & NL80211_RRF_NO_CCK ? " (no CCK)" : "",
  			   flags & NL80211_RRF_NO_INDOOR ? " (no indoor)" : "",
-@@ -2341,7 +2357,8 @@ static int nl80211_get_reg(struct nl_msg
+@@ -2355,7 +2371,8 @@ static int nl80211_get_reg(struct nl_msg
  			nl80211_reg_rule_ht40(start, end, results);
  		if (tb_rule[NL80211_ATTR_POWER_RULE_MAX_EIRP])
  			nl80211_reg_rule_max_eirp(start, end, max_eirp,
@@ -430,7 +430,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	}
  
  	nla_for_each_nested(nl_rule, tb_msg[NL80211_ATTR_REG_RULES], rem_rule)
-@@ -2441,7 +2458,7 @@ static void nl80211_dump_chan_list(struc
+@@ -2455,7 +2472,7 @@ static void nl80211_dump_chan_list(struc
  
  struct hostapd_hw_modes *
  nl80211_get_hw_feature_data(void *priv, u16 *num_modes, u16 *flags,
@@ -439,7 +439,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  {
  	u32 feat;
  	struct i802_bss *bss = priv;
-@@ -2454,6 +2471,7 @@ nl80211_get_hw_feature_data(void *priv,
+@@ -2468,6 +2485,7 @@ nl80211_get_hw_feature_data(void *priv,
  		.last_mode = -1,
  		.failed = 0,
  		.dfs_domain = 0,
@@ -449,7 +449,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	*num_modes = 0;
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -1919,7 +1919,7 @@ static unsigned int chan_to_freq(struct
+@@ -1982,7 +1982,7 @@ static unsigned int chan_to_freq(struct
  		int i;
  
  		modes = nl80211_get_hw_feature_data(drv->first_bss, &num_modes,
@@ -460,16 +460,16 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  				   "nl80211: Fetching hardware mode failed");
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -3127,6 +3127,8 @@ enum nl80211_attrs {
+@@ -3135,6 +3136,8 @@ enum nl80211_attrs {
  
- 	NL80211_ATTR_BEACON_TX_MODE,
+ 	NL80211_ATTR_AWGN_INTERFERENCE_BITMAP,
  
 +	NL80211_ATTR_6G_REG_POWER_MODE,
 +
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
-@@ -3791,6 +3797,20 @@ enum nl80211_band_attr {
+@@ -3799,6 +3802,20 @@ enum nl80211_band_attr {
  
  #define NL80211_BAND_ATTR_HT_CAPA NL80211_BAND_ATTR_HT_CAPA
  
@@ -490,7 +490,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  /**
   * enum nl80211_wmm_rule - regulatory wmm rule
   *
-@@ -4015,6 +4035,9 @@ enum nl80211_reg_type {
+@@ -4023,6 +4040,9 @@ enum nl80211_reg_type {
   * 	a given frequency range. The value is in mBm (100 * dBm).
   * @NL80211_ATTR_DFS_CAC_TIME: DFS CAC time in milliseconds.
   *	If not present or 0 default CAC time will be used.
@@ -500,7 +500,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
   * @NL80211_REG_RULE_ATTR_MAX: highest regulatory rule attribute number
   *	currently defined
   * @__NL80211_REG_RULE_ATTR_AFTER_LAST: internal use
-@@ -4032,6 +4055,10 @@ enum nl80211_reg_rule_attr {
+@@ -4040,6 +4060,10 @@ enum nl80211_reg_rule_attr {
  
  	NL80211_ATTR_DFS_CAC_TIME,
  
@@ -524,7 +524,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
-@@ -231,7 +231,7 @@ static int wpas_mesh_update_freq_params(
+@@ -232,7 +232,7 @@ static int wpas_mesh_update_freq_params(
  		    hostapd_get_oper_centr_freq_seg0_idx(ifmsh->conf),
  		    hostapd_get_oper_centr_freq_seg1_idx(ifmsh->conf),
  		    ifmsh->conf->vht_capab,
@@ -535,7 +535,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		return -1;
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2788,7 +2788,7 @@ skip_to_6ghz:
+@@ -2824,7 +2824,7 @@ skip_to_6ghz:
  				    vht_freq.vht_enabled, vht_freq.he_enabled,
  				    freq->sec_channel_offset,
  				    chwidth, seg0, seg1, vht_caps,
@@ -546,7 +546,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	*freq = vht_freq;
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3510,6 +3510,15 @@ static int hostapd_config_fill(struct ho
+@@ -3542,6 +3542,15 @@ static int hostapd_config_fill(struct ho
  		}
  	} else if (os_strcmp(buf, "he_6ghz_reg_pwr_type") == 0) {
  		conf->he_6ghz_reg_pwr_type = atoi(pos);

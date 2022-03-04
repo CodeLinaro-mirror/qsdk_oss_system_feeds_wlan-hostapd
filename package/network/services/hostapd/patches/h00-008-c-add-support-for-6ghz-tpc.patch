@@ -52,15 +52,15 @@ index 70cee055bbe6..6e5406f59887 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
 @@ -1049,6 +1049,9 @@ struct hostapd_config {
- 	u8 he_oper_centr_freq_seg0_idx;
- 	u8 he_oper_centr_freq_seg1_idx;
- 	bool he_co_locate;
+	u8 he_6ghz_rx_ant_pat;
+	u8 he_6ghz_tx_ant_pat;
+	bool he_co_locate;
 +#define AP_TYPE_6GHZ_INDOOR_AP	0
 +#define AP_TYPE_6GHZ_STANDARD_POWER_AP	1
 +	u8 he_6ghz_reg_pwr_type;
  #endif /* CONFIG_IEEE80211AX */
- 
- #ifdef CONFIG_IEEE80211AX
+
+	/* VHT enable/disable config from CHAN_SWITCH */
 @@ -1079,6 +1082,15 @@ struct hostapd_config {
  #endif /* CONFIG_AIRTIME_POLICY */
  };

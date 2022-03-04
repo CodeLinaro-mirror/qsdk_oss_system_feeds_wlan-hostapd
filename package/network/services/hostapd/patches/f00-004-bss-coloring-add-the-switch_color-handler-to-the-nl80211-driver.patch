@@ -15,7 +15,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -10031,6 +10031,82 @@ error:
+@@ -10059,6 +10059,82 @@ error:
  }
  
  
@@ -56,13 +56,6 @@ Signed-off-by: John Crispin <john@phrozen.org>
 +			settings->cca_color))
 +		goto error;
 +
-+	if (nla_put_u16(msg, NL80211_ATTR_CNTDWN_OFFS_BEACON,
-+		    settings->counter_offset_beacon) ||
-+	    (settings->beacon_cca.probe_resp &&
-+	     nla_put_u16(msg, NL80211_ATTR_CNTDWN_OFFS_PRESP,
-+		     settings->counter_offset_presp)))
-+		goto fail;
-+
 +	/* beacon_after params */
 +	ret = set_beacon_data(msg, &settings->beacon_after);
 +	if (ret)
@@ -76,6 +69,13 @@ Signed-off-by: John Crispin <john@phrozen.org>
 +	ret = set_beacon_data(msg, &settings->beacon_cca);
 +	if (ret)
 +		goto error;
++
++	if (nla_put_u16(msg, NL80211_ATTR_CNTDWN_OFFS_BEACON,
++		    settings->counter_offset_beacon) ||
++	    (settings->beacon_cca.probe_resp &&
++	     nla_put_u16(msg, NL80211_ATTR_CNTDWN_OFFS_PRESP,
++		     settings->counter_offset_presp)))
++		goto fail;
 +
 +	nla_nest_end(msg, beacon_cca);
 +	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
@@ -98,7 +98,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  static int nl80211_add_ts(void *priv, u8 tsid, const u8 *addr,
  			  u8 user_priority, u16 admitted_time)
  {
-@@ -12204,6 +12280,9 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -12324,6 +12400,9 @@ const struct wpa_driver_ops wpa_driver_n
  	.get_survey = wpa_driver_nl80211_get_survey,
  	.status = wpa_driver_nl80211_status,
  	.switch_channel = nl80211_switch_channel,
@@ -110,7 +110,7 @@ Signed-off-by: John Crispin <john@phrozen.org>
  	.get_noa = wpa_driver_get_p2p_noa,
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -1429,6 +1429,14 @@ enum nl80211_commands {
+@@ -1433,6 +1433,15 @@ enum nl80211_commands {
  	NL80211_CMD_SET_FILS_DISCOVERY,
  	NL80211_CMD_SET_UNSOL_BCAST_PROBE_RESP,
  
@@ -121,11 +121,12 @@ Signed-off-by: John Crispin <john@phrozen.org>
 +	NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_ABORTED,
 +	NL80211_CMD_COLOR_CHANGE_ANNOUNCEMENT_COMPLETED,
 +
++	NL80211_CMD_SET_FILS_AAD,
 +
  	/* add new commands above here */
  
  	/* used to define NL80211_CMD_MAX below */
-@@ -3094,6 +3102,12 @@ enum nl80211_attrs {
+@@ -3098,6 +3107,16 @@ enum nl80211_attrs {
  	NL80211_ATTR_MULTIPLE_BSSID_COUNT,
  	NL80211_ATTR_MULTIPLE_BSSID_IES,
  
@@ -135,6 +136,20 @@ Signed-off-by: John Crispin <john@phrozen.org>
 +	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_COLOR,
 +	NL80211_ATTR_COLOR_CHANGE_ANNOUNCEMENT_IES,
 +
++	NL80211_ATTR_MBSSID_CONFIG,
++	NL80211_ATTR_MBSSID_ELEMS,
++
++
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
+--- a/src/drivers/driver_nl80211_event.c
++++ b/src/drivers/driver_nl80211_event.c
+@@ -172,6 +172,7 @@ static const char * nl80211_command_to_s
+ 	C2S(NL80211_CMD_UNPROT_BEACON)
+ 	C2S(NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS)
+ 	C2S(NL80211_CMD_SET_SAR_SPECS)
++	C2S(NL80211_CMD_SET_FILS_AAD)
+ 	C2S(NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS)
+ 	C2S(NL80211_CMD_COLOR_CHANGE)
+ 	C2S(NL80211_CMD_SET_FILS_DISCOVERY)

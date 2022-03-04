@@ -36,11 +36,9 @@ Signed-off-by: Aloka Dixit <alokad@codeaurora.org>
  src/drivers/nl80211_copy.h   |  10 +++
  3 files changed, 116 insertions(+), 66 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 510670da64a8..c873f5b744d0 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1374,7 +1374,7 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
+@@ -1405,7 +1405,7 @@ static u8 * hostapd_gen_fils_discovery(s
  
  	*len = pos - (u8 *) head;
  	wpa_hexdump(MSG_DEBUG, "FILS Discovery frame template",
@@ -49,11 +47,9 @@ index 510670da64a8..c873f5b744d0 100644
  	return (u8 *) head;
  }
  
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index f4c646180b36..84ba66be3e4f 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4381,94 +4381,135 @@ static int nl80211_set_multicast_to_unicast(struct i802_bss *bss,
+@@ -4449,94 +4449,135 @@ static int nl80211_set_multicast_to_unic
  	return ret;
  }
  
@@ -246,7 +242,7 @@ index f4c646180b36..84ba66be3e4f 100644
  static int wpa_driver_nl80211_set_ap(void *priv,
  				     struct wpa_driver_ap_params *params)
  {
-@@ -4746,9 +4787,6 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4814,9 +4855,6 @@ static int wpa_driver_nl80211_set_ap(voi
  			goto fail;
  	}
  
@@ -256,7 +252,7 @@ index f4c646180b36..84ba66be3e4f 100644
  #endif /* CONFIG_IEEE80211AX */
  
  #ifdef CONFIG_SAE
-@@ -4758,11 +4796,6 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -4826,11 +4864,6 @@ static int wpa_driver_nl80211_set_ap(voi
  		goto fail;
  #endif /* CONFIG_SAE */
  
@@ -265,10 +261,10 @@ index f4c646180b36..84ba66be3e4f 100644
 -		goto fail;
 -#endif /* CONFIG_FILS */
 -
- 	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
- 				       NULL, NULL, NULL, NULL);
+ 	ret = send_and_recv_msgs_connect_handle(drv, msg, bss, 1);
  	if (ret) {
-@@ -4775,6 +4808,13 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+ 		wpa_printf(MSG_DEBUG, "nl80211: Beacon set failed: %d (%s)",
+@@ -4842,6 +4875,13 @@ static int wpa_driver_nl80211_set_ap(voi
  				params->isolate, params->basic_rates);
  		nl80211_set_multicast_to_unicast(bss,
  						 params->multicast_to_unicast);
@@ -282,11 +278,9 @@ index f4c646180b36..84ba66be3e4f 100644
  		if (beacon_set && params->freq &&
  		    params->freq->bandwidth != bss->bandwidth) {
  			wpa_printf(MSG_DEBUG,
-diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
-index a4a611992ca0..1084c6d4c080 100644
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -1187,6 +1187,12 @@
+@@ -1190,6 +1190,12 @@
   *	were indicated by driver and now need to be reflected in
   *	Beacon frame.
   *
@@ -299,7 +293,7 @@ index a4a611992ca0..1084c6d4c080 100644
   * @NL80211_CMD_MAX: highest used command number
   * @__NL80211_CMD_AFTER_LAST: internal use
   */
-@@ -1420,6 +1426,10 @@ enum nl80211_commands {
+@@ -1423,6 +1429,10 @@ enum nl80211_commands {
  	NL80211_CMD_SET_SAR_SPECS,
  
  	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS,
@@ -310,6 +304,14 @@ index a4a611992ca0..1084c6d4c080 100644
  	/* add new commands above here */
  
  	/* used to define NL80211_CMD_MAX below */
--- 
-2.25.0
-
+--- a/src/drivers/driver_nl80211_event.c
++++ b/src/drivers/driver_nl80211_event.c
+@@ -174,6 +174,8 @@ static const char * nl80211_command_to_s
+ 	C2S(NL80211_CMD_SET_SAR_SPECS)
+ 	C2S(NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS)
+ 	C2S(NL80211_CMD_COLOR_CHANGE)
++	C2S(NL80211_CMD_SET_FILS_DISCOVERY)
++	C2S(NL80211_CMD_SET_UNSOL_BCAST_PROBE_RESP)
+ 	C2S(__NL80211_CMD_AFTER_LAST)
+ 	}
+ #undef C2S

@@ -328,9 +328,9 @@ index f4c6461..41962eb 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
 @@ -4763,6 +4763,27 @@ static int wpa_driver_nl80211_set_ap(void *priv,
- 		goto fail;
- #endif /* CONFIG_FILS */
- 
+		goto fail;
+ #endif /* CONFIG_SAE */
+
 +	if (params->multiple_bssid_count) {
 +		nla_put_u8(msg, NL80211_ATTR_MULTIPLE_BSSID_INDEX,
 +			   params->multiple_bssid_index);
@@ -352,9 +352,9 @@ index f4c6461..41962eb 100644
 +		nla_nest_end(msg, ies);
 +	}
 +
- 	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
- 				       NULL, NULL, NULL, NULL);
- 	if (ret) {
+	ret = send_and_recv_msgs_connect_handle(drv, msg, bss, 1);
+	if (ret) {
+		wpa_printf(MSG_DEBUG, "nl80211: Beacon set failed: %d (%s)",
 @@ -5362,13 +5383,13 @@ const char * nl80211_iftype_str(enum nl80211_iftype mode)
  	}
  }
@@ -694,9 +694,9 @@ index ad330d4..5a42439 100644
  #ifdef CONFIG_SAE
  void sae_clear_retransmit_timer(struct hostapd_data *hapd,
 @@ -197,5 +200,6 @@ int get_tx_parameters(struct sta_info *sta, int ap_max_chanwidth,
- 
- void auth_sae_process_commit(void *eloop_ctx, void *user_ctx);
  u8 * hostapd_eid_rsnxe(struct hostapd_data *hapd, u8 *eid, size_t len);
+ size_t hostapd_eid_rnr_len(struct hostapd_data *hapd, u32 type);
+ u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type);
 +u8 * hostapd_get_rsne(struct hostapd_data *hapd, u8 *pos, size_t len);
  
  #endif /* IEEE802_11_H */

@@ -279,6 +279,6 @@ Index: hostapd-2021-02-20/src/ap/ieee802_11.h
 +int hostapd_eid_multiple_bssid_len(struct hostapd_data *hapd,
 +				   struct hostapd_data *hidden,
 +				   u8 is_beacon);
- u8 * hostapd_eid_reduced_neighbor_report(struct hostapd_data *hapd, u8 *eid);
- size_t hostapd_eid_reduced_neighbor_report_len(struct hostapd_data *hapd);
  int auth_sae_init_committed(struct hostapd_data *hapd, struct sta_info *sta);
+ #ifdef CONFIG_SAE
+ void sae_clear_retransmit_timer(struct hostapd_data *hapd,
