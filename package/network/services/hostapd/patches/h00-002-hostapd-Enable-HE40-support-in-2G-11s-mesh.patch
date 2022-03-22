@@ -132,9 +132,9 @@ Index: hostapd-2021-02-18/wpa_supplicant/config_ssid.h
 --- hostapd-2021-02-18.orig/wpa_supplicant/config_ssid.h
 +++ hostapd-2021-02-18/wpa_supplicant/config_ssid.h
 @@ -1165,6 +1165,11 @@ struct wpa_ssid {
- 	 * configuration.
- 	 */
- 	bool was_recently_reconfigured;
+	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
+	 */
+	int sae_pwe;
 +
 +	/**
 +	 * disable_40mhz_scan - Disable 40MHz coex scan

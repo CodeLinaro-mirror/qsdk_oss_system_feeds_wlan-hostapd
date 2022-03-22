@@ -137,12 +137,3 @@ Index: hostapd-2021-02-18/src/ap/ieee802_11_shared.c
  		if (hapd->conf->beacon_prot &&
  		    (hapd->iface->drv_flags &
  		     WPA_DRIVER_FLAGS_BEACON_PROTECTION))
-@@ -498,7 +502,7 @@ u8 * hostapd_eid_ext_capab(struct hostap
- 	    hostapd_sae_pw_id_in_use(hapd->conf))
- 		len = 11;
- #endif /* CONFIG_SAE */
--	if (len < 11 && hapd->conf->beacon_prot &&
-+	if (len < 11 && (hapd->conf->beacon_prot || hapd->iconf->multiple_bssid) &&
- 	    (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_BEACON_PROTECTION))
- 		len = 11;
- #ifdef CONFIG_SAE_PK

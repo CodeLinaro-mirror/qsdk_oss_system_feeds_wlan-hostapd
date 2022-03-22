@@ -37,9 +37,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	 * Returns: 0 on success, < 0 on failure
 +	 */
 +	int (*set_6gclient_type)(void *priv, u8 client_type_6g);
- };
- 
- /**
+
+ #ifdef CONFIG_TESTING_OPTIONS
+	int (*register_frame)(void *priv, u16 type,
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
 @@ -12173,6 +12173,31 @@ static int nl80211_dpp_listen(void *priv
@@ -75,9 +75,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
 @@ -12315,4 +12340,5 @@ const struct wpa_driver_ops wpa_driver_n
- #ifdef CONFIG_DPP
- 	.dpp_listen = nl80211_dpp_listen,
- #endif /* CONFIG_DPP */
+ #ifdef CONFIG_TESTING_OPTIONS
+	.register_frame = testing_nl80211_register_frame,
+ #endif /* CONFIG_TESTING_OPTIONS */
 +	.set_6gclient_type = nl80211_set_6gclient_type,
  };
 --- a/wpa_supplicant/config.c

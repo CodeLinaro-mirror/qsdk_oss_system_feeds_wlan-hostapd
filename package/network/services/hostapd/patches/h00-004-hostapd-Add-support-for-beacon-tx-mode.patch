@@ -27,7 +27,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4570,6 +4570,15 @@ static int hostapd_config_fill(struct ho
+@@ -4601,6 +4601,15 @@ static int hostapd_config_fill(struct ho
  		bss->disable_11ac = !!atoi(pos);
  	} else if (os_strcmp(buf, "disable_11ax") == 0) {
  		bss->disable_11ax = !!atoi(pos);
@@ -45,17 +45,17 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  	} else if (os_strcmp(buf, "force_kdk_derivation") == 0) {
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -886,6 +886,7 @@ struct hostapd_bss_config {
+@@ -904,6 +904,7 @@ struct hostapd_bss_config {
+ 	u8 ext_capa[EXT_CAPA_MAX_LEN];
  
- 	unsigned int unsol_bcast_probe_resp_interval;
- 	u8 rnr_beacon;
+ 	u8 rnr;
 +	int beacon_tx_mode;
  };
  
  /**
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1849,6 +1849,8 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1834,6 +1834,8 @@ int ieee802_11_build_ap_params(struct ho
  		params->dtim_period = hapd->conf->dtim_period;
  	}
  
@@ -66,7 +66,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1208,6 +1208,12 @@ struct wpa_driver_associate_params {
+@@ -1214,6 +1214,12 @@ struct wpa_driver_associate_params {
  	 * Disable HE40MHz coexistence scan
  	 */
  	int disable_40mhz_scan;
@@ -79,10 +79,10 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  };
  
  enum hide_ssid {
-@@ -1652,6 +1658,13 @@ struct wpa_driver_ap_params {
- 	 * rnr_ie_count - Number of offsets in rnr_ie_offsets
- 	 */
- 	int rnr_ie_count;
+@@ -1636,6 +1642,13 @@ struct wpa_driver_ap_params {
+	 * ema_beacon - should the multiple_bssid beacons be sent out in EMA mode
+	 */
+	int ema_beacon;
 +
 +	/**
 +	 * Beacon Tx mode - To configure STAGGERED or BURST mode
@@ -90,10 +90,10 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
 +	 * 2 = BURST beacon tx mode
 +	 */
 +	int beacon_tx_mode;
+
  };
- 
- struct wpa_driver_mesh_bss_params {
-@@ -1688,6 +1701,7 @@ struct wpa_driver_mesh_join_params {
+
+@@ -1674,6 +1687,7 @@ struct wpa_driver_mesh_join_params {
  #define WPA_DRIVER_MESH_FLAG_AMPE	0x00000008
  	unsigned int flags;
  	bool handle_dfs;
@@ -103,7 +103,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  struct wpa_driver_set_key_params {
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4608,6 +4608,7 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -4613,6 +4613,7 @@ static int wpa_driver_nl80211_set_ap(voi
  	wpa_printf(MSG_DEBUG, "nl80211: beacon_rate=%u", params->beacon_rate);
  	wpa_printf(MSG_DEBUG, "nl80211: rate_type=%d", params->rate_type);
  	wpa_printf(MSG_DEBUG, "nl80211: dtim_period=%d", params->dtim_period);
@@ -111,7 +111,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  	wpa_printf(MSG_DEBUG, "nl80211: ssid=%s",
  		   wpa_ssid_txt(params->ssid, params->ssid_len));
  	if (!(msg = nl80211_bss_msg(bss, 0, cmd)) ||
-@@ -4619,7 +4620,9 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -4624,7 +4625,9 @@ static int wpa_driver_nl80211_set_ap(voi
  	    nl80211_put_beacon_rate(msg, drv->capa.flags, drv->capa.flags2,
  				    params) ||
  	    nl80211_put_dtim_period(msg, params->dtim_period) ||
@@ -135,9 +135,9 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  	wpa_printf(MSG_DEBUG, "  * flags=%08X", params->flags);
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -2607,6 +2607,10 @@ enum nl80211_commands {
-  *	for co-located APs and neighbor APs in ESS to be added in all
-  *	EMA beacons.
+@@ -2602,6 +2602,10 @@ enum nl80211_commands {
+  * @NL80211_ATTR_MULTIPLE_BSSID_IES: The Elements that describe our multiple BSS group.
+  * these get passed separately as the kernel might need to split them up for EMA VAP.
   *
 + * @NL80211_ATTR_BEACON_TX_MODE: used to configure the beacon tx mode as
 + * 	staggered mode or burst mode in %NL80211_CMD_START_AP from
@@ -146,19 +146,20 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -3120,6 +3124,8 @@ enum nl80211_attrs {
- 
- 	NL80211_ATTR_RNR_OFFSETS,
- 
+@@ -3116,6 +3120,9 @@ enum nl80211_attrs {
+	NL80211_ATTR_MULTIPLE_BSSID_COUNT,
+	NL80211_ATTR_MULTIPLE_BSSID_IES,
+
++	//TODO This needs to be corrected after adding EMA changes in mac80211
 +	NL80211_ATTR_BEACON_TX_MODE,
 +
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
-@@ -7370,4 +7376,13 @@ enum nl80211_rnr_ies_attributes {
- 	__NL80211_RNR_IES_ATTR_LAST,
- 	NL80211_RNR_IES_ATTR_MAX = __NL80211_RNR_IES_ATTR_LAST - 1
+@@ -7362,4 +7369,13 @@ enum nl80211_sar_specs_attrs {
+ 	NL80211_SAR_ATTR_SPECS_MAX = __NL80211_SAR_ATTR_SPECS_LAST - 1,
  };
+ 
 +
 +/**
 + * enum nl80211_beacon_tx_mode - Beacon Tx Mode enum.
@@ -171,7 +172,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  #endif /* __LINUX_NL80211_H */
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -250,6 +250,9 @@ rts_threshold=-1
+@@ -254,6 +254,9 @@ rts_threshold=-1
  # it.
  fragm_threshold=-1
  
@@ -183,7 +184,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  # item allows this list be filtered so that only the listed rates will be left
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2805,6 +2805,7 @@ static const struct parse_data ssid_fiel
+@@ -2806,6 +2806,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(transition_disable, 0, 255) },
  	{ INT_RANGE(sae_pk, 0, 2) },
  	{ INT_RANGE(disable_40mhz_scan, 0, 1)},
@@ -191,7 +192,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  };
  
  #undef OFFSET
-@@ -3313,6 +3314,7 @@ void wpa_config_set_network_defaults(str
+@@ -3321,6 +3322,7 @@ void wpa_config_set_network_defaults(str
  #endif /* CONFIG_MACSEC */
  	ssid->mac_addr = -1;
  	ssid->max_oper_chwidth = DEFAULT_MAX_OPER_CHWIDTH;
@@ -201,7 +202,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  
 --- a/wpa_supplicant/config_file.c
 +++ b/wpa_supplicant/config_file.c
-@@ -886,6 +886,7 @@ static void wpa_config_write_network(FIL
+@@ -888,6 +888,7 @@ static void wpa_config_write_network(FIL
  	INT(disable_he);
  #endif /* CONFIG_HE_OVERRIDES */
  	INT(disable_40mhz_scan);
@@ -217,9 +218,9 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  #define DEFAULT_MAX_OPER_CHWIDTH -1
 +#define DEFAULT_BEACON_TX_MODE 0
  
- struct psk_list_entry {
- 	struct dl_list list;
-@@ -1170,6 +1171,13 @@ struct wpa_ssid {
+ /* Consider global sae_pwe for SAE mechanism for PWE derivation */
+ #define DEFAULT_SAE_PWE 4
+@@ -1191,6 +1192,13 @@ struct wpa_ssid {
  	 * disable_40mhz_scan - Disable 40MHz coex scan
  	 */
  	int disable_40mhz_scan;
@@ -235,7 +236,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  #endif /* CONFIG_SSID_H */
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
-@@ -663,6 +663,7 @@ int wpa_supplicant_join_mesh(struct wpa_
+@@ -690,6 +690,7 @@ int wpa_supplicant_join_mesh(struct wpa_
  		params->dtim_period = ssid->dtim_period;
  	else if (wpa_s->conf->dtim_period > 0)
  		params->dtim_period = wpa_s->conf->dtim_period;
@@ -245,7 +246,7 @@ Signed-off-by: Maharaja Kennadyrajan <mkenna@codeaurora.org>
  		params->conf.rssi_threshold = ssid->mesh_rssi_threshold;
 --- a/wpa_supplicant/wpa_cli.c
 +++ b/wpa_supplicant/wpa_cli.c
-@@ -1484,6 +1484,7 @@ static const char *network_fields[] = {
+@@ -1485,6 +1485,7 @@ static const char *network_fields[] = {
  #endif /* CONFIG_HS20 */
  	"mac_addr", "pbss", "wps_disabled",
  	"disable_40mhz_scan",
