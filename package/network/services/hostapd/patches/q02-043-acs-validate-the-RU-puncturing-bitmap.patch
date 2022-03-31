@@ -1,0 +1,161 @@
+From f99354a45a72e124252e96b1f746fa8c83a8f597 Mon Sep 17 00:00:00 2001
+From: Aloka Dixit <quic_alokad@quicinc.com>
+Date: Thu, 31 Mar 2022 17:19:22 -0700
+Subject: [PATCH 3/3] acs: validate the RU puncturing bitmap
+
+Validate generated RU puncturing bitmap against non-OFDMA patterns.
+Also consider OFDMA patterns if ru_punct_ofdma option is set.
+
+Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
+---
+ src/ap/acs.c                    | 22 ++++++++--
+ src/common/hw_features_common.c | 75 +++++++++++++++++++++++++++++++++
+ src/common/hw_features_common.h |  2 +-
+ 3 files changed, 94 insertions(+), 5 deletions(-)
+
+--- a/src/ap/acs.c
++++ b/src/ap/acs.c
+@@ -652,7 +652,7 @@ static void acs_update_puncturing_bitmap
+ 					 long double factor,
+ 					 int index_primary)
+ {
+-	struct hostapd_channel_data *adj_chan = NULL;
++	struct hostapd_channel_data *adj_chan = NULL, *first_chan = chan;
+ 	int i;
+ 	struct hostapd_config *conf = iface->conf;
+ 	long double threshold = factor * conf->ru_punct_acs_threshold / 100;
+@@ -682,10 +682,16 @@ static void acs_update_puncturing_bitmap
+ 
+ 		if (!adj_chan)
+ 			break;
++		else if (i == 0)
++			first_chan = adj_chan;
+ 
+ 		if (adj_chan->interference_factor > threshold)
+ 			chan->ru_punct_bitmap |= BIT(i);
+ 	}
++
++	if (!is_ru_punct_bitmap_valid(chan, first_chan->freq, bw,
++				      conf->ru_punct_ofdma))
++		chan->ru_punct_bitmap = 0;
+ }
+ 
+ static void
+--- a/src/common/hw_features_common.c
++++ b/src/common/hw_features_common.c
+@@ -15,6 +15,21 @@
+ #include "ieee802_11_common.h"
+ #include "hw_features_common.h"
+ 
++/* IEEE P802.11be/D1.31, December 2021, Table 36-30 5-bit punctured channel
++ * indication for the non-OFDMA case in an EHT MU PPDU
++ */
++static const u16 ru_punct_bitmap_80[] = {0xF, 0xE, 0xD, 0xB, 0x7};
++static const u16 ru_punct_bitmap_160[] = {0xFF, 0xFE, 0xFD, 0xFB, 0xF7, 0xEF,
++					  0xDF, 0xBF, 0x7F, 0xFC, 0xF3, 0xCF,
++					  0x3F};
++static const u16 ru_punct_bitmap_320[] = {0xFFFF, 0xFFFC, 0xFFF3, 0xFFCF,
++					  0xFF3F, 0xFCFF, 0xF3FF, 0xCFFF,
++					  0x3FFF, 0xFFF0, 0xFF0F, 0xF0FF,
++					  0x0FFF, 0xFFC0, 0xFF30, 0xFCF0,
++					  0xF3F0, 0xCFF0, 0x3FF0, 0x0FFC,
++					  0x0FF3, 0x0FCF, 0x0F3F, 0x0CFF,
++					  0x03FF};
++
+ 
+ struct hostapd_channel_data * hw_get_channel_chan(struct hostapd_hw_modes *mode,
+ 						  int chan, int *freq)
+@@ -822,3 +837,83 @@ int chan_pri_allowed(const struct hostap
+ 	return !(chan->flag & HOSTAPD_CHAN_DISABLED) &&
+ 		(chan->allowed_bw & HOSTAPD_CHAN_WIDTH_20);
+ }
++
++
++bool is_ru_punct_bitmap_valid(struct hostapd_channel_data *chan,
++			      u32 start_freq, u32 bw, u8 ofdma_allowed)
++{
++	u8 i, non_ofdma_bitmap_count, ofdma_block_count = 1;
++	u16 bitmap, pri_ch_bit_pos;
++	const u16 *non_ofdma_bitmap;
++
++	if (!chan->ru_punct_bitmap) /* All channels active */
++		return true;
++
++	bitmap = ~chan->ru_punct_bitmap;
++
++	switch (bw) {
++	case 80:
++		bitmap &= 0xF;
++		non_ofdma_bitmap = &ru_punct_bitmap_80[0];
++		non_ofdma_bitmap_count = ARRAY_SIZE(ru_punct_bitmap_80);
++		break;
++
++	case 160:
++		bitmap &= 0xFF;
++		non_ofdma_bitmap = &ru_punct_bitmap_160[0];
++		non_ofdma_bitmap_count = ARRAY_SIZE(ru_punct_bitmap_160);
++		break;
++
++	case 320:
++		bitmap &= 0xFFFF;
++		non_ofdma_bitmap = &ru_punct_bitmap_320[0];
++		non_ofdma_bitmap_count = ARRAY_SIZE(ru_punct_bitmap_320);
++		break;
++
++	default:
++		return false;
++	}
++
++	if (!bitmap) /* No channel active */
++		return false;
++
++	pri_ch_bit_pos = ((chan->freq - start_freq) / 20);
++	if (!(bitmap & BIT(pri_ch_bit_pos))) {
++		wpa_printf(MSG_DEBUG,
++			   "Primary channel %d cannot be punctured",
++			   chan->chan);
++		return false;
++	}
++
++	/* Check for non-OFDMA puncturing patterns */
++	for (i = 0; i < non_ofdma_bitmap_count; i++)
++		if (non_ofdma_bitmap[i] == bitmap)
++			return true;
++
++	if (!ofdma_allowed)
++		return false;
++
++	/* Check for OFDMA puncturing patterns */
++	for (i = 0; i < ofdma_block_count; i++) {
++		switch ((bitmap >> (i * 4)) & 0xF) {
++		/* IEEE P802.11be/D1.31, December 2021, 36.3.12.11.2 Preamble
++		 * puncturing for PPDUs in an OFDMA transmission
++		 */
++		case 0xF:
++		case 0x7:
++		case 0xB:
++		case 0xD:
++		case 0xE:
++		case 0x3:
++		case 0xC:
++		case 0x9:
++		case 0x0:
++			break;
++		default:
++			return false;
++		}
++	}
++
++	return true;
++}
++
+--- a/src/common/hw_features_common.h
++++ b/src/common/hw_features_common.h
+@@ -55,5 +55,7 @@ u32 num_chan_to_bw(int num_chans);
+ int chan_bw_allowed(const struct hostapd_channel_data *chan, u32 bw,
+ 		    int ht40_plus, int pri);
+ int chan_pri_allowed(const struct hostapd_channel_data *chan);
++bool is_ru_punct_bitmap_valid(struct hostapd_channel_data *chan,
++			      u32 start_freq, u32 bw, u8 ofdma_allowed);
+ 
+ #endif /* HW_FEATURES_COMMON_H */
