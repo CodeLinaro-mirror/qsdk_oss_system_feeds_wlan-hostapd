@@ -1,0 +1,94 @@
+From ec85d0fa4f49154355ff3f1091d72d97690029d1 Mon Sep 17 00:00:00 2001
+From: Muna Sinada <quic_msinada@quicinc.com>
+Date: Wed, 2 Mar 2022 15:32:49 -0800
+Subject: [PATCH 4/6] ru_puncturing: add bitmap to EHT operation element
+
+Add RU puncturing bitmap to the EHT operation element.
+Bits set to 1 indicate that the subchannel is punctured, otherwise
+active.
+
+Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
+Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
+---
+ src/ap/ieee802_11_eht.c      | 27 ++++++++++++++++++++++++++-
+ src/common/ieee802_11_defs.h |  1 +
+ 2 files changed, 27 insertions(+), 1 deletion(-)
+
+diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
+index 9e3ac0641358..761322255a07 100644
+--- a/src/ap/ieee802_11_eht.c
++++ b/src/ap/ieee802_11_eht.c
+@@ -184,32 +184,57 @@ u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
+ 	oper->primary_channel = hapd->iconf->channel;
+ 	oper->chan_freq_seg0 = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
+ 	oper->chan_freq_seg1 = hostapd_get_oper_centr_freq_seg1_idx(hapd->iconf);
+-	oper->puncture_pattern_present = 0;
+ 
+ 	if (is_6ghz_op_class(hapd->iconf->op_class))
+ 		chwidth = op_class_to_ch_width(hapd->iconf->op_class);
+ 	else
+ 		chwidth = hapd->iconf->eht_oper_chwidth;
+ 
++	if (hapd->iconf->ru_punct_bitmap && !hapd->iface->ru_punct_supp_bw) {
++		hapd->iconf->ru_punct_bitmap = 0;
++		wpa_printf(MSG_ERROR,
++			   "Driver does not support RU puncturing. Setting bitmap to 0");
++	}
++
+ 	switch (chwidth) {
+ 	case CHANWIDTH_320MHZ:
+ 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_320MHZ;
+ 		break;
+ 	case CHANWIDTH_160MHZ:
+ 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_160MHZ;
++		if (hapd->iconf->ru_punct_bitmap &&
++		    hapd->iface->ru_punct_supp_bw == CHANWIDTH_320MHZ) {
++			hapd->iconf->ru_punct_bitmap = 0;
++			wpa_printf(MSG_ERROR,
++				   "Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
++		}
+ 		break;
+ 	case CHANWIDTH_80MHZ:
+ 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_80MHZ;
++		if (hapd->iconf->ru_punct_bitmap &&
++		    ((hapd->iface->ru_punct_supp_bw == CHANWIDTH_160MHZ) ||
++		    (hapd->iface->ru_punct_supp_bw == CHANWIDTH_320MHZ))) {
++			hapd->iconf->ru_punct_bitmap = 0;
++			wpa_printf(MSG_ERROR,
++				   "Driver does not support RU puncturing for bandwidths less than 160 MHz. Setting bitmap to 0");
++		}
+ 		break;
+ 	case CHANWIDTH_USE_HT:
++		hapd->iconf->ru_punct_bitmap = 0;
+ 		if (oper->chan_freq_seg0)
+ 			oper->width = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
+ 		break;
+ 	default:
++		hapd->iconf->ru_punct_bitmap = 0;
+ 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_20MHZ;
+ 		break;
+ 	}
+ 
++	if (hapd->iconf->ru_punct_bitmap) {
++		oper->puncture_pattern_present = 1;
++		oper->disabled_subchannel_bitmap = host_to_le16(hapd->iconf->ru_punct_bitmap);
++	}
++
+ 	pos += oper_size;
+ 
+ 	return pos;
+diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
+index e92cbe0361a4..f47edbf224b3 100644
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -2479,6 +2479,7 @@ struct ieee80211_eht_operation {
+ 	u8 chan_freq_seg0;
+ 	u8 chan_freq_seg1;
+ 	u8 minimum_rate;
++	le16 disabled_subchannel_bitmap;
+ 
+ 	/* Add puncture pattern here when supported */
+ } STRUCT_PACKED;
+-- 
+2.31.1
+

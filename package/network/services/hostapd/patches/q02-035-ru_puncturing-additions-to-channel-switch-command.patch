@@ -1,0 +1,73 @@
+From ec260e7a81d8a2f7575821cd2f8886ef190540b5 Mon Sep 17 00:00:00 2001
+From: Aloka Dixit <quic_alokad@quicinc.com>
+Date: Wed, 22 Dec 2021 14:16:01 -0800
+Subject: [PATCH 5/6] ru_puncturing: additions to channel switch command
+
+Parse the command to retrive the RU puncturing bitmap and if OFDMA
+patterns shouldbe considered.
+
+Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
+---
+ src/ap/ctrl_iface_ap.c       | 3 +++
+ src/ap/hostapd.c             | 2 ++
+ src/drivers/driver_nl80211.c | 6 ++++--
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/src/ap/ctrl_iface_ap.c b/src/ap/ctrl_iface_ap.c
+index 89784f218c5a..a95342e950a0 100644
+--- a/src/ap/ctrl_iface_ap.c
++++ b/src/ap/ctrl_iface_ap.c
+@@ -1263,10 +1263,13 @@ int hostapd_parse_csa_settings(const char *pos,
+ 	SET_CSA_SETTING(center_freq2);
+ 	SET_CSA_SETTING(bandwidth);
+ 	SET_CSA_SETTING(sec_channel_offset);
++	SET_CSA_SETTING(ru_punct_bitmap);
+ 	settings->freq_params.ht_enabled = !!os_strstr(pos, " ht");
+ 	settings->freq_params.vht_enabled = !!os_strstr(pos, " vht");
+ 	settings->freq_params.he_enabled = !!os_strstr(pos, " he");
+ 	settings->freq_params.eht_enabled = !!os_strstr(pos, " eht");
++	settings->freq_params.ru_punct_ofdma = !!os_strstr(pos,
++							   " ru_punct_ofdma");
+ 	settings->block_tx = !!os_strstr(pos, " blocktx");
+ #undef SET_CSA_SETTING
+ 
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index becb726c760b..f4e9d367347c 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3577,6 +3577,8 @@ static int hostapd_change_config_freq(struct hostapd_data *hapd,
+ 	conf->ieee80211n = params->ht_enabled;
+ 	conf->ieee80211ac = params->vht_enabled;
+ 	conf->secondary_channel = params->sec_channel_offset;
++	conf->ru_punct_bitmap = params->ru_punct_bitmap;
++	conf->ru_punct_ofdma= params->ru_punct_ofdma;
+ 	ieee80211_freq_to_chan(params->center_freq1,
+ 			       &seg0);
+ 	ieee80211_freq_to_chan(params->center_freq2,
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 9e7ba01fc17e..beb493d5dab1 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -9986,7 +9986,7 @@ static int nl80211_switch_channel(void *priv, struct csa_settings *settings)
+ 	int i;
+ 
+ 	wpa_printf(MSG_DEBUG,
+-		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d%s%s%s)",
++		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d%s%s%s puncturing bitmap=0x%04x, ru_punct_ofdma=%u)",
+ 		   settings->cs_count, settings->block_tx,
+ 		   settings->freq_params.freq,
+ 		   settings->freq_params.channel,
+@@ -9996,7 +9996,9 @@ static int nl80211_switch_channel(void *priv, struct csa_settings *settings)
+ 		   settings->freq_params.center_freq2,
+ 		   settings->freq_params.ht_enabled ? " ht" : "",
+ 		   settings->freq_params.vht_enabled ? " vht" : "",
+-		   settings->freq_params.he_enabled ? " he" : "");
++		   settings->freq_params.he_enabled ? " he" : "",
++		   settings->freq_params.ru_punct_bitmap,
++		   settings->freq_params.ru_punct_ofdma);
+ 
+ 	if (!(drv->capa.flags & WPA_DRIVER_FLAGS_AP_CSA)) {
+ 		wpa_printf(MSG_DEBUG, "nl80211: Driver does not support channel switch command");
+-- 
+2.31.1
+
