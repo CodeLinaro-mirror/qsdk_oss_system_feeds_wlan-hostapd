@@ -1,0 +1,151 @@
+From ad868850359a214643b3a072c027e2ba995d80d7 Mon Sep 17 00:00:00 2001
+From: Nagarajan Maran <quic_nmaran@quicinc.com>
+Date: Thu, 21 Apr 2022 15:00:52 +0530
+Subject: [PATCH] UL-MUMIMO param support
+
+Adding new param "he_ul_mumimo" to enable/disable ul mumimo.
+set 0 to disable and 1 to enable. If param isn't specified,
+the driver/underlying hardware decides its default behaviour.
+
+Signed-off-by: Pradeep Kumar Chitrapu <quic_pradeepc@quicinc.com>
+Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
+---
+ hostapd/config_file.c        |  2 ++
+ hostapd/hostapd.conf         |  5 +++++
+ src/ap/ap_config.c           |  2 ++
+ src/ap/ap_config.h           |  1 +
+ src/ap/hw_features.c         | 28 ++++++++++++++++++++++++++++
+ src/ap/ieee802_11_he.c       |  7 +++++++
+ src/common/ieee802_11_defs.h |  3 +++
+ 7 files changed, 48 insertions(+)
+
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index 80f3fc0..4657ce4 100644
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -3420,6 +3420,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 		conf->he_phy_capab.he_su_beamformee = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_mu_beamformer") == 0) {
+ 		conf->he_phy_capab.he_mu_beamformer = atoi(pos);
++	} else if (os_strcmp(buf, "he_ul_mumimo") == 0) {
++		conf->he_phy_capab.he_ul_mumimo = atoi(pos);
+ 	} else if (os_strcmp(buf, "he_bss_color") == 0) {
+ 		conf->he_op.he_bss_color = atoi(pos);
+ 		if (conf->he_op.he_bss_color > 63)
+diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
+index 5fda6c6..2502767 100644
+--- a/hostapd/hostapd.conf
++++ b/hostapd/hostapd.conf
+@@ -832,6 +832,11 @@ wmm_ac_vo_acm=0
+ # 1 = supported
+ #he_mu_beamformer=1
+ 
++#he_ul_mumimo: HE Uplink multiple user MIMO support
++# -1 or unspecified = Decided by firmware or underlying hardware(Default)
++# 0 = not supported
++# 1 = supported
++
+ # he_bss_color:
+ # 0 = disable
+ # 1-63 = pre-defined color
+diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
+index f036eb6..a237e72 100644
+--- a/src/ap/ap_config.c
++++ b/src/ap/ap_config.c
+@@ -273,6 +273,8 @@ struct hostapd_config * hostapd_config_defaults(void)
+ 		HE_OPERATION_RTS_THRESHOLD_OFFSET;
+ 	/* Set default basic MCS/NSS set to single stream MCS 0-7 */
+ 	conf->he_op.he_basic_mcs_nss_set = 0xfffc;
++	/* Set default to be decided by Driver/underlying HW */
++	conf->he_phy_capab.he_ul_mumimo = -1;
+ 	conf->he_op.he_bss_color_disabled = 1;
+ 	conf->he_op.he_bss_color_partial = 0;
+ 	conf->he_op.he_bss_color = os_random() % 63 + 1;
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index 19955be..011493b 100644
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -922,6 +922,7 @@ struct he_phy_capabilities_info {
+ 	bool he_su_beamformer;
+ 	bool he_su_beamformee;
+ 	bool he_mu_beamformer;
++	int he_ul_mumimo;
+ };
+ 
+ /**
+diff --git a/src/ap/hw_features.c b/src/ap/hw_features.c
+index 46237ec..f6377fe 100644
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -677,8 +677,36 @@ static int ieee80211ac_supported_vht_capab(struct hostapd_iface *iface)
+ 
+ 
+ #ifdef CONFIG_IEEE80211AX
++
++static int _ieee80211he_cap_check(u8 *hw, u32 offset, u8 bits)
++{
++	if (bits & hw[offset])
++		return 1;
++
++	return 0;
++}
++
+ static int ieee80211ax_supported_he_capab(struct hostapd_iface *iface)
+ {
++
++	struct hostapd_hw_modes *mode = iface->current_mode;
++	struct he_capabilities *hw = &mode->he_capab[IEEE80211_MODE_AP];
++	struct hostapd_config *conf = iface->conf;
++
++#define HE_CAP_CHECK(hw_cap, cap, bytes, conf) \
++	do { \
++		if (conf && !_ieee80211he_cap_check(hw_cap, bytes, cap)) { \
++			wpa_printf(MSG_ERROR, "Driver does not support configured" \
++					" HE capability [%s]", #cap); \
++			return 0; \
++		} \
++	} while (0)
++
++	if (conf->he_phy_capab.he_ul_mumimo != -1)
++		HE_CAP_CHECK(hw->phy_cap, HE_PHYCAP_UL_MUMIMO_CAPB,
++				HE_PHYCAP_UL_MUMIMO_CAPB_IDX,
++				conf->he_phy_capab.he_ul_mumimo);
++
+ 	return 1;
+ }
+ #endif /* CONFIG_IEEE80211AX */
+diff --git a/src/ap/ieee802_11_he.c b/src/ap/ieee802_11_he.c
+index 9c7c888..ba7e0b9 100644
+--- a/src/ap/ieee802_11_he.c
++++ b/src/ap/ieee802_11_he.c
+@@ -153,6 +153,13 @@ u8 * hostapd_eid_he_capab(struct hostapd_data *hapd, u8 *eid,
+ 		cap->he_phy_capab_info[HE_PHYCAP_MU_BEAMFORMER_CAPAB_IDX] &=
+ 			~HE_PHYCAP_MU_BEAMFORMER_CAPAB;
+ 
++	if (hapd->iface->conf->he_phy_capab.he_ul_mumimo == 1)
++		cap->he_phy_capab_info[HE_PHYCAP_UL_MUMIMO_CAPB_IDX] |=
++			HE_PHYCAP_UL_MUMIMO_CAPB;
++	else if (hapd->iface->conf->he_phy_capab.he_ul_mumimo == 0)
++		cap->he_phy_capab_info[HE_PHYCAP_UL_MUMIMO_CAPB_IDX] &=
++			~HE_PHYCAP_UL_MUMIMO_CAPB;
++
+ 	cap->he_phy_capab_info[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &=
+ 		he_oper_chwidth;
+ 
+diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
+index f47edbf..32e9989 100644
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -2346,6 +2346,9 @@ struct ieee80211_spatial_reuse {
+ #define HE_PHYCAP_MU_BEAMFORMER_CAPAB_IDX	4
+ #define HE_PHYCAP_MU_BEAMFORMER_CAPAB		((u8) BIT(1))
+ 
++#define HE_PHYCAP_UL_MUMIMO_CAPB_IDX	2
++#define HE_PHYCAP_UL_MUMIMO_CAPB	((u8) BIT(6))
++
+ #define HE_PHYCAP_PPE_THRESHOLD_PRESENT_IDX	6
+ #define HE_PHYCAP_PPE_THRESHOLD_PRESENT		((u8) BIT(7))
+ 
+-- 
+2.17.1
+
