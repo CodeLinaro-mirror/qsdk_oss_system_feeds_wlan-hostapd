@@ -11,11 +11,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/drivers/driver_nl80211.c | 13 +++++++++++--
  1 file changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index beb493d5dab1..dcedf15c599a 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5035,6 +5035,14 @@ static int nl80211_put_freq_params(struct nl_msg *msg,
+@@ -5036,6 +5036,14 @@ static int nl80211_put_freq_params(struc
  		     nla_put_u32(msg, NL80211_ATTR_CENTER_FREQ2,
  				 freq->center_freq2)))
  			return -ENOBUFS;
@@ -30,19 +28,16 @@ index beb493d5dab1..dcedf15c599a 100644
  	} else if (freq->ht_enabled || (freq->he_enabled && is_24ghz)) {
  		enum nl80211_channel_type ct;
  
-@@ -5083,9 +5091,10 @@ static int nl80211_set_channel(struct i802_bss *bss,
+@@ -5084,10 +5092,10 @@ static int nl80211_set_channel(struct i8
  	int ret;
  
  	wpa_printf(MSG_DEBUG,
--		   "nl80211: Set freq %d (ht_enabled=%d, vht_enabled=%d, he_enabled=%d, bandwidth=%d MHz, cf1=%d MHz, cf2=%d MHz)",
-+		   "nl80211: Set freq %d (ht_enabled=%d, vht_enabled=%d, he_enabled=%d, bandwidth=%d MHz, cf1=%d MHz, cf2=%d MHz, puncturing bitmap=0x%04x)",
+-		   "nl80211: Set freq %d (ht_enabled=%d, vht_enabled=%d, he_enabled=%d, eht_enabled=%d, bandwidth=%d MHz, cf1=%d MHz, cf2=%d MHz)",
++		   "nl80211: Set freq %d (ht_enabled=%d, vht_enabled=%d, he_enabled=%d, eht_enabled=%d, bandwidth=%d MHz, cf1=%d MHz, cf2=%d MHz, puncturing bitmap=0x%04x)",
  		   freq->freq, freq->ht_enabled, freq->vht_enabled, freq->he_enabled,
--		   freq->bandwidth, freq->center_freq1, freq->center_freq2);
-+		   freq->bandwidth, freq->center_freq1, freq->center_freq2,
-+		   freq->ru_punct_bitmap);
+ 		   freq->eht_enabled, freq->bandwidth, freq->center_freq1,
+-		   freq->center_freq2);
++		   freq->center_freq2, freq->ru_punct_bitmap);
  
  	msg = nl80211_bss_msg(bss, 0, set_chan ? NL80211_CMD_SET_CHANNEL :
  			      NL80211_CMD_SET_WIPHY);
--- 
-2.31.1
-
