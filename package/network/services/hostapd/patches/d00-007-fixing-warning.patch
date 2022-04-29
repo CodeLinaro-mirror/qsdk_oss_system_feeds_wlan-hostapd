@@ -5,13 +5,17 @@ Subject: [PATCH] hostapd: Fixed compilation warnings
 
 Below warnings are fixed
 
-1) ../src/rsn_supp/wpa.c:2693:12: error: 'wpa_key_mgmt_suite' defined
-   but not used [-Werror=unused-function]
-   static u32 wpa_key_mgmt_suite(struct wpa_sm *sm)
-2) ../src/ap/wpa_auth.c:4449:21: error: 'wpa_bool_txt' defined but not
-   used [-Werror=unused-function]
-   static const char * wpa_bool_txt(int val)
-3) Uninitialized warning has been fixed
+Uninitialized and redefined macro warnings has been fixed
+
+../src/crypto/sha1-internal.c:152:0: error: "R3" redefined [-Werror]
+ #define R3(v,w,x,y,z,i) \
+	 ^
+In file included from qsdk/staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_uClibc-1.0.14_eabi/include/signal.h:358:0,
+from qsdk/build_dir/target-arm_cortex-a7_uClibc-1.0.14_eabi/hostapd-supplicant-full/hostapd-2021-12-13/src/utils/includes.h:26,
+from ../src/crypto/sha1-internal.c:9:
+qsdk/staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_uClibc-1.0.14_eabi/include/sys/ucontext.h:49:0:
+note: this is the location of the previous definition
+#define R3 R3
 
 Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
 ---
@@ -20,45 +24,6 @@ Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
  src/rsn_supp/wpa.c  | 2 +-
  3 files changed, 6 insertions(+), 2 deletions(-)
 
---- a/src/ap/wpa_auth.c
-+++ b/src/ap/wpa_auth.c
-@@ -75,8 +75,10 @@ static const u32 eapol_key_timeout_no_retrans = 4000; /* ms */
-
- /* TODO: make these configurable */
- static const int dot11RSNAConfigPMKLifetime = 43200;
-+#ifdef CONFIG_CTRL_IFACE_MIB
- static const int dot11RSNAConfigPMKReauthThreshold = 70;
- static const int dot11RSNAConfigSATimeout = 60;
-+#endif
-
-
- static inline int wpa_auth_mic_failure_report(
-@@ -4454,12 +4456,13 @@ void wpa_gtk_rekey(struct wpa_authentica
- }
- 
- 
-+#ifdef CONFIG_CTRL_IFACE_MIB
-+
- static const char * wpa_bool_txt(int val)
- {
- 	return val ? "TRUE" : "FALSE";
- }
- 
--#ifdef CONFIG_CTRL_IFACE_MIB
- 
- #define RSN_SUITE "%02x-%02x-%02x-%d"
- #define RSN_SUITE_ARG(s) \
---- a/src/rsn_supp/wpa.c
-+++ b/src/rsn_supp/wpa.c
-@@ -2701,7 +2701,7 @@ out:
- }
- 
- 
--#ifdef CONFIG_CTRL_IFACE
-+#if defined(CONFIG_CTRL_IFACE) && defined(CONFIG_CTRL_IFACE_MIB)
- static u32 wpa_key_mgmt_suite(struct wpa_sm *sm)
- {
- 	switch (sm->key_mgmt) {
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
 @@ -4859,7 +4859,7 @@ static int wpa_driver_nl80211_sta_add(vo
