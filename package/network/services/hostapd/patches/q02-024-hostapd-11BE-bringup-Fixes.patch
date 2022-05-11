@@ -18,11 +18,9 @@ Signed-off-by: Pradeep Kumar Chitrapu <quic_pradeepc@quicinc.com>
  src/common/ieee802_11_defs.h | 13 +++++++------
  2 files changed, 25 insertions(+), 21 deletions(-)
 
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index f19af1114005..ffe995684028 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -14,29 +14,29 @@
+@@ -24,29 +24,29 @@
  
  static u8 ieee80211_eht_ppet_size(const u8 *ppe_thres, const u8 *phy_cap_info)
  {
@@ -62,7 +60,7 @@ index f19af1114005..ffe995684028 100644
  	sz = (sz * 6) + 9;
  	if (sz % 8)
  		sz += 8;
-@@ -236,6 +236,7 @@ static int check_valid_eht_mcs(struct hostapd_data *hapd, const u8 *sta_eht_capa
+@@ -246,6 +246,7 @@ static int check_valid_eht_mcs(struct ho
  {
  	struct hostapd_hw_modes *mode;
  	const u8 *ap_mcs, *sta_mcs;
@@ -70,7 +68,7 @@ index f19af1114005..ffe995684028 100644
  
  	mode = hapd->iface->current_mode;
  	if (!mode)
-@@ -244,9 +245,9 @@ static int check_valid_eht_mcs(struct hostapd_data *hapd, const u8 *sta_eht_capa
+@@ -254,9 +255,9 @@ static int check_valid_eht_mcs(struct ho
  	ap_mcs = mode->eht_capab[opmode].mcs;
  	sta_mcs = ((const struct ieee80211_eht_capabilities *) sta_eht_capab)->optional;
  
@@ -83,7 +81,7 @@ index f19af1114005..ffe995684028 100644
  		return check_valid_eht_mcs_nss(hapd, ap_mcs, sta_mcs, 1,
  					       EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
  
-@@ -264,7 +265,7 @@ static int check_valid_eht_mcs(struct hostapd_data *hapd, const u8 *sta_eht_capa
+@@ -274,7 +275,7 @@ static int check_valid_eht_mcs(struct ho
  		}
  
  		return check_valid_eht_mcs_nss(hapd, ap_mcs, sta_mcs, mcs_count,
@@ -92,7 +90,7 @@ index f19af1114005..ffe995684028 100644
  	}
  
  	return 0;
-@@ -288,7 +289,9 @@ static int ieee80211_invalid_eht_cap_size(const u8 *he_cap, const u8 *eht_cap,
+@@ -298,7 +299,9 @@ static int ieee80211_invalid_eht_cap_siz
  	if (len < cap_len)
  		return 1;
  
@@ -103,21 +101,9 @@ index f19af1114005..ffe995684028 100644
  
  	return (len != cap_len);
  }
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 9e11f788639d..1f8394a9bd25 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2410,7 +2410,8 @@ struct ieee80211_he_mu_edca_parameter_set {
- #define HE_QOS_INFO_MORE_DATA_ACK ((u8) (BIT(7)))
- 
- #define EHT_MAC_CAPAB_MAX_LEN   2
--#define EHT_PHY_CAPAB_MAX_LEN   9
-+/* TODO: Change this back to 9 for IEEE P802.11be/D1.4 compliance */
-+#define EHT_PHY_CAPAB_MAX_LEN   8
- #define EHT_MCS_NSS_CAPAB_MAX_LEN   9
- /*
-  * Maximum PPE threshold length: 62 bytes
-@@ -2479,14 +2480,14 @@ struct ieee80211_eht_operation {
+@@ -2511,14 +2511,14 @@ struct ieee80211_eht_operation {
  #define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY       4
  #define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS       3
  
@@ -137,6 +123,3 @@ index 9e11f788639d..1f8394a9bd25 100644
  
  #define EHT_OPERATION_CHANNEL_WIDTH_40MHZ       1
  #define EHT_OPERATION_CHANNEL_WIDTH_80MHZ       2
--- 
-2.17.1
-

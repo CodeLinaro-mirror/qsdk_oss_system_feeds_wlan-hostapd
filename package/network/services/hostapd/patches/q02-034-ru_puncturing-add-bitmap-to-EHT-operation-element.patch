@@ -188,14 +188,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #endif /* IEEE802_11_H */
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -184,32 +184,57 @@ u8 * hostapd_eid_eht_operation(struct ho
- 	oper->primary_channel = hapd->iconf->channel;
- 	oper->chan_freq_seg0 = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
- 	oper->chan_freq_seg1 = hostapd_get_oper_centr_freq_seg1_idx(hapd->iconf);
--	oper->puncture_pattern_present = 0;
- 
- 	if (is_6ghz_op_class(hapd->iconf->op_class))
- 		chwidth = op_class_to_ch_width(hapd->iconf->op_class);
+@@ -188,25 +188,51 @@ u8 * hostapd_eid_eht_operation(struct ho
  	else
  		chwidth = hapd->iconf->eht_oper_chwidth;
  
@@ -230,7 +223,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		break;
  	case CHANWIDTH_USE_HT:
 +		hapd->iconf->ru_punct_bitmap = 0;
- 		if (oper->chan_freq_seg0)
+ 		if (oper->ccfs)
  			oper->width = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
  		break;
  	default:
@@ -240,7 +233,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	}
  
 +	if (hapd->iconf->ru_punct_bitmap) {
-+		oper->puncture_pattern_present = 1;
++		oper->disable_sub_chan_bitmap_present = 1;
 +		oper->disabled_subchannel_bitmap = host_to_le16(hapd->iconf->ru_punct_bitmap);
 +	}
 +
@@ -396,13 +389,3 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +			      u8 ru_punct_ofdma);
  
  #endif /* HW_FEATURES_COMMON_H */
---- a/src/common/ieee802_11_defs.h
-+++ b/src/common/ieee802_11_defs.h
-@@ -2479,6 +2479,7 @@ struct ieee80211_eht_operation {
- 	u8 chan_freq_seg0;
- 	u8 chan_freq_seg1;
- 	u8 minimum_rate;
-+	le16 disabled_subchannel_bitmap;
- 
- 	/* Add puncture pattern here when supported */
- } STRUCT_PACKED;
