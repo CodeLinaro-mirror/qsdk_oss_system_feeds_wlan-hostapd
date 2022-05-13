@@ -1,0 +1,135 @@
+From 6017023786ba26149c18d3f73b3f0b829bab4a61 Mon Sep 17 00:00:00 2001
+From: Sriram R <quic_srirrama@quicinc.com>
+Date: Mon, 20 Sep 2021 18:49:42 +0530
+Subject: [PATCH] ACS: Add ACS support for 11be mode
+
+Add ACS support for channels in 11be mode including
+320MHz bw support for 6GHz.
+
+Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
+Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
+---
+ src/ap/acs.c | 37 +++++++++++++++++++++++++++++++++----
+ 1 file changed, 33 insertions(+), 4 deletions(-)
+
+Index: hostapd-2021-12-13/src/ap/acs.c
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/acs.c
++++ hostapd-2021-12-13/src/ap/acs.c
+@@ -416,6 +416,18 @@ static int acs_usable_bw160_chan(const s
+ 	return 0;
+ }
+ 
++static int acs_usable_bw320_chan(const struct hostapd_channel_data *chan)
++{
++	/* Allow start of overlapping 320MHz channels */
++	const int allowed[] = { 5955, 6115, 6275, 6435, 6595, 6755 };
++	unsigned int i;
++
++	for (i = 0; i < ARRAY_SIZE(allowed); i++)
++		if (chan->freq == allowed[i])
++			return 1;
++
++	return 0;
++}
+ 
+ static int acs_survey_is_sufficient(struct freq_survey *survey)
+ {
+@@ -806,7 +818,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 		}
+ 
+ 		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
+-		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax)) {
++		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
++		     iface->conf->ieee80211be)) {
+ 			if (hostapd_get_oper_chwidth(iface->conf) ==
+ 			    CHANWIDTH_80MHZ &&
+ 			    !acs_usable_bw80_chan(chan)) {
+@@ -824,6 +837,16 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 					   chan->chan);
+ 				continue;
+ 			}
++
++			if (iface->conf->ieee80211be &&
++			    hostapd_get_oper_chwidth(iface->conf) ==
++			    CHANWIDTH_320MHZ &&
++			    !acs_usable_bw320_chan(chan)) {
++				wpa_printf(MSG_DEBUG,
++					   "ACS: Channel %d: not allowed as primary channel for 320 MHz bandwidth",
++					   chan->chan);
++				continue;
++			}
+ 		}
+ 
+ 		factor = 0;
+@@ -969,7 +992,8 @@ acs_find_ideal_chan(struct hostapd_iface
+ 	    iface->conf->secondary_channel)
+ 		n_chans = 2;
+ 
+-	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax) {
++	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
++	    iface->conf->ieee80211be) {
+ 		switch (hostapd_get_oper_chwidth(iface->conf)) {
+ 		case CHANWIDTH_80MHZ:
+ 			n_chans = 4;
+@@ -977,6 +1001,7 @@ acs_find_ideal_chan(struct hostapd_iface
+ 		case CHANWIDTH_160MHZ:
+ 			n_chans = 8;
+ 			break;
++		/* 320 is supported only in 6GHz 11be mode */
+ 		}
+ 	}
+ 
+@@ -1017,7 +1042,9 @@ static void acs_adjust_center_freq(struc
+ {
+ 	int psc_chan[] = {37, 53, 69, 85, 101, 117,
+ 			  133, 149, 165, 181, 197, 213} ;
+-	int offset, i;
++	int psc_chan_320_1[] = {69, 85, 133, 149, 197, 213};
++	int psc_chan_320_2[] = {37, 53, 101, 117, 165, 181, 219};
++	int offset = 0, i;
+ 	u8 bw = hostapd_get_oper_chwidth(iface->conf);
+ 	bool acs_exclude_6ghz_non_psc = iface->conf->acs_exclude_6ghz_non_psc;
+ 	bool is_sec_psc_chan = false;
+@@ -1052,11 +1079,30 @@ static void acs_adjust_center_freq(struc
+ 		else
+ 			offset = 14;
+ 		break;
++	case CHANWIDTH_320MHZ:
++		if (acs_exclude_6ghz_non_psc) {
++			for (i = 0; i < ARRAY_SIZE(psc_chan_320_1); i++) {
++				if (psc_chan_320_1[i] == iface->conf->channel) {
++					is_sec_psc_chan = (i%2) ? true : false;
++					offset  = is_sec_psc_chan ? 10 : 26;
++					break;
++				}
++			}
++			for (i = 0; i < ARRAY_SIZE(psc_chan_320_2); i++) {
++				if (psc_chan_320_2[i] == iface->conf->channel) {
++					is_sec_psc_chan = (i%2) ? true : false;
++					offset = is_sec_psc_chan ? -22 : -6;
++					break;
++				}
++			}
++		} else
++			offset = 30;
++		break;
+ 	default:
+ 		/* TODO: How can this be calculated? Adjust
+ 		 * acs_find_ideal_chan() */
+ 		wpa_printf(MSG_INFO,
+-			   "ACS: Only VHT20/40/80/160 is supported now");
++			   "ACS: Only VHT20/40/80/160 EHT320 is supported now");
+ 		return;
+ 	}
+ 
+@@ -1117,7 +1163,8 @@ static void acs_study(struct hostapd_ifa
+ 	iface->conf->channel = ideal_chan->chan;
+ 	iface->freq = ideal_chan->freq;
+ 
+-	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax)
++	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
++	    iface->conf->ieee80211be)
+ 		acs_adjust_center_freq(iface);
+ 
+ 	err = 0;
