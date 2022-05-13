@@ -665,6 +665,7 @@ wpa_supplicant_add_network() {
 	local htmode="$3"
 	local disable_40mhz_scan=0
 	local enable_160mhz_bw=0
+	local enable_320mhz_bw=0
 
 	_wpa_supplicant_common "$1"
 	wireless_vif_parse_encryption
@@ -710,6 +711,9 @@ wpa_supplicant_add_network() {
 		}
 		[[ "$htmode" = "HE160" ]] && {
 			enable_160mhz_bw=1
+		}
+		[[ "$htmode" == "EHT320" ]] && {
+			enable_320mhz_bw=1
 		}
 	}
 
@@ -855,6 +859,7 @@ network={
 	$network_data
 	disable_40mhz_scan=$disable_40mhz_scan
 	enable_160mhz_bw=$enable_160mhz_bw
+	enable_320mhz_bw=$enable_320mhz_bw
 }
 EOF
 	return 0
