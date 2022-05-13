@@ -126,7 +126,7 @@ endef
 define Package/hostapd-macsec
 $(call Package/hostapd/Default)
   TITLE+= (macsec)
-  DEPENDS+= @TARGET_ipq||TARGET_ipq50xx||TARGET_ipq95xx +kmod-qca-nss-macsec +libopenssl
+  DEPENDS+= @TARGET_ipq||TARGET_ipq50xx||TARGET_ipq60xx||TARGET_ipq95xx +kmod-qca-nss-macsec +libopenssl
   VARIANT:=macsec
 endef
 
@@ -220,7 +220,7 @@ endef
 define Package/wpa-supplicant-macsec
   $(call Package/wpa-supplicant)
   TITLE:=WPA Supplicant (MACSEC)
-  DEPENDS+= @TARGET_ipq||TARGET_ipq50xx||TARGET_ipq95xx +kmod-qca-nss-macsec
+  DEPENDS+= @TARGET_ipq||TARGET_ipq50xx||TARGET_ipq60xx||TARGET_ipq95xx +kmod-qca-nss-macsec
   CONFLICTS:=
   VARIANT:=supplicant-macsec
 endef
