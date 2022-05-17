@@ -14,11 +14,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/common/ieee802_11_defs.h | 17 ++++++++++++-----
  2 files changed, 29 insertions(+), 21 deletions(-)
 
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index ffe995684028..3ab325a64ae0 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -158,50 +158,50 @@ u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
+@@ -168,50 +168,47 @@ u8 * hostapd_eid_eht_capab(struct hostap
  u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
  {
  	struct ieee80211_eht_operation *oper;
@@ -37,10 +35,7 @@ index ffe995684028..3ab325a64ae0 100644
  	oper = (struct ieee80211_eht_operation *) pos;
  	os_memset(oper, 0, sizeof(*oper));
  
-+	oper->primary_channel = hapd->iconf->channel;
-+	oper->chan_freq_seg0 = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
-+	oper->chan_freq_seg1 = hostapd_get_oper_centr_freq_seg1_idx(hapd->iconf);
-+	oper->puncture_pattern_present = 0;
++	oper->ccfs = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
 +
  	if (is_6ghz_op_class(hapd->iconf->op_class))
  		chwidth = op_class_to_ch_width(hapd->iconf->op_class);
@@ -67,7 +62,7 @@ index ffe995684028..3ab325a64ae0 100644
 -			*pos++ = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
 -		else
 -			pos++;
-+		if (oper->chan_freq_seg0)
++		if (oper->ccfs)
 +			oper->width = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
  		break;
  	default:
@@ -85,7 +80,7 @@ index ffe995684028..3ab325a64ae0 100644
  	return pos;
  }
  
-@@ -279,6 +279,7 @@ static int ieee80211_invalid_eht_cap_size(const u8 *he_cap, const u8 *eht_cap,
+@@ -289,6 +286,7 @@ static int ieee80211_invalid_eht_cap_siz
  	const u8 *he_phy_cap;
  	size_t cap_len;
  
@@ -93,11 +88,9 @@ index ffe995684028..3ab325a64ae0 100644
  	he_phy_cap = ((struct ieee80211_he_capabilities *)he_cap)->he_phy_capab_info;
  	cap = (struct ieee80211_eht_capabilities *) eht_cap;
  	cap_len = sizeof(*cap);
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index a4d75e0e2d47..bd72c965be10 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2427,6 +2427,7 @@ struct ieee80211_eht_capabilities {
+@@ -2458,6 +2458,7 @@ struct ieee80211_eht_capabilities {
  	u8 optional[71];
  } STRUCT_PACKED;
  
@@ -105,23 +98,20 @@ index a4d75e0e2d47..bd72c965be10 100644
  /*
   * struct ieee80211_eht_operation - eht operation element
   *
-@@ -2438,13 +2439,19 @@ struct ieee80211_eht_capabilities {
+@@ -2469,13 +2470,17 @@ struct ieee80211_eht_capabilities {
   *	structure (Figure 9-1002a) at all ...
   */
  struct ieee80211_eht_operation {
 -	u8 chan_width;
--	u8 ccfs;
++	u8 width:3,
++	   reserved:5;
+ 	u8 ccfs;
 -	u8 present_bm;
 -	/* contains disabled subchannel bitmap */
 -	u8 optional[];
-+	u8 basic_mcs_nss_set[2];
-+	u8 primary_channel;
-+	u8 width:3,
-+	   puncture_pattern_present:1,
-+	   reserved:4;
-+	u8 chan_freq_seg0;
-+	u8 chan_freq_seg1;
-+	u8 minimum_rate;
++	u8 disable_sub_chan_bitmap_present:1,
++	   reserved2:7;
++ 	le16 disabled_subchannel_bitmap;
 +
 +	/* Add puncture pattern here when supported */
  } STRUCT_PACKED;
@@ -130,6 +120,3 @@ index a4d75e0e2d47..bd72c965be10 100644
  #define EHT_OPERATION_CHANNEL_WIDTH_40MHZ       1
  #define EHT_OPERATION_CHANNEL_WIDTH_80MHZ       2
  #define EHT_OPERATION_CHANNEL_WIDTH_160MHZ      3
--- 
-2.31.1
-
