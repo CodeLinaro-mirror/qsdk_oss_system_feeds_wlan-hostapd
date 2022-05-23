@@ -14,8 +14,6 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  src/ap/ieee802_11.c | 11 +++++++++++
  2 files changed, 12 insertions(+)
 
-diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index b519992e212a..ebcca548d8cd 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
 @@ -911,6 +911,7 @@ struct hostapd_bss_config {
@@ -26,11 +24,9 @@ index b519992e212a..ebcca548d8cd 100644
  };
  
  /**
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index cb7107af69fe..0df209e0b157 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -166,6 +166,7 @@ u8 * hostapd_eid_ext_supp_rates(struct hostapd_data *hapd, u8 *eid)
+@@ -166,6 +166,7 @@ u8 * hostapd_eid_ext_supp_rates(struct h
  	int i, num, count;
  	int h2e_required;
  
@@ -38,7 +34,7 @@ index cb7107af69fe..0df209e0b157 100644
  	if (hapd->iface->current_rates == NULL)
  		return eid;
  
-@@ -215,6 +216,7 @@ u8 * hostapd_eid_ext_supp_rates(struct hostapd_data *hapd, u8 *eid)
+@@ -215,6 +216,7 @@ u8 * hostapd_eid_ext_supp_rates(struct h
  			*pos++ = 0x80 | BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY;
  	}
  
@@ -46,7 +42,7 @@ index cb7107af69fe..0df209e0b157 100644
  	return pos;
  }
  
-@@ -7774,6 +7776,10 @@ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
+@@ -7774,6 +7776,10 @@ static size_t hostapd_eid_mbssid_elem_le
  			ie_count++;
  		if (!rsnx && hostapd_wpa_ie(tx_bss, WLAN_EID_RSNX))
  			ie_count++;
@@ -57,7 +53,16 @@ index cb7107af69fe..0df209e0b157 100644
  		if (ie_count)
  			nontx_profile_len += (4 + ie_count);
  
-@@ -7925,6 +7931,11 @@ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
+@@ -7852,7 +7858,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 		struct hostapd_bss_config *conf;
+ 		u8 *eid_len_pos, *nontx_bss_start = eid;
+ 		const u8 *auth, *rsn = NULL, *rsnx = NULL;
+-		u8 ie_count = 0, non_inherit_ie[2];
++		u8 ie_count = 0, non_inherit_ie[3];
+ 		size_t auth_len = 0;
+ 		u16 capab_info;
+ 
+@@ -7925,6 +7931,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
  			non_inherit_ie[ie_count] = WLAN_EID_RSNX;
  			ie_count++;
  		}
@@ -69,6 +74,3 @@ index cb7107af69fe..0df209e0b157 100644
  		if (ie_count) {
  			*eid++ = WLAN_EID_EXTENSION;
  			*eid++ = 2 + ie_count;
--- 
-2.31.1
-
