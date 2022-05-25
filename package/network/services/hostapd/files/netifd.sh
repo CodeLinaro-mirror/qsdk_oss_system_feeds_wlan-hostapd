@@ -666,6 +666,7 @@ wpa_supplicant_add_network() {
 	local disable_40mhz_scan=0
 	local enable_160mhz_bw=0
 	local enable_320mhz_bw=0
+	local ru_punct_bitmap=$5
 
 	_wpa_supplicant_common "$1"
 	wireless_vif_parse_encryption
@@ -678,6 +679,7 @@ wpa_supplicant_add_network() {
 
 	local key_mgmt='NONE'
 	local enc_str=
+	local ru_punct_str=${ru_punct_bitmap:+ru-puncturing-bitmap=$ru_punct_bitmap}
 	local network_data=
 	local T="	"
 
@@ -860,6 +862,7 @@ network={
 	disable_40mhz_scan=$disable_40mhz_scan
 	enable_160mhz_bw=$enable_160mhz_bw
 	enable_320mhz_bw=$enable_320mhz_bw
+	$ru_punct_str
 }
 EOF
 	return 0
