@@ -11,11 +11,24 @@ Support for mesh channelization in 320MHz.
 Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
 ---
-Index: b/wpa_supplicant/ap.c
-===================================================================
---- a/wpa_supplicant/ap.c	2022-05-13 15:01:13.606785941 +0530
-+++ b/wpa_supplicant/ap.c	2022-05-13 15:01:13.566786276 +0530
-@@ -407,6 +407,10 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+--- a/wpa_supplicant/ap.c
++++ b/wpa_supplicant/ap.c
+@@ -324,6 +324,14 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+ 
+ 		if (mode && is_6ghz_freq(ssid->frequency) &&
+ 		    conf->hw_mode == HOSTAPD_MODE_IEEE80211A) {
++			if (mode->eht_capab[wpas_mode_to_ieee80211_mode(
++			    ssid->mode)].eht_supported &&
++                            ssid->eht)
++				conf->ieee80211be = 1;
++			if (mode->he_capab[wpas_mode_to_ieee80211_mode(
++			    ssid->mode)].he_supported &&
++				ssid->he)
++				conf->ieee80211ax = 1;
+ #ifdef CONFIG_P2P
+ 			wpas_conf_ap_he_6ghz(wpa_s, mode, ssid, conf);
+ #endif /* CONFIG_P2P */
+@@ -407,6 +415,10 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  					    ssid->mode)].he_supported &&
  			    ssid->he)
  				conf->ieee80211ax = 1;
@@ -26,10 +39,8 @@ Index: b/wpa_supplicant/ap.c
  
  			if (mode->vht_capab && ssid->vht) {
  				conf->ieee80211ac = 1;
-Index: b/wpa_supplicant/config.c
-===================================================================
---- a/wpa_supplicant/config.c	2022-05-13 15:01:13.606785941 +0530
-+++ b/wpa_supplicant/config.c	2022-05-13 15:01:13.570786242 +0530
+--- a/wpa_supplicant/config.c
++++ b/wpa_supplicant/config.c
 @@ -2812,6 +2812,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(disable_40mhz_scan, 0, 1)},
  	{ INT_RANGE(beacon_tx_mode, 1, 2)},
@@ -38,10 +49,8 @@ Index: b/wpa_supplicant/config.c
  };
  
  #undef OFFSET
-Index: b/wpa_supplicant/mesh.c
-===================================================================
---- a/wpa_supplicant/mesh.c	2022-05-13 15:01:13.606785941 +0530
-+++ b/wpa_supplicant/mesh.c	2022-05-13 15:01:13.570786242 +0530
+--- a/wpa_supplicant/mesh.c
++++ b/wpa_supplicant/mesh.c
 @@ -227,7 +227,7 @@ static int wpas_mesh_update_freq_params(
  		    ifmsh->conf->ieee80211n,
  		    ifmsh->conf->ieee80211ac,
@@ -88,10 +97,8 @@ Index: b/wpa_supplicant/mesh.c
  	if (ssid->beacon_int > 0)
  		params->beacon_int = ssid->beacon_int;
  	else if (wpa_s->conf->beacon_int > 0)
-Index: b/wpa_supplicant/mesh_mpm.c
-===================================================================
---- a/wpa_supplicant/mesh_mpm.c	2022-05-13 15:01:13.606785941 +0530
-+++ b/wpa_supplicant/mesh_mpm.c	2022-05-13 15:01:13.570786242 +0530
+--- a/wpa_supplicant/mesh_mpm.c
++++ b/wpa_supplicant/mesh_mpm.c
 @@ -257,6 +257,16 @@ static void mesh_mpm_send_plink_action(s
  				3 + sizeof(struct ieee80211_he_6ghz_band_cap);
  	}
@@ -151,10 +158,8 @@ Index: b/wpa_supplicant/mesh_mpm.c
  	params.flags |= WPA_STA_WMM;
  	params.flags_mask |= WPA_STA_AUTHENTICATED;
  	if (conf->security == MESH_CONF_SEC_NONE) {
-Index: b/wpa_supplicant/wpa_supplicant.c
-===================================================================
---- a/wpa_supplicant/wpa_supplicant.c	2022-05-13 15:01:13.606785941 +0530
-+++ b/wpa_supplicant/wpa_supplicant.c	2022-05-13 15:01:13.570786242 +0530
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
 @@ -2478,7 +2478,25 @@ static bool ibss_mesh_is_80mhz_avail(int
  	return true;
  }
@@ -218,19 +223,21 @@ Index: b/wpa_supplicant/wpa_supplicant.c
  	if ((mode->he_capab[ieee80211_mode].phy_cap[
  		     HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
  	     HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G) && (ssid->enable_160mhz_bw)) {
-@@ -2870,7 +2908,7 @@ skip_to_6ghz:
+@@ -2870,9 +2908,10 @@ skip_to_6ghz:
  				    freq->channel, ssid->enable_edmg,
  				    ssid->edmg_channel, freq->ht_enabled,
  				    vht_freq.vht_enabled, vht_freq.he_enabled,
 -				    0, freq->sec_channel_offset,
 +				    vht_freq.eht_enabled, freq->sec_channel_offset,
  				    chwidth, seg0, seg1, vht_caps,
- 				    &mode->he_capab[ieee80211_mode], NULL,
+-				    &mode->he_capab[ieee80211_mode], NULL,
++				    &mode->he_capab[ieee80211_mode],
++				    &mode->eht_capab[ieee80211_mode],
  				    0, freq->ru_punct_bitmap,
-Index: b/wpa_supplicant/wpa_supplicant_i.h
-===================================================================
---- a/wpa_supplicant/wpa_supplicant_i.h	2022-05-13 15:01:13.606785941 +0530
-+++ b/wpa_supplicant/wpa_supplicant_i.h	2022-05-13 15:01:13.582786142 +0530
+ 				    freq->ru_punct_ofdma) != 0)
+ 		return;
+--- a/wpa_supplicant/wpa_supplicant_i.h
++++ b/wpa_supplicant/wpa_supplicant_i.h
 @@ -1033,6 +1033,7 @@ struct wpa_supplicant {
  	unsigned int mesh_ht_enabled:1;
  	unsigned int mesh_vht_enabled:1;
@@ -239,10 +246,8 @@ Index: b/wpa_supplicant/wpa_supplicant_i.h
  	struct wpa_driver_mesh_join_params *mesh_params;
  #ifdef CONFIG_PMKSA_CACHE_EXTERNAL
  	/* struct external_pmksa_cache::list */
-Index: b/hostapd/config_file.c
-===================================================================
---- a/hostapd/config_file.c	2022-05-13 15:01:13.606785941 +0530
-+++ b/hostapd/config_file.c	2022-05-13 15:01:13.586786109 +0530
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
 @@ -4266,6 +4266,8 @@ static int hostapd_config_fill(struct ho
  	} else if (os_strcmp(buf, "wowlan_triggers") == 0) {
  		os_free(bss->wowlan_triggers);
@@ -252,10 +257,8 @@ Index: b/hostapd/config_file.c
  	} else if (os_strcmp(buf, "enable_160mhz_bw") == 0) {
  		conf->enable_160mhz_bw = atoi(pos);
  	} else if (os_strcmp(buf, "disable_40mhz_scan") == 0) {
-Index: b/src/ap/ap_config.h
-===================================================================
---- a/src/ap/ap_config.h	2022-05-13 15:01:13.606785941 +0530
-+++ b/src/ap/ap_config.h	2022-05-13 15:01:13.586786109 +0530
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
 @@ -1152,6 +1152,7 @@ struct hostapd_config {
  	u16 ru_punct_bitmap;
  	u8 ru_punct_ofdma;
@@ -264,10 +267,8 @@ Index: b/src/ap/ap_config.h
  };
  
  static inline u8 hostapd_get_he_6ghz_reg_pwr_type(struct hostapd_config *conf)
-Index: b/src/drivers/driver.h
-===================================================================
---- a/src/drivers/driver.h	2022-05-13 15:01:13.606785941 +0530
-+++ b/src/drivers/driver.h	2022-05-13 15:01:13.590786075 +0530
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
 @@ -1287,6 +1287,10 @@ struct wpa_driver_associate_params {
  	 * Enable 160MHz BW - set it 1 to enable mesh 160MHz 6G
  	 */
@@ -279,10 +280,8 @@ Index: b/src/drivers/driver.h
  };
  
  enum hide_ssid {
-Index: b/wpa_supplicant/config_file.c
-===================================================================
---- a/wpa_supplicant/config_file.c	2022-05-13 15:01:13.606785941 +0530
-+++ b/wpa_supplicant/config_file.c	2022-05-13 15:01:13.598786008 +0530
+--- a/wpa_supplicant/config_file.c
++++ b/wpa_supplicant/config_file.c
 @@ -893,6 +893,7 @@ static void wpa_config_write_network(FIL
  	INT(disable_40mhz_scan);
  	INT(beacon_tx_mode);
@@ -291,10 +290,8 @@ Index: b/wpa_supplicant/config_file.c
  #undef STR
  #undef INT
  #undef INT_DEF
-Index: b/wpa_supplicant/config_ssid.h
-===================================================================
---- a/wpa_supplicant/config_ssid.h	2022-05-13 15:01:13.606785941 +0530
-+++ b/wpa_supplicant/config_ssid.h	2022-05-13 15:01:13.598786008 +0530
+--- a/wpa_supplicant/config_ssid.h
++++ b/wpa_supplicant/config_ssid.h
 @@ -1223,6 +1223,10 @@ struct wpa_ssid {
  	 * Enable 160MHz BW - set it 1 to enable mesh 160MHz 6G
  	 */
@@ -306,10 +303,8 @@ Index: b/wpa_supplicant/config_ssid.h
  };
  
  #endif /* CONFIG_SSID_H */
-Index: b/src/drivers/driver_nl80211.c
-===================================================================
---- a/src/drivers/driver_nl80211.c	2022-05-13 15:01:13.522786644 +0530
-+++ b/src/drivers/driver_nl80211.c	2022-05-13 15:01:57.790416078 +0530
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
 @@ -5002,7 +5002,8 @@ static int nl80211_put_freq_params(struc
  	is_24ghz = hw_mode == HOSTAPD_MODE_IEEE80211G ||
  		hw_mode == HOSTAPD_MODE_IEEE80211B;
