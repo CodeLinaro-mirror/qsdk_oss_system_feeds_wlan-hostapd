@@ -31,7 +31,18 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -3111,6 +3116,10 @@ enum nl80211_attrs {
+@@ -3099,6 +3104,10 @@ enum nl80211_attrs {
+ 	NL80211_ATTR_MBSSID_CONFIG,
+ 	NL80211_ATTR_MBSSID_ELEMS,
+ 
++	NL80211_ATTR_RADAR_BACKGROUND,
++
++	NL80211_ATTR_AP_SETTINGS_FLAGS,
++
+ 	NL80211_ATTR_BEACON_TX_MODE,
+ 
+ 	NL80211_ATTR_WIPHY_ANTENNA_GAIN,
+@@ -3111,6 +3120,10 @@ enum nl80211_attrs {
  
  	NL80211_ATTR_EMA_RNR_ELEMS,
  
@@ -42,7 +53,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
-@@ -3690,6 +3699,8 @@ enum nl80211_mpath_info {
+@@ -3690,6 +3703,8 @@ enum nl80211_mpath_info {
  	NL80211_MPATH_INFO_MAX = __NL80211_MPATH_INFO_AFTER_LAST - 1
  };
  
@@ -51,7 +62,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  /**
   * enum nl80211_band_iftype_attr - Interface type data attributes
   *
-@@ -3708,6 +3719,16 @@ enum nl80211_mpath_info {
+@@ -3708,6 +3723,16 @@ enum nl80211_mpath_info {
   *     defined
   * @NL80211_BAND_IFTYPE_ATTR_HE_6GHZ_CAPA: HE 6GHz band capabilities (__le16),
   *	given for all 6 GHz band channels
@@ -68,7 +79,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   * @__NL80211_BAND_IFTYPE_ATTR_AFTER_LAST: internal use
   */
  enum nl80211_band_iftype_attr {
-@@ -3719,6 +3740,11 @@ enum nl80211_band_iftype_attr {
+@@ -3719,6 +3744,11 @@ enum nl80211_band_iftype_attr {
  	NL80211_BAND_IFTYPE_ATTR_HE_CAP_MCS_SET,
  	NL80211_BAND_IFTYPE_ATTR_HE_CAP_PPE,
  	NL80211_BAND_IFTYPE_ATTR_HE_6GHZ_CAPA,
@@ -80,7 +91,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	/* keep last */
  	__NL80211_BAND_IFTYPE_ATTR_AFTER_LAST,
-@@ -4915,6 +4941,9 @@ enum nl80211_key_attributes {
+@@ -4915,6 +4945,9 @@ enum nl80211_key_attributes {
   *	see &struct nl80211_txrate_he
   * @NL80211_TXRATE_HE_GI: configure HE GI, 0.8us, 1.6us and 3.2us.
   * @NL80211_TXRATE_HE_LTF: configure HE LTF, 1XLTF, 2XLTF and 4XLTF.
@@ -90,7 +101,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   * @__NL80211_TXRATE_AFTER_LAST: internal
   * @NL80211_TXRATE_MAX: highest TX rate attribute
   */
-@@ -4927,6 +4956,7 @@ enum nl80211_tx_rate_attributes {
+@@ -4927,6 +4960,7 @@ enum nl80211_tx_rate_attributes {
  	NL80211_TXRATE_HE,
  	NL80211_TXRATE_HE_GI,
  	NL80211_TXRATE_HE_LTF,
@@ -98,7 +109,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	/* keep last */
  	__NL80211_TXRATE_AFTER_LAST,
-@@ -4960,6 +4990,14 @@ enum nl80211_txrate_gi {
+@@ -4960,6 +4994,14 @@ enum nl80211_txrate_gi {
  };
  
  /**
@@ -113,7 +124,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   * enum nl80211_band - Frequency band
   * @NL80211_BAND_2GHZ: 2.4 GHz ISM band
   * @NL80211_BAND_5GHZ: around 5 GHz band (4.9 - 5.7 GHz)
-@@ -6029,6 +6067,9 @@ enum nl80211_feature_flags {
+@@ -6029,6 +6071,9 @@ enum nl80211_feature_flags {
   *      frame protection for all management frames exchanged during the
   *      negotiation and range measurement procedure.
   *
@@ -123,7 +134,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   * @NUM_NL80211_EXT_FEATURES: number of extended features.
   * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
   */
-@@ -6093,6 +6134,10 @@ enum nl80211_ext_feature_index {
+@@ -6093,6 +6138,10 @@ enum nl80211_ext_feature_index {
  	NL80211_EXT_FEATURE_SECURE_LTF,
  	NL80211_EXT_FEATURE_SECURE_RTT,
  	NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE,
