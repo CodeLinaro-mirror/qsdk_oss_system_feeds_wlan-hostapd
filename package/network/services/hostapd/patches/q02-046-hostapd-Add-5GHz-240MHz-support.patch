@@ -1,0 +1,169 @@
+From 83302d472d5625e7a6d31c922575f67044eb32cc Mon Sep 17 00:00:00 2001
+From: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
+Date: Wed, 1 Jun 2022 23:05:57 +0530
+Subject: [PATCH] hostapd: Add 5GHz 240MHz support
+
+240MHz is supported in 5GHz for single band from channel
+100 - 144 with right hand 80MHz puncturing in 320MHz bandwidth.
+
+EHT phy capability for advertising 320MHz support in 6GHz is
+reused for 5GHz as well if 320MHz is configured. EHT opertional
+IE is also used to advertise the bandwidth and the center frequency
+of the AP.
+
+Signed-off-by: Karthik M <quic_karm@quicinc.com>
+Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
+
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -354,7 +354,8 @@ static int dfs_get_start_chan_idx(struct
+ 		channel_no -= 4;
+ 
+ 	/* VHT/HE */
+-	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax) {
++	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
++	    iface->conf->ieee80211be) {
+ 		switch (hostapd_get_oper_chwidth(iface->conf)) {
+ 		case CHANWIDTH_USE_HT:
+ 			break;
+@@ -372,6 +373,10 @@ static int dfs_get_start_chan_idx(struct
+ 			chan_seg1 = hostapd_get_oper_centr_freq_seg1_idx(
+ 				iface->conf) - 6;
+ 			break;
++		case CHANWIDTH_320MHZ:
++			channel_no = hostapd_get_oper_centr_freq_seg0_idx(
++				iface->conf) - 30;
++			break;
+ 		default:
+ 			wpa_printf(MSG_INFO,
+ 				   "DFS only VHT20/40/80/160/80+80 is supported now");
+@@ -665,6 +670,10 @@ static int set_dfs_state(struct hostapd_
+ 		n_chans = 8;
+ 		frequency = cf1 - 70;
+ 		break;
++	case CHAN_WIDTH_320:
++		n_chans = 16;
++		frequency = cf1 - 150;
++		break;
+ 	default:
+ 		wpa_printf(MSG_INFO, "DFS chan_width %d not supported",
+ 			   chan_width);
+@@ -860,13 +869,14 @@ int hostapd_handle_dfs(struct hostapd_if
+ 	hostapd_set_state(iface, HAPD_IFACE_DFS);
+ 	wpa_printf(MSG_DEBUG, "DFS start CAC on %d MHz", iface->freq);
+ 	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
+-		"freq=%d chan=%d sec_chan=%d, width=%d, seg0=%d, seg1=%d, cac_time=%ds",
++		"freq=%d chan=%d sec_chan=%d, width=%d, seg0=%d, seg1=%d, cac_time=%ds  bitmap:0x%04x",
+ 		iface->freq,
+ 		iface->conf->channel, iface->conf->secondary_channel,
+ 		hostapd_get_oper_chwidth(iface->conf),
+ 		hostapd_get_oper_centr_freq_seg0_idx(iface->conf),
+ 		hostapd_get_oper_centr_freq_seg1_idx(iface->conf),
+-		iface->dfs_cac_ms / 1000);
++		iface->dfs_cac_ms / 1000,
++		iface->conf->ru_punct_bitmap);
+ 
+ 	res = hostapd_start_dfs_cac(
+ 		iface, iface->conf->hw_mode, iface->freq, iface->conf->channel,
+@@ -1462,6 +1472,9 @@ int hostapd_is_dfs_overlap(struct hostap
+ 	case CHAN_WIDTH_160:
+ 		half_width = 80;
+ 		break;
++	case CHAN_WIDTH_320:
++		half_width = 160;
++		break;
+ 	default:
+ 		wpa_printf(MSG_WARNING, "DFS chanwidth %d not supported",
+ 			   width);
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -929,7 +929,7 @@ static int hostapd_is_usable_edmg(struct
+ static int hostapd_is_usable_ru_punct_bitmap(struct hostapd_iface *iface)
+ {
+ 	struct hostapd_config *conf = iface->conf;
+-	u8 bw, start_chan;
++	int bw, start_chan;
+ 
+ 	if (!conf->ru_punct_bitmap) {
+ 		conf->ru_punct_ofdma = 0;
+@@ -962,6 +962,10 @@ static int hostapd_is_usable_ru_punct_bi
+ 		bw = 160;
+ 		start_chan = conf->eht_oper_centr_freq_seg0_idx - 14;
+ 		break;
++	case 9:
++		bw = 320;
++		start_chan = conf->eht_oper_centr_freq_seg0_idx - 30;
++		break;
+ 	default:
+ 		return 0;
+ 	}
+--- a/src/ap/ieee802_11_eht.c
++++ b/src/ap/ieee802_11_eht.c
+@@ -74,8 +74,10 @@ static u8 ieee80211_eht_mcs_set_size(con
+ 		sz += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
+ 
+ 	if (eht_phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
+-	    EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK)
++	    EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK) {
+ 		sz += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
++		sz += EHT_PHYCAP_MCS_NSS_LEN_160MHZ;
++	}
+ 
+ 	return sz;
+ }
+@@ -110,7 +112,7 @@ u8 * hostapd_eid_eht_capab(struct hostap
+ 	struct eht_capabilities *eht_cap;
+ 	struct ieee80211_eht_capabilities *cap;
+ 	size_t mcs_nss_len, ppe_thresh_len;
+-	u8 *pos = eid, *length_pos;
++	u8 *pos = eid, *length_pos, chwidth;
+ 
+ 	mode = hapd->iface->current_mode;
+ 	if (!mode)
+@@ -128,8 +130,10 @@ u8 * hostapd_eid_eht_capab(struct hostap
+ 	os_memset(cap, 0, sizeof(*cap));
+ 	os_memcpy(cap->mac_cap, eht_cap->mac_cap, EHT_MAC_CAPAB_MAX_LEN);
+ 	os_memcpy(cap->phy_cap, eht_cap->phy_cap, EHT_PHY_CAPAB_MAX_LEN);
++	chwidth = hapd->iconf->eht_oper_chwidth;
+ 
+-	if (!is_6ghz_op_class(hapd->iconf->op_class))
++	if (!is_6ghz_op_class(hapd->iconf->op_class) &&
++	    (chwidth != CHANWIDTH_320MHZ))
+ 		cap->phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &=
+ 					~EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK;
+ 	if (!hapd->iface->conf->eht_phy_capab.su_beamformer)
+--- a/src/common/hw_features_common.c
++++ b/src/common/hw_features_common.c
+@@ -667,6 +667,22 @@ int hostapd_set_freq_params(struct hosta
+ 			return -1;
+ 		}
+ 		break;
++	case CHANWIDTH_320MHZ:
++		data->bandwidth = 320;
++		if (center_segment1) {
++			wpa_printf(MSG_ERROR,
++				   "320 MHz: center segment 1 should not be set");
++			return -1;
++		}
++		if (channel >= 100 && channel <= 144) {
++			center_segment0 = 130;
++			data->center_freq1 = 5650;
++		} else {
++			wpa_printf(MSG_ERROR,
++				   "320 MHz: Configured Channel is not supported");
++			return -1;
++		}
++		break;
+ 	}
+ 
+ 	return 0;
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -2519,6 +2519,7 @@ struct ieee80211_eht_operation {
+ #define EHT_NSS_MAX_STREAMS                     8
+ #define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY       4
+ #define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS       3
++#define EHT_PHYCAP_MCS_NSS_LEN_160MHZ           3
+ 
+ /* IEEE P802.11be/D1.4, May 2021, 9.4.2.295c.5 EHT PPE Thresholds field */
+ #define EHT_PPE_THRES_NSS_SHIFT                 0
