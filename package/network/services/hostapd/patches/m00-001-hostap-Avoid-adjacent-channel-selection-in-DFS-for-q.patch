@@ -18,7 +18,7 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3349,6 +3349,8 @@ static int hostapd_config_fill(struct ho
+@@ -3377,6 +3377,8 @@ static int hostapd_config_fill(struct ho
  		conf->require_ht = atoi(pos);
  	} else if (os_strcmp(buf, "obss_interval") == 0) {
  		conf->obss_interval = atoi(pos);
@@ -29,7 +29,7 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
  		conf->ieee80211ac = atoi(pos);
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1030,6 +1030,7 @@ struct hostapd_config {
+@@ -1045,6 +1045,7 @@ struct hostapd_config {
  
  	/* Use driver-generated interface addresses when adding multiple BSSs */
  	u8 use_driver_iface_addr;
@@ -39,42 +39,100 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
  	struct fst_iface_cfg fst_cfg;
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -199,6 +199,24 @@ static int is_in_chanlist(struct hostapd
+@@ -199,6 +199,64 @@ static int is_in_chanlist(struct hostapd
  	return freq_range_list_includes(&iface->conf->acs_ch_list, chan->chan);
  }
  
++#define HOSTAPD_DFS_UNII2_CHANNELS(chan) (chan >= 52 && chan <= 64)
++
 +static bool is_skip_unii1_dfs_switch_applicable(struct hostapd_iface *iface,
 +				  		struct hostapd_channel_data *chan)
 +{
 +	if (!iface->conf->skip_unii1_dfs_switch)
 +		return false;
 +
-+	/* Skip adjacent channel when below conditions are true
-+	 * i) The primary channel of the AP is 52/56/60/64 & 80MHz mode.
-+	 * ii) The AP moves to the adjacent channel 36/40/44/48 in 80MHz mode
-+	 */
-+
-+	if ((hostapd_get_oper_chwidth(iface->conf) == CHANWIDTH_80MHZ) &&
-+	    ((iface->conf->channel >= 52) && (iface->conf->channel <= 64)) &&
-+	    ((chan->chan >= 36) && (chan->chan <= 48)))
++	/* skip if the selected channel is 52/56/60/64 */
++	if (HOSTAPD_DFS_UNII2_CHANNELS(iface->conf->channel) &&
++	    HOSTAPD_DFS_UNII2_CHANNELS(chan->chan))
 +		return true;
 +
++	/* Skip below mentioned adjacent channels if one of the following
++	 * conditions is true
++	 * i) The primary channel of the AP is 52/56/60/64 in 80MHz mode and
++	 * moves to adjacent channel 36/44/48 in 80MHz
++	 * ii) The primary channel of the AP is 36/44/48/52/56/60/64 in 160MHz
++	 * and moves to 36/44/48 in 80MHz mode
++	 * iii) The primary channel of the AP is 52/56/60/64 in 20MHz or 40MHz mode
++	 * and moves to the adjacent channels 40/44/48 in 20MHz mode or 36/40/44/48
++	 * in 40MHz mode
++	 */
++	switch(hostapd_get_oper_chwidth(iface->conf))
++	{
++		case CHANWIDTH_160MHZ:
++			if ((iface->conf->channel >= 36) &&
++			    (iface->conf->channel <= 64) &&
++			    (iface->conf->channel != 40) &&
++			    (chan->chan >= 36) && (chan->chan <= 48) &&
++			    (chan->chan != 40))
++				return true;
++			break;
++		case CHANWIDTH_80MHZ:
++			if ((iface->conf->channel >= 52) &&
++			    (iface->conf->channel <= 64) &&
++			    (chan->chan >= 36) && (chan->chan <= 48) &&
++			    (chan->chan != 40))
++				return true;
++			break;
++		case CHANWIDTH_USE_HT:
++			if ((iface->conf->channel >= 52) &&
++			    (iface->conf->channel <= 64)) {
++				if (iface->conf->secondary_channel) {
++					if ((chan->chan >= 36) && (chan->chan <= 48))
++						return true;
++				} else {
++					if ((chan->chan >= 40) && (chan->chan <= 48))
++						return true;
++				}
++			}
++			break;
++		default:
++			break;
++	}
++	   
 +	return false;
 +}
  
  /*
   * The function assumes HT40+ operation.
-@@ -247,6 +265,13 @@ static int dfs_find_channel(struct hosta
- 				   chan->freq, chan->chan);
+@@ -248,6 +306,13 @@ static int dfs_find_channel(struct hosta
  			continue;
  		}
-+
+ 
 +		if (is_skip_unii1_dfs_switch_applicable(iface, chan)) {
 +			wpa_printf(MSG_DEBUG,
 +				   "DFS: skip_unii1_dfs_switch enabled, skip adjacent channel: %d (%d)",
 +				   chan->freq, chan->chan);
 +			continue;
 +		}
++
+ 		if (chan->max_tx_power < iface->conf->min_tx_power)
+ 			continue;
  
- 		if (ret_chan && idx == channel_idx) {
- 			wpa_printf(MSG_DEBUG, "Selected channel %d (%d)",
+@@ -963,8 +1028,15 @@ dfs_downgrade_bandwidth(struct hostapd_i
+ 			int oper_chwidth;
+ 
+ 			oper_chwidth = hostapd_get_oper_chwidth(iface->conf);
+-			if (oper_chwidth == CHANWIDTH_USE_HT)
+-				break;
++			if (oper_chwidth == CHANWIDTH_USE_HT) {
++				/* try finding 20MHz channels if skip_unii1_dfs_switch is enabled */
++				if (!iface->conf->skip_unii1_dfs_switch ||
++				    !iface->conf->secondary_channel)
++					break;
++				iface->conf->secondary_channel = 0;
++				*skip_radar = 1;
++				continue;
++			}
+ 			*skip_radar = 1;
+ 			hostapd_set_oper_chwidth(iface->conf, oper_chwidth - 1);
+ 		}
