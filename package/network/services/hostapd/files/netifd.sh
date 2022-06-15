@@ -650,6 +650,9 @@ wpa_supplicant_prepare_interface() {
 	[[ "$mode" = mesh ]] && {
 		user_mpm="user_mpm=1"
 		mesh_ctrl_interface="ctrl_interface=$_rpath"
+		[ -n "$country" ] && {
+			country_code="country=$country"
+		}
 	}
 
 	wpa_supplicant_teardown_interface "$ifname"
@@ -845,6 +848,7 @@ wpa_supplicant_add_network() {
 	cat >> "$_config" <<EOF
 $mesh_ctrl_interface
 $user_mpm
+$country_code
 $device_type
 $device_name
 $manufacturer
