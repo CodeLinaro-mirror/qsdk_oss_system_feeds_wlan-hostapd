@@ -1,23 +1,33 @@
-From c1de8072c68e191ed83e7a510ff5ffffcc34089f Mon Sep 17 00:00:00 2001
+From 00cada639346750210160441c00b5e953aa57d40 Mon Sep 17 00:00:00 2001
 From: Hari Chandrakanthan <quic_haric@quicinc.com>
-Date: Fri, 1 Jul 2022 14:49:03 +0530
+Date: Mon, 11 Jul 2022 22:30:27 +0530
 Subject: [PATCH] hostapd : add support to disable channel switch during radar
+ detection
 
 A new config disable_csa_dfs is added.
-
 When the above config is enabled, the usual channel switch during
 radar detection is skipped.
 
-Rather it waits for 500ms for the user to do the manual channel
-switch using hostapd_cli/wpa_cli.
+Rather hostapd/wpa_supplicant waits for 500ms for the user to do
+the manual channel switch using hostapd_cli/wpa_cli.
 
-If no channel switch is issued within 500ms, the interface is
-disabled.
+If no channel switch or channel set is issued within 500ms,
+the interface is disabled.
+
+sample channel switch that disables the radar handling timer :
+wpa_cli -i wlan2 chan_switch 5 5745 center_freq1=5775 sec_channel_offset=1
+bandwidth=80 vht ht he
+hostapd_cli -i wlan3 chan_switch 5 5745 center_freq1=5775 sec_channel_offset=1
+bandwidth=80 vht ht he
+
+sample set channel cmd that disables the radar handling timer:
+hostapd_cli -i wlan0 set channel 100
+wpa_cli -i wlan1 set_network 0 frequency 5500
 
 Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 ---
  hostapd/config_file.c              |  2 ++
- hostapd/ctrl_iface.c               |  7 +++++++
+ hostapd/ctrl_iface.c               | 14 ++++++++++++++
  hostapd/hostapd.conf               |  4 ++++
  src/ap/ap_config.h                 |  1 +
  src/ap/dfs.c                       | 22 ++++++++++++++++++++--
@@ -25,9 +35,10 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  wpa_supplicant/ap.c                | 12 +++++++++++-
  wpa_supplicant/config.c            |  2 ++
  wpa_supplicant/config.h            |  1 +
+ wpa_supplicant/ctrl_iface.c        | 12 +++++++++++-
  wpa_supplicant/mesh.c              |  2 ++
  wpa_supplicant/wpa_supplicant.conf |  4 ++++
- 11 files changed, 57 insertions(+), 4 deletions(-)
+ 12 files changed, 75 insertions(+), 5 deletions(-)
 
 diff --git a/hostapd/config_file.c b/hostapd/config_file.c
 index 2aae477..2e4440b 100644
@@ -43,10 +54,24 @@ index 2aae477..2e4440b 100644
  		wpa_printf(MSG_ERROR,
  			   "Line %d: unknown configuration item '%s'",
 diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index 1060c48..3c9d88b 100644
+index 1060c48..c053bf3 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2876,6 +2876,13 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
+@@ -1499,6 +1499,13 @@ static int hostapd_ctrl_iface_set(struct hostapd_data *hapd, char *cmd)
+ 	} else if (os_strcasecmp(cmd, "setband") == 0) {
+ 		ret = hostapd_ctrl_iface_set_band(hapd, value);
+ 	} else {
++		if (hapd->iface->conf->disable_csa_dfs &&
++		    ((os_strcmp(cmd, "channel") == 0) &&
++		    ((os_strcmp(value, "acs_survey") != 0) &&
++		    (atoi(value) != 0)))) {
++			eloop_cancel_timeout(hostapd_dfs_radar_handling_timeout,
++					     hapd->iface, NULL);
++		}
+ 		ret = hostapd_set_iface(hapd->iconf, hapd->conf, cmd, value);
+ 		if (ret)
+ 			return ret;
+@@ -2876,6 +2883,13 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
  	int bandwidth;
  	u8 chan;
  
@@ -195,6 +220,36 @@ index 7479583..89be860 100644
  };
  
  
+diff --git a/wpa_supplicant/ctrl_iface.c b/wpa_supplicant/ctrl_iface.c
+index 1aff200..61aeea7 100644
+--- a/wpa_supplicant/ctrl_iface.c
++++ b/wpa_supplicant/ctrl_iface.c
+@@ -60,6 +60,7 @@
+ #include "dpp_supplicant.h"
+ #include "sme.h"
+ #include "ap/ieee802_11.h"
++#include "ap/dfs.h"
+ 
+ #ifdef __NetBSD__
+ #include <net/if_ether.h>
+@@ -3628,7 +3629,16 @@ static int wpa_supplicant_ctrl_iface_set_network(
+ 		   id, name);
+ 	wpa_hexdump_ascii_key(MSG_DEBUG, "CTRL_IFACE: value",
+ 			      (u8 *) value, os_strlen(value));
+-
++#ifdef NEED_AP_MLME
++	if ((os_strcmp(name, "frequency") == 0) &&
++	    (wpa_s->ifmsh && wpa_s->ifmsh->conf->disable_csa_dfs == 1)) {
++		wpa_printf(MSG_DEBUG, "wpa interface %s :"
++			   " cancelling radar handling timeout",
++			   wpa_s->ifmsh->conf->bss[0]->iface);
++		eloop_cancel_timeout(hostapd_dfs_radar_handling_timeout,
++				     wpa_s->ifmsh, NULL);
++	}
++#endif
+ 	ssid = wpa_config_get_network(wpa_s->conf, id);
+ 	if (ssid == NULL) {
+ 		wpa_printf(MSG_DEBUG, "CTRL_IFACE: Could not find network "
 diff --git a/wpa_supplicant/mesh.c b/wpa_supplicant/mesh.c
 index 0372c08..948f365 100644
 --- a/wpa_supplicant/mesh.c
