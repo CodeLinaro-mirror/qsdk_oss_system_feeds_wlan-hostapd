@@ -16,7 +16,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -168,50 +168,47 @@ u8 * hostapd_eid_eht_capab(struct hostap
+@@ -168,50 +168,53 @@ u8 * hostapd_eid_eht_capab(struct hostap
  u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
  {
  	struct ieee80211_eht_operation *oper;
@@ -60,10 +60,12 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	case CHANWIDTH_USE_HT:
 -		if (seg0)
 -			*pos++ = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
--		else
--			pos++;
 +		if (oper->ccfs)
 +			oper->width = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
+ 		else
+-			pos++;
++			oper->width = EHT_OPERATION_CHANNEL_WIDTH_20MHZ;
++
  		break;
  	default:
 -		return eid;
@@ -74,13 +76,16 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 -	if (!seg0)
 -		seg0 = hapd->iconf->channel;
 -	*pos++ = seg0;
++	if (!oper->ccfs)
++		oper->ccfs = hapd->iconf->channel;
++
 +	pos += oper_size;
  
 -	*length_pos = pos - (eid + 2);
  	return pos;
  }
  
-@@ -289,6 +286,7 @@ static int ieee80211_invalid_eht_cap_siz
+@@ -289,6 +292,7 @@ static int ieee80211_invalid_eht_cap_siz
  	const u8 *he_phy_cap;
  	size_t cap_len;
  

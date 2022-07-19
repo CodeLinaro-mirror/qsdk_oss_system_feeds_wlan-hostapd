@@ -188,7 +188,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #endif /* IEEE802_11_H */
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -188,25 +188,51 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -188,17 +188,37 @@ u8 * hostapd_eid_eht_operation(struct ho
  	else
  		chwidth = hapd->iconf->eht_oper_chwidth;
  
@@ -225,12 +225,18 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +		hapd->iconf->ru_punct_bitmap = 0;
  		if (oper->ccfs)
  			oper->width = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
+ 		else
+@@ -206,6 +226,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 
  		break;
  	default:
 +		hapd->iconf->ru_punct_bitmap = 0;
  		oper->width = EHT_OPERATION_CHANNEL_WIDTH_20MHZ;
  		break;
  	}
+@@ -213,6 +234,11 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 	if (!oper->ccfs)
+ 		oper->ccfs = hapd->iconf->channel;
  
 +	if (hapd->iconf->ru_punct_bitmap) {
 +		oper->disable_sub_chan_bitmap_present = 1;
