@@ -670,6 +670,7 @@ wpa_supplicant_add_network() {
 	local enable_160mhz_bw=0
 	local enable_320mhz_bw=0
 	local ru_punct_bitmap=$5
+	local disable_csa_dfs=$6
 
 	_wpa_supplicant_common "$1"
 	wireless_vif_parse_encryption
@@ -720,6 +721,9 @@ wpa_supplicant_add_network() {
 		[[ "$htmode" == "EHT320" ]] && {
 			enable_320mhz_bw=1
 			enable_160mhz_bw=1
+		}
+		[ -n "$disable_csa_dfs" ] && {
+			disable_csa_dfs="disable_csa_dfs=$disable_csa_dfs"
 		}
 	}
 
@@ -858,6 +862,7 @@ $model_number
 $serial_number
 $config_methods
 $saepwe
+$disable_csa_dfs
 
 network={
 	$scan_ssid
