@@ -11,8 +11,10 @@ Support for mesh channelization in 320MHz.
 Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
 ---
---- a/wpa_supplicant/ap.c
-+++ b/wpa_supplicant/ap.c
+Index: b/wpa_supplicant/ap.c
+===================================================================
+--- a/wpa_supplicant/ap.c	2022-07-08 10:12:42.614954957 +0530
++++ b/wpa_supplicant/ap.c	2022-07-08 10:12:42.586955263 +0530
 @@ -324,6 +324,14 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  
  		if (mode && is_6ghz_freq(ssid->frequency) &&
@@ -39,8 +41,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  
  			if (mode->vht_capab && ssid->vht) {
  				conf->ieee80211ac = 1;
---- a/wpa_supplicant/config.c
-+++ b/wpa_supplicant/config.c
+Index: b/wpa_supplicant/config.c
+===================================================================
+--- a/wpa_supplicant/config.c	2022-07-08 10:12:42.614954957 +0530
++++ b/wpa_supplicant/config.c	2022-07-08 10:12:42.586955263 +0530
 @@ -2812,6 +2812,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(disable_40mhz_scan, 0, 1)},
  	{ INT_RANGE(beacon_tx_mode, 1, 2)},
@@ -49,8 +53,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  };
  
  #undef OFFSET
---- a/wpa_supplicant/mesh.c
-+++ b/wpa_supplicant/mesh.c
+Index: b/wpa_supplicant/mesh.c
+===================================================================
+--- a/wpa_supplicant/mesh.c	2022-07-08 10:12:42.614954957 +0530
++++ b/wpa_supplicant/mesh.c	2022-07-08 10:12:42.586955263 +0530
 @@ -227,7 +227,7 @@ static int wpas_mesh_update_freq_params(
  		    ifmsh->conf->ieee80211n,
  		    ifmsh->conf->ieee80211ac,
@@ -97,8 +103,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  	if (ssid->beacon_int > 0)
  		params->beacon_int = ssid->beacon_int;
  	else if (wpa_s->conf->beacon_int > 0)
---- a/wpa_supplicant/mesh_mpm.c
-+++ b/wpa_supplicant/mesh_mpm.c
+Index: b/wpa_supplicant/mesh_mpm.c
+===================================================================
+--- a/wpa_supplicant/mesh_mpm.c	2022-07-08 10:12:42.614954957 +0530
++++ b/wpa_supplicant/mesh_mpm.c	2022-07-08 10:12:42.586955263 +0530
 @@ -257,6 +257,16 @@ static void mesh_mpm_send_plink_action(s
  				3 + sizeof(struct ieee80211_he_6ghz_band_cap);
  	}
@@ -158,8 +166,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  	params.flags |= WPA_STA_WMM;
  	params.flags_mask |= WPA_STA_AUTHENTICATED;
  	if (conf->security == MESH_CONF_SEC_NONE) {
---- a/wpa_supplicant/wpa_supplicant.c
-+++ b/wpa_supplicant/wpa_supplicant.c
+Index: b/wpa_supplicant/wpa_supplicant.c
+===================================================================
+--- a/wpa_supplicant/wpa_supplicant.c	2022-07-08 10:12:42.614954957 +0530
++++ b/wpa_supplicant/wpa_supplicant.c	2022-07-08 10:14:31.153768442 +0530
 @@ -2478,7 +2478,25 @@ static bool ibss_mesh_is_80mhz_avail(int
  	return true;
  }
@@ -186,7 +196,17 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
  			  const struct wpa_ssid *ssid,
  			  struct hostapd_freq_params *freq)
-@@ -2736,8 +2754,9 @@ skip_to_6ghz:
+@@ -2500,6 +2518,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
+ 				     6595, 6655, 6675, 6735,
+ 				     6755, 6815, 6835, 6895,
+ 				     6915, 6975, 6995, 7055 };
++	unsigned int bw_320[] = { 5500, 5720, 5955, 6255, 6115,
++				  6415, 6275, 6575, 6435, 6735,
++				  6595, 6895, 6755, 7055};
+ 	struct hostapd_channel_data *pri_chan = NULL, *sec_chan = NULL;
+ 	u8 channel,  chan_80mhz;
+ 	int i, chan_idx, ht40 = -1, res, obss_scan = 1;
+@@ -2736,8 +2757,9 @@ skip_to_6ghz:
  	if (!vht_freq.vht_enabled && !is_6ghz)
  		return;
  
@@ -197,33 +217,27 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  
  #ifdef CONFIG_HE_OVERRIDES
  	if (is_24ghz)
-@@ -2765,6 +2784,25 @@ skip_to_6ghz:
- 	chwidth = CHANWIDTH_80MHZ;
- 	seg1 = 0;
+@@ -2801,6 +2823,19 @@ skip_to_6ghz:
+  		}
+  	}
  
 +	if ((ssid->enable_320mhz_bw) && (mode->eht_capab[ieee80211_mode].phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
 +	     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK) && is_6ghz) {
-+		/* Initial four 20 MHz channels are validated above;
-+		 * Validation for remaining 12 channels.
-+		 */
-+		for (i = channel + 16; i < channel + 64; i += 4) {
-+			struct hostapd_channel_data *chan;
 +
-+			chan = hw_get_channel_chan(mode, i, NULL);
-+			if (!chan)
-+				return;
-+			if (chan->flag & (HOSTAPD_CHAN_DISABLED|
-+			    HOSTAPD_CHAN_NO_IR))
-+				return;
-+			}
++		for (i = 0; i < ARRAY_SIZE(bw_320); i+=2) {
++			if (freq->freq >= bw_320[i] &&
++		    	    freq->freq <= bw_320[i+1])
++				break;
++		}
++
 +		seg0 = ibss_get_center_320mhz(freq->channel);
 +		chwidth = CHANWIDTH_320MHZ;
 +	}
 +
- 	if ((mode->he_capab[ieee80211_mode].phy_cap[
- 		     HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
- 	     HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G) && (ssid->enable_160mhz_bw)) {
-@@ -2870,9 +2908,10 @@ skip_to_6ghz:
+ 	if (ssid->max_oper_chwidth == CHANWIDTH_80P80MHZ) {
+ 		/* setup center_freq2, bandwidth */
+ 		for (k = 0; k < ARRAY_SIZE(bw_80_160); k++) {
+@@ -2870,9 +2905,10 @@ skip_to_6ghz:
  				    freq->channel, ssid->enable_edmg,
  				    ssid->edmg_channel, freq->ht_enabled,
  				    vht_freq.vht_enabled, vht_freq.he_enabled,
@@ -236,8 +250,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  				    0, freq->ru_punct_bitmap,
  				    freq->ru_punct_ofdma) != 0)
  		return;
---- a/wpa_supplicant/wpa_supplicant_i.h
-+++ b/wpa_supplicant/wpa_supplicant_i.h
+Index: b/wpa_supplicant/wpa_supplicant_i.h
+===================================================================
+--- a/wpa_supplicant/wpa_supplicant_i.h	2022-07-08 10:12:42.614954957 +0530
++++ b/wpa_supplicant/wpa_supplicant_i.h	2022-07-08 10:12:42.598955132 +0530
 @@ -1033,6 +1033,7 @@ struct wpa_supplicant {
  	unsigned int mesh_ht_enabled:1;
  	unsigned int mesh_vht_enabled:1;
@@ -246,8 +262,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  	struct wpa_driver_mesh_join_params *mesh_params;
  #ifdef CONFIG_PMKSA_CACHE_EXTERNAL
  	/* struct external_pmksa_cache::list */
---- a/hostapd/config_file.c
-+++ b/hostapd/config_file.c
+Index: b/hostapd/config_file.c
+===================================================================
+--- a/hostapd/config_file.c	2022-07-08 10:12:42.614954957 +0530
++++ b/hostapd/config_file.c	2022-07-08 10:12:42.598955132 +0530
 @@ -4266,6 +4266,8 @@ static int hostapd_config_fill(struct ho
  	} else if (os_strcmp(buf, "wowlan_triggers") == 0) {
  		os_free(bss->wowlan_triggers);
@@ -257,8 +275,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  	} else if (os_strcmp(buf, "enable_160mhz_bw") == 0) {
  		conf->enable_160mhz_bw = atoi(pos);
  	} else if (os_strcmp(buf, "disable_40mhz_scan") == 0) {
---- a/src/ap/ap_config.h
-+++ b/src/ap/ap_config.h
+Index: b/src/ap/ap_config.h
+===================================================================
+--- a/src/ap/ap_config.h	2022-07-08 10:12:42.614954957 +0530
++++ b/src/ap/ap_config.h	2022-07-08 10:12:42.598955132 +0530
 @@ -1152,6 +1152,7 @@ struct hostapd_config {
  	u16 ru_punct_bitmap;
  	u8 ru_punct_ofdma;
@@ -267,8 +287,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  };
  
  static inline u8 hostapd_get_he_6ghz_reg_pwr_type(struct hostapd_config *conf)
---- a/src/drivers/driver.h
-+++ b/src/drivers/driver.h
+Index: b/src/drivers/driver.h
+===================================================================
+--- a/src/drivers/driver.h	2022-07-08 10:12:42.614954957 +0530
++++ b/src/drivers/driver.h	2022-07-08 10:12:42.598955132 +0530
 @@ -1287,6 +1287,10 @@ struct wpa_driver_associate_params {
  	 * Enable 160MHz BW - set it 1 to enable mesh 160MHz 6G
  	 */
@@ -280,8 +302,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  };
  
  enum hide_ssid {
---- a/wpa_supplicant/config_file.c
-+++ b/wpa_supplicant/config_file.c
+Index: b/wpa_supplicant/config_file.c
+===================================================================
+--- a/wpa_supplicant/config_file.c	2022-07-08 10:12:42.614954957 +0530
++++ b/wpa_supplicant/config_file.c	2022-07-08 10:12:42.606955044 +0530
 @@ -893,6 +893,7 @@ static void wpa_config_write_network(FIL
  	INT(disable_40mhz_scan);
  	INT(beacon_tx_mode);
@@ -290,8 +314,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  #undef STR
  #undef INT
  #undef INT_DEF
---- a/wpa_supplicant/config_ssid.h
-+++ b/wpa_supplicant/config_ssid.h
+Index: b/wpa_supplicant/config_ssid.h
+===================================================================
+--- a/wpa_supplicant/config_ssid.h	2022-07-08 10:12:42.614954957 +0530
++++ b/wpa_supplicant/config_ssid.h	2022-07-08 10:12:42.610955000 +0530
 @@ -1223,6 +1223,10 @@ struct wpa_ssid {
  	 * Enable 160MHz BW - set it 1 to enable mesh 160MHz 6G
  	 */
@@ -303,8 +329,10 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  };
  
  #endif /* CONFIG_SSID_H */
---- a/src/drivers/driver_nl80211.c
-+++ b/src/drivers/driver_nl80211.c
+Index: b/src/drivers/driver_nl80211.c
+===================================================================
+--- a/src/drivers/driver_nl80211.c	2022-07-08 10:12:42.614954957 +0530
++++ b/src/drivers/driver_nl80211.c	2022-07-08 10:12:42.610955000 +0530
 @@ -5002,7 +5002,8 @@ static int nl80211_put_freq_params(struc
  	is_24ghz = hw_mode == HOSTAPD_MODE_IEEE80211G ||
  		hw_mode == HOSTAPD_MODE_IEEE80211B;

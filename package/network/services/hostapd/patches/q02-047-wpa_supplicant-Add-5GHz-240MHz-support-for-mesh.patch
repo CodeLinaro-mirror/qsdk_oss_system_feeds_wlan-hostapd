@@ -21,11 +21,11 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  wpa_supplicant/wpa_supplicant.c | 51 ++++++++++++++++++++++++++++-------------
  3 files changed, 40 insertions(+), 19 deletions(-)
 
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index 3eb6417..1e5c641 100644
---- a/src/common/ieee802_11_common.c
-+++ b/src/common/ieee802_11_common.c
-@@ -1028,7 +1028,8 @@ enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
+Index: b/src/common/ieee802_11_common.c
+===================================================================
+--- a/src/common/ieee802_11_common.c	2022-07-14 14:31:03.057966186 +0530
++++ b/src/common/ieee802_11_common.c	2022-07-14 14:31:03.049966278 +0530
+@@ -1028,7 +1028,8 @@ enum hostapd_hw_mode ieee80211_freq_to_c
  		if ((freq - 5000) % 5)
  			return NUM_HOSTAPD_MODES;
  
@@ -35,11 +35,11 @@ index 3eb6417..1e5c641 100644
  			*op_class = vht_opclass;
  		else if (sec_channel == 1)
  			*op_class = 122;
-diff --git a/wpa_supplicant/ap.c b/wpa_supplicant/ap.c
-index 2c55e95..2729163 100644
---- a/wpa_supplicant/ap.c
-+++ b/wpa_supplicant/ap.c
-@@ -105,9 +105,10 @@ static void wpas_conf_ap_vht(struct wpa_supplicant *wpa_s,
+Index: b/wpa_supplicant/ap.c
+===================================================================
+--- a/wpa_supplicant/ap.c	2022-07-14 14:31:03.057966186 +0530
++++ b/wpa_supplicant/ap.c	2022-07-14 14:31:03.049966278 +0530
+@@ -105,9 +105,10 @@ static void wpas_conf_ap_vht(struct wpa_
  		hostapd_set_oper_centr_freq_seg0_idx(conf, freq_seg_idx);
  
  		wpa_printf(MSG_DEBUG,
@@ -52,11 +52,11 @@ index 2c55e95..2729163 100644
  		return;
  	}
  
-diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
-index e030f79..ed852de 100644
---- a/wpa_supplicant/wpa_supplicant.c
-+++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2509,7 +2509,9 @@ void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
+Index: b/wpa_supplicant/wpa_supplicant.c
+===================================================================
+--- a/wpa_supplicant/wpa_supplicant.c	2022-07-14 14:31:03.057966186 +0530
++++ b/wpa_supplicant/wpa_supplicant.c	2022-07-14 14:33:12.080479343 +0530
+@@ -2509,7 +2509,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
  	/* bw_80_160 array members are 80MHz start freq, 80MHz end freq and so on
  	 */
  	unsigned int bw_80_160[] = { 5180, 5240, 5260, 5320,
@@ -67,37 +67,24 @@ index e030f79..ed852de 100644
  				     5745, 5805, 5825, 5885,
  				     5955, 6015, 6035, 6095,
  				     6115, 6175, 6195, 6255,
-@@ -2785,24 +2787,41 @@ skip_to_6ghz:
- 	seg1 = 0;
+@@ -2824,16 +2826,33 @@ skip_to_6ghz:
+  	}
  
  	if ((ssid->enable_320mhz_bw) && (mode->eht_capab[ieee80211_mode].phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
 -	     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK) && is_6ghz) {
--		/* Initial four 20 MHz channels are validated above;
--		 * Validation for remaining 12 channels.
--		 */
--		for (i = channel + 16; i < channel + 64; i += 4) {
--			struct hostapd_channel_data *chan;
+-
+-		for (i = 0; i < ARRAY_SIZE(bw_320); i+=2) {
+-			if (freq->freq >= bw_320[i] &&
+-		    	    freq->freq <= bw_320[i+1])
+-				break;
 +	     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK)) {
 +		if (is_6ghz) {
-+			/* Initial four 20 MHz channels are validated above;
-+			 * Validation for remaining 12 channels.
-+			 */
-+			for (i = channel + 16; i < channel + 64; i += 4) {
-+				struct hostapd_channel_data *chan;
- 
--			chan = hw_get_channel_chan(mode, i, NULL);
--			if (!chan)
--				return;
--			if (chan->flag & (HOSTAPD_CHAN_DISABLED|
--			    HOSTAPD_CHAN_NO_IR))
--				return;
-+				chan = hw_get_channel_chan(mode, i, NULL);
-+				if (!chan)
-+					return;
-+				if (chan->flag & (HOSTAPD_CHAN_DISABLED|
-+				    HOSTAPD_CHAN_NO_IR))
-+					return;
++			for (i = 0; i < ARRAY_SIZE(bw_320); i+=2) {
++				if (freq->freq >= bw_320[i] &&
++		    	    	    freq->freq <= bw_320[i+1])
++					break;
 +			}
++
 +			seg0 = ibss_get_center_320mhz(freq->channel);
 +			chwidth = CHANWIDTH_320MHZ;
 +		} else {
@@ -113,17 +100,13 @@ index e030f79..ed852de 100644
 +							HOSTAPD_CHAN_NO_IR))
 +						return;
 +				}
-+				seg0 = 130;
-+				chwidth = CHANWIDTH_320MHZ;
- 			}
++					seg0 = 130;
++					chwidth = CHANWIDTH_320MHZ;
++			}
+ 		}
+-
 -		seg0 = ibss_get_center_320mhz(freq->channel);
 -		chwidth = CHANWIDTH_320MHZ;
-+		}
  	}
--
- 	if ((mode->he_capab[ieee80211_mode].phy_cap[
- 		     HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
- 	     HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G) && (ssid->enable_160mhz_bw)) {
--- 
-2.7.4
-
+ 
+ 	if (ssid->max_oper_chwidth == CHANWIDTH_80P80MHZ) {
