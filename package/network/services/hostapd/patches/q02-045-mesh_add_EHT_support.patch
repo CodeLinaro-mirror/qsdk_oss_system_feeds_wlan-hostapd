@@ -138,7 +138,7 @@ Index: b/wpa_supplicant/mesh_mpm.c
 +				 3 + sizeof(struct ieee80211_eht_operation)];
 +		pos = hostapd_eid_eht_capab(bss, eht_capa_oper,
 +			       		    IEEE80211_MODE_MESH);
-+		pos = hostapd_eid_eht_operation(bss, pos);
++		pos = hostapd_eid_eht_operation(bss, pos, IEEE80211_MODE_MESH);
 +		wpabuf_put_data(buf, eht_capa_oper, pos - eht_capa_oper);
 +	}
 +#endif /* CONFIG_IEEE80211BE */

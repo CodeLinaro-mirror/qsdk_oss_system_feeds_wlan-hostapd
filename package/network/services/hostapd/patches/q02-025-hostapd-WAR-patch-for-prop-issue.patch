@@ -16,14 +16,17 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -168,50 +168,53 @@ u8 * hostapd_eid_eht_capab(struct hostap
- u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid)
+@@ -170,7 +170,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  {
+ 	struct hostapd_hw_modes *mode;
  	struct ieee80211_eht_operation *oper;
 -	u8 *pos = eid, *length_pos, chwidth, seg0 = 0;
 +	u8 *pos = eid, oper_size = 0, chwidth;
  
- 	if (!hapd->iface->current_mode)
+ 	mode = hapd->iface->current_mode;
+ 	if (!mode)
+@@ -179,45 +179,48 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 	if (!mode->eht_capab[opmode].eht_supported)
  		return eid;
  
 +	oper_size = sizeof(struct ieee80211_eht_operation);
@@ -85,7 +88,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	return pos;
  }
  
-@@ -289,6 +292,7 @@ static int ieee80211_invalid_eht_cap_siz
+@@ -295,6 +298,7 @@ static int ieee80211_invalid_eht_cap_siz
  	const u8 *he_phy_cap;
  	size_t cap_len;
  

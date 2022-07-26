@@ -18,7 +18,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4491,6 +4491,16 @@ static int check_assoc_ies(struct hostap
+@@ -4593,6 +4593,16 @@ static int check_assoc_ies(struct hostap
  		}
  	}
  #endif /* CONFIG_IEEE80211AX */
@@ -37,17 +37,17 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	if (elems.p2p) {
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -225,4 +225,7 @@ size_t hostapd_eid_eht_capab_len(struct
- u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
+@@ -221,4 +221,7 @@ u8 * hostapd_eid_eht_capab(struct hostap
  			   enum ieee80211_op_mode opmode);
- u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid);
+ u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid,
+ 			       enum ieee80211_op_mode opmode);
 +u16 copy_sta_eht_capab(struct hostapd_data *hapd, struct sta_info *sta,
 +		       enum ieee80211_op_mode opmode, const u8 *he_capab,
 +		       const u8 *eht_capab, size_t eht_capab_len);
  #endif /* IEEE802_11_H */
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -10,6 +10,7 @@
+@@ -20,6 +20,7 @@
  #include "utils/common.h"
  #include "hostapd.h"
  #include "ieee802_11.h"
@@ -55,7 +55,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  static u8 ieee80211_eht_ppet_size(const u8 *ppe_thres, const u8 *phy_cap_info)
  {
-@@ -203,3 +204,119 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -219,3 +220,119 @@ u8 * hostapd_eid_eht_operation(struct ho
  	*length_pos = pos - (eid + 2);
  	return pos;
  }
@@ -197,7 +197,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  /* Maximum number of supported rates (from both Supported Rates and Extended
   * Supported Rates IEs). */
  #define WLAN_SUPP_RATES_MAX 32
-@@ -112,6 +115,7 @@ struct sta_info {
+@@ -113,6 +116,7 @@ struct sta_info {
  	u16 aid; /* STA's unique AID (1 .. 2007) or 0 if not yet assigned */
  	u16 disconnect_reason_code; /* RADIUS server override */
  	u32 flags; /* Bitfield of WLAN_STA_* */
@@ -205,7 +205,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	u16 capability;
  	u16 listen_interval; /* or beacon_int for APs */
  	u8 supported_rates[WLAN_SUPP_RATES_MAX];
-@@ -213,6 +217,8 @@ struct sta_info {
+@@ -214,6 +218,8 @@ struct sta_info {
  	struct ieee80211_he_capabilities *he_capab;
  	size_t he_capab_len;
  	struct ieee80211_he_6ghz_band_cap *he_6ghz_capab;
