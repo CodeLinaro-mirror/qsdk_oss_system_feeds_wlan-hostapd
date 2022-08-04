@@ -25,7 +25,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	mode = hapd->iface->current_mode;
  	if (!mode)
-@@ -179,45 +179,48 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -179,45 +179,49 @@ u8 * hostapd_eid_eht_operation(struct ho
  	if (!mode->eht_capab[opmode].eht_supported)
  		return eid;
  
@@ -39,6 +39,8 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	os_memset(oper, 0, sizeof(*oper));
  
 +	oper->ccfs = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
++	if (!oper->ccfs)
++		oper->ccfs = hapd->iconf->channel;
 +
  	if (is_6ghz_op_class(hapd->iconf->op_class))
  		chwidth = op_class_to_ch_width(hapd->iconf->op_class);
@@ -63,7 +65,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	case CHANWIDTH_USE_HT:
 -		if (seg0)
 -			*pos++ = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
-+		if (oper->ccfs)
++		if ((is_6ghz_op_class(hapd->iconf->op_class) &&
++		    op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
++		    hapd->iconf->secondary_channel)
 +			oper->width = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
  		else
 -			pos++;
@@ -79,16 +83,13 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 -	if (!seg0)
 -		seg0 = hapd->iconf->channel;
 -	*pos++ = seg0;
-+	if (!oper->ccfs)
-+		oper->ccfs = hapd->iconf->channel;
-+
 +	pos += oper_size;
  
 -	*length_pos = pos - (eid + 2);
  	return pos;
  }
  
-@@ -295,6 +298,7 @@ static int ieee80211_invalid_eht_cap_siz
+@@ -295,6 +299,7 @@ static int ieee80211_invalid_eht_cap_siz
  	const u8 *he_phy_cap;
  	size_t cap_len;
  
