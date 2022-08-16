@@ -14,9 +14,11 @@ of the AP.
 Signed-off-by: Karthik M <quic_karm@quicinc.com>
 Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 
---- a/src/ap/dfs.c
-+++ b/src/ap/dfs.c
-@@ -354,7 +354,8 @@ static int dfs_get_start_chan_idx(struct
+Index: b/src/ap/dfs.c
+===================================================================
+--- a/src/ap/dfs.c	2022-08-16 18:25:13.432505857 +0530
++++ b/src/ap/dfs.c	2022-08-16 18:25:13.424505928 +0530
+@@ -394,7 +394,8 @@ static int dfs_get_start_chan_idx(struct
  		channel_no -= 4;
  
  	/* VHT/HE */
@@ -26,7 +28,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  		switch (hostapd_get_oper_chwidth(iface->conf)) {
  		case CHANWIDTH_USE_HT:
  			break;
-@@ -372,6 +373,10 @@ static int dfs_get_start_chan_idx(struct
+@@ -412,6 +413,10 @@ static int dfs_get_start_chan_idx(struct
  			chan_seg1 = hostapd_get_oper_centr_freq_seg1_idx(
  				iface->conf) - 6;
  			break;
@@ -37,7 +39,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  		default:
  			wpa_printf(MSG_INFO,
  				   "DFS only VHT20/40/80/160/80+80 is supported now");
-@@ -665,6 +670,10 @@ static int set_dfs_state(struct hostapd_
+@@ -705,6 +710,10 @@ static int set_dfs_state(struct hostapd_
  		n_chans = 8;
  		frequency = cf1 - 70;
  		break;
@@ -48,7 +50,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	default:
  		wpa_printf(MSG_INFO, "DFS chan_width %d not supported",
  			   chan_width);
-@@ -860,13 +869,14 @@ int hostapd_handle_dfs(struct hostapd_if
+@@ -900,13 +909,14 @@ int hostapd_handle_dfs(struct hostapd_if
  	hostapd_set_state(iface, HAPD_IFACE_DFS);
  	wpa_printf(MSG_DEBUG, "DFS start CAC on %d MHz", iface->freq);
  	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
@@ -65,7 +67,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  
  	res = hostapd_start_dfs_cac(
  		iface, iface->conf->hw_mode, iface->freq, iface->conf->channel,
-@@ -1462,6 +1472,9 @@ int hostapd_is_dfs_overlap(struct hostap
+@@ -1509,6 +1519,9 @@ int hostapd_is_dfs_overlap(struct hostap
  	case CHAN_WIDTH_160:
  		half_width = 80;
  		break;
@@ -75,8 +77,10 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	default:
  		wpa_printf(MSG_WARNING, "DFS chanwidth %d not supported",
  			   width);
---- a/src/ap/hw_features.c
-+++ b/src/ap/hw_features.c
+Index: b/src/ap/hw_features.c
+===================================================================
+--- a/src/ap/hw_features.c	2022-08-16 18:25:13.432505857 +0530
++++ b/src/ap/hw_features.c	2022-08-16 18:25:13.424505928 +0530
 @@ -929,7 +929,7 @@ static int hostapd_is_usable_edmg(struct
  static int hostapd_is_usable_ru_punct_bitmap(struct hostapd_iface *iface)
  {
@@ -97,8 +101,10 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	default:
  		return 0;
  	}
---- a/src/ap/ieee802_11_eht.c
-+++ b/src/ap/ieee802_11_eht.c
+Index: b/src/ap/ieee802_11_eht.c
+===================================================================
+--- a/src/ap/ieee802_11_eht.c	2022-08-16 18:25:13.432505857 +0530
++++ b/src/ap/ieee802_11_eht.c	2022-08-16 18:25:13.428505893 +0530
 @@ -74,8 +74,10 @@ static u8 ieee80211_eht_mcs_set_size(con
  		sz += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
  
@@ -132,8 +138,10 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  		cap->phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &=
  					~EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK;
  	if (!hapd->iface->conf->eht_phy_capab.su_beamformer)
---- a/src/common/hw_features_common.c
-+++ b/src/common/hw_features_common.c
+Index: b/src/common/hw_features_common.c
+===================================================================
+--- a/src/common/hw_features_common.c	2022-08-16 18:25:13.432505857 +0530
++++ b/src/common/hw_features_common.c	2022-08-16 18:25:13.428505893 +0530
 @@ -667,6 +667,22 @@ int hostapd_set_freq_params(struct hosta
  			return -1;
  		}
@@ -157,8 +165,10 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	}
  
  	return 0;
---- a/src/common/ieee802_11_defs.h
-+++ b/src/common/ieee802_11_defs.h
+Index: b/src/common/ieee802_11_defs.h
+===================================================================
+--- a/src/common/ieee802_11_defs.h	2022-08-16 18:25:13.432505857 +0530
++++ b/src/common/ieee802_11_defs.h	2022-08-16 18:25:13.428505893 +0530
 @@ -2519,6 +2519,7 @@ struct ieee80211_eht_operation {
  #define EHT_NSS_MAX_STREAMS                     8
  #define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY       4
@@ -167,3 +177,15 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  
  /* IEEE P802.11be/D1.4, May 2021, 9.4.2.295c.5 EHT PPE Thresholds field */
  #define EHT_PPE_THRES_NSS_SHIFT                 0
+Index: b/src/common/ieee802_11_common.c
+===================================================================
+--- a/src/common/ieee802_11_common.c	2022-08-16 18:25:13.324506816 +0530
++++ b/src/common/ieee802_11_common.c	2022-08-16 18:25:51.888164665 +0530
+@@ -953,6 +953,7 @@ enum hostapd_hw_mode ieee80211_freq_to_c
+ 	case CHANWIDTH_80MHZ:
+ 		vht_opclass = 128;
+ 		break;
++	case CHANWIDTH_320MHZ:
+ 	case CHANWIDTH_160MHZ:
+ 		vht_opclass = 129;
+ 		break;
