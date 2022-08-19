@@ -180,7 +180,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #endif /* CONFIG_NATIVE_WINDOWS */
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -227,4 +227,5 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -228,4 +228,5 @@ u8 * hostapd_eid_eht_operation(struct ho
  u16 copy_sta_eht_capab(struct hostapd_data *hapd, struct sta_info *sta,
  		       enum ieee80211_op_mode opmode, const u8 *he_capab,
  		       const u8 *eht_capab, size_t eht_capab_len);
@@ -188,7 +188,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #endif /* IEEE802_11_H */
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -188,17 +188,37 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -196,17 +196,37 @@ u8 * hostapd_eid_eht_operation(struct ho
  	else
  		chwidth = hapd->iconf->eht_oper_chwidth;
  
@@ -223,10 +223,10 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		break;
  	case CHANWIDTH_USE_HT:
 +		hapd->iconf->ru_punct_bitmap = 0;
- 		if (oper->ccfs)
- 			oper->width = EHT_OPERATION_CHANNEL_WIDTH_40MHZ;
- 		else
-@@ -206,6 +226,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 		if ((is_6ghz_op_class(hapd->iconf->op_class) &&
+ 		    op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
+ 		    hapd->iconf->secondary_channel)
+@@ -216,10 +236,16 @@ u8 * hostapd_eid_eht_operation(struct ho
  
  		break;
  	default:
@@ -234,9 +234,6 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		oper->width = EHT_OPERATION_CHANNEL_WIDTH_20MHZ;
  		break;
  	}
-@@ -213,6 +234,11 @@ u8 * hostapd_eid_eht_operation(struct ho
- 	if (!oper->ccfs)
- 		oper->ccfs = hapd->iconf->channel;
  
 +	if (hapd->iconf->ru_punct_bitmap) {
 +		oper->disable_sub_chan_bitmap_present = 1;
