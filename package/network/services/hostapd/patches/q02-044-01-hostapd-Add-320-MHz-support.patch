@@ -33,8 +33,8 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 
 Index: b/hostapd/ctrl_iface.c
 ===================================================================
---- a/hostapd/ctrl_iface.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/hostapd/ctrl_iface.c	2022-08-04 01:27:08.459803764 +0530
+--- a/hostapd/ctrl_iface.c	2022-08-30 18:41:54.749138965 +0530
++++ b/hostapd/ctrl_iface.c	2022-08-30 18:41:54.717139244 +0530
 @@ -2637,7 +2637,7 @@ static int hostapd_ctrl_register_frame(s
  #ifdef NEED_AP_MLME
  static int hostapd_ctrl_check_freq_params(struct hostapd_freq_params *params)
@@ -91,8 +91,8 @@ Index: b/hostapd/ctrl_iface.c
  		break;
 Index: b/src/ap/drv_callbacks.c
 ===================================================================
---- a/src/ap/drv_callbacks.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/ap/drv_callbacks.c	2022-08-04 01:27:08.463803735 +0530
+--- a/src/ap/drv_callbacks.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/ap/drv_callbacks.c	2022-08-30 18:41:54.721139209 +0530
 @@ -854,6 +854,9 @@ void hostapd_event_sta_opmode_changed(st
  	case CHAN_WIDTH_160:
  		txt = "160";
@@ -125,8 +125,8 @@ Index: b/src/ap/drv_callbacks.c
  		hapd->iconf->ht_capab &= ~HT_CAP_INFO_SUPP_CHANNEL_WIDTH_SET;
 Index: b/src/ap/hostapd.c
 ===================================================================
---- a/src/ap/hostapd.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/ap/hostapd.c	2022-08-04 01:27:08.463803735 +0530
+--- a/src/ap/hostapd.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/ap/hostapd.c	2022-08-30 18:41:54.725139174 +0530
 @@ -3548,6 +3548,7 @@ static int hostapd_change_config_freq(st
  	case 40:
  	case 80:
@@ -167,9 +167,9 @@ Index: b/src/ap/hostapd.c
  			   freq_params->bandwidth);
 Index: b/src/ap/ieee802_11_eht.c
 ===================================================================
---- a/src/ap/ieee802_11_eht.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/ap/ieee802_11_eht.c	2022-08-04 01:27:08.463803735 +0530
-@@ -294,7 +294,9 @@ static int check_valid_eht_mcs(struct ho
+--- a/src/ap/ieee802_11_eht.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/ap/ieee802_11_eht.c	2022-08-30 18:41:54.725139174 +0530
+@@ -301,7 +301,9 @@ static int check_valid_eht_mcs(struct ho
  		u8 mcs_count = 1;
  
  		switch (hapd->iface->conf->eht_oper_chwidth) {
@@ -182,8 +182,8 @@ Index: b/src/ap/ieee802_11_eht.c
  			mcs_count = 2;
 Index: b/src/common/defs.h
 ===================================================================
---- a/src/common/defs.h	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/common/defs.h	2022-08-04 01:27:08.467803705 +0530
+--- a/src/common/defs.h	2022-08-30 18:41:54.749138965 +0530
++++ b/src/common/defs.h	2022-08-30 18:41:54.725139174 +0530
 @@ -430,6 +430,7 @@ enum chan_width {
  	CHAN_WIDTH_4320,
  	CHAN_WIDTH_6480,
@@ -194,8 +194,8 @@ Index: b/src/common/defs.h
  
 Index: b/src/common/hw_features_common.c
 ===================================================================
---- a/src/common/hw_features_common.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/common/hw_features_common.c	2022-08-04 01:27:08.467803705 +0530
+--- a/src/common/hw_features_common.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/common/hw_features_common.c	2022-08-30 18:41:54.729139140 +0530
 @@ -413,6 +413,8 @@ int hostapd_set_freq_params(struct hosta
  	else if (oper_chwidth == CHANWIDTH_160MHZ ||
  		 oper_chwidth == CHANWIDTH_80P80MHZ)
@@ -217,8 +217,8 @@ Index: b/src/common/hw_features_common.c
  		break;
 Index: b/src/common/ieee802_11_common.c
 ===================================================================
---- a/src/common/ieee802_11_common.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/common/ieee802_11_common.c	2022-08-04 01:27:08.467803705 +0530
+--- a/src/common/ieee802_11_common.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/common/ieee802_11_common.c	2022-08-30 18:41:54.729139140 +0530
 @@ -1164,6 +1164,9 @@ int ieee80211_chaninfo_to_channel(unsign
  	case CHAN_WIDTH_8640:
  		cw = CHANWIDTH_8640MHZ;
@@ -241,8 +241,8 @@ Index: b/src/common/ieee802_11_common.c
  }
 Index: b/src/common/ieee802_11_defs.h
 ===================================================================
---- a/src/common/ieee802_11_defs.h	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/common/ieee802_11_defs.h	2022-08-04 01:27:08.467803705 +0530
+--- a/src/common/ieee802_11_defs.h	2022-08-30 18:41:54.749138965 +0530
++++ b/src/common/ieee802_11_defs.h	2022-08-30 18:41:54.729139140 +0530
 @@ -2241,6 +2241,7 @@ enum phy_type {
  /*
   * IEEE P802.11-REVmc/D5.0 Table 9-152 - HT/VHT Operation Information
@@ -253,8 +253,8 @@ Index: b/src/common/ieee802_11_defs.h
  enum nr_chan_width {
 Index: b/src/drivers/driver.h
 ===================================================================
---- a/src/drivers/driver.h	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/drivers/driver.h	2022-08-04 01:27:08.471803677 +0530
+--- a/src/drivers/driver.h	2022-08-30 18:41:54.749138965 +0530
++++ b/src/drivers/driver.h	2022-08-30 18:41:54.729139140 +0530
 @@ -67,6 +67,7 @@ enum hostapd_chan_width_attr {
  	HOSTAPD_CHAN_WIDTH_40M  = BIT(3),
  	HOSTAPD_CHAN_WIDTH_80   = BIT(4),
@@ -265,8 +265,8 @@ Index: b/src/drivers/driver.h
  /* Filter gratuitous ARP */
 Index: b/src/drivers/driver_common.c
 ===================================================================
---- a/src/drivers/driver_common.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/drivers/driver_common.c	2022-08-04 01:27:08.471803677 +0530
+--- a/src/drivers/driver_common.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/drivers/driver_common.c	2022-08-30 18:41:54.733139105 +0530
 @@ -118,6 +118,8 @@ const char * channel_width_to_string(enu
  		return "80+80 MHz";
  	case CHAN_WIDTH_160:
@@ -287,8 +287,8 @@ Index: b/src/drivers/driver_common.c
  	}
 Index: b/src/drivers/driver_nl80211.c
 ===================================================================
---- a/src/drivers/driver_nl80211.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/drivers/driver_nl80211.c	2022-08-04 01:27:08.475803648 +0530
+--- a/src/drivers/driver_nl80211.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/drivers/driver_nl80211.c	2022-08-30 18:41:54.737139070 +0530
 @@ -215,6 +215,8 @@ enum chan_width convert2width(int width)
  		return CHAN_WIDTH_80P80;
  	case NL80211_CHAN_WIDTH_160:
@@ -310,8 +310,8 @@ Index: b/src/drivers/driver_nl80211.c
  		}
 Index: b/src/drivers/driver_nl80211_capa.c
 ===================================================================
---- a/src/drivers/driver_nl80211_capa.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/drivers/driver_nl80211_capa.c	2022-08-04 01:27:08.475803648 +0530
+--- a/src/drivers/driver_nl80211_capa.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/drivers/driver_nl80211_capa.c	2022-08-30 18:41:54.737139070 +0530
 @@ -1628,6 +1628,9 @@ static void phy_info_freq(struct hostapd
  		chan->allowed_bw &= ~HOSTAPD_CHAN_WIDTH_80;
  	if (tb_freq[NL80211_FREQUENCY_ATTR_NO_160MHZ])
@@ -324,8 +324,8 @@ Index: b/src/drivers/driver_nl80211_capa.c
  		enum nl80211_dfs_state state =
 Index: b/src/drivers/driver_nl80211_event.c
 ===================================================================
---- a/src/drivers/driver_nl80211_event.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/drivers/driver_nl80211_event.c	2022-08-04 01:27:08.475803648 +0530
+--- a/src/drivers/driver_nl80211_event.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/drivers/driver_nl80211_event.c	2022-08-30 18:41:54.741139036 +0530
 @@ -675,6 +675,9 @@ static int calculate_chan_offset(int wid
  	case CHAN_WIDTH_80P80:
  		freq1 = cf1 - 30;
@@ -348,17 +348,19 @@ Index: b/src/drivers/driver_nl80211_event.c
  			break;
 Index: b/src/drivers/nl80211_copy.h
 ===================================================================
---- a/src/drivers/nl80211_copy.h	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/drivers/nl80211_copy.h	2022-08-04 01:27:08.475803648 +0530
-@@ -3947,6 +3947,7 @@ enum nl80211_frequency_attr {
+--- a/src/drivers/nl80211_copy.h	2022-08-30 18:41:54.749138965 +0530
++++ b/src/drivers/nl80211_copy.h	2022-08-30 18:42:13.980971726 +0530
+@@ -3947,6 +3947,9 @@ enum nl80211_frequency_attr {
  	NL80211_FREQUENCY_ATTR_4MHZ,
  	NL80211_FREQUENCY_ATTR_8MHZ,
  	NL80211_FREQUENCY_ATTR_16MHZ,
++	NL80211_FREQUENCY_ATTR_PSD,
 +	NL80211_FREQUENCY_ATTR_NO_320MHZ,
++	NL80211_FREQUENCY_ATTR_NO_EHT,
  
  	/* keep last */
  	__NL80211_FREQUENCY_ATTR_AFTER_LAST,
-@@ -4682,6 +4683,7 @@ enum nl80211_chan_width {
+@@ -4682,6 +4685,7 @@ enum nl80211_chan_width {
  	NL80211_CHAN_WIDTH_4,
  	NL80211_CHAN_WIDTH_8,
  	NL80211_CHAN_WIDTH_16,
@@ -368,8 +370,8 @@ Index: b/src/drivers/nl80211_copy.h
  	__NL80211_CHAN_WIDTH_NUM,
 Index: b/wpa_supplicant/ctrl_iface.c
 ===================================================================
---- a/wpa_supplicant/ctrl_iface.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/wpa_supplicant/ctrl_iface.c	2022-08-04 01:27:08.479803619 +0530
+--- a/wpa_supplicant/ctrl_iface.c	2022-08-30 18:41:54.749138965 +0530
++++ b/wpa_supplicant/ctrl_iface.c	2022-08-30 18:41:54.745139000 +0530
 @@ -5993,6 +5993,8 @@ static int parse_freq(int chwidth, int f
  		return CHANWIDTH_80MHZ;
  	case 160:
@@ -381,9 +383,9 @@ Index: b/wpa_supplicant/ctrl_iface.c
  			   chwidth);
 Index: b/src/ap/ap_config.h
 ===================================================================
---- a/src/ap/ap_config.h	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/ap/ap_config.h	2022-08-04 01:27:08.479803619 +0530
-@@ -1185,7 +1185,8 @@ hostapd_set_oper_chwidth(struct hostapd_
+--- a/src/ap/ap_config.h	2022-08-30 18:41:54.749138965 +0530
++++ b/src/ap/ap_config.h	2022-08-30 18:41:54.745139000 +0530
+@@ -1186,7 +1186,8 @@ hostapd_set_oper_chwidth(struct hostapd_
  		conf->eht_oper_chwidth = oper_chwidth;
  #endif /* CONFIG_IEEE80211BE */
  #ifdef CONFIG_IEEE80211AX
@@ -395,8 +397,8 @@ Index: b/src/ap/ap_config.h
  	conf->vht_oper_chwidth = oper_chwidth;
 Index: b/src/ap/ieee802_11_he.c
 ===================================================================
---- a/src/ap/ieee802_11_he.c	2022-08-04 01:27:08.483803589 +0530
-+++ b/src/ap/ieee802_11_he.c	2022-08-04 01:27:17.135740771 +0530
+--- a/src/ap/ieee802_11_he.c	2022-08-30 18:41:54.749138965 +0530
++++ b/src/ap/ieee802_11_he.c	2022-08-30 18:41:54.749138965 +0530
 @@ -219,8 +219,8 @@ u8 * hostapd_eid_he_operation(struct hos
  	pos += 6; /* skip the fixed part */
  
