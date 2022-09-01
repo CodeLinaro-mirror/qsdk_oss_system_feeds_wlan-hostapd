@@ -713,7 +713,7 @@ wpa_supplicant_add_network() {
 		[ -n "$noscan" ] && {
 			disable_40mhz_scan=$noscan
 		}
-		[[ "$htmode" = "HE160" || "$htmode" == "EHT160" ]] && {
+		[[ "$htmode" = "HE160" || "$htmode" == "EHT160"  || "$htmode" == "VHT160" ]] && {
 			enable_160mhz_bw=1
 		}
 		[[ "$htmode" == "EHT320" ]] && {
