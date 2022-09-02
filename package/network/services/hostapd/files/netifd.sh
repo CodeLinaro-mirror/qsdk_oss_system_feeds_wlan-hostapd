@@ -288,9 +288,7 @@ hostapd_set_bss_options() {
 				append bss_conf "wpa_psk_file=$wpa_psk_file" "$N"
 			}
 			wps_possible=1
-			if [ $ieee80211w -eq 2 ]; then
-				append wpa_key_mgmt "WPA-PSK-SHA256"
-			elif [ $ieee80211w -eq 1 ]; then
+			if [ $ieee80211w -eq 2 ] || [ $ieee80211w -eq 1 ]; then
 				append wpa_key_mgmt "WPA-PSK WPA-PSK-SHA256"
 			else
 				append wpa_key_mgmt "WPA-PSK"
