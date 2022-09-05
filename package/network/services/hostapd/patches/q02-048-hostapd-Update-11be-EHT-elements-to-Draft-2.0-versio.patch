@@ -287,3 +287,23 @@ index b527a77..c56801f 100644
 -- 
 2.17.1
 
+diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
+index f54fee3430e5..c2a0421d16cd 100644
+--- a/src/ap/ieee802_11_eht.c
++++ b/src/ap/ieee802_11_eht.c
+@@ -232,6 +232,15 @@ u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid,
+ 		break;
+ 	case CHANWIDTH_160MHZ:
+ 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_160MHZ;
++		if (!oper->ccfs1) {
++			/* CCFS0 points to center channel frequency in config */
++			oper->ccfs1 = oper->ccfs0;
++			if (hapd->iconf->channel < oper->ccfs0)
++				oper->ccfs0 = oper->ccfs1 - 8;
++			else
++				oper->ccfs0 = oper->ccfs1 + 8;
++		}
++
+ 		if (hapd->iconf->ru_punct_bitmap &&
+ 		    hapd->iface->ru_punct_supp_bw == CHANWIDTH_320MHZ) {
+ 			hapd->iconf->ru_punct_bitmap = 0;
