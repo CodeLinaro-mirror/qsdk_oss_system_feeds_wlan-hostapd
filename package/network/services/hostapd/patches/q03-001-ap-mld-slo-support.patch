@@ -1,0 +1,1071 @@
+From e08e46aabd21f52dca062479b01fba186fdee433 Mon Sep 17 00:00:00 2001
+From: Sriram R <quic_srirrama@quicinc.com>
+Date: Wed, 7 Sep 2022 08:39:56 +0530
+Subject: [PATCH] hostapd: add 11be Single link operation support
+
+As MLD operation for a AP is mandatory as per
+ieee80211-be std, include support for handling
+single link operation as part of Multi link support
+
+This is basically a stripped off version of a
+MLO support with support and infrastructure for
+handling ML IEs which are minimally required for
+a AP to operate as a MLD and support single link
+operation.
+
+To keep the changes minimal, the sta object uses
+mld address as its address and link address is
+additionally included for any operation required
+specifically, but assumption is hostapd and cfg80211.
+mac80211 will operate using mld address and assumes
+driver performs the link<->mld address conversion
+properly.
+
+Security and MBSSID changes will be done separately.
+
+Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
+---
+ src/ap/ap_drv_ops.c            |   3 +-
+ src/ap/ap_drv_ops.h            |   2 +-
+ src/ap/beacon.c                |  39 +++-
+ src/ap/hostapd.c               |   5 +
+ src/ap/hostapd.h               |   7 +
+ src/ap/ieee802_11.c            | 340 ++++++++++++++++++++++++++++++++-
+ src/ap/ieee802_11.h            |  14 ++
+ src/ap/sta_info.c              |   5 +-
+ src/ap/sta_info.h              |   6 +
+ src/common/ieee802_11_common.c |   8 +
+ src/common/ieee802_11_common.h |  49 +++++
+ src/common/ieee802_11_defs.h   |  45 +++++
+ src/drivers/driver.h           |   1 +
+ src/drivers/driver_nl80211.c   |  12 +-
+ src/drivers/nl80211_copy.h     |   3 +-
+ 15 files changed, 517 insertions(+), 22 deletions(-)
+
+Index: hostapd-2021-12-13/src/ap/ap_drv_ops.c
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/ap_drv_ops.c	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/ap_drv_ops.c	2022-12-22 12:55:38.820867498 +0530
+@@ -423,7 +423,7 @@ int hostapd_sta_add(struct hostapd_data
+ 		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
+ 		    const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab,
+ 		    size_t eht_240mhz_len,
+-		    int set)
++		    int set, const u8 *link_addr)
+ {
+ 	struct hostapd_sta_add_params params;
+ 
+@@ -454,6 +454,7 @@ int hostapd_sta_add(struct hostapd_data
+ 	params.set = set;
+ 	params.eht_240mhz_capab = eht_240mhz_capab;
+ 	params.eht_240mhz_len = eht_240mhz_len;
++	params.link_addr = link_addr;
+ 	return hapd->driver->sta_add(hapd->drv_priv, &params);
+ }
+ 
+Index: hostapd-2021-12-13/src/ap/ap_drv_ops.h
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/ap_drv_ops.h	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/ap_drv_ops.h	2022-12-22 12:55:38.824867506 +0530
+@@ -48,7 +48,7 @@ int hostapd_sta_add(struct hostapd_data
+ 		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
+ 		    const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab,
+ 		    size_t eht_240mhz_len,
+-		    int set);
++		    int set, const u8 *link_addr);
+ int hostapd_set_privacy(struct hostapd_data *hapd, int enabled);
+ int hostapd_set_generic_elem(struct hostapd_data *hapd, const u8 *elem,
+ 			     size_t elem_len);
+Index: hostapd-2021-12-13/src/ap/beacon.c
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/beacon.c	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/beacon.c	2022-12-22 12:55:38.824867506 +0530
+@@ -34,6 +34,12 @@
+ #include "ieee802_11_auth.h"
+ 
+ 
++static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
++				   const struct ieee80211_mgmt *req,
++				   int is_p2p, size_t *resp_len,
++				   const u8 *known_bss, u8 known_bss_len,
++				   struct multi_link_data *ml_data);
++
+ #ifdef NEED_AP_MLME
+ 
+ static u8 * hostapd_eid_bss_load(struct hostapd_data *hapd, u8 *eid, size_t len)
+@@ -593,11 +599,11 @@ static u8 * hostapd_ext_capab_mbssid(str
+ 	return eid;
+ }
+ 
+-
+ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+ 				   const struct ieee80211_mgmt *req,
+ 				   int is_p2p, size_t *resp_len,
+-				   const u8 *known_bss, u8 known_bss_len)
++				   const u8 *known_bss, u8 known_bss_len,
++				   struct multi_link_data *ml_data)
+ {
+ 	struct ieee80211_mgmt *resp;
+ 	u8 *pos, *epos, *csa_pos, *ext_cap_pos;
+@@ -656,6 +662,8 @@ static u8 * hostapd_gen_probe_resp(struc
+ 			buflen += (6 + 2 + 4 +
+ 				   sizeof(struct ieee80211_240mhz_vendor_oper));
+ 
++		buflen += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_PROBE_RESP,
++						    ml_data);
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+@@ -814,6 +822,9 @@ static u8 * hostapd_gen_probe_resp(struc
+ 		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
+ 		pos = hostapd_eid_eht_operation(hapd, pos, IEEE80211_MODE_AP);
+ 		pos = hostapd_eid_vendor_240mhz(hapd, pos, IEEE80211_MODE_AP);
++		pos = hostapd_eid_basic_mle(hapd, pos,
++					    WLAN_FC_STYPE_PROBE_RESP,
++					    ml_data);
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+@@ -1083,6 +1094,9 @@ void handle_probe_req(struct hostapd_dat
+ 	u16 csa_offs[2];
+ 	size_t csa_offs_len;
+ 	struct radius_sta rad_info;
++	struct multi_link_data ml_data;
++
++	os_memset(&ml_data, 0, sizeof(struct multi_link_data));
+ 
+ 	if (hapd->iconf->rssi_ignore_probe_request && ssi_signal &&
+ 	    ssi_signal < hapd->iconf->rssi_ignore_probe_request)
+@@ -1320,12 +1334,22 @@ void handle_probe_req(struct hostapd_dat
+ 	if (hapd != hostapd_mbssid_get_tx_bss(hapd) && res != EXACT_SSID_MATCH)
+ 		return;
+ 
++	if (elems.mle)
++		hostapd_parse_mle(hapd, WLAN_FC_STYPE_PROBE_RESP,
++				  &elems, &ml_data);
++
+ 	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
+ 		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
+ 
+ 	resp = hostapd_gen_probe_resp(hapd, mgmt, elems.p2p != NULL,
+ 				      &resp_len, elems.mbssid_known_bss,
+-				      elems.mbssid_known_bss_len);
++				      elems.mbssid_known_bss_len,
++				      &ml_data);
++
++
++	if (ml_data.present)
++		wpabuf_free(ml_data.buf);
++
+ 	if (resp == NULL)
+ 		return;
+ 
+@@ -1395,7 +1419,7 @@ static u8 * hostapd_probe_resp_offloads(
+ 			   "this");
+ 
+ 	/* Generate a Probe Response template for the non-P2P case */
+-	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len, NULL, 0);
++	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len, NULL, 0, NULL);
+ }
+ #endif /* NEED_AP_MLME */
+ 
+@@ -1424,7 +1448,7 @@ static u8 * hostapd_unsol_bcast_probe_re
+ 
+ 	return hostapd_gen_probe_resp(hapd, NULL, 0,
+ 				      &params->unsol_bcast_probe_resp_tmpl_len,
+-				      NULL, 0);
++				      NULL, 0, NULL);
+ }
+ #endif /* CONFIG_IEEE80211AX */
+ 
+@@ -1808,6 +1832,8 @@ int ieee802_11_build_ap_params(struct ho
+ 		if (is_5ghz_freq(hapd->iface->freq))
+ 			tail_len += (6 + 2 + 4 +
+ 				     sizeof(struct ieee80211_240mhz_vendor_oper));
++
++		tail_len += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_BEACON, NULL);
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+@@ -1973,6 +1999,9 @@ int ieee802_11_build_ap_params(struct ho
+ 						IEEE80211_MODE_AP);
+ 		tailpos = hostapd_eid_vendor_240mhz(hapd, tailpos,
+ 						IEEE80211_MODE_AP);
++
++		tailpos = hostapd_eid_basic_mle(hapd, tailpos,
++						WLAN_FC_STYPE_BEACON, NULL);
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+Index: hostapd-2021-12-13/src/ap/hostapd.c
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/hostapd.c	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/hostapd.c	2022-12-22 12:55:38.824867506 +0530
+@@ -1450,6 +1450,11 @@ static int hostapd_setup_bss(struct host
+ 		return -1;
+ 	}
+ 
++	if (hapd->iconf->ieee80211be) {
++		hapd->is_mld = true;
++		os_memcpy(hapd->mld_addr, hapd->own_addr, ETH_ALEN);
++	}
++
+ 	if (set_beacon)
+ 		return hostapd_set_beacon(hapd);
+ 
+Index: hostapd-2021-12-13/src/ap/hostapd.h
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/hostapd.h	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/hostapd.h	2022-12-22 12:55:38.824867506 +0530
+@@ -443,6 +443,11 @@ struct hostapd_data {
+ #ifdef CONFIG_CTRL_IFACE_UDP
+        unsigned char ctrl_iface_cookie[CTRL_IFACE_COOKIE_LEN];
+ #endif /* CONFIG_CTRL_IFACE_UDP */
++
++       /* Embedding the mld details for SLO */
++	bool is_mld;
++	u8 mld_id;
++	u8 mld_addr[ETH_ALEN];
+ };
+ 
+ 
+@@ -622,6 +627,8 @@ struct hostapd_iface {
+ 
+ 	int (*enable_iface_cb)(struct hostapd_iface *iface);
+ 	int (*disable_iface_cb)(struct hostapd_iface *iface);
++
++	u8 link_id;
+ };
+ 
+ /* hostapd.c */
+Index: hostapd-2021-12-13/src/ap/ieee802_11.c
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/ieee802_11.c	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/ieee802_11.c	2022-12-22 12:57:10.945068554 +0530
+@@ -84,7 +84,7 @@ static void pasn_fils_auth_resp(struct h
+ #endif /* CONFIG_PASN */
+ 
+ static void handle_auth(struct hostapd_data *hapd,
+-			const struct ieee80211_mgmt *mgmt, size_t len,
++			struct ieee80211_mgmt *mgmt, size_t len,
+ 			int rssi, int from_queue,
+ 			struct hostapd_frame_info *fi);
+ 
+@@ -380,8 +380,11 @@ static int send_auth_reply(struct hostap
+ 	u8 *buf;
+ 	size_t rlen;
+ 	int reply_res = WLAN_STATUS_UNSPECIFIED_FAILURE;
++	u8 mle_len = 0;
+ 
+-	rlen = IEEE80211_HDRLEN + sizeof(reply->u.auth) + ies_len;
++	mle_len = hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_AUTH, NULL);
++
++	rlen = IEEE80211_HDRLEN + sizeof(reply->u.auth) + ies_len + mle_len;
+ 	buf = os_zalloc(rlen);
+ 	if (buf == NULL)
+ 		return -1;
+@@ -400,6 +403,10 @@ static int send_auth_reply(struct hostap
+ 	if (ies && ies_len)
+ 		os_memcpy(reply->u.auth.variable, ies, ies_len);
+ 
++	if (mle_len)
++		hostapd_eid_basic_mle(hapd, reply->u.auth.variable + ies_len,
++				      WLAN_FC_STYPE_AUTH, NULL);
++
+ 	wpa_printf(MSG_DEBUG, "authentication reply: STA=" MACSTR
+ 		   " auth_alg=%d auth_transaction=%d resp=%d (IE len=%lu) (dbg=%s)",
+ 		   MAC2STR(dst), auth_alg, auth_transaction,
+@@ -1647,7 +1654,7 @@ void auth_sae_process_commit(void *eloop
+ 	wpa_printf(MSG_DEBUG,
+ 		   "SAE: Process next available message from queue");
+ 	dl_list_del(&q->list);
+-	handle_auth(hapd, (const struct ieee80211_mgmt *) q->msg, q->len,
++	handle_auth(hapd, (struct ieee80211_mgmt *) q->msg, q->len,
+ 		    q->rssi, 1, NULL);
+ 	os_free(q);
+ 
+@@ -3553,7 +3560,7 @@ static void handle_auth_pasn(struct host
+ 
+ 
+ static void handle_auth(struct hostapd_data *hapd,
+-			const struct ieee80211_mgmt *mgmt, size_t len,
++			struct ieee80211_mgmt *mgmt, size_t len,
+ 			int rssi, int from_queue,
+ 			struct hostapd_frame_info *fi)
+ {
+@@ -3572,6 +3579,8 @@ static void handle_auth(struct hostapd_d
+ 		.mgmt_frame = mgmt,
+ 		.frame_info = fi,
+ 	};
++	u8 link_addr[ETH_ALEN];
++	struct multi_link_data ml_data = {0};
+ 
+ 	if (len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth)) {
+ 		wpa_printf(MSG_INFO, "handle_auth - too short payload (len=%lu)",
+@@ -3589,6 +3598,27 @@ static void handle_auth(struct hostapd_d
+ 	}
+ #endif /* CONFIG_TESTING_OPTIONS */
+ 
++	if (hapd->is_mld) {
++		struct ieee802_11_elems elems;
++		if (ieee802_11_parse_elems(mgmt->u.auth.variable,
++					   len - offsetof(struct ieee80211_mgmt,
++							  u.auth.variable),
++					   &elems, 0) == ParseFailed) {
++			wpa_printf(MSG_DEBUG,
++				   "MLO: Failed to parse auth ies to check mle");
++			return;
++		}
++
++		hostapd_parse_mle(hapd, WLAN_FC_STYPE_AUTH, &elems, &ml_data);
++
++		/* For ML Assoc use MLD address as STA address and copy link addr */
++		if (ml_data.present) {
++			os_memcpy(link_addr, mgmt->sa, ETH_ALEN);
++			os_memcpy(mgmt->sa, ml_data.basic.mld_addr, ETH_ALEN);
++			wpabuf_free(ml_data.buf);
++		}
++	}
++
+ 	auth_alg = le_to_host16(mgmt->u.auth.auth_alg);
+ 	auth_transaction = le_to_host16(mgmt->u.auth.auth_transaction);
+ 	status_code = le_to_host16(mgmt->u.auth.status_code);
+@@ -3827,6 +3857,12 @@ static void handle_auth(struct hostapd_d
+ 	}
+ 	sta->last_seq_ctrl = seq_ctrl;
+ 	sta->last_subtype = WLAN_FC_STYPE_AUTH;
++
++	if (hapd->is_mld && ml_data.present) {
++		sta->is_mld = true;
++		os_memcpy(sta->link_addr, link_addr, ETH_ALEN);
++	}
++
+ #ifdef CONFIG_MBO
+ 	sta->auth_rssi = rssi;
+ #endif /* CONFIG_MBO */
+@@ -4500,9 +4536,30 @@ static bool check_sa_query(struct hostap
+ 	return false;
+ }
+ 
++static u16 check_mle(struct hostapd_data *hapd, struct sta_info *sta,
++		     struct ieee802_11_elems *elems,
++		     struct multi_link_data *ml_data)
++{
++	if (!elems->mle)
++		return WLAN_STATUS_SUCCESS;
++
++	if (!hapd->is_mld || !sta->is_mld)
++		return WLAN_STATUS_UNSPECIFIED_FAILURE;
++
++	hostapd_parse_mle(hapd, WLAN_FC_STYPE_ASSOC_REQ, elems, ml_data);
++
++	/* This is the status accepting for overall request, per link
++	 * status is filled in the per sta profile status
++	 */
++	if (ml_data->present)
++		return WLAN_STATUS_SUCCESS;
++	else
++		return WLAN_STATUS_UNSPECIFIED_FAILURE;
++}
+ 
+ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
+-			   const u8 *ies, size_t ies_len, int reassoc)
++			   const u8 *ies, size_t ies_len,
++			   struct multi_link_data *ml_data, int reassoc)
+ {
+ 	struct ieee802_11_elems elems;
+ 	int resp;
+@@ -4512,8 +4569,8 @@ static int check_assoc_ies(struct hostap
+ 
+ 	if (ieee802_11_parse_elems(ies, ies_len, &elems, 1) == ParseFailed) {
+ 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
+-			       HOSTAPD_LEVEL_INFO, "Station sent an invalid "
+-			       "association request");
++				HOSTAPD_LEVEL_INFO, "Station sent an invalid "
++				"association request");
+ 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 	}
+ 
+@@ -4604,6 +4661,10 @@ static int check_assoc_ies(struct hostap
+ 						 elems.eht_240mhz_len);
+ 		if (resp != WLAN_STATUS_SUCCESS)
+ 			return resp;
++
++		resp = check_mle(hapd, sta, &elems, ml_data);
++		if (resp != WLAN_STATUS_SUCCESS)
++			return resp;
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+@@ -5063,7 +5124,7 @@ static int add_associated_sta(struct hos
+ 			    sta->vht_opmode, sta->p2p_ie ? 1 : 0,
+ 			    sta->flags_ext & WLAN_STA_EXT_EHT? sta->eht_240mhz_capab : NULL,
+ 			    sta->flags_ext & WLAN_STA_EXT_EHT? sta->eht_240mhz_len : 0,
+-			    set)) {
++			    set, sta->is_mld ? sta->link_addr : NULL)) {
+ 		hostapd_logger(hapd, sta->addr,
+ 			       HOSTAPD_MODULE_IEEE80211, HOSTAPD_LEVEL_NOTICE,
+ 			       "Could not %s STA to kernel driver",
+@@ -5086,7 +5147,7 @@ static int add_associated_sta(struct hos
+ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
+ 			   const u8 *addr, u16 status_code, int reassoc,
+ 			   const u8 *ies, size_t ies_len, int rssi,
+-			   int omit_rsnxe)
++			   int omit_rsnxe, struct multi_link_data *ml_data)
+ {
+ 	int send_len;
+ 	u8 *buf;
+@@ -5119,6 +5180,10 @@ static u16 send_assoc_resp(struct hostap
+ 		if (is_5ghz_freq(hapd->iface->freq))
+ 			buflen += (6 + 2 + 4 +
+ 				   sizeof(struct ieee80211_240mhz_vendor_oper));
++		if (ml_data && ml_data->present)
++			buflen += hostapd_eid_basic_mle_len(hapd,
++							    WLAN_FC_STYPE_ASSOC_RESP,
++							    ml_data);
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+@@ -5373,6 +5438,10 @@ rsnxe_done:
+ 		p += wpabuf_len(hapd->conf->assocresp_elements);
+ 	}
+ 
++	if (ml_data && ml_data->present)
++		p = hostapd_eid_basic_mle(hapd, p, WLAN_FC_STYPE_ASSOC_RESP,
++					  ml_data);
++
+ 	send_len += p - reply->u.assoc_resp.variable;
+ 
+ #ifdef CONFIG_FILS
+@@ -5492,7 +5561,7 @@ void fils_hlp_finish_assoc(struct hostap
+ 	reply_res = send_assoc_resp(hapd, sta, sta->addr, WLAN_STATUS_SUCCESS,
+ 				    sta->fils_pending_assoc_is_reassoc,
+ 				    sta->fils_pending_assoc_req,
+-				    sta->fils_pending_assoc_req_len, 0, 0);
++				    sta->fils_pending_assoc_req_len, 0, 0, NULL);
+ 	os_free(sta->fils_pending_assoc_req);
+ 	sta->fils_pending_assoc_req = NULL;
+ 	sta->fils_pending_assoc_req_len = 0;
+@@ -5542,6 +5611,7 @@ static void handle_assoc(struct hostapd_
+ 	int delay_assoc = 0;
+ #endif /* CONFIG_FILS */
+ 	int omit_rsnxe = 0;
++	struct multi_link_data ml_data = {0};
+ 
+ 	if (len < IEEE80211_HDRLEN + (reassoc ? sizeof(mgmt->u.reassoc_req) :
+ 				      sizeof(mgmt->u.assoc_req))) {
+@@ -5756,7 +5826,7 @@ static void handle_assoc(struct hostapd_
+ 
+ 	/* followed by SSID and Supported rates; and HT capabilities if 802.11n
+ 	 * is used */
+-	resp = check_assoc_ies(hapd, sta, pos, left, reassoc);
++	resp = check_assoc_ies(hapd, sta, pos, left, &ml_data, reassoc);
+ 	if (resp != WLAN_STATUS_SUCCESS)
+ 		goto fail;
+ 	omit_rsnxe = !get_ie(pos, left, WLAN_EID_RSNX);
+@@ -5887,6 +5957,8 @@ static void handle_assoc(struct hostapd_
+ 			   "FILS: Continue waiting for HLP processing before sending (Re)Association Response frame to "
+ 			   MACSTR, MAC2STR(sta->addr));
+ 		os_free(tmp);
++		if (ml_data.present)
++			wpabuf_free(ml_data.buf);
+ 		return;
+ 	}
+ 	if (sta) {
+@@ -5908,13 +5980,19 @@ static void handle_assoc(struct hostapd_
+ 		eloop_cancel_timeout(fils_hlp_timeout, hapd, sta);
+ 		eloop_register_timeout(0, hapd->conf->fils_hlp_wait_time * 1024,
+ 				       fils_hlp_timeout, hapd, sta);
++		if (ml_data.present)
++			wpabuf_free(ml_data.buf);
+ 		return;
+ 	}
+ #endif /* CONFIG_FILS */
+ 
+ 	if (resp >= 0)
+ 		reply_res = send_assoc_resp(hapd, sta, mgmt->sa, resp, reassoc,
+-					    pos, left, rssi, omit_rsnxe);
++					    pos, left, rssi, omit_rsnxe, &ml_data);
++
++	if (ml_data.present)
++		wpabuf_free(ml_data.buf);
++
+ 	os_free(tmp);
+ 
+ 	if (hostapd_ubus_handle_event(hapd, &req)) {
+@@ -7770,6 +7848,260 @@ u8 * hostapd_eid_rnr(struct hostapd_data
+ }
+ 
+ 
++size_t hostapd_eid_basic_mle_len(struct hostapd_data *hapd, u32 type,
++				 struct multi_link_data *ml_data)
++{
++	size_t total_len = 0;
++
++	if (!hapd->is_mld)
++		return 0;
++
++	total_len += MLE_HEADER_LEN;
++
++	if (type != WLAN_FC_STYPE_AUTH)
++		total_len += MLE_COMMON_INFO_BCN;
++	else
++		total_len += MLE_COMMON_INFO_AUTH;
++
++	/* TODO EML caps and Medium Synchronization Delay Info fields */
++
++	if (ml_data == NULL || !ml_data->present)
++		return total_len;
++
++	if (type != WLAN_FC_STYPE_PROBE_RESP && type != WLAN_FC_STYPE_ASSOC_RESP) {
++		wpa_printf(MSG_ERROR, "Link info is not expected frames except"
++			   " ML Probe response and Assoc Req/Response");
++		return total_len;
++	}
++
++	/* No Link info added for SLO */
++
++	return total_len;
++}
++
++
++u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid, u32 type,
++			   struct multi_link_data *ml_data)
++{
++	u8 *eid_len, *eid_cmn_info_len;
++	u16 presence_bmap = 0;
++
++	if (!hapd->is_mld)
++		return eid;
++
++	*eid++ = WLAN_EID_EXTENSION;
++	eid_len = eid++;
++	*eid++ = WLAN_EID_EXT_EHT_MULTI_LINK;
++
++	if (type != WLAN_FC_STYPE_AUTH) {
++		/* Fill these info by default currently */
++		presence_bmap = MLE_LINK_ID_PRESENT | MLE_BSS_PARAM_CHANGE_PRESENT |
++				MLE_MLD_CAP_PRESENT;
++	}
++
++	*eid++ = MLE_TYPE_BASIC | ((presence_bmap & 0x0f) << MLE_PRESENCE_BMAP_SHIFT);
++
++	*eid++ = presence_bmap >> MLE_PRESENCE_BMAP_SHIFT;
++
++	eid_cmn_info_len = eid++;
++
++	os_memcpy(eid, hapd->mld_addr, ETH_ALEN);
++	wpa_printf(MSG_DEBUG, "Frame %d " MACSTR ,type,
++		   MAC2STR(hapd->mld_addr));
++
++	eid += ETH_ALEN;
++
++	if (presence_bmap & MLE_LINK_ID_PRESENT)
++		*eid++ = hapd->iface->link_id;
++
++	if (presence_bmap & MLE_BSS_PARAM_CHANGE_PRESENT)
++		*eid++ = 0; /* TODO */
++
++	/* TODO EML caps and Medium Synchronization Delay Info fields */
++
++	if (presence_bmap & MLE_MLD_CAP_PRESENT) {
++		*eid++ = 0;
++		*eid++ = 0; /* TODO Other caps info not present */
++	}
++
++	*eid_cmn_info_len = eid - eid_cmn_info_len ;
++
++	*eid_len = eid - eid_len - 1;
++
++	if (ml_data == NULL || !ml_data->present)
++		return eid;
++
++	if (type != WLAN_FC_STYPE_PROBE_RESP && type != WLAN_FC_STYPE_ASSOC_RESP) {
++		wpa_printf(MSG_ERROR, "Link info is not expected frames except"
++			   " ML Probe response and Assoc Req/Response");
++		return eid;
++	}
++
++	/* No Link info added for SLO */
++
++	*eid_len = eid - eid_len - 1;
++	return eid;
++}
++
++static void hostapd_parse_probe_req_mle(struct hostapd_data *hapd,
++					const u8 *mle, u8 len,
++					struct multi_link_data *ml_data)
++{
++	bool mld_id_present = ml_data->control.presence & MLE_MLD_ID_PRESENT;
++	u8 mld_id, cmn_info_len;
++	u8 *mle_pos = (u8 *)mle;
++
++	if (!len) {
++		ml_data->present = false;
++		return;
++	}
++
++	cmn_info_len = *mle_pos;
++
++	/* For non Tx vaps MLD ID will not be present, A1/3 match done at caller */
++	if (mld_id_present) {
++		if (cmn_info_len < 2) {
++			wpa_printf(MSG_ERROR, "Wrongly encoded MLD Id in probe request");
++			ml_data->present = false;
++			return;
++		}
++		mld_id = *(mle_pos + 1);
++
++		if (mld_id != hapd->mld_id) {
++			wpa_printf(MSG_ERROR, "MLD ID mismatch in ML Probe request");
++			ml_data->present = false;
++		}
++	}
++
++	/* No parsing for link ids for SLO done */
++}
++
++static void hostapd_parse_basic_mle(struct hostapd_data *hapd,
++				    const u8 *mle, u16 len,
++				    struct multi_link_data *ml_data)
++{
++	u8 *mle_pos = (u8 *)mle;
++
++	/* Currently used only for assoc/reassoc req basic mle parsing */
++	if (!len)
++		return;
++
++	if (len < *mle_pos)
++		return;
++
++	/* Common length */
++	mle_pos++;
++	len--;
++
++	memcpy(ml_data->basic.mld_addr, mle_pos, ETH_ALEN);
++	mle_pos += ETH_ALEN;
++	len -= ETH_ALEN;
++
++	if (ml_data->control.presence & MLE_EML_CAP_PRESENT) {
++		/* TODO EML caps */
++		mle_pos += 2;
++		len -= 2;
++	}
++
++	if (ml_data->control.presence & MLE_MLD_CAP_PRESENT) {
++		/* TODO MLD caps */
++		mle_pos += 2;
++		len -= 2;
++	}
++
++	if (ml_data->control.presence & MLE_BASIC_MLD_ID_PRESENT) {
++		/* TODO MLD ID */
++		mle_pos += 1;
++		len -= 1;
++	}
++
++	if (!len)
++		return;
++
++	wpa_printf(MSG_DEBUG, " Link info should not be present for SLO");
++	/* Link Info shouldnt be present for SLO */
++	ml_data->present = false;
++}
++
++void hostapd_parse_mle(struct hostapd_data *hapd, u32 type,
++		       struct ieee802_11_elems *elems,
++		       struct multi_link_data *ml_data)
++{
++	const u8 *mle;
++	struct wpabuf *mle_buf = NULL;
++
++	u16 len;
++
++	if (!elems->mle || !hapd->is_mld)
++		return;
++
++	if (elems->mle_len < sizeof(struct multi_link_control))
++		return;
++
++	ml_data->present = true;
++
++	/* TODO reconsider defrag case only for Assoc/reassoc */
++	/* Note: The buf cannot be dealloc in this func, since the caller
++	 * uses some part of it for per sta profile info.
++	 */
++	mle_buf = ieee802_11_defrag(elems, WLAN_EID_EXTENSION,
++				    WLAN_EID_EXT_EHT_MULTI_LINK);
++
++	if (!mle_buf) {
++		wpa_printf(MSG_ERROR, "MLE buf allocation failed on defragmentation");
++		ml_data->present = false;
++		return;
++	}
++
++	mle = wpabuf_head(mle_buf);
++	len = wpabuf_len(mle_buf);
++
++	os_memcpy(&ml_data->control, mle, sizeof(struct multi_link_control));
++
++	mle += sizeof(struct multi_link_control);
++	len -= sizeof(struct multi_link_control);
++
++	if (ml_data->control.type == MULTI_LINK_PROBE_REQ &&
++	    type == WLAN_FC_STYPE_PROBE_REQ) {
++		hostapd_parse_probe_req_mle(hapd, mle, len, ml_data);
++
++		/* If the ML probe req was invalid, free the buf*/
++		if (ml_data->present == false)
++			wpabuf_free(mle_buf);
++		return;
++	}
++
++	if (type == WLAN_FC_STYPE_AUTH) {
++		/* Common info len should have only MLD mac addr */
++		if (*mle++ != ETH_ALEN + 1 || ml_data->control.presence) {
++			wpa_printf(MSG_ERROR, "Unexpected info present in AUTH basic MLE");
++			ml_data->present = false;
++			wpabuf_free(mle_buf);
++			return;
++		}
++		memcpy(ml_data->basic.mld_addr, mle, ETH_ALEN);
++		return;
++	}
++
++	if (type != WLAN_FC_STYPE_ASSOC_REQ &&
++	    type != WLAN_FC_STYPE_REASSOC_REQ) {
++		ml_data->present = false;
++		wpabuf_free(mle_buf);
++		return;
++	}
++
++	if (ml_data->control.presence & (MLE_LINK_ID_PRESENT | MLE_BSS_PARAM_CHANGE_PRESENT |
++	    MLE_MEDIUM_SYNC_DELAY_PRESENT)) {
++		wpa_printf(MSG_ERROR, "Unexpected info present in (Re)Assoc Req MLE");
++		ml_data->present = false;
++		wpabuf_free(mle_buf);
++		return;
++	}
++
++	hostapd_parse_basic_mle(hapd, mle, len, ml_data);
++	ml_data->buf = mle_buf;
++}
++
+ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
+ 					  u32 frame_type, size_t *bss_index,
+ 					  const u8 *known_bss,
+Index: hostapd-2021-12-13/src/ap/ieee802_11.h
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/ieee802_11.h	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/ieee802_11.h	2022-12-22 12:55:38.828867515 +0530
+@@ -25,6 +25,9 @@ enum colocation_mode {
+         COLOCATED_6GHZ,
+         COLOCATED_LOWER_BAND,
+ };
++struct multi_link_data;
++struct ieee802_11_elems;
++
+ enum colocation_mode get_colocation_mode(struct hostapd_data *hapd);
+ int ieee802_11_mgmt(struct hostapd_data *hapd, const u8 *buf, size_t len,
+ 		    struct hostapd_frame_info *fi);
+@@ -244,4 +247,16 @@ u16 copy_sta_eht_240mhz_capab(struct hos
+ 			      enum ieee80211_op_mode opmode,
+ 			      const u8 *eht_240mhz_capab, size_t eht_240mhz_len);
+ void ru_punct_update_bw(u16 bitmap, u8 pri_chan, u8 *width, u8 *seg0, u8 *seg1);
++size_t hostapd_eid_basic_mle_len(struct hostapd_data *hapd, u32 type,
++				 struct multi_link_data *ml_data);
++u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid,
++			   u32 type, struct multi_link_data *ml_data);
++void hostapd_parse_mle(struct hostapd_data *hapd, u32 type,
++		       struct ieee802_11_elems *elems,
++		       struct multi_link_data *ml_data);
++u8 * hostapd_gen_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
++			   const u8 *addr, u16 status_code, int reassoc,
++			   const u8 *ies, size_t ies_len, int rssi,
++			   int omit_rsnxe, struct multi_link_data *ml_data,
++			   int *send_len, u16 *res);
+ #endif /* IEEE802_11_H */
+Index: hostapd-2021-12-13/src/ap/sta_info.c
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/sta_info.c	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/sta_info.c	2022-12-22 12:55:38.828867515 +0530
+@@ -771,7 +771,6 @@ struct sta_info * ap_sta_add(struct host
+ 	return sta;
+ }
+ 
+-
+ static int ap_sta_remove(struct hostapd_data *hapd, struct sta_info *sta)
+ {
+ 	ieee802_1x_notify_port_enabled(sta->eapol_sm, 0);
+@@ -793,7 +792,6 @@ static int ap_sta_remove(struct hostapd_
+ 	return 0;
+ }
+ 
+-
+ static void ap_sta_remove_in_other_bss(struct hostapd_data *hapd,
+ 				       struct sta_info *sta)
+ {
+@@ -1556,7 +1554,8 @@ int ap_sta_re_add(struct hostapd_data *h
+ 			    sta->supported_rates,
+ 			    sta->supported_rates_len,
+ 			    0, NULL, NULL, NULL, NULL, 0, 0, NULL,
+-			    sta->flags, 0, 0, 0, NULL, 0, 0)) {
++			    sta->flags, 0, 0, 0, NULL, 0, 0,
++			    sta->is_mld ? sta->link_addr : NULL)) {
+ 		hostapd_logger(hapd, sta->addr,
+ 			       HOSTAPD_MODULE_IEEE80211,
+ 			       HOSTAPD_LEVEL_NOTICE,
+Index: hostapd-2021-12-13/src/ap/sta_info.h
+===================================================================
+--- hostapd-2021-12-13.orig/src/ap/sta_info.h	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/ap/sta_info.h	2022-12-22 12:55:38.828867515 +0530
+@@ -55,6 +55,7 @@
+ #define WLAN_SUPP_HT_RATES_MAX 77
+ 
+ struct hostapd_data;
++struct multi_link_data;
+ 
+ struct mbo_non_pref_chan_info {
+ 	struct mbo_non_pref_chan_info *next;
+@@ -107,6 +108,7 @@ struct pasn_data {
+ #endif /* CONFIG_FILS */
+ };
+ 
++
+ struct sta_info {
+ 	struct sta_info *next; /* next entry in sta list */
+ 	struct sta_info *hnext; /* next entry in hash table list */
+@@ -339,6 +341,9 @@ struct sta_info {
+ #endif /* CONFIG_PASN */
+ 	struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab;
+ 	size_t eht_240mhz_len;
++	bool is_mld;
++	/* For SLO Link addr is embedded in the sta obj */
++	u8 link_addr[6];
+ };
+ 
+ 
+Index: hostapd-2021-12-13/src/common/ieee802_11_common.c
+===================================================================
+--- hostapd-2021-12-13.orig/src/common/ieee802_11_common.c	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/common/ieee802_11_common.c	2022-12-22 12:55:38.828867515 +0530
+@@ -350,6 +350,10 @@ static int ieee802_11_parse_extension(co
+ 		elems->eht_operation = pos;
+ 		elems->eht_operation_len = elen;
+ 		break;
++	case WLAN_EID_EXT_EHT_MULTI_LINK:
++		elems->mle = pos;
++		elems->mle_len = elen;
++		break;
+ 	default:
+ 		if (show_errors) {
+ 			wpa_printf(MSG_MSGDUMP,
+@@ -2820,6 +2824,10 @@ struct wpabuf * ieee802_11_defrag(struct
+ 			data = elems->wrapped_data;
+ 			len = elems->wrapped_data_len;
+ 			break;
++		case WLAN_EID_EXT_EHT_MULTI_LINK:
++			data = elems->mle;
++			len = elems->mle_len;
++			break;
+ 		default:
+ 			wpa_printf(MSG_DEBUG,
+ 				   "Defragmentation not supported. eid_ext=%u",
+Index: hostapd-2021-12-13/src/common/ieee802_11_common.h
+===================================================================
+--- hostapd-2021-12-13.orig/src/common/ieee802_11_common.h	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/common/ieee802_11_common.h	2022-12-22 12:55:38.832867525 +0530
+@@ -47,6 +47,53 @@ struct frag_ies_info {
+ 	u8 last_eid_ext;
+ };
+ 
++
++enum multi_link_elem_type {
++	MULTI_LINK_BASIC,
++	MULTI_LINK_PROBE_REQ,
++	MULTI_LINK_RECONFIG,
++	MULTI_LINK_TDLS,
++	MULTI_LINK_PRIO_ACCESS,
++};
++
++struct multi_link_control {
++	u16 type : 3;
++	u16 reserved : 1;
++	u16 presence : 12;
++};
++
++struct ml_sta_control {
++	u16 link_id : 4;
++	u16 present : 7;
++	u16 reserved : 5;
++};
++
++struct multi_link_basic_info {
++
++	/* common info */
++	u8 mld_addr[ETH_ALEN];
++	u8 link_id;
++	u8 bss_param_change_count;
++	u16 medium_sync_delay_info;
++	u16 eml_caps;
++	u16 mld_caps;
++
++	/* Link info not added for SLO */
++};
++
++struct multi_link_data {
++	u8 mgmt_type;
++	/* MLE present in the mgmt frame */
++	bool present;
++	bool invalid;
++	struct wpabuf *buf;
++	struct multi_link_control control;
++
++	struct multi_link_basic_info basic;
++
++	/* TODO Common and type speicif data */
++};
++
+ /* Parsed Information Elements */
+ struct ieee802_11_elems {
+ 	const u8 *ssid;
+@@ -122,6 +169,7 @@ struct ieee802_11_elems {
+ 	const u8 *eht_capabilities;
+ 	const u8 *eht_operation;
+ 	const u8 *eht_240mhz_capab;
++	const u8 *mle;
+ 
+ 	u8 ssid_len;
+ 	u8 supp_rates_len;
+@@ -180,6 +228,7 @@ struct ieee802_11_elems {
+ 	u8 eht_capabilities_len;
+ 	u8 eht_operation_len;
+ 	u8 eht_240mhz_len;
++	u8 mle_len;
+ 
+ 	struct mb_ies_info mb_ies;
+ 	struct frag_ies_info frag_ies;
+Index: hostapd-2021-12-13/src/common/ieee802_11_defs.h
+===================================================================
+--- hostapd-2021-12-13.orig/src/common/ieee802_11_defs.h	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/common/ieee802_11_defs.h	2022-12-22 12:55:38.832867525 +0530
+@@ -498,6 +498,7 @@
+ #define WLAN_EID_EXT_EHT_CAPABILITY 108
+ 
+ #define WLAN_EID_SUBELEMENT_NONTRANSMITTED_BSSID_PROFILE 0
++#define WLAN_EID_SUBELEMENT_PER_STA_PROFILE 		 0
+ 
+ /* Operating Triplet can be any integer >= 201
+  * From IEEE P802.11-REVmd/D4.0: The first octet in each Subband
+@@ -2445,6 +2446,50 @@ struct ieee80211_he_mu_edca_parameter_se
+ #define RNR_BSS_PARAM_CO_LOCATED                    BIT(6)
+ #define RNR_20_MHZ_PSD_MAX_TXPOWER                  255 /* dBm */
+ 
++#define MLE_HEADER_LEN				5
++/* Beacon or a non ML Probe response should include
++ * Common Info Length(1) + MLD MAC Address(6) +
++ * Link ID Info(1) + BSS Parameters Change count(1) +
++ * MLD Capabilities (2)
++ */
++#define MLE_COMMON_INFO_BCN			11
++#define MLE_COMMON_INFO_AUTH			7
++
++#define MLE_TYPE_BASIC				0
++#define MLE_TYPE_PREQ				1
++#define MLE_TYPE_RECOFIG			2
++#define MLE_TYPE_TDLS				3
++#define MLE_TYPE_PRIORITY_ACCESS		4
++
++/* Basic ML Presence bitmap */
++#define MLE_LINK_ID_PRESENT			BIT(0)
++#define MLE_BSS_PARAM_CHANGE_PRESENT		BIT(1)
++#define MLE_MEDIUM_SYNC_DELAY_PRESENT		BIT(2)
++#define MLE_EML_CAP_PRESENT			BIT(3)
++#define MLE_MLD_CAP_PRESENT			BIT(4)
++#define MLE_BASIC_MLD_ID_PRESENT		BIT(5)
++
++/* ML Probe Request Presence bitmap */
++#define MLE_MLD_ID_PRESENT			BIT(0)
++
++#define MLE_PRESENCE_BMAP_SHIFT			4
++
++#define MLE_PER_STA_PROFILE_SUBELEM_ID		0
++#define MLE_PER_STA_PROFILE_MIN_LENGTH		4
++
++#define MLE_STA_CONTROL_LINK_ID_MASK		 ((u8) (BIT(0) | BIT(1) | BIT(2) | BIT(3)))
++/* bitmap of presence indicator field B4-B10 */
++#define MLE_STA_CONTROL_COMPLETE_PROFILE		BIT(0)
++#define MLE_STA_CONTROL_MAC_ADDR_PRESENT		BIT(1)
++#define MLE_STA_CONTROL_BEACON_INT_PRESENT		BIT(2)
++#define MLE_STA_CONTROL_DTIM_PRESENT			BIT(3)
++#define MLE_STA_CONTROL_NSTR_PAIR_PRESENT		BIT(4)
++#define MLE_STA_CONTROL_NSTR_BITMAP			BIT(5)
++#define MLE_STA_CONTROL_BSS_PARAM_CHANGE_CNT_PRESENT	BIT(6)
++
++/* STA Info Length, MAC, BI, DTIM included, TODO - NSTR, BSS change cnt*/
++#define MLE_STA_INFO_LENGTH	11
++
+ #define EHT_MAC_CAPAB_MAX_LEN   2
+ #define EHT_PHY_CAPAB_MAX_LEN   9
+ #define EHT_MCS_NSS_CAPAB_MAX_LEN   9
+Index: hostapd-2021-12-13/src/drivers/driver.h
+===================================================================
+--- hostapd-2021-12-13.orig/src/drivers/driver.h	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/drivers/driver.h	2022-12-22 12:55:38.832867525 +0530
+@@ -2396,6 +2396,7 @@ struct hostapd_sta_add_params {
+ 	u16 ru_punct_bitmap;
+ 	const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab;
+ 	size_t eht_240mhz_len;
++	const u8 *link_addr;
+ };
+ 
+ struct mac_address {
+Index: hostapd-2021-12-13/src/drivers/driver_nl80211.c
+===================================================================
+--- hostapd-2021-12-13.orig/src/drivers/driver_nl80211.c	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/drivers/driver_nl80211.c	2022-12-22 12:55:38.836867532 +0530
+@@ -5210,13 +5210,21 @@ static int wpa_driver_nl80211_sta_add(vo
+ 	    !(drv->capa.flags & WPA_DRIVER_FLAGS_TDLS_SUPPORT))
+ 		return -EOPNOTSUPP;
+ 
+-	wpa_printf(MSG_DEBUG, "nl80211: %s STA " MACSTR,
+-		   params->set ? "Set" : "Add", MAC2STR(params->addr));
++	wpa_printf(MSG_DEBUG, "nl80211: %s %s STA" MACSTR,
++		   params->set ? "Set" : "Add", params->link_addr ? "MLD" : "non MLD",
++		   MAC2STR(params->addr));
++
++	if (params->link_addr)
++		wpa_printf(MSG_DEBUG, "Link Addr " MACSTR, MAC2STR(params->link_addr));
++
+ 	msg = nl80211_bss_msg(bss, 0, params->set ? NL80211_CMD_SET_STATION :
+ 			      NL80211_CMD_NEW_STATION);
+ 	if (!msg || nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, params->addr))
+ 		goto fail;
+ 
++	if (params->link_addr && nla_put(msg, NL80211_ATTR_MLD_LINK_MAC, ETH_ALEN,
++				params->link_addr))
++		goto fail;
+ 	/*
+ 	 * Set the below properties only in one of the following cases:
+ 	 * 1. New station is added, already associated.
+Index: hostapd-2021-12-13/src/drivers/nl80211_copy.h
+===================================================================
+--- hostapd-2021-12-13.orig/src/drivers/nl80211_copy.h	2022-12-22 12:55:38.844867551 +0530
++++ hostapd-2021-12-13/src/drivers/nl80211_copy.h	2022-12-22 12:55:38.836867532 +0530
+@@ -2604,7 +2604,7 @@ enum nl80211_commands {
+  * This attribute type is u8 and valid range is 0 to 1.
+  * 0 for disable AP power save mode.
+  * 1 for enable AP power save mode.
+- *
++ * @NL80211_ATTR_MLD_LINK_MAC: MLD LINK Mac address for the SLO
+  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
+  * @NL80211_ATTR_MAX: highest attribute number currently defined
+  * @__NL80211_ATTR_AFTER_LAST: internal use
+@@ -3138,6 +3138,7 @@ enum nl80211_attrs {
+ 	
+ 	NL80211_ATTR_AP_PS,
+ 	NL80211_ATTR_EHT_240MHZ_CAPABILITY,
++	NL80211_ATTR_MLD_LINK_MAC,
+ 	/* add attributes here, update the policy in nl80211.c */
+ 
+ 	__NL80211_ATTR_AFTER_LAST,
