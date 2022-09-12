@@ -288,9 +288,7 @@ hostapd_set_bss_options() {
 				append bss_conf "wpa_psk_file=$wpa_psk_file" "$N"
 			}
 			wps_possible=1
-			if [ $ieee80211w -eq 2 ]; then
-				append wpa_key_mgmt "WPA-PSK-SHA256"
-			elif [ $ieee80211w -eq 1 ]; then
+			if [ $ieee80211w -eq 2 ] || [ $ieee80211w -eq 1 ]; then
 				append wpa_key_mgmt "WPA-PSK WPA-PSK-SHA256"
 			else
 				append wpa_key_mgmt "WPA-PSK"
@@ -715,7 +713,7 @@ wpa_supplicant_add_network() {
 		[ -n "$noscan" ] && {
 			disable_40mhz_scan=$noscan
 		}
-		[[ "$htmode" = "HE160" || "$htmode" == "EHT160" ]] && {
+		[[ "$htmode" = "HE160" || "$htmode" == "EHT160"  || "$htmode" == "VHT160" ]] && {
 			enable_160mhz_bw=1
 		}
 		[[ "$htmode" == "EHT320" ]] && {
