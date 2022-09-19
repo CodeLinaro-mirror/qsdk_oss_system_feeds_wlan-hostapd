@@ -17,8 +17,10 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  src/ap/dfs.c | 34 ++++++++++++++++++++++++++++++----
  2 files changed, 45 insertions(+), 8 deletions(-)
 
---- a/src/ap/acs.c
-+++ b/src/ap/acs.c
+Index: b/src/ap/acs.c
+===================================================================
+--- a/src/ap/acs.c	2022-09-19 10:33:57.084303028 +0530
++++ b/src/ap/acs.c	2022-09-19 10:33:57.076303097 +0530
 @@ -420,7 +420,7 @@ static int acs_usable_bw160_chan(const s
  static int acs_usable_bw320_chan(const struct hostapd_channel_data *chan)
  {
@@ -117,8 +119,10 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  		}
  	}
  
---- a/src/ap/dfs.c
-+++ b/src/ap/dfs.c
+Index: b/src/ap/dfs.c
+===================================================================
+--- a/src/ap/dfs.c	2022-09-19 10:33:57.084303028 +0530
++++ b/src/ap/dfs.c	2022-09-19 10:42:06.192255486 +0530
 @@ -20,7 +20,6 @@
  #include "beacon.h"
  #include "eloop.h"
@@ -142,7 +146,7 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  			*seg1 = 4;
  			break;
 +		case CHANWIDTH_320MHZ:
-+			n_chans = 16;
++			n_chans = 12;
 +			break;
  		default:
  			break;
@@ -191,12 +195,21 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  
  	default:
  		wpa_printf(MSG_INFO,
+@@ -711,7 +728,7 @@ static int set_dfs_state(struct hostapd_
+ 		frequency = cf1 - 70;
+ 		break;
+ 	case CHAN_WIDTH_320:
+-		n_chans = 16;
++		n_chans = 12;
+ 		frequency = cf1 - 150;
+ 		break;
+ 	default:
 @@ -775,6 +792,10 @@ static int dfs_are_channels_overlapped(s
  		radar_n_chans = 8;
  		frequency = cf1 - 70;
  		break;
 +	case CHAN_WIDTH_320:
-+		radar_n_chans = 16;
++		radar_n_chans = 12;
 +		frequency = cf1 - 150;
 +		break;
  	default:
@@ -233,8 +246,10 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  		}
  	}
  
---- a/src/common/hw_features_common.c
-+++ b/src/common/hw_features_common.c
+Index: b/src/common/hw_features_common.c
+===================================================================
+--- a/src/common/hw_features_common.c	2022-09-19 10:33:57.084303028 +0530
++++ b/src/common/hw_features_common.c	2022-09-19 10:33:57.080303063 +0530
 @@ -794,6 +794,7 @@ u32 num_chan_to_bw(int num_chans)
  	case 2:
  	case 4:
