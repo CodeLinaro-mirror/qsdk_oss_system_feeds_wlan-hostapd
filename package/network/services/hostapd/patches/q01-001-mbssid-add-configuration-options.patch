@@ -18,7 +18,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4658,6 +4658,10 @@ static int hostapd_config_fill(struct ho
+@@ -4682,6 +4682,10 @@ static int hostapd_config_fill(struct ho
  			return 1;
  	} else if (os_strcmp(buf, "rnr") == 0) {
  		bss->rnr = atoi(pos);
@@ -26,14 +26,14 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +		conf->mbssid = atoi(pos);
 +	} else if (os_strcmp(buf, "ema") == 0) {
 +		conf->ema = atoi(pos);
- 	} else {
- 		wpa_printf(MSG_ERROR,
- 			   "Line %d: unknown configuration item '%s'",
+ #ifdef CONFIG_IEEE80211BE
+ 	} else if (os_strcmp(buf, "ieee80211be") == 0) {
+ 		conf->ieee80211be = atoi(pos);
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -986,6 +986,16 @@ wmm_ac_vo_acm=0
- # Valid range: 0..20 TUs; default is 0 (disabled)
- #unsol_bcast_probe_resp_interval=0
+@@ -1031,6 +1031,16 @@ wmm_ac_vo_acm=0
+ #eht_oper_chwidth (see vht_oper_chwidth)
+ #eht_oper_centr_freq_seg0_idx
  
 +# Multiple BSSID element support in beacon and probe response frames.
 +# 0 = Disabled
@@ -50,9 +50,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  # Require IEEE 802.1X authorization
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -1503,6 +1503,11 @@ int hostapd_config_check(struct hostapd_
- 			return -1;
+@@ -1536,6 +1536,11 @@ int hostapd_config_check(struct hostapd_
  	}
+ #endif /* CONFIG_IEEE80211BE */
  
 +	if (!conf->mbssid && conf->ema) {
 +		wpa_printf(MSG_ERROR, "mbssid must be enabled to enable ema");
@@ -64,12 +64,12 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  			return -1;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1123,6 +1123,8 @@ struct hostapd_config {
- 	unsigned int airtime_update_interval;
- #define AIRTIME_MODE_MAX (__AIRTIME_MODE_MAX - 1)
- #endif /* CONFIG_AIRTIME_POLICY */
+@@ -1156,6 +1156,8 @@ struct hostapd_config {
+ #define CH_SWITCH_EHT_ENABLED BIT(0)
+ #define CH_SWITCH_EHT_DISABLED BIT(1)
+ 	unsigned int ch_switch_eht_config;
 +	u8 mbssid;
 +	u8 ema;
  };
  
- static inline u8 hostapd_get_he_6ghz_reg_pwr_type(struct hostapd_config *conf)
+ 

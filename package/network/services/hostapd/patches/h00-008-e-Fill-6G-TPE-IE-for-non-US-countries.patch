@@ -20,23 +20,27 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
  src/common/ieee802_11_defs.h | 25 ++++++++++++++++++++++---
  3 files changed, 64 insertions(+), 5 deletions(-)
 
---- a/src/ap/ap_config.h
-+++ b/src/ap/ap_config.h
-@@ -1085,6 +1085,7 @@ struct hostapd_config {
- 	u8 he_6ghz_tx_ant_pat;
- #define AP_TYPE_6GHZ_INDOOR_AP 0
- #define AP_TYPE_6GHZ_STANDARD_POWER_AP 1
-+#define AP_TYPE_6GHZ_VERY_LOW_POWER_AP 2
- 	u8 he_6ghz_reg_pwr_type;
- #endif /* CONFIG_IEEE80211AX */
- 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6935,6 +6935,47 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7034,6 +7034,60 @@ void ieee802_11_rx_from_unknown(struct h
  			WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
  }
  
-+u8 hostapd_get_6g_tx_power(struct hostapd_data *hapd, u8 ap_type, u8 tx_pwr_cat)
++/*
++ * TODO: Extract power limits from channel data after 6G regulatory
++ *	support.
++ */
++#define REG_FCC_PSD_MAX_TXPOWER_FOR_DEFAULT_CLIENT_LPI                 (-1)    /* dBm/MHz */
++#define REG_FCC_PSD_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT_LPI             5       /* dBm/MHz */
++#define REG_FCC_PSD_MAX_TXPOWER_SP                                     17      /* dBm/MHz */
++
++#define REG_ETSI2_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI       11      /* dBm/MHz */
++#define REG_ETSI2_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP       11      /* dBm/MHz */
++
++#define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI         2      /* dBm/MHz */
++#define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP         1      /* dBm/MHz */
++
++static u8 hostapd_get_6g_tx_power(struct hostapd_data *hapd, u8 ap_type, u8 tx_pwr_cat)
 +{
 +	char country[3];
 +
@@ -47,28 +51,28 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 +
 +	if ((memcmp(country, "US", 2) == 0) || (memcmp(country, "CL", 2) == 0)) {
 +		/* FCC Regdomain */
-+		if (ap_type == AP_TYPE_6GHZ_INDOOR_AP && tx_pwr_cat == REG_DEFAULT_CLIENT)
++		if (ap_type == HE_6GHZ_INDOOR_AP && tx_pwr_cat == REG_DEFAULT_CLIENT)
 +			return REG_FCC_PSD_MAX_TXPOWER_FOR_DEFAULT_CLIENT_LPI;
-+		else if (ap_type == AP_TYPE_6GHZ_INDOOR_AP)
++		else if (ap_type == HE_6GHZ_INDOOR_AP)
 +			return REG_FCC_PSD_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT_LPI;
-+		else if (ap_type == AP_TYPE_6GHZ_STANDARD_POWER_AP)
++		else if (ap_type == HE_6GHZ_STANDARD_POWER_AP)
 +			return REG_FCC_PSD_MAX_TXPOWER_SP;
 +
 +	} else if (memcmp(country, "GB", 2) == 0) {
 +		/* ETSI2 Regdomain */
-+		if (ap_type == AP_TYPE_6GHZ_INDOOR_AP)
++		if (ap_type == HE_6GHZ_INDOOR_AP)
 +			return REG_ETSI2_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI;
-+		else if (ap_type == AP_TYPE_6GHZ_VERY_LOW_POWER_AP)
++		else if (ap_type == HE_6GHZ_VERY_LOW_POWER_AP)
 +			return REG_ETSI2_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP;
 +
 +	} else if (memcmp(country, "KR", 2) == 0) {
 +		/* APL1 Regdomain */
-+		if (ap_type == AP_TYPE_6GHZ_INDOOR_AP)
++		if (ap_type == HE_6GHZ_INDOOR_AP)
 +			return REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI;
-+		else if (ap_type == AP_TYPE_6GHZ_VERY_LOW_POWER_AP)
++		else if (ap_type == HE_6GHZ_VERY_LOW_POWER_AP)
 +			return REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP;
 +	} else {
-+		wpa_printf(MSG_DEBUG, "Invalid 6g regdomain/country(%s)", country);
++		wpa_printf(MSG_DEBUG, "Invalid 6 GHz regdomain/country(%s)", country);
 +		return 0;
 +	}
 +
@@ -76,56 +80,63 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 +		   ap_type, country);
 +	return 0;
 +}
-+
+ 
  static u8 * hostapd_add_tpe_info(u8 *eid, u8 tx_pwr_count,
- 				 u8 tx_pwr_intrpn, u8 tx_pwr_cat,
- 				 u8 tx_pwr)
-@@ -7006,14 +7047,14 @@ u8 * hostapd_eid_txpower_envelope(struct
- 		if (ap_type == AP_TYPE_6GHZ_INDOOR_AP) {
- 			tx_pwr_cat = REG_SUBORDINATE_CLIENT;
- 			/* TODO: extract psd limits from channel data */
--			tx_pwr = REG_PSD_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT * 2;
-+			tx_pwr = (hostapd_get_6g_tx_power(hapd, ap_type, tx_pwr_cat) * 2);
- 			eid = hostapd_add_tpe_info(eid, tx_pwr_count, tx_pwr_intrpn,
- 						   tx_pwr_cat, tx_pwr);
- 		}
+ 				 enum max_tx_pwr_interpretation tx_pwr_intrpn,
+@@ -7059,14 +7113,6 @@ static u8 * hostapd_add_tpe_info(u8 *eid
+ 	return eid;
+ }
  
- 		/* Default Tx Power envelope for Global Operating class */
- 		tx_pwr_cat = REG_DEFAULT_CLIENT;
--		tx_pwr = REG_PSD_MAX_TXPOWER_FOR_DEFAULT_CLIENT * 2;
-+		tx_pwr = (hostapd_get_6g_tx_power(hapd, ap_type, tx_pwr_cat) * 2);
- 		eid = hostapd_add_tpe_info(eid, tx_pwr_count, tx_pwr_intrpn, tx_pwr_cat, tx_pwr);
- 
- 		return eid;
---- a/src/common/ieee802_11_defs.h
-+++ b/src/common/ieee802_11_defs.h
-@@ -1987,9 +1987,15 @@ enum reg_6g_client_type {
-  * These tx-power macros are present till the 6G regdomains are defined to
-  * support tx-power values for various client types.
-  */
+-
+-/*
+- * TODO: Extract power limits from channel data after 6G regulatory
+- *	support.
+- */
 -#define REG_PSD_MAX_TXPOWER_FOR_DEFAULT_CLIENT      (-1) /* dBm/MHz */
 -#define REG_PSD_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT  5    /* dBm/MHz */
--#define REG_EIRP_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT 24   /* dBm */
-+#define REG_FCC_PSD_MAX_TXPOWER_FOR_DEFAULT_CLIENT_LPI			(-1)	/* dBm/MHz */
-+#define REG_FCC_PSD_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT_LPI		5	/* dBm/MHz */
-+#define REG_FCC_PSD_MAX_TXPOWER_SP					17	/* dBm/MHz */
-+
-+#define REG_ETSI2_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI	11	/* dBm/MHz */
-+#define REG_ETSI2_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP	11	/* dBm/MHz */
-+
-+#define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI         2	/* dBm/MHz */
-+#define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP         1	/* dBm/MHz */
+-
+ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
+ {
+ 	struct hostapd_iface *iface = hapd->iface;
+@@ -7109,7 +7155,9 @@ u8 * hostapd_eid_txpower_envelope(struct
+ 		tx_pwr_intrpn = REGULATORY_CLIENT_EIRP_PSD;
  
- #define RRM_CAPABILITIES_IE_LEN 5
+ 		/* Default Transmit Power Envelope for Global Operating Class */
+-		tx_pwr = REG_PSD_MAX_TXPOWER_FOR_DEFAULT_CLIENT * 2;
++		tx_pwr = (hostapd_get_6g_tx_power(hapd,
++						  iconf->he_6ghz_reg_pwr_type,
++						  REG_DEFAULT_CLIENT) * 2);
+ 		eid = hostapd_add_tpe_info(eid, tx_pwr_count, tx_pwr_intrpn,
+ 					   REG_DEFAULT_CLIENT, tx_pwr);
  
+@@ -7117,7 +7165,9 @@ u8 * hostapd_eid_txpower_envelope(struct
+ 		 * subordinate devices */
+ 		if (iconf->he_6ghz_reg_pwr_type == HE_6GHZ_INDOOR_AP) {
+ 			/* TODO: Extract PSD limits from channel data */
+-			tx_pwr = REG_PSD_MAX_TXPOWER_FOR_SUBORDINATE_CLIENT * 2;
++			tx_pwr = (hostapd_get_6g_tx_power(hapd,
++						    iconf->he_6ghz_reg_pwr_type,
++						    REG_SUBORDINATE_CLIENT) * 2);
+ 			eid = hostapd_add_tpe_info(eid, tx_pwr_count,
+ 						   tx_pwr_intrpn,
+ 						   REG_SUBORDINATE_CLIENT,
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -2366,6 +2366,7 @@ struct ieee80211_spatial_reuse {
+ enum he_6ghz_ap_type {
+ 	HE_6GHZ_INDOOR_AP		= 0,
+ 	HE_6GHZ_STANDARD_POWER_AP	= 1,
++	HE_6GHZ_VERY_LOW_POWER_AP	= 2,
+ };
+ 
+ /* Spatial Reuse defines */
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -586,7 +586,7 @@ wmm_ac_vo_acm=0
- 
- # 6GHz regulatory AP type
- # This config is to set 6GHz access point type. Possible options
--# are 0 = Indoor AP, 1 = Standard Power AP
-+# are 0 = Indoor AP, 1 = Standard Power AP, 2 = Very Low Power AP
- # If not specified Indoor AP is selected by default.
- # option is no operation for non 6GHz band.
+@@ -985,6 +985,7 @@ wmm_ac_vo_acm=0
+ # This config is to set the 6 GHz Access Point type. Possible options are:
+ # 0 = Indoor AP (default)
+ # 1 = Standard Power AP
++# 2 = Very Low Power AP
+ # This has no impact for operation on other bands.
  #he_6ghz_reg_pwr_type=0
+ 

@@ -21,24 +21,20 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  wpa_supplicant/wpa_supplicant.c | 51 ++++++++++++++++++++++++++++-------------
  3 files changed, 40 insertions(+), 19 deletions(-)
 
-Index: b/src/common/ieee802_11_common.c
-===================================================================
---- a/src/common/ieee802_11_common.c	2022-07-14 14:31:03.057966186 +0530
-+++ b/src/common/ieee802_11_common.c	2022-07-14 14:31:03.049966278 +0530
-@@ -1028,7 +1028,8 @@ enum hostapd_hw_mode ieee80211_freq_to_c
+--- a/src/common/ieee802_11_common.c
++++ b/src/common/ieee802_11_common.c
+@@ -1028,7 +1028,8 @@ ieee80211_freq_to_channel_ext(unsigned i
  		if ((freq - 5000) % 5)
  			return NUM_HOSTAPD_MODES;
  
 -		if (vht_opclass)
 +		/* There is no op class defined for 5 GHz 320MHz, let it be unset */
-+		if (vht_opclass || chanwidth == CHANWIDTH_320MHZ)
++		if (vht_opclass || chanwidth == CONF_OPER_CHWIDTH_320MHZ)
  			*op_class = vht_opclass;
  		else if (sec_channel == 1)
  			*op_class = 122;
-Index: b/wpa_supplicant/ap.c
-===================================================================
---- a/wpa_supplicant/ap.c	2022-07-14 14:31:03.057966186 +0530
-+++ b/wpa_supplicant/ap.c	2022-07-14 14:31:03.049966278 +0530
+--- a/wpa_supplicant/ap.c
++++ b/wpa_supplicant/ap.c
 @@ -105,9 +105,10 @@ static void wpas_conf_ap_vht(struct wpa_
  		hostapd_set_oper_centr_freq_seg0_idx(conf, freq_seg_idx);
  
@@ -52,11 +48,9 @@ Index: b/wpa_supplicant/ap.c
  		return;
  	}
  
-Index: b/wpa_supplicant/wpa_supplicant.c
-===================================================================
---- a/wpa_supplicant/wpa_supplicant.c	2022-07-14 14:31:03.057966186 +0530
-+++ b/wpa_supplicant/wpa_supplicant.c	2022-07-14 14:33:12.080479343 +0530
-@@ -2509,7 +2509,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -2655,7 +2655,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
  	/* bw_80_160 array members are 80MHz start freq, 80MHz end freq and so on
  	 */
  	unsigned int bw_80_160[] = { 5180, 5240, 5260, 5320,
@@ -67,16 +61,11 @@ Index: b/wpa_supplicant/wpa_supplicant.c
  				     5745, 5805, 5825, 5885,
  				     5955, 6015, 6035, 6095,
  				     6115, 6175, 6195, 6255,
-@@ -2824,16 +2826,33 @@ skip_to_6ghz:
-  	}
+@@ -2955,16 +2957,33 @@ skip_to_6ghz:
+ 	}
  
  	if ((ssid->enable_320mhz_bw) && (mode->eht_capab[ieee80211_mode].phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
 -	     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK) && is_6ghz) {
--
--		for (i = 0; i < ARRAY_SIZE(bw_320); i+=2) {
--			if (freq->freq >= bw_320[i] &&
--		    	    freq->freq <= bw_320[i+1])
--				break;
 +	     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK)) {
 +		if (is_6ghz) {
 +			for (i = 0; i < ARRAY_SIZE(bw_320); i+=2) {
@@ -84,9 +73,13 @@ Index: b/wpa_supplicant/wpa_supplicant.c
 +		    	    	    freq->freq <= bw_320[i+1])
 +					break;
 +			}
-+
+ 
+-		for (i = 0; i < ARRAY_SIZE(bw_320); i+=2) {
+-			if (freq->freq >= bw_320[i] &&
+-		    	    freq->freq <= bw_320[i+1])
+-				break;
 +			seg0 = ibss_get_center_320mhz(freq->channel);
-+			chwidth = CHANWIDTH_320MHZ;
++			chwidth = CONF_OPER_CHWIDTH_320MHZ;
 +		} else {
 +			/* There is only one 320MHz(240+80 Punctured) in 5 GHz Band */
 +			u8 start_chan_idx = 100;
@@ -101,12 +94,12 @@ Index: b/wpa_supplicant/wpa_supplicant.c
 +						return;
 +				}
 +					seg0 = 130;
-+					chwidth = CHANWIDTH_320MHZ;
++					chwidth = CONF_OPER_CHWIDTH_320MHZ;
 +			}
  		}
 -
 -		seg0 = ibss_get_center_320mhz(freq->channel);
--		chwidth = CHANWIDTH_320MHZ;
+-		chwidth = CONF_OPER_CHWIDTH_320MHZ;
  	}
  
- 	if (ssid->max_oper_chwidth == CHANWIDTH_80P80MHZ) {
+ 	if (ssid->max_oper_chwidth == CONF_OPER_CHWIDTH_80P80MHZ) {

@@ -18,7 +18,7 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3377,6 +3377,8 @@ static int hostapd_config_fill(struct ho
+@@ -3387,6 +3387,8 @@ static int hostapd_config_fill(struct ho
  		conf->require_ht = atoi(pos);
  	} else if (os_strcmp(buf, "obss_interval") == 0) {
  		conf->obss_interval = atoi(pos);
@@ -29,7 +29,7 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
  		conf->ieee80211ac = atoi(pos);
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1045,6 +1045,7 @@ struct hostapd_config {
+@@ -1067,6 +1067,7 @@ struct hostapd_config {
  
  	/* Use driver-generated interface addresses when adding multiple BSSs */
  	u8 use_driver_iface_addr;
@@ -39,7 +39,7 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
  	struct fst_iface_cfg fst_cfg;
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -199,6 +199,64 @@ static int is_in_chanlist(struct hostapd
+@@ -231,6 +231,64 @@ static int is_in_chanlist(struct hostapd
  	return freq_range_list_includes(&iface->conf->acs_ch_list, chan->chan);
  }
  
@@ -68,7 +68,7 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
 +	 */
 +	switch(hostapd_get_oper_chwidth(iface->conf))
 +	{
-+		case CHANWIDTH_160MHZ:
++		case CONF_OPER_CHWIDTH_160MHZ:
 +			if ((iface->conf->channel >= 36) &&
 +			    (iface->conf->channel <= 64) &&
 +			    (iface->conf->channel != 40) &&
@@ -76,7 +76,7 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
 +			    (chan->chan != 40))
 +				return true;
 +			break;
-+		case CHANWIDTH_80MHZ:
++		case CONF_OPER_CHWIDTH_80MHZ:
 +			if ((iface->conf->channel >= 52) &&
 +			    (iface->conf->channel <= 64) &&
 +			    (chan->chan >= 36) && (chan->chan <= 48) &&
@@ -98,13 +98,13 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
 +		default:
 +			break;
 +	}
-+	   
++
 +	return false;
 +}
  
  /*
   * The function assumes HT40+ operation.
-@@ -248,6 +306,13 @@ static int dfs_find_channel(struct hosta
+@@ -280,6 +338,13 @@ static int dfs_find_channel(struct hosta
  			continue;
  		}
  
@@ -118,21 +118,20 @@ Signed-off-by: Seevalamuthu Mariappan <seevalam@codeaurora.org>
  		if (chan->max_tx_power < iface->conf->min_tx_power)
  			continue;
  
-@@ -963,8 +1028,15 @@ dfs_downgrade_bandwidth(struct hostapd_i
+@@ -1227,8 +1292,14 @@ dfs_downgrade_bandwidth(struct hostapd_i
  			int oper_chwidth;
  
  			oper_chwidth = hostapd_get_oper_chwidth(iface->conf);
--			if (oper_chwidth == CHANWIDTH_USE_HT)
+-			if (oper_chwidth == CONF_OPER_CHWIDTH_USE_HT)
 -				break;
-+			if (oper_chwidth == CHANWIDTH_USE_HT) {
++			if (oper_chwidth == CONF_OPER_CHWIDTH_USE_HT) {
 +				/* try finding 20MHz channels if skip_unii1_dfs_switch is enabled */
 +				if (!iface->conf->skip_unii1_dfs_switch ||
 +				    !iface->conf->secondary_channel)
 +					break;
 +				iface->conf->secondary_channel = 0;
-+				*skip_radar = 1;
 +				continue;
 +			}
- 			*skip_radar = 1;
+ 			*channel_type = DFS_AVAILABLE;
  			hostapd_set_oper_chwidth(iface->conf, oper_chwidth - 1);
  		}

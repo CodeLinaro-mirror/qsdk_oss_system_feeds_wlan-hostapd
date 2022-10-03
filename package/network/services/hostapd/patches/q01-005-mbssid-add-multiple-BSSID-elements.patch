@@ -25,7 +25,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -463,6 +463,9 @@ static int hostapd_set_mbssid_beacon(str
+@@ -466,6 +466,9 @@ static int hostapd_set_mbssid_beacon(str
  				     struct wpa_driver_ap_params *params)
  {
  	struct hostapd_iface *iface = hapd->iface;
@@ -35,7 +35,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	if (!iface->conf->mbssid || iface->num_bss == 1)
  		return 0;
-@@ -478,10 +481,55 @@ static int hostapd_set_mbssid_beacon(str
+@@ -481,10 +484,55 @@ static int hostapd_set_mbssid_beacon(str
  		return -1;
  	}
  
@@ -92,7 +92,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	return 0;
  }
  
-@@ -494,8 +542,11 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -498,8 +546,11 @@ static u8 * hostapd_gen_probe_resp(struc
  	u8 *pos, *epos, *csa_pos;
  	size_t buflen;
  
@@ -104,15 +104,15 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #ifdef CONFIG_WPS
  	if (hapd->wps_probe_resp_ie)
  		buflen += wpabuf_len(hapd->wps_probe_resp_ie);
-@@ -532,6 +583,7 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -544,6 +595,7 @@ static u8 * hostapd_gen_probe_resp(struc
  	}
- #endif /* CONFIG_IEEE80211AX */
+ #endif /* CONFIG_IEEE80211BE */
  
 +	buflen += hostapd_eid_mbssid_len(hapd, WLAN_FC_STYPE_PROBE_RESP, NULL);
  	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP);
  	buflen += hostapd_mbo_ie_len(hapd);
  	buflen += hostapd_eid_owe_trans_len(hapd);
-@@ -600,6 +652,8 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -615,6 +667,8 @@ static u8 * hostapd_gen_probe_resp(struc
  	pos = hostapd_eid_supported_op_classes(hapd, pos);
  	pos = hostapd_eid_ht_capabilities(hapd, pos);
  	pos = hostapd_eid_ht_operation(hapd, pos);
@@ -121,7 +121,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	pos = hostapd_eid_ext_capab(hapd, pos);
  
-@@ -1155,6 +1209,9 @@ void handle_probe_req(struct hostapd_dat
+@@ -1180,6 +1234,9 @@ void handle_probe_req(struct hostapd_dat
  	}
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -131,7 +131,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
  		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
  
-@@ -1181,7 +1238,8 @@ void handle_probe_req(struct hostapd_dat
+@@ -1206,7 +1263,8 @@ void handle_probe_req(struct hostapd_dat
  				hapd->cs_c_off_ecsa_proberesp;
  	}
  
@@ -141,7 +141,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  				    csa_offs_len ? csa_offs : NULL,
  				    csa_offs_len, 0);
  
-@@ -1661,7 +1719,6 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1693,7 +1751,6 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_supported_op_classes(hapd, tailpos);
  	tailpos = hostapd_eid_ht_capabilities(hapd, tailpos);
  	tailpos = hostapd_eid_ht_operation(hapd, tailpos);
@@ -149,7 +149,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	if (hostapd_set_mbssid_beacon(hapd, params))
  		return -1;
  
-@@ -1880,6 +1937,10 @@ void ieee802_11_free_ap_params(struct wp
+@@ -1923,6 +1980,10 @@ void ieee802_11_free_ap_params(struct wp
  	params->head = NULL;
  	os_free(params->proberesp);
  	params->proberesp = NULL;
@@ -162,7 +162,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	params->fd_frame_tmpl = NULL;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3974,6 +3974,23 @@ static void handle_auth(struct hostapd_d
+@@ -4054,6 +4054,23 @@ static void handle_auth(struct hostapd_d
  }
  
  
@@ -186,7 +186,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	int i, j = 32, aid;
-@@ -7667,4 +7684,199 @@ u8 * hostapd_eid_rnr(struct hostapd_data
+@@ -7777,4 +7794,199 @@ u8 * hostapd_eid_rnr(struct hostapd_data
  	return eid;
  }
  
@@ -388,7 +388,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #endif /* CONFIG_NATIVE_WINDOWS */
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -129,8 +129,11 @@ u8 * hostapd_eid_time_zone(struct hostap
+@@ -128,8 +128,11 @@ u8 * hostapd_eid_time_zone(struct hostap
  int hostapd_update_time_adv(struct hostapd_data *hapd);
  void hostapd_client_poll_ok(struct hostapd_data *hapd, const u8 *addr);
  u8 * hostapd_eid_bss_max_idle_period(struct hostapd_data *hapd, u8 *eid);
@@ -403,18 +403,18 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  				struct sta_info *sta);
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -491,6 +491,8 @@
- #define WLAN_EID_EXT_ANTI_CLOGGING_TOKEN 93
- #define WLAN_EID_EXT_PASN_PARAMS 100
+@@ -497,6 +497,8 @@
+ #define WLAN_EID_EXT_MULTI_LINK_TRAFFIC_INDICATION 110
+ #define WLAN_EID_EXT_AKM_SUITE_SELECTOR 114
  
 +#define WLAN_EID_SUBELEMENT_NONTRANSMITTED_BSSID_PROFILE 0
 +
- /* Operating Triplet can be any integer >= 201
-  * From IEEE P802.11-REVmd/D4.0: The first octet in each Subband
-  * Triplet field or Operating Triplet field contains an unsigned
+ /* Extended Capabilities field */
+ #define WLAN_EXT_CAPAB_20_40_COEX 0
+ #define WLAN_EXT_CAPAB_GLK 1
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1642,6 +1642,33 @@ struct wpa_driver_ap_params {
+@@ -1690,6 +1690,33 @@ struct wpa_driver_ap_params {
  	 * mbssid_count - Total number of BSSs in the group
  	 */
  	unsigned int mbssid_count;

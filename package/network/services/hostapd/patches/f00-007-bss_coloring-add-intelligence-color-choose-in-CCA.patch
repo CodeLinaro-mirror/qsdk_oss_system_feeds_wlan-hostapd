@@ -95,32 +95,33 @@ Signed-off-by: Karthikeyan Periyasamy <periyasa@codeaurora.org>
  #endif /* AP_LIST_H */
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3769,6 +3769,7 @@ hostapd_switch_color_timeout_handler(voi
- 	struct cca_settings settings;
- 	struct os_time now;
- 	int i, r, b, ret;
+@@ -3817,6 +3817,7 @@ static void hostapd_switch_color_timeout
+ 	os_time_t delta_t;
+ 	unsigned int b;
+ 	int i, r;
 +	u64 neighbor_color;
  
- 	if (os_get_time(&now))
- 		return;
-@@ -3777,11 +3778,16 @@ hostapd_switch_color_timeout_handler(voi
- 	if (now.sec - hapd->last_color_collision.sec > 50)
+ 	 /* CCA can be triggered once the handler constantly receives
+ 	  * color collision events to for at least
+@@ -3826,12 +3827,16 @@ static void hostapd_switch_color_timeout
+ 	if (delta_t < DOT11BSS_COLOR_COLLISION_AP_PERIOD)
  		return;
  
 -	r = os_random() % HE_OPERATION_BSS_COLOR_MAX;
 -	for (i = 0; i < HE_OPERATION_BSS_COLOR_MAX; i++) {
--		if (r && (hapd->color_collision_bitmap & (1 << r)) == 0)
+-		if (r && !(hapd->color_collision_bitmap & (1ULL << r)))
+-			break;
 +	neighbor_color = ap_list_get_color(hapd->iface);
 +	neighbor_color |= hapd->color_collision_bitmap;
-+
+ 
+-		r = (r + 1) % HE_OPERATION_BSS_COLOR_MAX;
 +	r = os_random() % HE_OPERATION_BSS_COLOR_MAX - 1;
 +	r++;
 +	for (i = 1; i < HE_OPERATION_BSS_COLOR_MAX; i++) {
 +		if ((neighbor_color & (1 << r)) == 0)
- 			break;
--		r = (r + 1) % HE_OPERATION_BSS_COLOR_MAX;
++			break;
 +		r = r % HE_OPERATION_BSS_COLOR_MAX - 1;
 +		r++;
  	}
+ 
  	if (i == HE_OPERATION_BSS_COLOR_MAX) {
- 		/* there are no free colors so turn bss coloring off */

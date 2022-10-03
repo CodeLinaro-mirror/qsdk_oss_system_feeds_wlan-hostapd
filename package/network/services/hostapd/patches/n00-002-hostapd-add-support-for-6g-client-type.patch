@@ -25,26 +25,26 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -4694,6 +4694,14 @@ struct wpa_driver_ops {
- 	 * explicitly allow reception of broadcast Public Action frames.
- 	 */
+@@ -4840,6 +4840,14 @@ struct wpa_driver_ops {
  	int (*dpp_listen)(void *priv, bool enable);
-+
-+	/**
+ 
+ 	/**
 +	 * set_6gclient_type - Set the client type for 6G interface
 +	 * @priv: Private driver interface data
 +	 * @client_type_6g: 0 - Default Client, 1 - Subordinate Client
 +	 * Returns: 0 on success, < 0 on failure
 +	 */
 +	int (*set_6gclient_type)(void *priv, u8 client_type_6g);
-
- #ifdef CONFIG_TESTING_OPTIONS
-	int (*register_frame)(void *priv, u16 type,
++
++	/**
+ 	 * set_secure_ranging_ctx - Add or delete secure ranging parameters of
+ 	 * the specified peer to the driver.
+ 	 * @priv: Private driver interface data
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -12173,6 +12173,31 @@ static int nl80211_dpp_listen(void *priv
- }
- #endif /* CONFIG_DPP */
+@@ -12871,6 +12871,31 @@ static int testing_nl80211_radio_disable
+ 
+ #endif /* CONFIG_TESTING_OPTIONS */
  
 +static int nl80211_set_6gclient_type(void *priv, u8 client_type_6g)
 +{
@@ -74,16 +74,16 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
-@@ -12315,4 +12340,5 @@ const struct wpa_driver_ops wpa_driver_n
- #ifdef CONFIG_TESTING_OPTIONS
-	.register_frame = testing_nl80211_register_frame,
+@@ -13023,4 +13048,5 @@ const struct wpa_driver_ops wpa_driver_n
+ 	.register_frame = testing_nl80211_register_frame,
+ 	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */
 +	.set_6gclient_type = nl80211_set_6gclient_type,
  };
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -5394,6 +5394,8 @@ static const struct global_parse_data gl
- 	{ INT_RANGE(force_kdk_derivation, 0, 1), 0 },
+@@ -5527,6 +5527,8 @@ static const struct global_parse_data gl
+ 	{ INT_RANGE(pasn_corrupt_mic, 0, 1), 0 },
  #endif /* CONFIG_TESTING_OPTIONS */
  #endif /* CONFIG_PASN */
 +	{ INT_RANGE(he_6ghz_reg_client_type, 1, 2),
@@ -93,7 +93,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  #undef FUNC
 --- a/wpa_supplicant/config.h
 +++ b/wpa_supplicant/config.h
-@@ -378,6 +378,7 @@ struct wpa_cred {
+@@ -424,6 +424,7 @@ struct wpa_cred {
  #define CFG_CHANGED_WOWLAN_TRIGGERS BIT(18)
  #define CFG_CHANGED_DISABLE_BTM BIT(19)
  #define CFG_CHANGED_BGSCAN BIT(20)
@@ -101,8 +101,8 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  /**
   * struct wpa_config - wpa_supplicant configuration data
-@@ -1650,6 +1651,16 @@ struct wpa_config {
- 	int force_kdk_derivation;
+@@ -1738,6 +1739,16 @@ struct wpa_config {
+ 
  #endif /* CONFIG_TESTING_OPTIONS */
  #endif /* CONFIG_PASN*/
 +
@@ -120,8 +120,8 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
 --- a/wpa_supplicant/driver_i.h
 +++ b/wpa_supplicant/driver_i.h
-@@ -1117,4 +1117,12 @@ static inline int wpa_drv_dpp_listen(str
- 	return wpa_s->driver->dpp_listen(wpa_s->drv_priv, enable);
+@@ -1170,4 +1170,12 @@ wpas_drv_get_sta_mlo_info(struct wpa_sup
+ 	return wpa_s->driver->get_sta_mlo_info(wpa_s->drv_priv, mlo_info);
  }
  
 +static inline int wpa_drv_set_6gclient_type(struct wpa_supplicant *wpa_s,
@@ -135,7 +135,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  #endif /* DRIVER_I_H */
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -5212,6 +5212,15 @@ int wpa_supplicant_driver_init(struct wp
+@@ -5562,6 +5562,15 @@ int wpa_supplicant_driver_init(struct wp
  	wpa_dbg(wpa_s, MSG_DEBUG, "RSN: flushing PMKID list in the driver");
  	wpa_drv_flush_pmkid(wpa_s);
  
@@ -153,10 +153,10 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
 --- a/wpa_supplicant/wpa_supplicant.conf
 +++ b/wpa_supplicant/wpa_supplicant.conf
-@@ -589,6 +589,15 @@ fast_reauth=1
+@@ -592,6 +592,15 @@ fast_reauth=1
  # 1 = Publish
  #ftm_initiator=0
-
+ 
 +# 6GHz regulatory client type
 +# This sets the 6GHz client type. Possible options are
 +# 1 = Default Client

@@ -29,7 +29,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -1195,6 +1195,8 @@ static int hostapd_config_vht_capab(stru
+@@ -1153,6 +1153,8 @@ static int hostapd_config_vht_capab(stru
  		conf->vht_capab |= VHT_CAP_RX_ANTENNA_PATTERN;
  	if (os_strstr(capab, "[TX-ANTENNA-PATTERN]"))
  		conf->vht_capab |= VHT_CAP_TX_ANTENNA_PATTERN;
@@ -57,7 +57,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
 +	vht_capabilities_info = host_to_le32(hapd->iface->current_mode->vht_capab);
 +	chwidth = hostapd_get_oper_chwidth(hapd->iconf);
 +	if (vht_capabilities_info & VHT_CAP_EXTENDED_NSS_BW_SUPPORT
-+		&& ((chwidth == CHANWIDTH_160MHZ) || (chwidth == CHANWIDTH_80P80MHZ))) {
++		&& ((chwidth == CONF_OPER_CHWIDTH_160MHZ) || (chwidth == CHANWIDTH_80P80MHZ))) {
 +		oper->operation_mode = host_to_le16(hapd->iconf->vht_oper_centr_freq_seg0_idx << 5);
 +	}
 +
@@ -80,7 +80,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  
 +	chwidth = hostapd_get_oper_chwidth(hapd->iconf);
 +	if (((host_to_le32(mode->vht_capab)) & VHT_CAP_EXTENDED_NSS_BW_SUPPORT)
-+		&& ((chwidth == CHANWIDTH_160MHZ) || (chwidth == CHANWIDTH_80P80MHZ))) {
++		&& ((chwidth == CONF_OPER_CHWIDTH_160MHZ) || (chwidth == CHANWIDTH_80P80MHZ))) {
 +		cap->vht_capabilities_info |= VHT_CAP_EXTENDED_NSS_BW_SUPPORT;
 +		cap->vht_capabilities_info &= ~(host_to_le32(VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ));
 +		cap->vht_capabilities_info &= ~(host_to_le32(VHT_CAP_SUPP_CHAN_WIDTH_160MHZ));
@@ -105,23 +105,21 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  
  	oper->vht_op_info_chwidth = hapd->iconf->vht_oper_chwidth;
 +	vht_capabilities_info = host_to_le32(hapd->iface->current_mode->vht_capab);
- 	if (hapd->iconf->vht_oper_chwidth == 2) {
+ 	if (hapd->iconf->vht_oper_chwidth == CONF_OPER_CHWIDTH_160MHZ) {
  		/*
  		 * Convert 160 MHz channel width to new style as interop
-@@ -109,6 +123,10 @@ u8 * hostapd_eid_vht_operation(struct ho
+@@ -109,6 +123,8 @@ u8 * hostapd_eid_vht_operation(struct ho
  			oper->vht_op_info_chan_center_freq_seg0_idx -= 8;
  		else
  			oper->vht_op_info_chan_center_freq_seg0_idx += 8;
-+
 +		if (vht_capabilities_info & VHT_CAP_EXTENDED_NSS_BW_SUPPORT)
 +			oper->vht_op_info_chan_center_freq_seg1_idx = 0;
-+
- 	} else if (hapd->iconf->vht_oper_chwidth == 3) {
+ 	} else if (hapd->iconf->vht_oper_chwidth ==
+ 		   CONF_OPER_CHWIDTH_80P80MHZ) {
  		/*
- 		 * Convert 80+80 MHz channel width to new style as interop
 --- a/src/common/hw_features_common.c
 +++ b/src/common/hw_features_common.c
-@@ -740,6 +740,7 @@ int ieee80211ac_cap_check(u32 hw, u32 co
+@@ -808,6 +808,7 @@ int ieee80211ac_cap_check(u32 hw, u32 co
  	VHT_CAP_CHECK(VHT_CAP_VHT_LINK_ADAPTATION_VHT_MRQ_MFB);
  	VHT_CAP_CHECK(VHT_CAP_RX_ANTENNA_PATTERN);
  	VHT_CAP_CHECK(VHT_CAP_TX_ANTENNA_PATTERN);
@@ -131,7 +129,7 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  #undef VHT_CAP_CHECK_MAX
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -1304,6 +1304,8 @@ struct ieee80211_ampe_ie {
+@@ -1335,6 +1335,8 @@ struct ieee80211_ampe_ie {
  #define VHT_CAP_VHT_LINK_ADAPTATION_VHT_MRQ_MFB     ((u32) BIT(26) | BIT(27))
  #define VHT_CAP_RX_ANTENNA_PATTERN                  ((u32) BIT(28))
  #define VHT_CAP_TX_ANTENNA_PATTERN                  ((u32) BIT(29))

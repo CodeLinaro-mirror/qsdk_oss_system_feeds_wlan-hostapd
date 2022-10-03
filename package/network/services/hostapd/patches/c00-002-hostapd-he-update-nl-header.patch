@@ -12,14 +12,12 @@ Signed-off-by: John Crispin <john@phrozen.org>
  src/drivers/nl80211_copy.h | 75 +++++++++++++++++++++++-----------------------
  1 file changed, 37 insertions(+), 38 deletions(-)
 
-Index: hostapd-2021-02-08/src/drivers/nl80211_copy.h
-===================================================================
---- hostapd-2021-02-08.orig/src/drivers/nl80211_copy.h
-+++ hostapd-2021-02-08/src/drivers/nl80211_copy.h
-@@ -4541,6 +4541,10 @@ enum nl80211_chan_width {
- 	NL80211_CHAN_WIDTH_4,
+--- a/src/drivers/nl80211_copy.h
++++ b/src/drivers/nl80211_copy.h
+@@ -4879,6 +4879,10 @@ enum nl80211_chan_width {
  	NL80211_CHAN_WIDTH_8,
  	NL80211_CHAN_WIDTH_16,
+ 	NL80211_CHAN_WIDTH_320,
 +
 +	/* keep last */
 +	__NL80211_CHAN_WIDTH_NUM,
@@ -27,11 +25,9 @@ Index: hostapd-2021-02-08/src/drivers/nl80211_copy.h
  };
  
  /**
-Index: hostapd-2021-02-08/src/ap/dfs.c
-===================================================================
---- hostapd-2021-02-08.orig/src/ap/dfs.c
-+++ hostapd-2021-02-08/src/ap/dfs.c
-@@ -1051,13 +1051,17 @@ static int hostapd_dfs_testmode_set_beac
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1365,13 +1365,18 @@ static int hostapd_dfs_testmode_set_beac
  				      iface->conf->hw_mode,
  				      iface->freq,
  				      iface->conf->channel,
@@ -40,6 +36,7 @@ Index: hostapd-2021-02-08/src/ap/dfs.c
  				      iface->conf->ieee80211n,
  				      iface->conf->ieee80211ac,
 +				      iface->conf->ieee80211ax,
++				      iface->conf->ieee80211be,
  				      secondary_channel,
 -				      iface->conf->vht_oper_chwidth,
 +				      hostapd_get_oper_chwidth(iface->conf),

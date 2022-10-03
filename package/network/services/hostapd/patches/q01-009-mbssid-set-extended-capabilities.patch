@@ -15,9 +15,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -542,12 +542,41 @@ static u8 * hostapd_set_mbssid_beacon(st
+@@ -544,6 +544,33 @@ static u8 * hostapd_set_mbssid_beacon(st
+ 	return eid;
  }
- 
  
 +static u8 * hostapd_ext_capab_mbssid(struct hostapd_data *hapd, u8 *eid,
 +				     u8 *eid_ext_cap, u8 ema_periodicity)
@@ -46,11 +46,11 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +
 +	return eid;
 +}
-+
-+
+ 
  static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
  				   const struct ieee80211_mgmt *req,
- 				   int is_p2p, size_t *resp_len)
+@@ -551,7 +578,7 @@ static u8 * hostapd_gen_probe_resp(struc
+ 				   bool bcast_probe_resp)
  {
  	struct ieee80211_mgmt *resp;
 -	u8 *pos, *epos, *csa_pos;
@@ -58,7 +58,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	size_t buflen;
  
  	hapd = hostapd_mbssid_get_tx_bss(hapd);
-@@ -663,7 +692,9 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -678,7 +705,9 @@ static u8 * hostapd_gen_probe_resp(struc
  	pos = hostapd_eid_mbssid(hapd, pos, epos, WLAN_FC_STYPE_PROBE_RESP, 0,
  				 NULL);
  
@@ -68,7 +68,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	pos = hostapd_eid_time_adv(hapd, pos);
  	pos = hostapd_eid_time_zone(hapd, pos);
-@@ -1589,7 +1620,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1617,7 +1646,7 @@ int ieee802_11_build_ap_params(struct ho
  	size_t resp_len = 0;
  #ifdef NEED_AP_MLME
  	u16 capab_info;
@@ -77,7 +77,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #endif /* NEED_AP_MLME */
  
  	os_memset(params, 0, sizeof(*params));
-@@ -1731,7 +1762,10 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1763,7 +1792,10 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_ht_operation(hapd, tailpos);
  	tailpos = hostapd_set_mbssid_beacon(hapd, params, tailpos);
  

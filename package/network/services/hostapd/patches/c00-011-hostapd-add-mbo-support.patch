@@ -1,6 +1,6 @@
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4143,10 +4143,12 @@ static int hostapd_config_fill(struct ho
+@@ -4149,10 +4149,12 @@ static int hostapd_config_fill(struct ho
  #ifdef CONFIG_MBO
  	} else if (os_strcmp(buf, "mbo") == 0) {
  		bss->mbo_enabled = atoi(pos);
@@ -15,34 +15,9 @@
  #endif /* CONFIG_MBO */
  #ifdef CONFIG_TESTING_OPTIONS
  #define PARSE_TEST_PROBABILITY(_val)				\
---- a/hostapd/ctrl_iface.c
-+++ b/hostapd/ctrl_iface.c
-@@ -882,10 +882,11 @@ static int hostapd_ctrl_iface_bss_tm_req
- 	if (pos) {
- 		pos += 10;
- 		req_mode |= WNM_BSS_TM_REQ_BSS_TERMINATION_INCLUDED;
--		/* TODO: TSF configurable/learnable */
-+		/* TODO: TSF learnable */
- 		bss_term_dur[0] = 4; /* Subelement ID */
- 		bss_term_dur[1] = 10; /* Length */
--		os_memset(&bss_term_dur[2], 0, 8);
-+		bss_term_dur[2] = atoi(pos); /* TSF */
-+		os_memset(&bss_term_dur[3], 0, 7);
- 		end = os_strchr(pos, ',');
- 		if (end == NULL) {
- 			wpa_printf(MSG_DEBUG, "Invalid bss_term data");
-@@ -895,7 +896,7 @@ static int hostapd_ctrl_iface_bss_tm_req
- 		WPA_PUT_LE16(&bss_term_dur[10], atoi(end));
- 	}
- 
--	nei_len = ieee802_11_parse_candidate_list(cmd, nei_rep,
-+	nei_len = ieee802_11_parse_candidate_list(cmd, sta, nei_rep,
- 						  sizeof(nei_rep));
- 	if (nei_len < 0)
- 		return -1;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -714,6 +714,11 @@ struct hostapd_bss_config {
+@@ -726,6 +726,11 @@ struct hostapd_bss_config {
  	 *  - Set BIT(2) to enable OCE in AP mode
  	 */
  	unsigned int oce;
@@ -128,7 +103,7 @@
   * optimized bitmap.
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -132,6 +132,9 @@ static inline void sae_clear_retransmit_
+@@ -137,6 +137,9 @@ static inline void sae_clear_retransmit_
  }
  #endif /* CONFIG_SAE */
  
@@ -140,7 +115,7 @@
  u8 * hostapd_eid_mbo(struct hostapd_data *hapd, u8 *eid, size_t len);
 --- a/src/ap/ieee802_11_shared.c
 +++ b/src/ap/ieee802_11_shared.c
-@@ -801,11 +801,13 @@ u8 * hostapd_eid_mbo(struct hostapd_data
+@@ -752,11 +752,13 @@ u8 * hostapd_eid_mbo(struct hostapd_data
  	    !OCE_STA_CFON_ENABLED(hapd) && !OCE_AP_ENABLED(hapd))
  		return eid;
  
@@ -159,7 +134,7 @@
  	if (hapd->conf->mbo_enabled && hapd->mbo_assoc_disallow) {
 --- a/src/ap/neighbor_db.c
 +++ b/src/ap/neighbor_db.c
-@@ -160,6 +160,24 @@ fail:
+@@ -164,6 +164,24 @@ fail:
  	return -1;
  }
  
@@ -186,9 +161,9 @@
  			    const struct wpa_ssid_value *ssid)
 --- a/src/ap/neighbor_db.h
 +++ b/src/ap/neighbor_db.h
-@@ -19,6 +19,8 @@ int hostapd_neighbor_set(struct hostapd_
- 			 const struct wpabuf *nr, const struct wpabuf *lci,
- 			 const struct wpabuf *civic, int stationary);
+@@ -20,6 +20,8 @@ int hostapd_neighbor_set(struct hostapd_
+ 			 const struct wpabuf *civic, int stationary,
+ 			 u8 bss_parameters);
  void hostapd_neighbor_set_own_report(struct hostapd_data *hapd);
 +int hostapd_prepare_neighbor_buf(struct hostapd_data *hapd,
 +				 const u8 *bssid, struct wpabuf *nrbuf);
@@ -276,7 +251,7 @@
  				      mgmt->da, &mgmt->u.action.category, len);
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -2290,11 +2290,21 @@ bool is_6ghz_psc_frequency(int freq)
+@@ -2345,11 +2345,21 @@ int get_6ghz_sec_channel(int channel)
  }
  
  
@@ -300,7 +275,7 @@
  
  	/*
  	 * BSS Transition Candidate List Entries - Neighbor Report elements
-@@ -2350,6 +2360,9 @@ int ieee802_11_parse_candidate_list(cons
+@@ -2405,6 +2415,9 @@ int ieee802_11_parse_candidate_list(cons
  		pos++;
  
  		*nei_pos++ = atoi(pos); /* Channel Number */
@@ -310,7 +285,7 @@
  		pos = os_strchr(pos, ',');
  		if (pos == NULL) {
  			wpa_printf(MSG_DEBUG, "Missing PHY Type");
-@@ -2381,6 +2394,25 @@ int ieee802_11_parse_candidate_list(cons
+@@ -2436,6 +2449,25 @@ int ieee802_11_parse_candidate_list(cons
  					   "Invalid neighbor subelement info");
  				return -1;
  			}
@@ -346,9 +321,9 @@
  
  struct element {
  	u8 id;
-@@ -265,8 +266,8 @@ bool is_6ghz_freq(int freq);
- bool is_6ghz_op_class(u8 op_class);
+@@ -272,8 +273,8 @@ bool is_6ghz_op_class(u8 op_class);
  bool is_6ghz_psc_frequency(int freq);
+ int get_6ghz_sec_channel(int channel);
  
 -int ieee802_11_parse_candidate_list(const char *pos, u8 *nei_rep,
 -				    size_t nei_rep_len);
@@ -356,10 +331,10 @@
 +				    u8 *nei_rep, size_t nei_rep_len);
  
  int ieee802_11_ext_capab(const u8 *ie, unsigned int capab);
- int op_class_to_bandwidth(u8 op_class);
+ bool ieee802_11_rsnx_capab_len(const u8 *rsnxe, size_t rsnxe_len,
 --- a/wpa_supplicant/wnm_sta.c
 +++ b/wpa_supplicant/wnm_sta.c
-@@ -1630,7 +1630,7 @@ int wnm_send_bss_transition_mgmt_query(s
+@@ -1649,7 +1649,7 @@ int wnm_send_bss_transition_mgmt_query(s
  			return ret;
  		}
  
@@ -368,3 +343,28 @@
  						      wpabuf_put(buf, 0),
  						      max_len);
  		if (ret < 0) {
+--- a/src/ap/ctrl_iface_ap.c
++++ b/src/ap/ctrl_iface_ap.c
+@@ -1360,10 +1360,11 @@ int hostapd_ctrl_iface_bss_tm_req(struct
+ 	if (pos) {
+ 		pos += 10;
+ 		req_mode |= WNM_BSS_TM_REQ_BSS_TERMINATION_INCLUDED;
+-		/* TODO: TSF configurable/learnable */
++		/* TODO: TSF learnable */
+ 		bss_term_dur[0] = 4; /* Subelement ID */
+ 		bss_term_dur[1] = 10; /* Length */
+-		os_memset(&bss_term_dur[2], 0, 8);
++		bss_term_dur[2] = atoi(pos); /* TSF */
++		os_memset(&bss_term_dur[3], 0, 7);
+ 		end = os_strchr(pos, ',');
+ 		if (end == NULL) {
+ 			wpa_printf(MSG_DEBUG, "Invalid bss_term data");
+@@ -1373,7 +1374,7 @@ int hostapd_ctrl_iface_bss_tm_req(struct
+ 		WPA_PUT_LE16(&bss_term_dur[10], atoi(end));
+ 	}
+ 
+-	nei_len = ieee802_11_parse_candidate_list(cmd, nei_rep,
++	nei_len = ieee802_11_parse_candidate_list(cmd, sta, nei_rep,
+ 						  sizeof(nei_rep));
+ 	if (nei_len < 0)
+ 		return -1;

@@ -45,17 +45,17 @@ index bb356a4..951a26c 100644
 +#define WPAS_GET_SEG_IDX(freq) ((freq - 5000)/5)
 +	if (wpa_s->mesh_vht_enabled) {
 +		if (freq->bandwidth == 80)
-+			conf->vht_oper_chwidth = CHANWIDTH_80MHZ;
++			conf->vht_oper_chwidth = CONF_OPER_CHWIDTH_80MHZ;
 +		else if (freq->bandwidth == 160)
-+			conf->vht_oper_chwidth = CHANWIDTH_160MHZ;
++			conf->vht_oper_chwidth = CONF_OPER_CHWIDTH_160MHZ;
 +		conf->vht_oper_centr_freq_seg0_idx = WPAS_GET_SEG_IDX(freq->center_freq1);
 +	}
 +
 +	if (wpa_s->mesh_he_enabled) {
 +		if (freq->bandwidth == 80)
-+			conf->he_oper_chwidth = CHANWIDTH_80MHZ;
++			conf->he_oper_chwidth = CONF_OPER_CHWIDTH_80MHZ;
 +		else if (freq->bandwidth == 160)
-+			conf->he_oper_chwidth = CHANWIDTH_160MHZ;
++			conf->he_oper_chwidth = CONF_OPER_CHWIDTH_160MHZ;
 +		conf->he_oper_centr_freq_seg0_idx = WPAS_GET_SEG_IDX(freq->center_freq1);
 +	}
 +
