@@ -676,15 +676,15 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
   * @NL80211_CMD_MAX: highest used command number
   * @__NL80211_CMD_AFTER_LAST: internal use
   */
-@@ -1518,6 +1522,8 @@ enum nl80211_commands {
- 	NL80211_CMD_COLOR_CHANGE_ABORTED,
- 	NL80211_CMD_COLOR_CHANGE_COMPLETED,
+@@ -1530,6 +1534,8 @@ enum nl80211_commands {
+ 	NL80211_CMD_REMOVE_LINK_STA,
  
-+	NL80211_CMD_AWGN_DETECT,
+ 	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS,
 +
- 	NL80211_CMD_SET_FILS_AAD,
++	NL80211_CMD_AWGN_DETECT,
+ 	/* add new commands above here */
  
- 	NL80211_CMD_ASSOC_COMEBACK,
+ 	/* used to define NL80211_CMD_MAX below */
 @@ -2754,6 +2760,9 @@ enum nl80211_commands {
   * 	staggered mode or burst mode in %NL80211_CMD_START_AP from
   * 	user-space.
