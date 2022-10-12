@@ -62,7 +62,15 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		size_t auth_len = 0;
  		u16 capab_info;
  
-@@ -7925,6 +7931,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -7917,6 +7923,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 				eid += (2 + rsnx[1]);
+ 			}
+ 		}
++		eid = hostapd_eid_ext_supp_rates(bss, eid);
+ 		if (!rsn && hostapd_wpa_ie(tx_bss, WLAN_EID_RSN)) {
+ 			non_inherit_ie[ie_count] = WLAN_EID_RSN;
+ 			ie_count++;
+@@ -7925,6 +7932,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
  			non_inherit_ie[ie_count] = WLAN_EID_RSNX;
  			ie_count++;
  		}
