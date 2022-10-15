@@ -13,8 +13,10 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/ap/beacon.c | 38 ++++++++++++++++++++++++++++++++++++--
  1 file changed, 36 insertions(+), 2 deletions(-)
 
---- a/src/ap/beacon.c
-+++ b/src/ap/beacon.c
+Index: b/src/ap/beacon.c
+===================================================================
+--- a/src/ap/beacon.c	2022-10-10 01:54:07.160877093 +0530
++++ b/src/ap/beacon.c	2022-10-10 01:54:42.284608035 +0530
 @@ -544,6 +544,33 @@ static u8 * hostapd_set_mbssid_beacon(st
  	return eid;
  }
@@ -58,17 +60,18 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	size_t buflen;
  
  	hapd = hostapd_mbssid_get_tx_bss(hapd);
-@@ -678,7 +705,9 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -678,7 +705,10 @@ static u8 * hostapd_gen_probe_resp(struc
  	pos = hostapd_eid_mbssid(hapd, pos, epos, WLAN_FC_STYPE_PROBE_RESP, 0,
  				 NULL);
  
 +	ext_cap_pos = pos;
  	pos = hostapd_eid_ext_capab(hapd, pos);
-+	pos = hostapd_ext_capab_mbssid(hapd, pos, ext_cap_pos, 1);
++	if (!is_6ghz_op_class(hapd->iconf->op_class))
++		pos = hostapd_ext_capab_mbssid(hapd, pos, ext_cap_pos, 1);
  
  	pos = hostapd_eid_time_adv(hapd, pos);
  	pos = hostapd_eid_time_zone(hapd, pos);
-@@ -1617,7 +1646,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1617,7 +1647,7 @@ int ieee802_11_build_ap_params(struct ho
  	size_t resp_len = 0;
  #ifdef NEED_AP_MLME
  	u16 capab_info;
@@ -77,14 +80,15 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #endif /* NEED_AP_MLME */
  
  	os_memset(params, 0, sizeof(*params));
-@@ -1763,7 +1792,10 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1763,7 +1793,11 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_ht_operation(hapd, tailpos);
  	tailpos = hostapd_set_mbssid_beacon(hapd, params, tailpos);
  
 +	ext_cap_pos = tailpos;
  	tailpos = hostapd_eid_ext_capab(hapd, tailpos);
-+	tailpos = hostapd_ext_capab_mbssid(hapd, tailpos, ext_cap_pos,
-+					   params->mbssid_elem_count);
++	if (!is_6ghz_op_class(hapd->iconf->op_class))
++		tailpos = hostapd_ext_capab_mbssid(hapd, tailpos, ext_cap_pos,
++						   params->mbssid_elem_count);
  
  	/*
  	 * TODO: Time Advertisement element should only be included in some
