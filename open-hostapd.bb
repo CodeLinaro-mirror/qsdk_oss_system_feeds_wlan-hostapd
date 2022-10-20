@@ -166,6 +166,7 @@ SRC_URI = "git://w1.fi/hostap.git;nobranch=1 \
 	file://q02-050-hostapd-Add-freq-info-in-start-ap.patch \
 	file://q02-050-wpa_supplicant-add-wpa_cli-support-for-cac.patch \
 	file://q02-46-hostapd-Add-support-to-enable-disable-bss-color-coll.patch \
+	file://q02-47-Changes-to-disable-compilation-errors-in-32-bit-arch.patch \
 "
 
 SRCREV = "b26f5c0fe35cd0472ea43f533b981ac2d91cdf1f"
@@ -188,8 +189,8 @@ do_compile() {
 	sed -i '/CONFIG_TLS=internal/d' ${S}/wpa_supplicant/.config
 	echo 'CONFIG_CTRL_IFACE_MIB=y' >> ${S}/wpa_supplicant/.config
 	echo 'CONFIG_IEEE80211AX=y' >> ${S}/wpa_supplicant/.config
-	make V=s -C ${S}/${PKG_NAME}
-	make V=s -C ${S}/wpa_supplicant
+	make V=s  -C ${S}/${PKG_NAME}
+	make V=s  -C ${S}/wpa_supplicant
 }
 
 do_install() {
