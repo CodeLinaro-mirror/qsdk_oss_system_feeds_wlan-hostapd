@@ -410,3 +410,15 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  };
  
  #define WPA_STA_AUTHORIZED BIT(0)
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1243,6 +1243,9 @@ static int hostapd_setup_bss(struct host
+ 			os_memcpy(hapd->own_addr, if_addr, ETH_ALEN);
+ 	}
+ 
++	if (is_zero_ether_addr(conf->bssid))
++		os_memcpy(conf->bssid, hapd->own_addr, ETH_ALEN);
++
+ 	if (conf->wmm_enabled < 0)
+ 		conf->wmm_enabled = hapd->iconf->ieee80211n |
+ 			hapd->iconf->ieee80211ax;

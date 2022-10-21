@@ -1,6 +1,6 @@
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -2424,6 +2424,8 @@ static int hostapd_config_fill(struct ho
+@@ -2433,6 +2433,8 @@ static int hostapd_config_fill(struct ho
  		conf->ieee80211d = atoi(pos);
  	} else if (os_strcmp(buf, "ieee80211h") == 0) {
  		conf->ieee80211h = atoi(pos);
@@ -11,7 +11,7 @@
  	} else if (os_strcmp(buf, "eapol_version") == 0) {
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -950,6 +950,7 @@ struct hostapd_config {
+@@ -1019,6 +1019,7 @@ struct hostapd_config {
  	int ieee80211d;
  
  	int ieee80211h; /* DFS */
@@ -29,9 +29,9 @@
 +#include "eloop.h"
  
  
- static int dfs_get_used_n_chans(struct hostapd_iface *iface, int *seg1)
-@@ -1015,6 +1017,73 @@ static int hostapd_dfs_start_channel_swi
- 	return err;
+ enum dfs_channel_type {
+@@ -1332,6 +1334,73 @@ hostapd_dfs_background_start_channel_swi
+ 	return hostapd_dfs_start_channel_switch_background(iface);
  }
  
 +void hostapd_dfs_test_mode_csa_timeout(void *eloop_data, void *user_data)
@@ -104,9 +104,9 @@
  
  static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
  {
-@@ -1049,6 +1118,9 @@ static int hostapd_dfs_start_channel_swi
+@@ -1361,6 +1430,9 @@ static int hostapd_dfs_start_channel_swi
  	if (iface->dfs_domain == HOSTAPD_DFS_REGION_ETSI)
- 		skip_radar = 0;
+ 		channel_type = DFS_ANY_CHANNEL;
  
 +	if (iface->conf->dfs_test_mode)
 +		return hostapd_dfs_testmode_set_beacon_csa(iface);
@@ -114,8 +114,8 @@
  	/* Perform channel switch/CSA */
  	channel = dfs_get_valid_channel(iface, &secondary_channel,
  					&oper_centr_freq_seg0_idx,
-@@ -1172,6 +1244,12 @@ int hostapd_dfs_radar_detected(struct ho
- 	if (!res)
+@@ -1432,6 +1504,12 @@ int hostapd_dfs_radar_detected(struct ho
+ 			   cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE))
  		return 0;
  
 +	if (iface->conf->dfs_test_mode) {
@@ -124,9 +124,9 @@
 +			      HOSTAPD_CHAN_DFS_AVAILABLE);
 +	}
 +
- 	/* Skip if reported radar event not overlapped our channels */
- 	res = dfs_are_channels_overlapped(iface, freq, chan_width, cf1, cf2);
- 	if (!res)
+ 	if (!hostapd_dfs_is_background_event(iface, freq)) {
+ 		/* Skip if reported radar event not overlapped our channels */
+ 		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
 @@ -9,6 +9,11 @@
@@ -143,7 +143,7 @@
  int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2767,6 +2767,7 @@ int hostapd_disable_iface(struct hostapd
+@@ -2839,6 +2839,7 @@ int hostapd_disable_iface(struct hostapd
  		hostapd_cleanup_cs_params(hapd_iface->bss[j]);
  #endif /* NEED_AP_MLME */
  

@@ -15,7 +15,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4537,6 +4537,53 @@ static int nl80211_unsol_bcast_probe_res
+@@ -4606,6 +4606,53 @@ static int nl80211_unsol_bcast_probe_res
  #endif /* CONFIG_IEEE80211AX */
  
  
@@ -69,7 +69,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  static int wpa_driver_nl80211_set_ap(void *priv,
  				     struct wpa_driver_ap_params *params)
  {
-@@ -4834,6 +4881,9 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -4917,6 +4964,9 @@ static int wpa_driver_nl80211_set_ap(voi
  		goto fail;
  #endif /* CONFIG_FILS */
  
@@ -79,7 +79,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	ret = send_and_recv_msgs_connect_handle(drv, msg, bss, 1);
  	if (ret) {
  		wpa_printf(MSG_DEBUG, "nl80211: Beacon set failed: %d (%s)",
-@@ -5445,7 +5495,6 @@ const char * nl80211_iftype_str(enum nl8
+@@ -5548,7 +5598,6 @@ const char * nl80211_iftype_str(enum nl8
  	}
  }
  
@@ -89,7 +89,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  				     enum nl80211_iftype iftype,
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -846,6 +846,29 @@ err:
+@@ -875,6 +875,29 @@ err:
  }
  
  
@@ -119,9 +119,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  static int wiphy_info_handler(struct nl_msg *msg, void *arg)
  {
  	struct nlattr *tb[NL80211_ATTR_MAX + 1];
-@@ -1070,6 +1093,9 @@ static int wiphy_info_handler(struct nl_
- 	if (tb[NL80211_ATTR_WIPHY_SELF_MANAGED_REG])
- 		capa->flags |= WPA_DRIVER_FLAGS_SELF_MANAGED_REGULATORY;
+@@ -1113,6 +1136,9 @@ static int wiphy_info_handler(struct nl_
+ 		capa->max_num_akms =
+ 			nla_get_u16(tb[NL80211_ATTR_MAX_NUM_AKM_SUITES]);
  
 +	if (tb[NL80211_ATTR_MBSSID_CONFIG])
 +		wiphy_info_mbssid(capa, tb[NL80211_ATTR_MBSSID_CONFIG]);
@@ -129,67 +129,3 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	return NL_SKIP;
  }
  
---- a/src/drivers/nl80211_copy.h
-+++ b/src/drivers/nl80211_copy.h
-@@ -7376,6 +7376,61 @@ enum nl80211_sar_specs_attrs {
- 	NL80211_SAR_ATTR_SPECS_MAX = __NL80211_SAR_ATTR_SPECS_LAST - 1,
- };
- 
-+/**
-+ * enum nl80211_mbssid_config_attributes - multiple BSSID (MBSSID) and enhanced
-+ * multi-BSSID advertisements (EMA) in AP mode.
-+ * Kernel uses some of these attributes to advertise driver's support for
-+ * MBSSID and EMA.
-+ * Remaining attributes should be used by the userspace to configure the
-+ * features.
-+ *
-+ * @__NL80211_MBSSID_CONFIG_ATTR_INVALID: Invalid
-+ *
-+ * @NL80211_MBSSID_CONFIG_ATTR_MAX_INTERFACES: Used by the kernel to advertise
-+ *	the maximum number of MBSSID interfaces supported by the driver.
-+ *	Driver should indicate MBSSID support by setting
-+ *	wiphy->mbssid_max_interfaces to a value more than or equal to 2.
-+ *
-+ * @NL80211_MBSSID_CONFIG_ATTR_MAX_EMA_PROFILE_PERIODICITY: Used by the kernel
-+ *	to advertise the maximum profile periodicity supported by the driver
-+ *	if EMA is enabled. Driver should indicate EMA support to the userspace
-+ *	by setting wiphy->ema_max_profile_periodicity to
-+ *	a non-zero value.
-+ *
-+ * @NL80211_MBSSID_CONFIG_ATTR_INDEX: Mandatory parameter to pass the index of
-+ *	this BSS (u8) in the multiple BSSID set.
-+ *	Value must be set to 0 for the transmitting interface and non-zero for
-+ *	all non-transmitting interfaces. The userspace will be responsible
-+ *	for using unique indices for the interfaces.
-+ *	Range: 0 to wiphy->mbssid_max_interfaces-1.
-+ *
-+ * @NL80211_MBSSID_CONFIG_ATTR_TX_IFINDEX: Mandatory parameter for
-+ *	a non-transmitted profile which provides the interface index (u32) of
-+ *	the transmitted profile. The value must match one of the interface
-+ *	indices advertised by the kernel. Optional if the interface being set up
-+ *	is the transmitting one, however, if provided then the value must match
-+ *	the interface index of the same.
-+ *
-+ * @NL80211_MBSSID_CONFIG_ATTR_EMA: Flag used to enable EMA AP feature.
-+ *	Setting this flag is permitted only if the driver advertises EMA support
-+ *	by setting wiphy->ema_max_profile_periodicity to non-zero.
-+ *
-+ * @__NL80211_MBSSID_CONFIG_ATTR_LAST: Internal
-+ * @NL80211_MBSSID_CONFIG_ATTR_MAX: highest attribute
-+ */
-+enum nl80211_mbssid_config_attributes {
-+	__NL80211_MBSSID_CONFIG_ATTR_INVALID,
-+
-+	NL80211_MBSSID_CONFIG_ATTR_MAX_INTERFACES,
-+	NL80211_MBSSID_CONFIG_ATTR_MAX_EMA_PROFILE_PERIODICITY,
-+	NL80211_MBSSID_CONFIG_ATTR_INDEX,
-+	NL80211_MBSSID_CONFIG_ATTR_TX_IFINDEX,
-+	NL80211_MBSSID_CONFIG_ATTR_EMA,
-+
-+	/* keep last */
-+	__NL80211_MBSSID_CONFIG_ATTR_LAST,
-+	NL80211_MBSSID_CONFIG_ATTR_MAX = __NL80211_MBSSID_CONFIG_ATTR_LAST - 1,
-+};
- 
- /**
-  * enum nl80211_beacon_tx_mode - Beacon Tx Mode enum.

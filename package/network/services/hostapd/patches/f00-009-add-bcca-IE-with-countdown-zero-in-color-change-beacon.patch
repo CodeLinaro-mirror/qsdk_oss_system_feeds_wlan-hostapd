@@ -18,18 +18,19 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1802,14 +1802,29 @@ static void hostapd_event_bss_color_coll
- 
- static void hostapd_event_cca(struct hostapd_data *hapd, enum wpa_event_type event)
+@@ -1902,6 +1902,8 @@ void hostapd_wpa_event(void *ctx, enum w
+ 			  union wpa_event_data *data)
  {
+ 	struct hostapd_data *hapd = ctx;
 +	int b, err;
 +
- 	switch (event) {
- 	case EVENT_CCA_STARTED_NOTIFY:
- 		wpa_printf(MSG_DEBUG, "CCA started on %s", hapd->conf->iface);
- 		break;
+ #ifndef CONFIG_NO_STDOUT_DEBUG
+ 	int level = MSG_DEBUG;
+ 
+@@ -2161,8 +2163,20 @@ void hostapd_wpa_event(void *ctx, enum w
  	case EVENT_CCA_NOTIFY:
- 		wpa_printf(MSG_DEBUG, "CCA finished on %s (new color: %d)", hapd->conf->iface, hapd->cca_color);
+ 		wpa_printf(MSG_DEBUG, "CCA finished on on %s",
+ 			   hapd->conf->iface);
 -		hapd->iface->conf->he_op.he_bss_color = hapd->cca_color;
 -		hostapd_cleanup_cca_params(hapd);
 +
@@ -46,15 +47,14 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 +					hostapd_cleanup_cca_params(hapd->iface->bss[b]);
 +			}
 +		}
-+
  		break;
- 	case EVENT_CCA_ABORTED_NOTIFY:
- 		wpa_printf(MSG_DEBUG, "CCA aborted on %s for cca_color: %d", hapd->conf->iface, hapd->cca_color);
+ #endif /* CONFIG_IEEE80211AX */
+ 	case EVENT_UPDATE_MUEDCA_PARAMS:
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3742,12 +3742,18 @@ int hostapd_fill_cca_settings(struct hos
+@@ -3787,15 +3787,21 @@ int hostapd_fill_cca_settings(struct hos
  
-         old_color = iface->conf->he_op.he_bss_color;
+ 	old_color = iface->conf->he_op.he_bss_color;
  	iface->conf->he_op.he_bss_color = hapd->cca_color;
 +
 +	settings->cca_count = hapd->cca_count;
@@ -63,34 +63,37 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 +	hapd->cca_zero_count = 1;
 +
  	ret = hostapd_build_beacon_data(hapd, &settings->beacon_after);
+ 	if (ret)
+ 		return ret;
+ 
  	iface->conf->he_op.he_bss_color = old_color;
  
 -	settings->cca_count = hapd->cca_count;
 -	settings->cca_color = hapd->cca_color,
 +	hapd->cca_count = settings->cca_count;
- 	hapd->cca_in_progress = 1;
+ 	hapd->cca_in_progress = true;
 +	hapd->cca_zero_count = 0;
  
  	ret = hostapd_build_beacon_data(hapd, &settings->beacon_cca);
  	if (ret) {
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -298,6 +298,7 @@ struct hostapd_data {
+@@ -311,6 +311,7 @@ struct hostapd_data {
  
  #ifdef CONFIG_IEEE80211AX
- 	int cca_in_progress;
+ 	bool cca_in_progress;
 +	int cca_zero_count;
  	u8 cca_count;
  	u8 cca_color;
  	unsigned int cca_c_off_beacon;
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -496,7 +496,7 @@ int hostapd_get_he_twt_responder(struct
+@@ -554,7 +554,7 @@ int hostapd_get_he_twt_responder(struct
  
  u8 * hostapd_eid_cca(struct hostapd_data *hapd, u8 *eid)
  {
 -	if (!hapd->cca_in_progress)
 +	if (!hapd->cca_in_progress && !hapd->cca_zero_count)
  		return eid;
- 	*eid++ = WLAN_EID_EXTENSION;
- 	*eid++ = 3;
+ 
+ 	/* BSS Color Change Announcement element */

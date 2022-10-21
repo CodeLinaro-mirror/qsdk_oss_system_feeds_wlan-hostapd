@@ -16,7 +16,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -253,6 +253,9 @@ static int hostapd_driver_init(struct ho
+@@ -254,6 +254,9 @@ static int hostapd_driver_init(struct ho
  				wpa_printf(MSG_ERROR, "set_wowlan failed");
  		}
  		os_free(triggs);
@@ -28,7 +28,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	return 0;
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -612,6 +612,11 @@ struct hostapd_iface {
+@@ -645,6 +645,11 @@ struct hostapd_iface {
  	/* Previous WMM element information */
  	struct hostapd_wmm_ac_params prev_wmm[WMM_AC_NUM];
  
@@ -42,10 +42,10 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  };
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2185,6 +2185,11 @@ struct wpa_driver_capa {
+@@ -2251,6 +2251,11 @@ struct wpa_driver_capa {
  
- 	/* Maximum number of supported CSA counters */
- 	u16 max_csa_counters;
+ 	/* Maximum number of supported AKM suites in commands */
+ 	unsigned int max_num_akms;
 +
 +	/* Maximum number of interfaces supported for MBSSID advertisements */
 +	u8 mbssid_max_interfaces;

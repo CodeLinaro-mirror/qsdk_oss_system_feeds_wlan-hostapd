@@ -74,13 +74,13 @@ index dc85e21290ae..593fa47fe854 100644
 +
 +		switch (supp_bw) {
 +		case NL80211_RU_PUNCT_SUPP_BW_80:
-+			capa->ru_punct_supp_bw = CHANWIDTH_80MHZ;
++			capa->ru_punct_supp_bw = CONF_OPER_CHWIDTH_80MHZ;
 +			break;
 +		case NL80211_RU_PUNCT_SUPP_BW_160:
-+			capa->ru_punct_supp_bw = CHANWIDTH_160MHZ;
++			capa->ru_punct_supp_bw = CONF_OPER_CHWIDTH_160MHZ;
 +			break;
 +		case NL80211_RU_PUNCT_SUPP_BW_320:
-+			capa->ru_punct_supp_bw = CHANWIDTH_320MHZ;
++			capa->ru_punct_supp_bw = CONF_OPER_CHWIDTH_320MHZ;
 +			break;
 +		default:
 +			break;

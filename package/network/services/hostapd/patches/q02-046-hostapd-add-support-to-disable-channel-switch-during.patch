@@ -40,11 +40,9 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  wpa_supplicant/wpa_supplicant.conf |  4 ++++
  12 files changed, 75 insertions(+), 5 deletions(-)
 
-diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index 2aae477..2e4440b 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4704,6 +4704,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -4726,6 +4726,8 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  #endif /* CONFIG_IEEE80211BE */
@@ -53,11 +51,9 @@ index 2aae477..2e4440b 100644
  	} else {
  		wpa_printf(MSG_ERROR,
  			   "Line %d: unknown configuration item '%s'",
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index 1060c48..c053bf3 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -1499,6 +1499,13 @@ static int hostapd_ctrl_iface_set(struct hostapd_data *hapd, char *cmd)
+@@ -1283,6 +1283,13 @@ static int hostapd_ctrl_iface_set(struct
  	} else if (os_strcasecmp(cmd, "setband") == 0) {
  		ret = hostapd_ctrl_iface_set_band(hapd, value);
  	} else {
@@ -71,7 +67,7 @@ index 1060c48..c053bf3 100644
  		ret = hostapd_set_iface(hapd->iconf, hapd->conf, cmd, value);
  		if (ret)
  			return ret;
-@@ -2876,6 +2883,13 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
+@@ -2660,6 +2667,13 @@ static int hostapd_ctrl_iface_chan_switc
  	int bandwidth;
  	u8 chan;
  
@@ -85,11 +81,9 @@ index 1060c48..c053bf3 100644
  	ret = hostapd_parse_csa_settings(pos, &settings);
  	if (ret)
  		return ret;
-diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index e4328d3..944acd5 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -229,6 +229,10 @@ channel=1
+@@ -239,6 +239,10 @@ channel=1
  # (default 0, i.e., not constraint)
  #min_tx_power=20
  
@@ -100,23 +94,19 @@ index e4328d3..944acd5 100644
  # Beacon interval in kus (1.024 ms) (default: 100; range 15..65535)
  beacon_int=100
  
-diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index e16b123..e63b11a 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1153,6 +1153,7 @@ struct hostapd_config {
+@@ -1164,6 +1164,7 @@ struct hostapd_config {
  	u8 ru_punct_ofdma;
  	u8 ru_punct_acs_threshold;
  	int enable_320mhz_bw;
 +	int disable_csa_dfs;
  };
  
- static inline u8 hostapd_get_he_6ghz_reg_pwr_type(struct hostapd_config *conf)
-diff --git a/src/ap/dfs.c b/src/ap/dfs.c
-index 11bdd38..ea65cb4 100644
+ 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1105,6 +1105,17 @@ void hostapd_dfs_test_mode_csa_timeout(void *eloop_data, void *user_data)
+@@ -1455,6 +1455,17 @@ void hostapd_dfs_test_mode_csa_timeout(v
  	ieee802_11_set_beacon(hapd);
  }
  
@@ -134,26 +124,24 @@ index 11bdd38..ea65cb4 100644
  static int hostapd_dfs_testmode_set_beacon_csa(struct hostapd_iface *iface)
  {
  	struct hostapd_data *hapd = iface->bss[0];
-@@ -1361,8 +1372,15 @@ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
- 	if (!res)
- 		return 0;
+@@ -1639,8 +1650,15 @@ int hostapd_dfs_radar_detected(struct ho
+ 	}
  
--	/* radar detected while operating, switch the channel. */
--	res = hostapd_dfs_start_channel_switch(iface);
-+	if (!iface->conf->disable_csa_dfs) {
-+		/* radar detected while operating, switch the channel. */
-+		res = hostapd_dfs_start_channel_switch(iface);
-+	} else if (!eloop_is_timeout_registered(hostapd_dfs_radar_handling_timeout,
-+		   iface, NULL)) {
-+		eloop_register_timeout(0, HAPD_DFS_RADAR_CH_SWITCH_WAIT_DUR,
-+				       hostapd_dfs_radar_handling_timeout,
-+				       iface, NULL);
-+	}
+ 	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
+-		/* Radar detected while operating, switch the channel. */
+-		return hostapd_dfs_start_channel_switch(iface);
++		if (!iface->conf->disable_csa_dfs) {
++			/* Radar detected while operating, switch the channel. */
++			return hostapd_dfs_start_channel_switch(iface);
++		} else if (!eloop_is_timeout_registered(hostapd_dfs_radar_handling_timeout,
++			   iface, NULL)) {
++			eloop_register_timeout(0, HAPD_DFS_RADAR_CH_SWITCH_WAIT_DUR,
++					       hostapd_dfs_radar_handling_timeout,
++					       iface, NULL);
++		}
+ 	}
  
- 	return res;
- }
-diff --git a/src/ap/dfs.h b/src/ap/dfs.h
-index 3a7c3e4..0cd0ced 100644
+ 	return 0;
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
 @@ -11,6 +11,8 @@
@@ -165,18 +153,16 @@ index 3a7c3e4..0cd0ced 100644
  
  void hostapd_dfs_test_mode_csa_timeout(void *eloop_data, void *user_data);
  
-@@ -37,5 +39,5 @@ int hostapd_dfs_start_cac(struct hostapd_iface *iface, int freq,
+@@ -37,5 +39,5 @@ int hostapd_dfs_start_cac(struct hostapd
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
  int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
  			   int center_freq);
 -
 +void hostapd_dfs_radar_handling_timeout(void *eloop_data, void *user_data);
  #endif /* DFS_H */
-diff --git a/wpa_supplicant/ap.c b/wpa_supplicant/ap.c
-index 2b90019..884a0e2 100644
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -1624,7 +1624,17 @@ int ap_switch_channel(struct wpa_supplicant *wpa_s,
+@@ -1818,7 +1818,17 @@ int ap_switch_channel(struct wpa_supplic
  int ap_ctrl_iface_chanswitch(struct wpa_supplicant *wpa_s, const char *pos)
  {
  	struct csa_settings settings;
@@ -195,11 +181,9 @@ index 2b90019..884a0e2 100644
  
  	if (ret)
  		return ret;
-diff --git a/wpa_supplicant/config.c b/wpa_supplicant/config.c
-index 502d3d6..dcc3868 100644
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -5456,6 +5456,8 @@ static const struct global_parse_data global_fields[] = {
+@@ -5531,6 +5531,8 @@ static const struct global_parse_data gl
  #endif /* CONFIG_PASN */
  	{ INT_RANGE(he_6ghz_reg_client_type, 1, 2),
  	  CFG_CHANGED_HE_6GHZ_CLIENT_TYPE},
@@ -208,11 +192,9 @@ index 502d3d6..dcc3868 100644
  };
  
  #undef FUNC
-diff --git a/wpa_supplicant/config.h b/wpa_supplicant/config.h
-index 7479583..89be860 100644
 --- a/wpa_supplicant/config.h
 +++ b/wpa_supplicant/config.h
-@@ -1710,6 +1710,7 @@ struct wpa_config {
+@@ -1749,6 +1749,7 @@ struct wpa_config {
  	 * 2 = SUBORDINATE CLIENT
  	 */
  	u8 he_6ghz_reg_client_type;
@@ -220,19 +202,17 @@ index 7479583..89be860 100644
  };
  
  
-diff --git a/wpa_supplicant/ctrl_iface.c b/wpa_supplicant/ctrl_iface.c
-index 1aff200..61aeea7 100644
 --- a/wpa_supplicant/ctrl_iface.c
 +++ b/wpa_supplicant/ctrl_iface.c
-@@ -60,6 +60,7 @@
+@@ -58,6 +58,7 @@
+ #include "mesh.h"
  #include "dpp_supplicant.h"
  #include "sme.h"
- #include "ap/ieee802_11.h"
 +#include "ap/dfs.h"
  
  #ifdef __NetBSD__
  #include <net/if_ether.h>
-@@ -3628,7 +3629,16 @@ static int wpa_supplicant_ctrl_iface_set_network(
+@@ -3656,7 +3657,16 @@ static int wpa_supplicant_ctrl_iface_set
  		   id, name);
  	wpa_hexdump_ascii_key(MSG_DEBUG, "CTRL_IFACE: value",
  			      (u8 *) value, os_strlen(value));
@@ -250,11 +230,9 @@ index 1aff200..61aeea7 100644
  	ssid = wpa_config_get_network(wpa_s->conf, id);
  	if (ssid == NULL) {
  		wpa_printf(MSG_DEBUG, "CTRL_IFACE: Could not find network "
-diff --git a/wpa_supplicant/mesh.c b/wpa_supplicant/mesh.c
-index 0372c08..948f365 100644
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
-@@ -554,6 +554,8 @@ static int wpa_supplicant_mesh_init(struct wpa_supplicant *wpa_s,
+@@ -554,6 +554,8 @@ static int wpa_supplicant_mesh_init(stru
  		conf->basic_rates[rate_len] = -1;
  	}
  
@@ -263,11 +241,9 @@ index 0372c08..948f365 100644
  	/* While it can enhance performance to switch the primary channel, which
  	 * is also the secondary channel of another network at the same time),
  	 * to the other primary channel, problems exist with this in mesh
-diff --git a/wpa_supplicant/wpa_supplicant.conf b/wpa_supplicant/wpa_supplicant.conf
-index 162e81d..29a0fe1 100644
 --- a/wpa_supplicant/wpa_supplicant.conf
 +++ b/wpa_supplicant/wpa_supplicant.conf
-@@ -1704,6 +1704,10 @@ fast_reauth=1
+@@ -1707,6 +1707,10 @@ fast_reauth=1
  #Set 1 to enable 160MHz in Mesh mode
  #enable_160mhz_bw=1
  
@@ -278,6 +254,3 @@ index 162e81d..29a0fe1 100644
  # Example blocks:
  
  # Simple case: WPA-PSK, PSK as an ASCII passphrase, allow all valid ciphers
--- 
-2.7.4
-

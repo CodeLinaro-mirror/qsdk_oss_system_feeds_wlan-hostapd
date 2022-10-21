@@ -16,7 +16,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -643,7 +643,10 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -771,7 +771,10 @@ static u8 * hostapd_gen_probe_resp(struc
  		pos = hostapd_eid_txpower_envelope(hapd, pos);
  #endif /* CONFIG_IEEE80211AX */
  
@@ -28,7 +28,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	pos = hostapd_eid_rnr(hapd, pos, WLAN_FC_STYPE_PROBE_RESP);
  	pos = hostapd_eid_fils_indic(hapd, pos, 0);
-@@ -1757,7 +1760,10 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1897,7 +1900,10 @@ int ieee802_11_build_ap_params(struct ho
  		tailpos = hostapd_eid_txpower_envelope(hapd, tailpos);
  #endif /* CONFIG_IEEE80211AX */
  
@@ -40,15 +40,3 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	tailpos = hostapd_eid_rnr(hapd, tailpos, WLAN_FC_STYPE_BEACON);
  	tailpos = hostapd_eid_fils_indic(hapd, tailpos, 0);
---- a/src/ap/ieee802_11.c
-+++ b/src/ap/ieee802_11.c
-@@ -7198,7 +7198,8 @@ u8 * hostapd_eid_wb_chsw_wrapper(struct
- 
- 	if (!hapd->cs_freq_params.channel ||
- 	    (!hapd->cs_freq_params.vht_enabled &&
--	     !hapd->cs_freq_params.he_enabled))
-+	     !hapd->cs_freq_params.he_enabled &&
-+	     !hapd->cs_freq_params.eht_enabled))
- 		return eid;
- 
- 	/* bandwidth: 0: 40, 1: 80, 2: 160, 3: 80+80 */

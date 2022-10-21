@@ -14,18 +14,18 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2149,6 +2149,8 @@ struct wpa_driver_capa {
- #define WPA_DRIVER_FLAGS2_OCV			0x0000000000000080ULL
- /** Driver expects user space implementation of SME in AP mode */
- #define WPA_DRIVER_FLAGS2_AP_SME		0x0000000000000100ULL
+@@ -2199,6 +2199,8 @@ struct wpa_driver_capa {
+  * frames in STA mode
+  */
+ #define WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_STA	0x0000000000002000ULL
 +/** Driver supports Beacon frame TX rate configuration (EHT rates) */
-+#define WPA_DRIVER_FLAGS2_BEACON_RATE_EHT       0x0000000000000400ULL
++#define WPA_DRIVER_FLAGS2_BEACON_RATE_EHT       0x0000000000004000ULL
  	u64 flags2;
  
  #define FULL_AP_CLIENT_STATE_SUPP(drv_flags) \
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -563,6 +563,10 @@ static void wiphy_info_ext_feature_flags
+@@ -570,6 +570,10 @@ static void wiphy_info_ext_feature_flags
  		capa->flags2 |= WPA_DRIVER_FLAGS2_BEACON_RATE_HE;
  
  	if (ext_feature_isset(ext_features, len,

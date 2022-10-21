@@ -15,11 +15,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/ap/ap_config.h    |  2 ++
  3 files changed, 17 insertions(+)
 
-diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index 72e00c337e07..80f3fc020f2a 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4687,6 +4687,10 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -4709,6 +4709,10 @@ static int hostapd_config_fill(struct ho
  		conf->eht_phy_capab.su_beamformee = atoi(pos);
  	} else if (os_strcmp(buf, "eht_mu_beamformer") == 0) {
  		conf->eht_phy_capab.mu_beamformer = atoi(pos);
@@ -30,13 +28,11 @@ index 72e00c337e07..80f3fc020f2a 100644
  #endif /* CONFIG_IEEE80211BE */
  	} else {
  		wpa_printf(MSG_ERROR,
-diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index 481911784f46..5fda6c614c80 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -1017,6 +1017,17 @@ wmm_ac_vo_acm=0
- #eht_oper_chwidth
- #eht_oper_centr_freq_seg0_idx
+@@ -1043,6 +1043,17 @@ wmm_ac_vo_acm=0
+ # 1 = Enabled
+ #ema=0
  
 +# RU puncturing bitmap (16 bits) where each bit corresponds to
 +# a 20 MHz channel in the given bandwidth, bit 0 corresponding to the channel
@@ -52,19 +48,14 @@ index 481911784f46..5fda6c614c80 100644
  ##### IEEE 802.1X-2004 related configuration ##################################
  
  # Require IEEE 802.1X authorization
-diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index 884809388d18..19955beaefba 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1148,6 +1148,8 @@ struct hostapd_config {
- #define CH_SWITCH_EHT_ENABLED BIT(0)
- #define CH_SWITCH_EHT_DISABLED BIT(1)
+@@ -1159,6 +1159,8 @@ struct hostapd_config {
  	unsigned int ch_switch_eht_config;
+ 	u8 mbssid;
+ 	u8 ema;
 +	u16 ru_punct_bitmap;
 +	u8 ru_punct_ofdma;
  };
  
- static inline u8 hostapd_get_he_6ghz_reg_pwr_type(struct hostapd_config *conf)
--- 
-2.31.1
-
+ 

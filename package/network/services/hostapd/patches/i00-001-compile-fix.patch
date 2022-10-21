@@ -9,11 +9,9 @@ Signed-off-by: Tamizh Chelvam <tamizhr@codeaurora.org>
  src/drivers/driver_nl80211.c | 2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 7296f23f0d85..c56aff1b915d 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1459,7 +1459,7 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
+@@ -1487,7 +1487,7 @@ static u8 * hostapd_gen_fils_discovery(s
  
  	*len = pos - (u8 *) head;
  	wpa_hexdump(MSG_DEBUG, "FILS Discovery frame template",
@@ -22,11 +20,9 @@ index 7296f23f0d85..c56aff1b915d 100644
  	return (u8 *) head;
  }
  
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index ab6c4281f366..bd56c6471630 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5135,7 +5135,7 @@ static int wpa_driver_nl80211_sta_add(void *priv,
+@@ -5230,7 +5230,7 @@ static int wpa_driver_nl80211_sta_add(vo
  
  		if (params->he_6ghz_capab) {
  			wpa_hexdump(MSG_DEBUG, "  * he_6ghz_capab",
@@ -35,6 +31,12 @@ index ab6c4281f366..bd56c6471630 100644
  				    sizeof(*params->he_6ghz_capab));
  			if (nla_put(msg, NL80211_ATTR_HE_6GHZ_CAPABILITY,
  				    sizeof(*params->he_6ghz_capab),
--- 
-2.31.1
-
+@@ -5240,7 +5240,7 @@ static int wpa_driver_nl80211_sta_add(vo
+ 
+ 		if (params->eht_capab) {
+ 			wpa_hexdump(MSG_DEBUG, "  * eht_capab",
+-				    params->eht_capab, params->eht_capab_len);
++				    (u8 *) params->eht_capab, params->eht_capab_len);
+ 			if (nla_put(msg, NL80211_ATTR_EHT_CAPABILITY,
+ 				    params->eht_capab_len, params->eht_capab))
+ 				goto fail;

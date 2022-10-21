@@ -100,7 +100,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8066,4 +8066,77 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -8141,4 +8141,77 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  	return eid;
  }
  
@@ -136,7 +136,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +}
 +
 +
-+static void ru_punct_update_bw_160(u8 bitmap, u8 pri_chan, u8 *width, u8 *seg0)
++static void ru_punct_update_bw_160(u8 bitmap, u8 pri_chan, enum oper_chan_width *width, u8 *seg0)
 +{
 +	if (pri_chan < *seg0) {
 +		*seg0 -= 8;
@@ -158,7 +158,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +}
 +
 +
-+void ru_punct_update_bw(u16 bitmap, u8 pri_chan, u8 *width, u8 *seg0, u8 *seg1)
++void ru_punct_update_bw(u16 bitmap, u8 pri_chan, enum oper_chan_width *width, u8 *seg0, u8 *seg1)
 +{
 +	if (!bitmap || !(*width) || ((*width) == 3))
 +		return;
@@ -178,19 +178,11 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +}
 +
  #endif /* CONFIG_NATIVE_WINDOWS */
---- a/src/ap/ieee802_11.h
-+++ b/src/ap/ieee802_11.h
-@@ -228,4 +228,5 @@ u8 * hostapd_eid_eht_operation(struct ho
- u16 copy_sta_eht_capab(struct hostapd_data *hapd, struct sta_info *sta,
- 		       enum ieee80211_op_mode opmode, const u8 *he_capab,
- 		       const u8 *eht_capab, size_t eht_capab_len);
-+void ru_punct_update_bw(u16 bitmap, u8 pri_chan, u8 *width, u8 *seg0, u8 *seg1);
- #endif /* IEEE802_11_H */
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -196,17 +196,37 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -194,6 +194,12 @@ u8 * hostapd_eid_eht_operation(struct ho
  	else
- 		chwidth = hapd->iconf->eht_oper_chwidth;
+ 		chwidth = conf->eht_oper_chwidth;
  
 +	if (hapd->iconf->ru_punct_bitmap && !hapd->iface->ru_punct_supp_bw) {
 +		hapd->iconf->ru_punct_bitmap = 0;
@@ -198,56 +190,51 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +			   "Driver does not support RU puncturing. Setting bitmap to 0");
 +	}
 +
+ 	seg0 = hostapd_get_oper_centr_freq_seg0_idx(conf);
+ 
  	switch (chwidth) {
- 	case CHANWIDTH_320MHZ:
- 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_320MHZ;
+@@ -207,6 +213,12 @@ u8 * hostapd_eid_eht_operation(struct ho
  		break;
- 	case CHANWIDTH_160MHZ:
- 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_160MHZ;
+ 	case CONF_OPER_CHWIDTH_160MHZ:
+ 		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_160MHZ;
 +		if (hapd->iconf->ru_punct_bitmap &&
-+		    hapd->iface->ru_punct_supp_bw == CHANWIDTH_320MHZ) {
++		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
 +			hapd->iconf->ru_punct_bitmap = 0;
 +			wpa_printf(MSG_ERROR,
 +				   "Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
 +		}
+ 		seg1 = seg0;
+ 		if (hapd->iconf->channel < seg0)
+ 			seg0 -= 8;
+@@ -217,16 +229,23 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_80MHZ;
  		break;
- 	case CHANWIDTH_80MHZ:
- 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_80MHZ;
-+		if (hapd->iconf->ru_punct_bitmap &&
-+		    ((hapd->iface->ru_punct_supp_bw == CHANWIDTH_160MHZ) ||
-+		    (hapd->iface->ru_punct_supp_bw == CHANWIDTH_320MHZ))) {
-+			hapd->iconf->ru_punct_bitmap = 0;
-+			wpa_printf(MSG_ERROR,
-+				   "Driver does not support RU puncturing for bandwidths less than 160 MHz. Setting bitmap to 0");
-+		}
- 		break;
- 	case CHANWIDTH_USE_HT:
+ 	case CONF_OPER_CHWIDTH_USE_HT:
 +		hapd->iconf->ru_punct_bitmap = 0;
- 		if ((is_6ghz_op_class(hapd->iconf->op_class) &&
- 		    op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
- 		    hapd->iconf->secondary_channel)
-@@ -216,10 +236,16 @@ u8 * hostapd_eid_eht_operation(struct ho
- 
+ 		if (seg0)
+ 			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_40MHZ;
  		break;
  	default:
 +		hapd->iconf->ru_punct_bitmap = 0;
- 		oper->width = EHT_OPERATION_CHANNEL_WIDTH_20MHZ;
- 		break;
+ 		return eid;
  	}
  
+ 	oper->oper_info.ccfs0 = seg0 ? seg0 : hapd->iconf->channel;
+ 	oper->oper_info.ccfs1 = seg1;
+ 
 +	if (hapd->iconf->ru_punct_bitmap) {
-+		oper->disable_sub_chan_bitmap_present = 1;
-+		oper->disabled_subchannel_bitmap = host_to_le16(hapd->iconf->ru_punct_bitmap);
++		oper->oper_params |= EHT_OPER_DISABLED_SUBCHAN_BITMAP_PRESENT;
++		oper->oper_info.disabled_chan_bitmap = host_to_le16(hapd->iconf->ru_punct_bitmap);
 +	}
 +
- 	pos += oper_size;
+ 	return pos + 4;
+ }
  
- 	return pos;
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -215,6 +215,22 @@ u8 * hostapd_eid_he_operation(struct hos
- 		u8 seg0 = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
+@@ -224,6 +224,22 @@ u8 * hostapd_eid_he_operation(struct hos
  		u8 seg1 = hostapd_get_oper_centr_freq_seg1_idx(hapd->iconf);
+ 		u8 control;
  
 +		if (hapd->iconf->ru_punct_bitmap) {
 +			hapd->iconf->he_oper_chwidth =
@@ -286,7 +273,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	 * So index 42 gives center freq 5.210 GHz
 --- a/src/common/hw_features_common.c
 +++ b/src/common/hw_features_common.c
-@@ -824,3 +824,95 @@ int chan_pri_allowed(const struct hostap
+@@ -883,3 +883,95 @@ int chan_pri_allowed(const struct hostap
  	return !(chan->flag & HOSTAPD_CHAN_DISABLED) &&
  		(chan->allowed_bw & HOSTAPD_CHAN_WIDTH_20);
  }
@@ -384,7 +371,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +}
 --- a/src/common/hw_features_common.h
 +++ b/src/common/hw_features_common.h
-@@ -55,5 +55,7 @@ u32 num_chan_to_bw(int num_chans);
+@@ -56,5 +56,7 @@ u32 num_chan_to_bw(int num_chans);
  int chan_bw_allowed(const struct hostapd_channel_data *chan, u32 bw,
  		    int ht40_plus, int pri);
  int chan_pri_allowed(const struct hostapd_channel_data *chan);
@@ -392,3 +379,20 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +			      u8 ru_punct_ofdma);
  
  #endif /* HW_FEATURES_COMMON_H */
+--- a/src/ap/ieee802_11.h
++++ b/src/ap/ieee802_11.h
+@@ -19,6 +19,7 @@ struct ieee80211_mgmt;
+ struct radius_sta;
+ enum ieee80211_op_mode;
+ struct mac_acl_entry;
++enum oper_chan_width;
+ 
+ int ieee802_11_mgmt(struct hostapd_data *hapd, const u8 *buf, size_t len,
+ 		    struct hostapd_frame_info *fi);
+@@ -227,5 +228,5 @@ u16 copy_sta_eht_capab(struct hostapd_da
+ 		       enum ieee80211_op_mode opmode,
+ 		       const u8 *he_capab, size_t he_capab_len,
+ 		       const u8 *eht_capab, size_t eht_capab_len);
+-
++void ru_punct_update_bw(u16 bitmap, u8 pri_chan, enum oper_chan_width *width, u8 *seg0, u8 *seg1);
+ #endif /* IEEE802_11_H */

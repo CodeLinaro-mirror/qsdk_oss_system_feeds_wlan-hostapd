@@ -15,12 +15,12 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3781,11 +3781,12 @@ hostapd_switch_color_timeout_handler(voi
- 		return;
- 
- 	/* check if there has been a recent collision */
--	if (now.sec - hapd->last_color_collision.sec > 50)
-+	if (now.sec - hapd->last_color_collision.sec > 50 && !hapd->no_free_color)
+@@ -3830,11 +3830,12 @@ static void hostapd_switch_color_timeout
+ 	  * DOT11BSS_COLOR_COLLISION_AP_PERIOD (50 s by default). */
+ 	delta_t = hapd->last_color_collision.sec -
+ 		hapd->first_color_collision.sec;
+-	if (delta_t < DOT11BSS_COLOR_COLLISION_AP_PERIOD)
++	if (delta_t < DOT11BSS_COLOR_COLLISION_AP_PERIOD && !hapd->no_free_color)
  		return;
  
  	neighbor_color = ap_list_get_color(hapd->iface);
@@ -30,13 +30,10 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
  
  	r = os_random() % HE_OPERATION_BSS_COLOR_MAX - 1;
  	r++;
-@@ -3797,13 +3798,26 @@ hostapd_switch_color_timeout_handler(voi
- 	}
- 	if (i == HE_OPERATION_BSS_COLOR_MAX) {
- 		/* there are no free colors so turn bss coloring off */
--		wpa_printf(MSG_INFO, "no free colors left, turning of BSS coloring");
-+		wpa_printf(MSG_INFO, "no free colors left, turning off BSS coloring");
+@@ -3851,11 +3852,24 @@ static void hostapd_switch_color_timeout
+ 			   "No free colors left, turning off BSS coloring");
  		hapd->iface->conf->he_op.he_bss_color_disabled = 1;
+ 		hapd->iface->conf->he_op.he_bss_color = os_random() % 63 + 1;
 +		hapd->no_free_color = 1;
  		for (b = 0; b < hapd->iface->num_bss; b++)
  			ieee802_11_set_beacon(hapd->iface->bss[b]);
@@ -57,12 +54,12 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 +
  	for (b = 0; b < hapd->iface->num_bss; b++) {
  		struct hostapd_data *bss = hapd->iface->bss[b];
- 
+ 		struct cca_settings settings;
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -299,6 +299,7 @@ struct hostapd_data {
+@@ -312,6 +312,7 @@ struct hostapd_data {
  #ifdef CONFIG_IEEE80211AX
- 	int cca_in_progress;
+ 	bool cca_in_progress;
  	int cca_zero_count;
 +	int no_free_color;
  	u8 cca_count;
