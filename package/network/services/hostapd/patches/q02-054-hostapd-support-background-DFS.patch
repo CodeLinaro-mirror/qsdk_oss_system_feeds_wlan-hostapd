@@ -19,11 +19,9 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  wpa_supplicant/ap.c                |  9 ++++++---
  6 files changed, 25 insertions(+), 15 deletions(-)
 
-diff --git a/src/ap/dfs.c b/src/ap/dfs.c
-index 8d20d5f..65e6a91 100644
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1226,7 +1226,7 @@ hostapd_dfs_start_channel_switch_background(struct hostapd_iface *iface)
+@@ -1239,7 +1239,7 @@ hostapd_dfs_start_channel_switch_backgro
  
  int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
@@ -32,7 +30,7 @@ index 8d20d5f..65e6a91 100644
  {
  	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_COMPLETED
  		"success=%d freq=%d ht_enabled=%d chan_offset=%d chan_width=%d cf1=%d cf2=%d",
-@@ -1251,13 +1251,14 @@ int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
+@@ -1264,13 +1264,14 @@ int hostapd_dfs_complete_cac(struct host
  			 * selected channel and configure the background chain
  			 * to a new DFS channel.
  			 */
@@ -49,7 +47,7 @@ index 8d20d5f..65e6a91 100644
  			}
  
  			/*
-@@ -1276,9 +1277,10 @@ int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
+@@ -1289,9 +1290,10 @@ int hostapd_dfs_complete_cac(struct host
  				iface->cac_started = 0;
  			}
  		}
@@ -62,7 +60,7 @@ index 8d20d5f..65e6a91 100644
  	}
  
  	return 0;
-@@ -1720,9 +1722,9 @@ int hostapd_is_dfs_required(struct hostapd_iface *iface)
+@@ -1733,9 +1735,9 @@ int hostapd_is_dfs_required(struct hosta
  
  int hostapd_dfs_start_cac(struct hostapd_iface *iface, int freq,
  			  int ht_enabled, int chan_offset, int chan_width,
@@ -74,11 +72,9 @@ index 8d20d5f..65e6a91 100644
  		iface->radar_background.cac_started = 1;
  	} else {
  		/* This is called when the driver indicates that an offloaded
-diff --git a/src/ap/dfs.h b/src/ap/dfs.h
-index 0cd0ced..e38c57a 100644
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
-@@ -20,7 +20,7 @@ int hostapd_handle_dfs(struct hostapd_iface *iface);
+@@ -20,7 +20,7 @@ int hostapd_handle_dfs(struct hostapd_if
  
  int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
@@ -87,7 +83,7 @@ index 0cd0ced..e38c57a 100644
  int hostapd_dfs_pre_cac_expired(struct hostapd_iface *iface, int freq,
  				int ht_enabled, int chan_offset, int chan_width,
  				int cf1, int cf2);
-@@ -35,7 +35,7 @@ int hostapd_is_dfs_required(struct hostapd_iface *iface);
+@@ -35,7 +35,7 @@ int hostapd_is_dfs_required(struct hosta
  int hostapd_is_dfs_chan_available(struct hostapd_iface *iface);
  int hostapd_dfs_start_cac(struct hostapd_iface *iface, int freq,
  			  int ht_enabled, int chan_offset, int chan_width,
@@ -96,11 +92,9 @@ index 0cd0ced..e38c57a 100644
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
  int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
  			   int center_freq);
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index 0225dd8..87dd05d 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1762,7 +1762,7 @@ static void hostapd_event_dfs_cac_finished(struct hostapd_data *hapd,
+@@ -1762,7 +1762,7 @@ static void hostapd_event_dfs_cac_finish
  	wpa_printf(MSG_DEBUG, "DFS CAC finished on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(hapd->iface, 1, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
@@ -109,7 +103,7 @@ index 0225dd8..87dd05d 100644
  }
  
  
-@@ -1772,7 +1772,7 @@ static void hostapd_event_dfs_cac_aborted(struct hostapd_data *hapd,
+@@ -1772,7 +1772,7 @@ static void hostapd_event_dfs_cac_aborte
  	wpa_printf(MSG_DEBUG, "DFS CAC aborted on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(hapd->iface, 0, radar->freq, radar->ht_enabled,
  				 radar->chan_offset, radar->chan_width,
@@ -118,7 +112,7 @@ index 0225dd8..87dd05d 100644
  }
  
  
-@@ -1792,7 +1792,7 @@ static void hostapd_event_dfs_cac_started(struct hostapd_data *hapd,
+@@ -1792,7 +1792,7 @@ static void hostapd_event_dfs_cac_starte
  	wpa_printf(MSG_DEBUG, "DFS offload CAC started on %d MHz", radar->freq);
  	hostapd_dfs_start_cac(hapd->iface, radar->freq, radar->ht_enabled,
  			      radar->chan_offset, radar->chan_width,
@@ -127,23 +121,19 @@ index 0225dd8..87dd05d 100644
  }
  
  #endif /* NEED_AP_MLME */
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 70c3999..ee44f62 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -6385,6 +6385,7 @@ union wpa_event_data {
- 		enum chan_width chan_width;
+@@ -6380,6 +6380,7 @@ union wpa_event_data {
  		int cf1;
  		int cf2;
+ 		u16 radar_bitmap;
 +		bool is_background;
  	} dfs_event;
  
  	/**
-diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index 22050b4..2e53d29 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -1958,6 +1958,10 @@ static void nl80211_radar_event(struct wpa_driver_nl80211_data *drv,
+@@ -1958,6 +1958,10 @@ static void nl80211_radar_event(struct w
  		}
  	}
  
@@ -154,11 +144,9 @@ index 22050b4..2e53d29 100644
  	/* Get VHT params */
  	if (tb[NL80211_ATTR_CHANNEL_WIDTH])
  		data.dfs_event.chan_width =
-diff --git a/wpa_supplicant/ap.c b/wpa_supplicant/ap.c
-index 74c13f4..ff1579f 100644
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -2106,7 +2106,8 @@ void wpas_ap_event_dfs_cac_started(struct wpa_supplicant *wpa_s,
+@@ -2107,7 +2107,8 @@ void wpas_ap_event_dfs_cac_started(struc
  	wpa_printf(MSG_DEBUG, "DFS CAC started on %d MHz", radar->freq);
  	hostapd_dfs_start_cac(iface, radar->freq,
  			      radar->ht_enabled, radar->chan_offset,
@@ -168,7 +156,7 @@ index 74c13f4..ff1579f 100644
  }
  
  
-@@ -2122,7 +2123,8 @@ void wpas_ap_event_dfs_cac_finished(struct wpa_supplicant *wpa_s,
+@@ -2123,7 +2124,8 @@ void wpas_ap_event_dfs_cac_finished(stru
  	wpa_printf(MSG_DEBUG, "DFS CAC finished on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(iface, 1, radar->freq,
  				 radar->ht_enabled, radar->chan_offset,
@@ -178,7 +166,7 @@ index 74c13f4..ff1579f 100644
  }
  
  
-@@ -2138,7 +2140,8 @@ void wpas_ap_event_dfs_cac_aborted(struct wpa_supplicant *wpa_s,
+@@ -2139,7 +2141,8 @@ void wpas_ap_event_dfs_cac_aborted(struc
  	wpa_printf(MSG_DEBUG, "DFS CAC aborted on %d MHz", radar->freq);
  	hostapd_dfs_complete_cac(iface, 0, radar->freq,
  				 radar->ht_enabled, radar->chan_offset,
@@ -188,6 +176,3 @@ index 74c13f4..ff1579f 100644
  }
  
  
--- 
-2.17.1
-
