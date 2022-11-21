@@ -1,0 +1,159 @@
+From f817580ce32f934cf44404984a700ed036470610 Mon Sep 17 00:00:00 2001
+From: Rameshkumar Sundaram <quic_ramess@quicinc.com>
+Date: Mon, 21 Nov 2022 23:33:10 +0530
+Subject: [PATCH] hostapd: mld: Route MLD EAPOL events to destination link
+
+Since nl_connect handle is common for all link BSS in an
+MLD, EAPOL_RX/EAPOL TX STATUS NL events are received with hostapd
+bss instance with which the handle was created (i.e the
+first link bss that is created in the MLD).
+For non ML Stations or ML Stations which are not part
+of all links in an MLD, the EAPOL RX/EAPOL TX STATUS events
+are dropped since corresponding STA can't be found on RX'ed
+hostapd bss.
+
+If STA is present in any of the link BSS of the MLD route
+the EAPOL frame the that link BSS.
+
+Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
+---
+ src/ap/drv_callbacks.c | 10 ++++++++++
+ src/ap/ieee802_11.c    | 13 +++++++------
+ src/ap/ieee802_1x.c    |  4 ----
+ src/ap/sta_info.c      | 31 ++++++++++++++-----------------
+ src/ap/sta_info.h      |  3 ++-
+ 5 files changed, 33 insertions(+), 28 deletions(-)
+
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index 4ce2744..6764ac8 100644
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -1598,6 +1598,16 @@ static void hostapd_event_eapol_rx(struct hostapd_data *hapd, const u8 *src,
+ 		}
+ 	}
+ 
++	if (j == iface->num_bss && hapd->mld) {
++		if ((sta = hapd_get_sta_from_mld(hapd->mld, src)))
++			if (sta && sta->flags & WLAN_STA_ASSOC) {
++				wpa_printf(MSG_DEBUG, "Routing MLD EAPOL RX from link bss " MACSTR
++					   " to link bss " MACSTR, MAC2STR(hapd->own_addr),
++					   MAC2STR(sta->hapd->own_addr));
++				hapd = sta->hapd;
++		}
++	}
++
+ 	ieee802_1x_receive(hapd, src, data, data_len, encrypted);
+ }
+ 
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 7aac8f9..a00d7ce 100644
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -7498,8 +7498,13 @@ void hostapd_eapol_tx_status(struct hostapd_data *hapd, const u8 *dst,
+ 
+ 	sta = ap_get_sta(hapd, dst);
+ 	if (!sta && hapd->mld) {
+-		wpa_printf(MSG_DEBUG, "link-STA not found. Check MLO mac address list");
+-		sta = ap_get_mlo_sta(hapd, dst);
++		if ((sta = hapd_get_sta_from_mld(hapd->mld, dst))) {
++			wpa_printf(MSG_DEBUG, "Routing EAPOL Tx Status from link "
++			           "bss " MACSTR " to link bss " MACSTR,
++				   MAC2STR(hapd->own_addr),
++				   MAC2STR(sta->hapd->own_addr));
++			hapd = sta->hapd;
++		}
+ 	}
+ 
+ 	if (sta == NULL && iface->num_bss > 1) {
+@@ -7556,10 +7561,6 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
+ 	struct sta_info *sta;
+ 
+ 	sta = ap_get_sta(hapd, src);
+-	if (!sta && hapd->mld) {
+-		wpa_printf(MSG_DEBUG, "link-STA not found. Check MLO mac address list\n");
+-		sta = ap_get_mlo_sta(hapd, src);
+-	}
+ 
+ 	if (sta &&
+ 	    ((sta->flags & WLAN_STA_ASSOC) ||
+diff --git a/src/ap/ieee802_1x.c b/src/ap/ieee802_1x.c
+index 9b14e14..b1621d5 100644
+--- a/src/ap/ieee802_1x.c
++++ b/src/ap/ieee802_1x.c
+@@ -1079,10 +1079,6 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
+ 		   " (encrypted=%d)",
+ 		   (unsigned long) len, MAC2STR(sa), encrypted);
+ 	sta = ap_get_sta(hapd, sa);
+-	if (!sta && hapd->mld) {
+-		wpa_printf(MSG_DEBUG, "link-STA not found. Check MLO mac address list\n");
+-		sta = ap_get_mlo_sta(hapd, sa);
+-	}
+ 
+ 	if (!sta || (!(sta->flags & (WLAN_STA_ASSOC | WLAN_STA_PREAUTH)) &&
+ 		     !(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_WIRED))) {
+diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
+index cea2846..e5c38e5 100644
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -187,30 +187,27 @@ void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta)
+ 
+ #endif /* CONFIG_PASN */
+ 
+-struct sta_info *ap_get_mlo_sta(struct hostapd_data *hapd, const u8 *sta_addr)
++struct sta_info *hapd_get_sta_from_mld(struct hostapd_mld *mld, const u8 *sta_addr)
+ {
+-	struct ml_sta_info *ml_sta = hapd->mld->ml_sta_list;
+ 	struct sta_info *sta = NULL;
++	struct hostapd_data *link_hapd;
+ 
+-	if (!ml_sta) {
+-		wpa_printf(MSG_ERROR, "Multi-link STAs are not available");
+-		return NULL;
+-	}
++	if (!mld || !sta_addr)
++		return sta;
+ 
+-	for (sta = ml_sta->linksta; sta != NULL; sta = sta->lnext)
+-		if (os_memcmp(sta->addr, sta_addr, ETH_ALEN) == 0) {
+-			return sta;
+-		}
++	link_hapd = mld->bss;
+ 
+-	if (sta == NULL) {
+-		wpa_printf(MSG_ERROR,
+-				"ERROR!! %s: STA with MLD "MACSTR
+-				" not found for AP with MLD MAC "MACSTR"\n",
+-				__func__, MAC2STR(sta_addr),
+-				MAC2STR(hapd->mld->addr));
+-		return NULL;
++	while (link_hapd) {
++		if ((sta = ap_get_sta(link_hapd, sta_addr)))
++			break;
++
++		link_hapd = link_hapd->nbss;
+ 	}
+ 
++	if (!sta)
++		wpa_printf(MSG_ERROR, "STA ("MACSTR") not found in any link of"
++			   "MLD AP "MACSTR, MAC2STR(sta_addr), MAC2STR(mld->addr));
++
+ 	return sta;
+ }
+ 
+diff --git a/src/ap/sta_info.h b/src/ap/sta_info.h
+index c69daff..9e2a5a1 100644
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
+@@ -466,7 +466,8 @@ int set_for_each_partner_link_sta(struct hostapd_data *hapd,
+ 				   int (*cb)(struct hostapd_data *hapd,
+ 					      struct sta_info *sta,
+ 					      void *data));
+-struct sta_info *ap_get_mlo_sta(struct hostapd_data *hapd, const u8 *sta_addr);
++struct sta_info *hapd_get_sta_from_mld(struct hostapd_mld *mld,
++				       const u8 *sta_addr);
+ void set_partner_sta_flags(struct hostapd_data *hapd,
+ 			   struct sta_info *psta,
+ 			   u32 flags);
+-- 
+2.17.1
+
