@@ -338,7 +338,7 @@ index 4148489..1d66d6f 100644
 +									     cf1, chan_width,
 +									     &available_chandef_list);
 +			if (num_available_chandefs == 0)
-+				temp_width = get_next_max_width(chan_width);
++				temp_width = get_next_max_width(temp_width);
 +			else
 +				break;
 +		}
