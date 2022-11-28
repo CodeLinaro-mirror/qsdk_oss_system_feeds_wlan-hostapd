@@ -1,0 +1,277 @@
+From 038b7c9e1139c09ca8934eb5d20cdae19622b4a7 Mon Sep 17 00:00:00 2001
+From: Sriram R <quic_srirrama@quicinc.com>
+Date: Mon, 28 Nov 2022 17:20:05 +0530
+Subject: [PATCH] hostapd: Add cohosted bss support for MLO
+
+Add co hosted MBSS support with MLO. Ensure we
+setup the AP only for the first link bss similar to
+the single MLD case.
+
+Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
+---
+ src/ap/ap_drv_ops.c          |  6 +--
+ src/ap/ap_drv_ops.h          |  2 +-
+ src/ap/hostapd.c             | 80 ++++++++++++++++++++----------------
+ src/drivers/driver.h         |  5 ++-
+ src/drivers/driver_nl80211.c | 24 ++++++++---
+ wpa_supplicant/driver_i.h    |  2 +-
+ 6 files changed, 72 insertions(+), 47 deletions(-)
+
+--- a/src/ap/ap_drv_ops.c
++++ b/src/ap/ap_drv_ops.c
+@@ -346,7 +346,7 @@ int hostapd_vlan_if_add(struct hostapd_d
+ 	char force_ifname[IFNAMSIZ];
+ 	u8 if_addr[ETH_ALEN];
+ 	return hostapd_if_add(hapd, WPA_IF_AP_VLAN, ifname, hapd->own_addr,
+-			      NULL, NULL, force_ifname, if_addr, NULL, 0);
++			      NULL, NULL, force_ifname, if_addr, NULL, 0, NULL);
+ }
+ 
+ 
+@@ -534,13 +534,13 @@ int hostapd_set_ssid(struct hostapd_data
+ int hostapd_if_add(struct hostapd_data *hapd, enum wpa_driver_if_type type,
+ 		   const char *ifname, const u8 *addr, void *bss_ctx,
+ 		   void **drv_priv, char *force_ifname, u8 *if_addr,
+-		   const char *bridge, int use_existing)
++		   const char *bridge, int use_existing, u8* link_bss_addr)
+ {
+ 	if (hapd->driver == NULL || hapd->driver->if_add == NULL)
+ 		return -1;
+ 	return hapd->driver->if_add(hapd->drv_priv, type, ifname, addr,
+ 				    bss_ctx, drv_priv, force_ifname, if_addr,
+-				    bridge, use_existing, 1);
++				    bridge, use_existing, 1, link_bss_addr);
+ }
+ 
+ 
+--- a/src/ap/ap_drv_ops.h
++++ b/src/ap/ap_drv_ops.h
+@@ -56,7 +56,7 @@ int hostapd_set_ssid(struct hostapd_data
+ int hostapd_if_add(struct hostapd_data *hapd, enum wpa_driver_if_type type,
+ 		   const char *ifname, const u8 *addr, void *bss_ctx,
+ 		   void **drv_priv, char *force_ifname, u8 *if_addr,
+-		   const char *bridge, int use_existing);
++		   const char *bridge, int use_existing, u8 *link_bss_addr);
+ 
+ int hostapd_if_remove(struct hostapd_data *hapd, enum wpa_driver_if_type type,
+ 		      const char *ifname);
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1191,6 +1191,37 @@ static int hostapd_set_beacon(struct hos
+ 	return 0;
+ }
+ 
++static void hostapd_chain_ml_bss(struct hostapd_data *hapd)
++{
++	struct hostapd_data *curr_bss, *prev_bss;
++	struct hostapd_mld *mld = hapd->mld;
++
++	if (!(mld && mld->bss))
++		return;
++
++	/* Single link device */
++	if (mld->num_links < 2)
++		return;
++
++	/* if this is the first link bss, wait for consecutive
++	 * link bss to link in driver
++	 */
++	if (hapd == mld->bss)
++		return;
++
++	curr_bss = mld->bss;
++
++	while (curr_bss) {
++		prev_bss = curr_bss;
++		curr_bss = curr_bss->nbss;
++		if (curr_bss == hapd) {
++			curr_bss->driver->chain_link_bss(prev_bss->drv_priv,
++							 curr_bss->drv_priv);
++			break;
++		}
++	}
++}
++
+ /**
+  * hostapd_setup_bss - Per-BSS setup (initialization)
+  * @hapd: Pointer to BSS data
+@@ -1235,6 +1266,7 @@ static int hostapd_setup_bss(struct host
+ 
+ 	if (!first || first == -1) {
+ 		u8 *addr = hapd->own_addr;
++		u8 *link_bss_addr = NULL;
+ 
+ 		if (!is_zero_ether_addr(conf->bssid)) {
+ 			/* Allocate the configured BSSID. */
+@@ -1259,15 +1291,20 @@ static int hostapd_setup_bss(struct host
+ 
+ 		hapd->interface_added = 1;
+ 
+-		use_existing = ((first == -1) || hapd->mld);
+-		/* TODO handle skipping of iface setup for non-first link bss
+-		 * for MBSS cases
+- 		 */
++		if (first == -1)
++			use_existing = 1;
++
++		if (hapd->mld) {
++			use_existing = (hapd != hapd->mld->bss);
++			addr = hapd->mld->addr;
++			link_bss_addr = hapd->own_addr;
++		}
++
+ 		if (hostapd_if_add(hapd->iface->bss[0], WPA_IF_AP_BSS,
+ 				   conf->iface, addr, hapd,
+ 				   &hapd->drv_priv, force_ifname, if_addr,
+ 				   conf->bridge[0] ? conf->bridge : NULL,
+-				   use_existing)) {
++				   use_existing, link_bss_addr)) {
+ 			wpa_printf(MSG_ERROR, "Failed to add BSS (BSSID="
+ 				   MACSTR ")", MAC2STR(hapd->own_addr));
+ 			hapd->interface_added = 0;
+@@ -1288,6 +1325,8 @@ static int hostapd_setup_bss(struct host
+ 			else
+ 				wpa_printf(MSG_DEBUG, "Added Link to kernel for %d addr "MACSTR,
+ 					   params.link_id, MAC2STR(params.link_addr));
++		
++			hostapd_chain_ml_bss(hapd);
+ 		}
+ 	}
+ 
+@@ -1662,37 +1701,6 @@ void hostapd_channel_list_updated(struct
+ 	setup_interface2(iface);
+ }
+ 
+-static void hostapd_chain_ml_bss(struct hostapd_data *hapd)
+-{
+-	struct hostapd_data *curr_bss, *prev_bss;
+-	struct hostapd_mld *mld = hapd->mld;
+-
+-	if (!(mld && mld->bss))
+-		return;
+-
+-	/* Single link device */
+-	if (mld->num_links < 2)
+-		return;
+-
+-	/* if this is the first link bss, wait for consecutive
+-	 * link bss to link in driver
+-	 */
+-	if (hapd == mld->bss)
+-		return;
+-
+-	curr_bss = mld->bss;
+-
+-	while (curr_bss) {
+-		prev_bss = curr_bss;
+-		curr_bss = curr_bss->nbss;
+-		if (curr_bss == hapd) {
+-			curr_bss->driver->chain_link_bss(prev_bss->drv_priv,
+-							 curr_bss->drv_priv);
+-			break;
+-		}
+-	}
+-}
+-
+ 
+ static int setup_interface(struct hostapd_iface *iface)
+ {
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -3763,12 +3763,15 @@ struct wpa_driver_ops {
+ 	 * @bridge: Bridge interface to use or %NULL if no bridge configured
+ 	 * @use_existing: Whether to allow existing interface to be used
+ 	 * @setup_ap: Whether to setup AP for %WPA_IF_AP_BSS interfaces
++	 * @link_bss_addr: Use the address as link bss's address whereas the
++	 * 	@addr is the MLD/iface address
+ 	 * Returns: 0 on success, -1 on failure
+ 	 */
+ 	int (*if_add)(void *priv, enum wpa_driver_if_type type,
+ 		      const char *ifname, const u8 *addr, void *bss_ctx,
+ 		      void **drv_priv, char *force_ifname, u8 *if_addr,
+-		      const char *bridge, int use_existing, int setup_ap);
++		      const char *bridge, int use_existing, int setup_ap,
++		      u8 *link_bss_addr);
+ 
+ 
+ 	/**
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -8508,17 +8508,31 @@ static int wpa_driver_nl80211_if_add(voi
+ 				     void *bss_ctx, void **drv_priv,
+ 				     char *force_ifname, u8 *if_addr,
+ 				     const char *bridge, int use_existing,
+-				     int setup_ap)
++				     int setup_ap, u8 *link_bss_addr)
+ {
+ 	enum nl80211_iftype nlmode;
+ 	struct i802_bss *bss = priv;
+ 	struct wpa_driver_nl80211_data *drv = bss->drv;
+ 	int ifidx;
+ 	int added = 1;
++	bool first_link_bss = true;
+ 
+-	if (addr)
++	/* In case of ML bss, the MLD address is the interface address
++	 * and bss address is set separately
++	 */
++	if (link_bss_addr) {
++		os_memcpy(if_addr, link_bss_addr, ETH_ALEN);
++		first_link_bss = !use_existing;
++	} else if (addr) {
+ 		os_memcpy(if_addr, addr, ETH_ALEN);
++	}
++
+ 	nlmode = wpa_driver_nl80211_if_type(type);
++	if (!first_link_bss) {
++		ifidx = if_nametoindex(ifname);
++		goto add_bss;
++	}
++
+ 	if (nlmode == NL80211_IFTYPE_P2P_DEVICE) {
+ 		struct wdev_info p2pdev_info;
+ 
+@@ -8592,6 +8606,7 @@ static int wpa_driver_nl80211_if_add(voi
+ 		os_memcpy(if_addr, new_addr, ETH_ALEN);
+ 	}
+ 
++add_bss:
+ 	if (type == WPA_IF_AP_BSS && setup_ap) {
+ 		struct i802_bss *new_bss = os_zalloc(sizeof(*new_bss));
+ 		if (new_bss == NULL) {
+@@ -8627,15 +8642,21 @@ static int wpa_driver_nl80211_if_add(voi
+ 		new_bss->ctx = bss_ctx;
+ 		new_bss->added_if = added;
+ 		new_bss->next_link_bss = new_bss;
+-		/* TODO MLO MBSSID case */
+-		new_bss->first_link_bss = true;
++		new_bss->first_link_bss = first_link_bss;
+ 		drv->first_bss->next = new_bss;
++
++		/* This would be always set for MLD if_add() */
++		if (addr)
++			os_memcpy(new_bss->mld_addr, addr, ETH_ALEN);
++		else
++			os_memcpy(new_bss->mld_addr, if_addr, ETH_ALEN);
++
+ 		if (drv_priv)
+ 			*drv_priv = new_bss;
+ 		nl80211_init_bss(new_bss);
+ 
+ 		/* Subscribe management frames for this WPA_IF_AP_BSS */
+-		if (nl80211_setup_ap(new_bss))
++		if (first_link_bss && nl80211_setup_ap(new_bss))
+ 			return -1;
+ 	}
+ 
+--- a/wpa_supplicant/driver_i.h
++++ b/wpa_supplicant/driver_i.h
+@@ -445,7 +445,7 @@ static inline int wpa_drv_if_add(struct
+ 	if (wpa_s->driver->if_add)
+ 		return wpa_s->driver->if_add(wpa_s->drv_priv, type, ifname,
+ 					     addr, bss_ctx, NULL, force_ifname,
+-					     if_addr, bridge, 0, 0);
++					     if_addr, bridge, 0, 0, NULL);
+ 	return -1;
+ }
+ 
