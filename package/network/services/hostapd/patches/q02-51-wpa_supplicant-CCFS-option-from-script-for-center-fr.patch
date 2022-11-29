@@ -1,0 +1,125 @@
+From 5f783ea77a433a8a075294ec32383825e6ae0944 Mon Sep 17 00:00:00 2001
+From: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
+Date: Tue, 29 Nov 2022 15:37:13 +0530
+Subject: [PATCH] mesh: CCFS option from script for center frequency
+
+CCFS option is provided in script to help configure center
+frequency. Same is used in case of mesh from wpa_supplicant
+config.
+
+Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
+
+Index: b/hostapd/config_file.c
+===================================================================
+--- a/hostapd/config_file.c	2023-03-05 16:34:57.560662656 +0530
++++ b/hostapd/config_file.c	2023-03-05 16:34:57.524662896 +0530
+@@ -4272,6 +4272,8 @@ static int hostapd_config_fill(struct ho
+ 		bss->wowlan_triggers = os_strdup(pos);
+ 	} else if (os_strcmp(buf, "enable_320mhz_bw") == 0) {
+ 		conf->enable_320mhz_bw = atoi(pos);
++	} else if (os_strcmp(buf, "ccfs") == 0) {
++		conf->ccfs = atoi(pos);
+ 	} else if (os_strcmp(buf, "enable_160mhz_bw") == 0) {
+ 		conf->enable_160mhz_bw = atoi(pos);
+ 	} else if (os_strcmp(buf, "disable_40mhz_scan") == 0) {
+Index: b/src/ap/ap_config.h
+===================================================================
+--- a/src/ap/ap_config.h	2023-03-05 16:34:57.560662656 +0530
++++ b/src/ap/ap_config.h	2023-03-05 16:34:57.524662896 +0530
+@@ -1167,6 +1167,7 @@ struct hostapd_config {
+ 	u8 ru_punct_acs_threshold;
+ 	int enable_320mhz_bw;
+ 	int disable_csa_dfs;
++	int ccfs;
+ };
+ 
+ static inline u8 hostapd_get_he_6ghz_reg_pwr_type(struct hostapd_config *conf)
+Index: b/src/drivers/driver.h
+===================================================================
+--- a/src/drivers/driver.h	2023-03-05 16:34:57.560662656 +0530
++++ b/src/drivers/driver.h	2023-03-05 16:34:57.524662896 +0530
+@@ -1297,6 +1297,11 @@ struct wpa_driver_associate_params {
+ 	 * lowest bit for the channel with the lowest frequency.
+ 	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.*/
+ 	u16 ru_punct_bitmap;
++	/**
++	 * Center Frequency - 320MHz has overlapping bands and by default, center frequency
++	 * will be selected from non-overlapping bands.
++	 * CCFS can be configured from script to select particular range. */
++	int ccfs;
+ };
+ 
+ enum hide_ssid {
+Index: b/wpa_supplicant/config.c
+===================================================================
+--- a/wpa_supplicant/config.c	2023-03-05 16:34:57.560662656 +0530
++++ b/wpa_supplicant/config.c	2023-03-05 16:34:57.528662869 +0530
+@@ -2814,6 +2814,7 @@ static const struct parse_data ssid_fiel
+ 	{ INT_RANGE(enable_160mhz_bw, 0, 1)},
+ 	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
+ 	{ INT(ru_punct_bitmap) },
++	{ INT(ccfs) },
+ };
+ 
+ #undef OFFSET
+Index: b/wpa_supplicant/config_file.c
+===================================================================
+--- a/wpa_supplicant/config_file.c	2023-03-05 16:34:57.560662656 +0530
++++ b/wpa_supplicant/config_file.c	2023-03-05 16:34:57.532662843 +0530
+@@ -895,6 +895,7 @@ static void wpa_config_write_network(FIL
+ 	INT(enable_160mhz_bw);
+ 	INT(enable_320mhz_bw);
+ 	INT(ru_punct_bitmap);
++	INT(ccfs);
+ #undef STR
+ #undef INT
+ #undef INT_DEF
+Index: b/wpa_supplicant/config_ssid.h
+===================================================================
+--- a/wpa_supplicant/config_ssid.h	2023-03-05 16:34:57.560662656 +0530
++++ b/wpa_supplicant/config_ssid.h	2023-03-05 16:34:57.540662789 +0530
+@@ -1233,6 +1233,11 @@ struct wpa_ssid {
+ 	 * lowest bit for the channel with the lowest frequency.
+ 	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.*/
+         u16 ru_punct_bitmap;
++	/**
++	 * Center Frequency - 320MHz has overlapping bands and by default, center frequency
++	 * will be selected from non-overlapping bands.
++	 * CCFS can be configured from script to select particular range.*/
++	int ccfs;
+ };
+ 
+ #endif /* CONFIG_SSID_H */
+Index: b/wpa_supplicant/wpa_supplicant.c
+===================================================================
+--- a/wpa_supplicant/wpa_supplicant.c	2023-03-05 16:34:57.560662656 +0530
++++ b/wpa_supplicant/wpa_supplicant.c	2023-03-05 16:34:57.544662763 +0530
+@@ -2835,7 +2835,10 @@ skip_to_6ghz:
+ 					break;
+ 			}
+ 
+-			seg0 = ibss_get_center_320mhz(freq->channel);
++			if (ssid->ccfs)
++				seg0 = ssid->ccfs;
++			else
++				seg0 = ibss_get_center_320mhz(freq->channel);
+ 			chwidth = CHANWIDTH_320MHZ;
+ 		} else {
+ 			/* There is only one 320MHz(240+80 Punctured) in 5 GHz Band */
+Index: b/wpa_supplicant/wpa_supplicant.conf
+===================================================================
+--- a/wpa_supplicant/wpa_supplicant.conf	2023-03-05 16:34:56.984666485 +0530
++++ b/wpa_supplicant/wpa_supplicant.conf	2023-03-05 16:45:37.128399197 +0530
+@@ -922,6 +922,12 @@ fast_reauth=1
+ # an IBSS network with the configured SSID is already present, the frequency of
+ # the network will be used instead of this configured value.
+ #
++# ccfs: Channel center frequency index for IBSS when operating
++# bandwidth is 320 MHz. 320 MHz has overlapping 160 MHz bands and by default
++# center frequency index will be selected from non overlapping band. This value
++# can be optionally configured and used when user wants specific
++# center frequency index.
++#
+ # pbss: Whether to use PBSS. Relevant to IEEE 802.11ad networks only.
+ # 0 = do not use PBSS
+ # 1 = use PBSS

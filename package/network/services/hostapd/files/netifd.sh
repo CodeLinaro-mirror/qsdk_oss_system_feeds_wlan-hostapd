@@ -669,6 +669,7 @@ wpa_supplicant_add_network() {
 	local enable_320mhz_bw=0
 	local ru_punct_bitmap=$5
 	local disable_csa_dfs=$6
+	local ccfs=0
 
 	_wpa_supplicant_common "$1"
 	wireless_vif_parse_encryption
@@ -719,6 +720,10 @@ wpa_supplicant_add_network() {
 		[[ "$htmode" == "EHT320" ]] && {
 			enable_320mhz_bw=1
 			enable_160mhz_bw=1
+			config_ccfs=$7
+			if [ -n $config_ccfs ] && [ $config_ccfs -gt 0 ]; then
+				ccfs=$config_ccfs
+			fi
 		}
 		[ -n "$disable_csa_dfs" ] && {
 			disable_csa_dfs="disable_csa_dfs=$disable_csa_dfs"
@@ -871,6 +876,7 @@ network={
 	enable_160mhz_bw=$enable_160mhz_bw
 	enable_320mhz_bw=$enable_320mhz_bw
 	$ru_punct_str
+	ccfs=$ccfs
 }
 EOF
 	return 0
