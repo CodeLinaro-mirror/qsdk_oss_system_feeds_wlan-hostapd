@@ -692,7 +692,7 @@ wpa_supplicant_add_network() {
 	[[ "$_w_mode" = "adhoc" ]] && {
 		append network_data "mode=1" "$N$T"
 		[ -n "$channel" ] && {
-			freq="$(get_freq "$phy" "$channel")"
+			freq="$2"
 			append network_data "fixed_freq=1" "$N$T"
 			append network_data "frequency=$freq" "$N$T"
 		}
@@ -705,7 +705,7 @@ wpa_supplicant_add_network() {
 	[[ "$_w_mode" = "mesh" ]] && {
 		append network_data "mode=5" "$N$T"
 		[ -n "$channel" ] && {
-			freq="$(get_freq "$phy" "$channel")"
+			freq="$2"
 			append network_data "frequency=$freq" "$N$T"
 		}
 		wpa_key_mgmt="SAE"
