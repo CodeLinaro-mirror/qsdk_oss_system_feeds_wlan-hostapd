@@ -48,11 +48,9 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  wpa_supplicant/mesh_rsn.c                     |   4 +-
  17 files changed, 418 insertions(+), 77 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index a4672a0..6ac0835 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2428,6 +2428,11 @@ static int __ieee802_11_set_beacon(struct hostapd_data *hapd)
+@@ -2428,6 +2428,11 @@ static int __ieee802_11_set_beacon(struc
  		return -1;
  	}
  
@@ -64,11 +62,9 @@ index a4672a0..6ac0835 100644
  	hapd->beacon_set_done = 1;
  
  	if (ieee802_11_build_ap_params(hapd, &params) < 0)
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index 0225dd8..615bdcb 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -362,10 +362,12 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+@@ -362,10 +362,12 @@ int hostapd_notif_assoc(struct hostapd_d
  			return 0;
  		}
  
@@ -83,7 +79,7 @@ index 0225dd8..615bdcb 100644
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_ERROR,
  				   "Failed to initialize WPA state machine");
-@@ -515,9 +517,11 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+@@ -515,9 +517,11 @@ int hostapd_notif_assoc(struct hostapd_d
  		}
  
  		wpa_printf(MSG_DEBUG, "HS 2.0: OSEN association");
@@ -97,7 +93,7 @@ index 0225dd8..615bdcb 100644
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_WARNING,
  				   "Failed to initialize WPA state machine");
-@@ -1300,9 +1304,11 @@ static void hostapd_notif_auth(struct hostapd_data *hapd,
+@@ -1300,9 +1304,11 @@ static void hostapd_notif_auth(struct ho
  #ifdef CONFIG_IEEE80211R_AP
  	if (rx_auth->auth_type == WLAN_AUTH_FT && hapd->wpa_auth) {
  		sta->auth_alg = WLAN_AUTH_FT;
@@ -111,11 +107,9 @@ index 0225dd8..615bdcb 100644
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_DEBUG,
  				   "FT: Failed to initialize WPA state machine");
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index ef8b771..51a78f5 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -125,6 +125,34 @@ void hostapd_reconfig_encryption(struct hostapd_data *hapd)
+@@ -128,6 +128,34 @@ void hostapd_reconfig_encryption(struct
  #endif /* CONFIG_WEP */
  }
  
@@ -150,21 +144,17 @@ index ef8b771..51a78f5 100644
  
  static void hostapd_reload_bss(struct hostapd_data *hapd)
  {
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index 2dd04cb..1a92771 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -803,4 +803,5 @@ void fst_hostapd_fill_iface_obj(struct hostapd_data *hapd,
+@@ -803,4 +803,5 @@ void fst_hostapd_fill_iface_obj(struct h
  
  int hostapd_set_acl(struct hostapd_data *hapd);
  
 +int update_pmksa(struct hostapd_data *hapd);
  #endif /* HOSTAPD_H */
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index b390366..155cf89 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -1910,9 +1910,11 @@ void handle_auth_fils(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -1910,9 +1910,11 @@ void handle_auth_fils(struct hostapd_dat
  		goto fail;
  	}
  
@@ -178,7 +168,7 @@ index b390366..155cf89 100644
  	if (!sta->wpa_sm) {
  		wpa_printf(MSG_DEBUG,
  			   "FILS: Failed to initialize RSN state machine");
-@@ -4023,9 +4025,12 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -4023,9 +4025,12 @@ static void handle_auth(struct hostapd_d
  #ifdef CONFIG_IEEE80211R_AP
  	case WLAN_AUTH_FT:
  		sta->auth_alg = WLAN_AUTH_FT;
@@ -193,7 +183,7 @@ index b390366..155cf89 100644
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_DEBUG, "FT: Failed to initialize WPA "
  				   "state machine");
-@@ -4045,10 +4050,13 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -4045,10 +4050,13 @@ static void handle_auth(struct hostapd_d
  #ifdef CONFIG_MESH
  		if (status_code == WLAN_STATUS_SUCCESS &&
  		    hapd->conf->mesh & MESH_ENABLED) {
@@ -209,7 +199,7 @@ index b390366..155cf89 100644
  			if (sta->wpa_sm == NULL) {
  				wpa_printf(MSG_DEBUG,
  					   "SAE: Failed to initialize WPA state machine");
-@@ -4513,9 +4521,11 @@ u16 owe_process_rsn_ie(struct hostapd_data *hapd,
+@@ -4583,9 +4591,11 @@ u16 owe_process_rsn_ie(struct hostapd_da
  		goto end;
  	}
  
@@ -223,7 +213,7 @@ index b390366..155cf89 100644
  	if (!sta->wpa_sm) {
  		wpa_printf(MSG_WARNING,
  			   "OWE: Failed to initialize WPA state machine");
-@@ -4895,10 +4905,13 @@ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -4965,10 +4975,13 @@ static int check_assoc_ies(struct hostap
  
  		wpa_ie -= 2;
  		wpa_ie_len += 2;
@@ -239,7 +229,7 @@ index b390366..155cf89 100644
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_WARNING, "Failed to initialize WPA "
  				   "state machine");
-@@ -5040,9 +5053,12 @@ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -5110,9 +5123,12 @@ static int check_assoc_ies(struct hostap
  		}
  
  		wpa_printf(MSG_DEBUG, "HS 2.0: OSEN association");
@@ -254,24 +244,15 @@ index b390366..155cf89 100644
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_WARNING, "Failed to initialize WPA "
  				   "state machine");
-@@ -5715,6 +5731,7 @@ static void ap_link_sta_add(struct hostapd_data *hapd, struct sta_info *psta,
+@@ -5787,6 +5803,7 @@ static void ap_link_sta_add(struct hosta
+ 		}
  
  		sta->listen_interval = psta->listen_interval;
- 		sta->aid = psta->aid;
 +		sta->wpa_sm = psta->wpa_sm;
  
  		link_sta_ies = ml_data->u.basic.link_info[link_id].sta_profile;
  		link_sta_ies_len = ml_data->u.basic.link_info[link_id].sta_profile_len;
-@@ -7018,8 +7035,6 @@ static void handle_link_assoc(struct hostapd_data *phapd,
- 
- 		hostapd_set_sta_flags(hapd, sta);
- 
--		hapd->new_assoc_sta_cb(hapd, sta, !new_assoc);
--
- 		/* TODO other applicable changes to sta from handle_assoc_cb() 
- 		 * related to eapol
- 		 */
-@@ -7409,6 +7424,11 @@ void hostapd_eapol_tx_status(struct hostapd_data *hapd, const u8 *dst,
+@@ -7510,6 +7527,11 @@ void hostapd_eapol_tx_status(struct host
  	struct hostapd_iface *iface = hapd->iface;
  
  	sta = ap_get_sta(hapd, dst);
@@ -283,7 +264,7 @@ index b390366..155cf89 100644
  	if (sta == NULL && iface->num_bss > 1) {
  		size_t j;
  		for (j = 0; j < iface->num_bss; j++) {
-@@ -7463,6 +7483,11 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
+@@ -7564,6 +7586,11 @@ void ieee802_11_rx_from_unknown(struct h
  	struct sta_info *sta;
  
  	sta = ap_get_sta(hapd, src);
@@ -295,11 +276,9 @@ index b390366..155cf89 100644
  	if (sta &&
  	    ((sta->flags & WLAN_STA_ASSOC) ||
  	     ((sta->flags & WLAN_STA_ASSOC_REQ_OK) && wds))) {
-diff --git a/src/ap/ieee802_1x.c b/src/ap/ieee802_1x.c
-index 7854de1..9b14e14 100644
 --- a/src/ap/ieee802_1x.c
 +++ b/src/ap/ieee802_1x.c
-@@ -104,7 +104,7 @@ static void ieee802_1x_send(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -104,7 +104,7 @@ static void ieee802_1x_send(struct hosta
  }
  
  
@@ -308,7 +287,7 @@ index 7854de1..9b14e14 100644
  				   struct sta_info *sta, int authorized)
  {
  	int res;
-@@ -136,6 +136,20 @@ void ieee802_1x_set_sta_authorized(struct hostapd_data *hapd,
+@@ -136,6 +136,20 @@ void ieee802_1x_set_sta_authorized(struc
  	}
  }
  
@@ -329,7 +308,7 @@ index 7854de1..9b14e14 100644
  
  #ifdef CONFIG_WEP
  #ifndef CONFIG_FIPS
-@@ -1065,6 +1079,11 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
+@@ -1065,6 +1079,11 @@ void ieee802_1x_receive(struct hostapd_d
  		   " (encrypted=%d)",
  		   (unsigned long) len, MAC2STR(sa), encrypted);
  	sta = ap_get_sta(hapd, sa);
@@ -341,11 +320,9 @@ index 7854de1..9b14e14 100644
  	if (!sta || (!(sta->flags & (WLAN_STA_ASSOC | WLAN_STA_PREAUTH)) &&
  		     !(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_WIRED))) {
  		wpa_printf(MSG_DEBUG,
-diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index ccdbbd8..31bf1e6 100644
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -187,6 +187,84 @@ void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -187,6 +187,84 @@ void ap_free_sta_pasn(struct hostapd_dat
  
  #endif /* CONFIG_PASN */
  
@@ -430,7 +407,7 @@ index ccdbbd8..31bf1e6 100644
  void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	int set_beacon = 0;
-@@ -298,7 +376,8 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -298,7 +376,8 @@ void ap_free_sta(struct hostapd_data *ha
  	sae_clear_retransmit_timer(hapd, sta);
  
  	ieee802_1x_free_station(hapd, sta);
@@ -440,7 +417,7 @@ index ccdbbd8..31bf1e6 100644
  	rsn_preauth_free_station(hapd, sta);
  #ifndef CONFIG_NO_RADIUS
  	if (hapd->radius)
-@@ -415,23 +494,21 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -415,29 +494,30 @@ void ap_free_sta(struct hostapd_data *ha
  #endif /* CONFIG_TESTING_OPTIONS */
  
  	if (sta->ml_sta) {
@@ -450,31 +427,43 @@ index ccdbbd8..31bf1e6 100644
 -
 -		ml_sta = sta->ml_sta;
 +		struct sta_info *curr_lsta, *next_lsta;
++		struct ml_sta_info *ml_sta = sta->ml_sta;
+ 
++		curr_lsta = ml_sta->linksta;
+ 		ml_sta->state = ML_STA_FREE;
++
+ 		wpa_printf(MSG_DEBUG, "Free ML station " MACSTR " on bss " MACSTR,
+ 			   MAC2STR(sta->addr), MAC2STR(hapd->own_addr));
  
 -		for (lsta = ml_sta->linksta; lsta != NULL; lsta = lsta->lnext) {
 -			if (lsta == sta)
-+		curr_lsta = sta->ml_sta->linksta;
+-				continue;
 +		while (curr_lsta) {
 +			next_lsta = curr_lsta->lnext;
+ 
+-			lhapd = lsta->hapd;
 +			if (curr_lsta == sta) {
 +				curr_lsta = next_lsta;
- 				continue;
--
--			lhapd = lsta->hapd;
--
++				continue;
 +			}
- 			/* This will protect from further recursion when
- 			 * ap_free_sta is called below
- 			 */
+ 
+ 			wpa_printf(MSG_DEBUG, "Free ML station " MACSTR " on bss " MACSTR,
+-				   MAC2STR(lsta->addr), MAC2STR(lhapd->own_addr));
+-			/* This will protect from further recursion when
+-			 * ap_free_sta is called below
+-			 */
 -			lsta->ml_sta = NULL;
 -			ap_free_sta(lhapd, lsta);
++				   MAC2STR(curr_lsta->addr),
++				   MAC2STR(curr_lsta->hapd->own_addr));
++
 +			curr_lsta->ml_sta = NULL;
 +			ap_free_sta(curr_lsta->hapd, curr_lsta);
 +			curr_lsta = next_lsta;
  		}
  		os_free(sta->ml_sta);
  		sta->ml_sta = NULL;
-@@ -973,6 +1050,7 @@ void ap_sta_disassociate(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -991,6 +1071,7 @@ void ap_sta_disassociate(struct hostapd_
  	wpa_auth_sta_deinit(sta->wpa_sm);
  	sta->wpa_sm = NULL;
  
@@ -482,11 +471,9 @@ index ccdbbd8..31bf1e6 100644
  	sta->disassoc_reason = reason;
  	sta->flags |= WLAN_STA_PENDING_DISASSOC_CB;
  	eloop_cancel_timeout(ap_sta_disassoc_cb_timeout, hapd, sta);
-diff --git a/src/ap/sta_info.h b/src/ap/sta_info.h
-index 0410dae..5a97f11 100644
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -370,6 +370,33 @@ struct sta_info {
+@@ -379,6 +379,33 @@ struct sta_info {
  /* Number of seconds to keep STA entry after it has been deauthenticated. */
  #define AP_MAX_INACTIVITY_AFTER_DEAUTH (1 * 5)
  
@@ -520,26 +507,24 @@ index 0410dae..5a97f11 100644
  
  int ap_for_each_sta(struct hostapd_data *hapd,
  		    int (*cb)(struct hostapd_data *hapd, struct sta_info *sta,
-@@ -433,4 +460,14 @@ void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta);
- 
- void ap_ml_sta_add(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -444,4 +471,14 @@ void ap_ml_sta_add(struct hostapd_data *
  		   const u8 *addr);
+ void ap_link_sta_remove(struct hostapd_data *phapd,
+ 		        struct sta_info *psta);
 +int set_for_each_partner_link_sta(struct hostapd_data *hapd,
-+					struct sta_info *psta,
-+				   void *data,
-+				   int (*cb)(struct hostapd_data *hapd,
-+					      struct sta_info *sta,
-+					      void *data));
++				  struct sta_info *psta,
++				  void *data,
++				  int (*cb)(struct hostapd_data *hapd,
++					    struct sta_info *sta,
++					    void *data));
 +struct sta_info *ap_get_mlo_sta(struct hostapd_data *hapd, const u8 *sta_addr);
 +void set_partner_sta_flags(struct hostapd_data *hapd,
 +			   struct sta_info *psta,
 +			   u32 flags);
  #endif /* STA_INFO_H */
-diff --git a/src/ap/wpa_auth.c b/src/ap/wpa_auth.c
-index e3c8e20..e9f0fa4 100644
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -142,12 +142,13 @@ static inline int wpa_auth_set_key(struct wpa_authenticator *wpa_auth,
+@@ -142,12 +142,13 @@ static inline int wpa_auth_set_key(struc
  				   int vlan_id,
  				   enum wpa_alg alg, const u8 *addr, int idx,
  				   u8 *key, size_t key_len,
@@ -555,7 +540,7 @@ index e3c8e20..e9f0fa4 100644
  }
  
  
-@@ -659,10 +660,36 @@ int wpa_reconfig(struct wpa_authenticator *wpa_auth,
+@@ -659,10 +660,36 @@ int wpa_reconfig(struct wpa_authenticato
  	return 0;
  }
  
@@ -593,7 +578,7 @@ index e3c8e20..e9f0fa4 100644
  {
  	struct wpa_state_machine *sm;
  
-@@ -677,6 +704,17 @@ wpa_auth_sta_init(struct wpa_authenticator *wpa_auth, const u8 *addr,
+@@ -677,6 +704,17 @@ wpa_auth_sta_init(struct wpa_authenticat
  		os_memcpy(sm->p2p_dev_addr, p2p_dev_addr, ETH_ALEN);
  
  	sm->wpa_auth = wpa_auth;
@@ -611,7 +596,7 @@ index e3c8e20..e9f0fa4 100644
  	sm->group = wpa_auth->group;
  	wpa_group_get(sm->wpa_auth, sm->group);
  
-@@ -775,12 +813,13 @@ static void wpa_free_sta_sm(struct wpa_state_machine *sm)
+@@ -775,12 +813,13 @@ static void wpa_free_sta_sm(struct wpa_s
  }
  
  
@@ -627,7 +612,7 @@ index e3c8e20..e9f0fa4 100644
  
  	wpa_auth = sm->wpa_auth;
  	if (wpa_auth->conf.wpa_strict_rekey && sm->has_GTK) {
-@@ -806,8 +845,11 @@ void wpa_auth_sta_deinit(struct wpa_state_machine *sm)
+@@ -806,8 +845,11 @@ void wpa_auth_sta_deinit(struct wpa_stat
  			   "WPA: Registering pending STA state machine deinit for "
  			   MACSTR, MAC2STR(sm->addr));
  		sm->pending_deinit = 1;
@@ -640,7 +625,7 @@ index e3c8e20..e9f0fa4 100644
  }
  
  
-@@ -1795,12 +1837,12 @@ void wpa_remove_ptk(struct wpa_state_machine *sm)
+@@ -1795,12 +1837,12 @@ void wpa_remove_ptk(struct wpa_state_mac
  	wpa_auth_remove_ptksa(sm->wpa_auth, sm->addr, sm->pairwise);
  
  	if (wpa_auth_set_key(sm->wpa_auth, 0, WPA_ALG_NONE, sm->addr, 0, NULL,
@@ -723,7 +708,7 @@ index e3c8e20..e9f0fa4 100644
  }
  
  
-@@ -2343,7 +2415,8 @@ static int wpa_derive_ptk(struct wpa_state_machine *sm, const u8 *snonce,
+@@ -2343,7 +2415,8 @@ static int wpa_derive_ptk(struct wpa_sta
  
  			ret = wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len,
  						sm->SNonce, sm->ANonce,
@@ -733,7 +718,7 @@ index e3c8e20..e9f0fa4 100644
  						sm->pmk_r1_name, ptk,
  						ptk_name, sm->wpa_key_mgmt,
  						sm->pairwise, kdk_len);
-@@ -2382,7 +2455,7 @@ static int wpa_derive_ptk(struct wpa_state_machine *sm, const u8 *snonce,
+@@ -2382,7 +2455,7 @@ static int wpa_derive_ptk(struct wpa_sta
  	if (force_sha256)
  		akmp |= WPA_KEY_MGMT_PSK_SHA256;
  	ret = wpa_pmk_to_ptk(pmk, pmk_len, "Pairwise key expansion",
@@ -742,7 +727,7 @@ index e3c8e20..e9f0fa4 100644
  			     snonce, ptk, akmp, sm->pairwise, z, z_len,
  			     kdk_len);
  	if (ret) {
-@@ -2425,7 +2498,7 @@ int fils_auth_pmk_to_ptk(struct wpa_state_machine *sm, const u8 *pmk,
+@@ -2425,7 +2498,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
  	else
  		kdk_len = 0;
  
@@ -751,7 +736,7 @@ index e3c8e20..e9f0fa4 100644
  			      snonce, anonce, dhss, dhss_len,
  			      &sm->PTK, ick, &ick_len,
  			      sm->wpa_key_mgmt, sm->pairwise,
-@@ -2460,7 +2533,7 @@ int fils_auth_pmk_to_ptk(struct wpa_state_machine *sm, const u8 *pmk,
+@@ -2460,7 +2533,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
  				      conf->mobility_domain,
  				      conf->r0_key_holder,
  				      conf->r0_key_holder_len,
@@ -760,7 +745,7 @@ index e3c8e20..e9f0fa4 100644
  				      use_sha384) < 0)
  			return -1;
  
-@@ -2468,7 +2541,7 @@ int fils_auth_pmk_to_ptk(struct wpa_state_machine *sm, const u8 *pmk,
+@@ -2468,7 +2541,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
  		forced_memzero(fils_ft, sizeof(fils_ft));
  
  		res = wpa_derive_pmk_r1_name(pmk_r0_name, conf->r1_key_holder,
@@ -769,7 +754,7 @@ index e3c8e20..e9f0fa4 100644
  					     use_sha384);
  		forced_memzero(pmk_r0, PMK_LEN_MAX);
  		if (res < 0)
-@@ -2480,7 +2553,7 @@ int fils_auth_pmk_to_ptk(struct wpa_state_machine *sm, const u8 *pmk,
+@@ -2480,7 +2553,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
  #endif /* CONFIG_IEEE80211R_AP */
  
  	res = fils_key_auth_sk(ick, ick_len, snonce, anonce,
@@ -778,7 +763,7 @@ index e3c8e20..e9f0fa4 100644
  			       g_sta ? wpabuf_head(g_sta) : NULL,
  			       g_sta ? wpabuf_len(g_sta) : 0,
  			       g_ap ? wpabuf_head(g_ap) : NULL,
-@@ -2944,7 +3017,7 @@ int fils_set_tk(struct wpa_state_machine *sm)
+@@ -2944,7 +3017,7 @@ int fils_set_tk(struct wpa_state_machine
  
  	wpa_printf(MSG_DEBUG, "FILS: Configure TK to the driver");
  	if (wpa_auth_set_key(sm->wpa_auth, 0, alg, sm->addr, 0,
@@ -819,7 +804,7 @@ index e3c8e20..e9f0fa4 100644
  #endif /* CONFIG_IEEE80211R_AP */
  
  	sm->ptkstart_without_success = 0;
-@@ -4487,7 +4560,7 @@ static int wpa_group_config_group_keys(struct wpa_authenticator *wpa_auth,
+@@ -4487,7 +4560,7 @@ static int wpa_group_config_group_keys(s
  			     wpa_cipher_to_alg(conf->wpa_group),
  			     broadcast_ether_addr, group->GN,
  			     group->GTK[group->GN - 1], group->GTK_len,
@@ -828,7 +813,7 @@ index e3c8e20..e9f0fa4 100644
  		ret = -1;
  
  	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION) {
-@@ -4501,14 +4574,14 @@ static int wpa_group_config_group_keys(struct wpa_authenticator *wpa_auth,
+@@ -4501,14 +4574,14 @@ static int wpa_group_config_group_keys(s
  		    wpa_auth_set_key(wpa_auth, group->vlan_id, alg,
  				     broadcast_ether_addr, group->GN_igtk,
  				     group->IGTK[group->GN_igtk - 4], len,
@@ -845,7 +830,7 @@ index e3c8e20..e9f0fa4 100644
  			ret = -1;
  	}
  
-@@ -4940,7 +5013,7 @@ int wpa_auth_pmksa_add(struct wpa_state_machine *sm, const u8 *pmk,
+@@ -4940,7 +5013,7 @@ int wpa_auth_pmksa_add(struct wpa_state_
  	wpa_hexdump_key(MSG_DEBUG, "RSN: Cache PMK", pmk, pmk_len);
  	if (pmksa_cache_auth_add(sm->wpa_auth->pmksa, pmk, pmk_len, NULL,
  				 sm->PTK.kck, sm->PTK.kck_len,
@@ -854,8 +839,6 @@ index e3c8e20..e9f0fa4 100644
  				 eapol, sm->wpa_key_mgmt))
  		return 0;
  
-diff --git a/src/ap/wpa_auth.h b/src/ap/wpa_auth.h
-index e8e6a8a..c0d13f6 100644
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
 @@ -287,6 +287,17 @@ typedef enum {
@@ -885,7 +868,7 @@ index e8e6a8a..c0d13f6 100644
  	int (*get_seqnum)(void *ctx, const u8 *addr, int idx, u8 *seq);
  	int (*send_eapol)(void *ctx, const u8 *addr, const u8 *data,
  			  size_t data_len, int encrypt);
-@@ -388,11 +399,12 @@ void wpa_auth_set_ocv(struct wpa_state_machine *sm, int ocv);
+@@ -388,11 +399,12 @@ void wpa_auth_set_ocv(struct wpa_state_m
  int wpa_auth_uses_ocv(struct wpa_state_machine *sm);
  struct wpa_state_machine *
  wpa_auth_sta_init(struct wpa_authenticator *wpa_auth, const u8 *addr,
@@ -911,11 +894,9 @@ index e8e6a8a..c0d13f6 100644
  
  void wpa_auth_sta_radius_psk_resp(struct wpa_state_machine *sm, bool success);
  
-diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
-index 1b1324b..eb7cbfe 100644
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
-@@ -2796,12 +2796,13 @@ static inline int wpa_auth_set_key(struct wpa_authenticator *wpa_auth,
+@@ -2796,12 +2796,13 @@ static inline int wpa_auth_set_key(struc
  				   int vlan_id,
  				   enum wpa_alg alg, const u8 *addr, int idx,
  				   u8 *key, size_t key_len,
@@ -931,7 +912,7 @@ index 1b1324b..eb7cbfe 100644
  }
  
  
-@@ -2860,7 +2861,7 @@ void wpa_ft_install_ptk(struct wpa_state_machine *sm, int retry)
+@@ -2860,7 +2861,7 @@ void wpa_ft_install_ptk(struct wpa_state
  	 * optimized by adding the STA entry earlier.
  	 */
  	if (wpa_auth_set_key(sm->wpa_auth, 0, alg, sm->addr, sm->keyidx_active,
@@ -940,11 +921,9 @@ index 1b1324b..eb7cbfe 100644
  		return;
  
  #ifdef CONFIG_PASN
-diff --git a/src/ap/wpa_auth_glue.c b/src/ap/wpa_auth_glue.c
-index cfa5a0e..2298bc6 100644
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -442,8 +442,7 @@ static int hostapd_wpa_auth_get_msk(void *ctx, const u8 *addr, u8 *msk,
+@@ -442,8 +442,7 @@ static int hostapd_wpa_auth_get_msk(void
  	return 0;
  }
  
@@ -954,7 +933,7 @@ index cfa5a0e..2298bc6 100644
  				    const u8 *addr, int idx, u8 *key,
  				    size_t key_len, enum key_flag key_flag)
  {
-@@ -499,6 +498,46 @@ static int hostapd_wpa_auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
+@@ -499,6 +498,46 @@ static int hostapd_wpa_auth_set_key(void
  #endif /* CONFIG_TESTING_OPTIONS */
  	return hostapd_drv_set_key(ifname, hapd, alg, addr, idx, vlan_id, 1,
  				   NULL, 0, key, key_len, key_flag);
@@ -1001,7 +980,7 @@ index cfa5a0e..2298bc6 100644
  }
  
  
-@@ -1071,7 +1110,9 @@ hostapd_wpa_auth_add_sta(void *ctx, const u8 *sta_addr)
+@@ -1071,7 +1110,9 @@ hostapd_wpa_auth_add_sta(void *ctx, cons
  		return sta->wpa_sm;
  	}
  
@@ -1012,8 +991,6 @@ index cfa5a0e..2298bc6 100644
  	if (sta->wpa_sm == NULL) {
  		ap_free_sta(hapd, sta);
  		return NULL;
-diff --git a/src/ap/wpa_auth_i.h b/src/ap/wpa_auth_i.h
-index 5bd699c..bf2e72d 100644
 --- a/src/ap/wpa_auth_i.h
 +++ b/src/ap/wpa_auth_i.h
 @@ -171,6 +171,9 @@ struct wpa_state_machine {
@@ -1038,11 +1015,9 @@ index 5bd699c..bf2e72d 100644
  };
  
  
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index c8ce9f0..7be64b7 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -6097,7 +6097,9 @@ static int nl80211_tx_control_port(void *priv, const u8 *dest,
+@@ -6097,7 +6097,9 @@ static int nl80211_tx_control_port(void
  	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, dest) ||
  	    nla_put(msg, NL80211_ATTR_FRAME, len, buf) ||
  	    (no_encrypt &&
@@ -1053,11 +1028,9 @@ index c8ce9f0..7be64b7 100644
  		nlmsg_free(msg);
  		return -ENOBUFS;
  	}
-diff --git a/tests/fuzzing/eapol-key-auth/eapol-key-auth.c b/tests/fuzzing/eapol-key-auth/eapol-key-auth.c
-index bb46422..26b2804 100644
 --- a/tests/fuzzing/eapol-key-auth/eapol-key-auth.c
 +++ b/tests/fuzzing/eapol-key-auth/eapol-key-auth.c
-@@ -169,7 +169,8 @@ static void supp_eapol_key_request(void *eloop_data, void *user_ctx)
+@@ -169,7 +169,8 @@ static void supp_eapol_key_request(void
  
  static int auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
  			const u8 *addr, int idx, u8 *key,
@@ -1076,11 +1049,9 @@ index bb46422..26b2804 100644
  	if (!wpa->auth) {
  		wpa_printf(MSG_DEBUG, "AUTH: wpa_auth_sta_init() failed");
  		return -1;
-diff --git a/wpa_supplicant/ibss_rsn.c b/wpa_supplicant/ibss_rsn.c
-index be2ab30..6b2a44b 100644
 --- a/wpa_supplicant/ibss_rsn.c
 +++ b/wpa_supplicant/ibss_rsn.c
-@@ -314,7 +314,7 @@ static int auth_send_eapol(void *ctx, const u8 *addr, const u8 *data,
+@@ -314,7 +314,7 @@ static int auth_send_eapol(void *ctx, co
  
  static int auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
  			const u8 *addr, int idx, u8 *key, size_t key_len,
@@ -1089,7 +1060,7 @@ index be2ab30..6b2a44b 100644
  {
  	struct ibss_rsn *ibss_rsn = ctx;
  	u8 seq[6];
-@@ -471,7 +471,7 @@ static int ibss_rsn_auth_init_group(struct ibss_rsn *ibss_rsn,
+@@ -471,7 +471,7 @@ static int ibss_rsn_auth_init_group(stru
  static int ibss_rsn_auth_init(struct ibss_rsn *ibss_rsn,
  			      struct ibss_rsn_peer *peer)
  {
@@ -1098,11 +1069,9 @@ index be2ab30..6b2a44b 100644
  	if (peer->auth == NULL) {
  		wpa_printf(MSG_DEBUG, "AUTH: wpa_auth_sta_init() failed");
  		return -1;
-diff --git a/wpa_supplicant/mesh_rsn.c b/wpa_supplicant/mesh_rsn.c
-index 65daa77..b65c79c 100644
 --- a/wpa_supplicant/mesh_rsn.c
 +++ b/wpa_supplicant/mesh_rsn.c
-@@ -101,7 +101,7 @@ static const u8 *auth_get_psk(void *ctx, const u8 *addr,
+@@ -101,7 +101,7 @@ static const u8 *auth_get_psk(void *ctx,
  
  static int auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
  			const u8 *addr, int idx, u8 *key, size_t key_len,
@@ -1111,7 +1080,7 @@ index 65daa77..b65c79c 100644
  {
  	struct mesh_rsn *mesh_rsn = ctx;
  	u8 seq[6];
-@@ -374,7 +374,7 @@ int mesh_rsn_auth_sae_sta(struct wpa_supplicant *wpa_s,
+@@ -374,7 +374,7 @@ int mesh_rsn_auth_sae_sta(struct wpa_sup
  	if (pmksa) {
  		if (!sta->wpa_sm)
  			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
@@ -1120,6 +1089,3 @@ index 65daa77..b65c79c 100644
  		if (!sta->wpa_sm) {
  			wpa_printf(MSG_ERROR,
  				   "mesh: Failed to initialize RSN state machine");
--- 
-2.17.1
-

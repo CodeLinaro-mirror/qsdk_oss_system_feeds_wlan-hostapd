@@ -24,11 +24,9 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  wpa_supplicant/sme.c             |   2 +-
  7 files changed, 109 insertions(+), 38 deletions(-)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index f63a17a..93de444 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -564,13 +564,23 @@ static struct wpabuf * auth_build_sae_commit(struct hostapd_data *hapd,
+@@ -564,13 +564,23 @@ static struct wpabuf * auth_build_sae_co
  	int use_pt = 0;
  	struct sae_pt *pt = NULL;
  	const struct sae_pk *pk = NULL;
@@ -54,7 +52,7 @@ index f63a17a..93de444 100644
  #endif /* CONFIG_SAE_PK */
  	}
  
-@@ -589,12 +599,12 @@ static struct wpabuf * auth_build_sae_commit(struct hostapd_data *hapd,
+@@ -589,12 +599,12 @@ static struct wpabuf * auth_build_sae_co
  	}
  
  	if (update && use_pt &&
@@ -69,7 +67,7 @@ index f63a17a..93de444 100644
  			       (u8 *) password, os_strlen(password),
  			       sta->sae) < 0) {
  		wpa_printf(MSG_DEBUG, "SAE: Could not pick PWE");
-@@ -1315,7 +1325,7 @@ static int check_sae_rejected_groups(struct hostapd_data *hapd,
+@@ -1315,7 +1325,7 @@ static int check_sae_rejected_groups(str
  
  
  static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
@@ -78,7 +76,7 @@ index f63a17a..93de444 100644
  			    u16 auth_transaction, u16 status_code)
  {
  	int resp = WLAN_STATUS_SUCCESS;
-@@ -1325,6 +1335,7 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -1325,6 +1335,7 @@ static void handle_auth_sae(struct hosta
  	const u8 *pos, *end;
  	int sta_removed = 0;
  	bool success_status;
@@ -86,7 +84,7 @@ index f63a17a..93de444 100644
  
  	if (!groups)
  		groups = default_groups;
-@@ -1364,6 +1375,7 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -1364,6 +1375,7 @@ static void handle_auth_sae(struct hosta
  			resp = -1;
  			goto remove_sta;
  		}
@@ -94,7 +92,7 @@ index f63a17a..93de444 100644
  		sae_set_state(sta, SAE_NOTHING, "Init");
  		sta->sae->sync = 0;
  	}
-@@ -1481,7 +1493,8 @@ static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -1481,7 +1493,8 @@ static void handle_auth_sae(struct hosta
  					mgmt->u.auth.variable, &token,
  					&token_len, groups, status_code ==
  					WLAN_STATUS_SAE_HASH_TO_ELEMENT ||
@@ -104,7 +102,7 @@ index f63a17a..93de444 100644
  		if (resp == SAE_SILENTLY_DISCARD) {
  			wpa_printf(MSG_DEBUG,
  				   "SAE: Drop commit message from " MACSTR " due to reflection attack",
-@@ -2461,8 +2474,12 @@ static int pasn_wd_handle_sae_commit(struct hostapd_data *hapd,
+@@ -2461,8 +2474,12 @@ static int pasn_wd_handle_sae_commit(str
  		return -1;
  	}
  
@@ -119,7 +117,7 @@ index f63a17a..93de444 100644
  	if (ret) {
  		wpa_printf(MSG_DEBUG, "PASN: Failed to prepare SAE commit");
  		return -1;
-@@ -3664,6 +3681,12 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -3664,6 +3681,12 @@ static void handle_auth(struct hostapd_d
  	};
  	u8 link_addr[6];
  	struct multi_link_data ml_data = {0};
@@ -132,7 +130,7 @@ index f63a17a..93de444 100644
  
  	if (len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth)) {
  		wpa_printf(MSG_INFO, "handle_auth - too short payload (len=%lu)",
-@@ -3671,11 +3694,45 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -3671,11 +3694,45 @@ static void handle_auth(struct hostapd_d
  		return;
  	}
  
@@ -181,7 +179,7 @@ index f63a17a..93de444 100644
  					   &elems, 0) == ParseFailed) {
  			wpa_printf(MSG_DEBUG,
  				   "MLO: Failed to parse auth ies to check mle");
-@@ -3687,10 +3744,13 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -3687,10 +3744,13 @@ static void handle_auth(struct hostapd_d
  		if (ml_data.present) {
  			os_memcpy(link_addr, mgmt->sa, ETH_ALEN);
  			os_memcpy(mgmt->sa, ml_data.u.basic.mld_addr, ETH_ALEN);
@@ -195,7 +193,7 @@ index f63a17a..93de444 100644
  #ifdef CONFIG_TESTING_OPTIONS
  	if (hapd->iconf->ignore_auth_probability > 0.0 &&
  	    drand48() < hapd->iconf->ignore_auth_probability) {
-@@ -3701,12 +3761,6 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -3701,12 +3761,6 @@ static void handle_auth(struct hostapd_d
  	}
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -208,7 +206,7 @@ index f63a17a..93de444 100644
  	if (len >= IEEE80211_HDRLEN + sizeof(mgmt->u.auth) +
  	    2 + WLAN_AUTH_CHALLENGE_LEN &&
  	    mgmt->u.auth.variable[0] == WLAN_EID_CHALLENGE &&
-@@ -3936,17 +3990,16 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -3936,17 +3990,16 @@ static void handle_auth(struct hostapd_d
  			resp = WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA;
  			goto fail;
  		}
@@ -232,19 +230,20 @@ index f63a17a..93de444 100644
  #ifdef CONFIG_MBO
  	sta->auth_rssi = rssi;
  #endif /* CONFIG_MBO */
-@@ -5750,6 +5803,7 @@ static void ap_link_sta_add(struct hostapd_data *hapd, struct sta_info *psta,
+@@ -5822,8 +5875,9 @@ static void ap_link_sta_add(struct hosta
+ 		}
  
  		sta->listen_interval = psta->listen_interval;
- 		sta->aid = psta->aid;
 +		sta->sae = psta->sae;
  		sta->wpa_sm = psta->wpa_sm;
- 
+-
++		
  		link_sta_ies = ml_data->u.basic.link_info[link_id].sta_profile;
-diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index 3155018..418f33f 100644
+ 		link_sta_ies_len = ml_data->u.basic.link_info[link_id].sta_profile_len;
+ 
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -447,8 +447,12 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -447,8 +447,12 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->hs20_session_info_url);
  
  #ifdef CONFIG_SAE
@@ -259,8 +258,6 @@ index 3155018..418f33f 100644
  #endif /* CONFIG_SAE */
  
  	mbo_ap_sta_free(sta);
-diff --git a/src/common/common_module_tests.c b/src/common/common_module_tests.c
-index 8aba713..a95ae36 100644
 --- a/src/common/common_module_tests.c
 +++ b/src/common/common_module_tests.c
 @@ -428,7 +428,7 @@ static int sae_tests(void)
@@ -272,11 +269,9 @@ index 8aba713..a95ae36 100644
  	    sae_process_commit(&sae) < 0)
  		goto fail;
  
-diff --git a/src/common/sae.c b/src/common/sae.c
-index 33c7e5f..dac227a 100644
 --- a/src/common/sae.c
 +++ b/src/common/sae.c
-@@ -1872,15 +1872,16 @@ static void sae_parse_commit_token(struct sae_data *sae, const u8 **pos,
+@@ -1872,15 +1872,16 @@ static void sae_parse_commit_token(struc
  
  
  static void sae_parse_token_container(struct sae_data *sae,
@@ -298,7 +293,7 @@ index 33c7e5f..dac227a 100644
  	wpa_hexdump(MSG_DEBUG, "SAE: Anti-Clogging Token (in container)",
  		    *token, *token_len);
  }
-@@ -2153,10 +2154,14 @@ static int sae_parse_akm_suite_selector(struct sae_data *sae,
+@@ -2153,10 +2154,14 @@ static int sae_parse_akm_suite_selector(
  
  u16 sae_parse_commit(struct sae_data *sae, const u8 *data, size_t len,
  		     const u8 **token, size_t *token_len, int *allowed_groups,
@@ -314,7 +309,7 @@ index 33c7e5f..dac227a 100644
  
  	/* Check Finite Cyclic Group */
  	if (end - pos < 2)
-@@ -2166,8 +2171,13 @@ u16 sae_parse_commit(struct sae_data *sae, const u8 *data, size_t len,
+@@ -2166,8 +2171,13 @@ u16 sae_parse_commit(struct sae_data *sa
  		return res;
  	pos += 2;
  
@@ -328,7 +323,7 @@ index 33c7e5f..dac227a 100644
  
  	/* commit-scalar */
  	res = sae_parse_commit_scalar(sae, &pos, end);
-@@ -2193,7 +2203,7 @@ u16 sae_parse_commit(struct sae_data *sae, const u8 *data, size_t len,
+@@ -2193,7 +2203,7 @@ u16 sae_parse_commit(struct sae_data *sa
  
  	/* Optional Anti-Clogging Token Container element */
  	if (h2e)
@@ -337,7 +332,7 @@ index 33c7e5f..dac227a 100644
  
  	/* Conditional AKM Suite Selector element */
  	if (h2e) {
-@@ -2202,6 +2212,9 @@ u16 sae_parse_commit(struct sae_data *sae, const u8 *data, size_t len,
+@@ -2202,6 +2212,9 @@ u16 sae_parse_commit(struct sae_data *sa
  			return res;
  	}
  
@@ -347,11 +342,9 @@ index 33c7e5f..dac227a 100644
  	if (sae->own_akm_suite_selector &&
  	    sae->own_akm_suite_selector != sae->peer_akm_suite_selector) {
  		wpa_printf(MSG_DEBUG,
-diff --git a/src/common/sae.h b/src/common/sae.h
-index 6a6b0c8..8348668 100644
 --- a/src/common/sae.h
 +++ b/src/common/sae.h
-@@ -136,7 +136,7 @@ int sae_write_commit(struct sae_data *sae, struct wpabuf *buf,
+@@ -136,7 +136,7 @@ int sae_write_commit(struct sae_data *sa
  		     const struct wpabuf *token, const char *identifier);
  u16 sae_parse_commit(struct sae_data *sae, const u8 *data, size_t len,
  		     const u8 **token, size_t *token_len, int *allowed_groups,
@@ -360,11 +353,9 @@ index 6a6b0c8..8348668 100644
  int sae_write_confirm(struct sae_data *sae, struct wpabuf *buf);
  int sae_check_confirm(struct sae_data *sae, const u8 *data, size_t len);
  u16 sae_group_allowed(struct sae_data *sae, int *allowed_groups, u16 group);
-diff --git a/tests/fuzzing/sae/sae.c b/tests/fuzzing/sae/sae.c
-index 8819a4a..74faeed 100644
 --- a/tests/fuzzing/sae/sae.c
 +++ b/tests/fuzzing/sae/sae.c
-@@ -27,10 +27,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+@@ -27,10 +27,10 @@ int LLVMFuzzerTestOneInput(const uint8_t
  		return 0;
  
  	os_memset(&sae, 0, sizeof(sae));
@@ -377,11 +368,9 @@ index 8819a4a..74faeed 100644
  	wpa_printf(MSG_DEBUG, "sae_parse_commit(1): %u", res);
  	sae_clear_data(&sae);
  	os_program_deinit();
-diff --git a/wpa_supplicant/sme.c b/wpa_supplicant/sme.c
-index 9e39a40..19e07df 100644
 --- a/wpa_supplicant/sme.c
 +++ b/wpa_supplicant/sme.c
-@@ -1419,7 +1419,7 @@ static int sme_sae_auth(struct wpa_supplicant *wpa_s, u16 auth_transaction,
+@@ -1419,7 +1419,7 @@ static int sme_sae_auth(struct wpa_suppl
  		res = sae_parse_commit(&wpa_s->sme.sae, data, len, NULL, NULL,
  				       groups, status_code ==
  				       WLAN_STATUS_SAE_HASH_TO_ELEMENT ||
@@ -390,6 +379,3 @@ index 9e39a40..19e07df 100644
  		if (res == SAE_SILENTLY_DISCARD) {
  			wpa_printf(MSG_DEBUG,
  				   "SAE: Drop commit message due to reflection attack");
--- 
-2.17.1
-

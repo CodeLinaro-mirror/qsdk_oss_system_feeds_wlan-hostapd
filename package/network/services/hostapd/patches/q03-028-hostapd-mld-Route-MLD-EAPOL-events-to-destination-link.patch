@@ -24,11 +24,9 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  src/ap/sta_info.h      |  3 ++-
  5 files changed, 33 insertions(+), 28 deletions(-)
 
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index 4ce2744..6764ac8 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1598,6 +1598,16 @@ static void hostapd_event_eapol_rx(struct hostapd_data *hapd, const u8 *src,
+@@ -1598,6 +1598,16 @@ static void hostapd_event_eapol_rx(struc
  		}
  	}
  
@@ -45,11 +43,9 @@ index 4ce2744..6764ac8 100644
  	ieee802_1x_receive(hapd, src, data, data_len, encrypted);
  }
  
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 7aac8f9..a00d7ce 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7498,8 +7498,13 @@ void hostapd_eapol_tx_status(struct hostapd_data *hapd, const u8 *dst,
+@@ -7601,8 +7601,13 @@ void hostapd_eapol_tx_status(struct host
  
  	sta = ap_get_sta(hapd, dst);
  	if (!sta && hapd->mld) {
@@ -65,7 +61,7 @@ index 7aac8f9..a00d7ce 100644
  	}
  
  	if (sta == NULL && iface->num_bss > 1) {
-@@ -7556,10 +7561,6 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
+@@ -7659,10 +7664,6 @@ void ieee802_11_rx_from_unknown(struct h
  	struct sta_info *sta;
  
  	sta = ap_get_sta(hapd, src);
@@ -76,11 +72,9 @@ index 7aac8f9..a00d7ce 100644
  
  	if (sta &&
  	    ((sta->flags & WLAN_STA_ASSOC) ||
-diff --git a/src/ap/ieee802_1x.c b/src/ap/ieee802_1x.c
-index 9b14e14..b1621d5 100644
 --- a/src/ap/ieee802_1x.c
 +++ b/src/ap/ieee802_1x.c
-@@ -1079,10 +1079,6 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
+@@ -1079,10 +1079,6 @@ void ieee802_1x_receive(struct hostapd_d
  		   " (encrypted=%d)",
  		   (unsigned long) len, MAC2STR(sa), encrypted);
  	sta = ap_get_sta(hapd, sa);
@@ -91,11 +85,9 @@ index 9b14e14..b1621d5 100644
  
  	if (!sta || (!(sta->flags & (WLAN_STA_ASSOC | WLAN_STA_PREAUTH)) &&
  		     !(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_WIRED))) {
-diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index cea2846..e5c38e5 100644
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -187,30 +187,27 @@ void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -187,30 +187,27 @@ void ap_free_sta_pasn(struct hostapd_dat
  
  #endif /* CONFIG_PASN */
  
@@ -112,13 +104,14 @@ index cea2846..e5c38e5 100644
 -	}
 +	if (!mld || !sta_addr)
 +		return sta;
++
++	link_hapd = mld->bss;
  
 -	for (sta = ml_sta->linksta; sta != NULL; sta = sta->lnext)
 -		if (os_memcmp(sta->addr, sta_addr, ETH_ALEN) == 0) {
 -			return sta;
 -		}
-+	link_hapd = mld->bss;
- 
+-
 -	if (sta == NULL) {
 -		wpa_printf(MSG_ERROR,
 -				"ERROR!! %s: STA with MLD "MACSTR
@@ -140,20 +133,15 @@ index cea2846..e5c38e5 100644
  	return sta;
  }
  
-diff --git a/src/ap/sta_info.h b/src/ap/sta_info.h
-index c69daff..9e2a5a1 100644
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -466,7 +466,8 @@ int set_for_each_partner_link_sta(struct hostapd_data *hapd,
- 				   int (*cb)(struct hostapd_data *hapd,
- 					      struct sta_info *sta,
- 					      void *data));
+@@ -477,7 +477,8 @@ int set_for_each_partner_link_sta(struct
+ 				  int (*cb)(struct hostapd_data *hapd,
+ 					    struct sta_info *sta,
+ 					    void *data));
 -struct sta_info *ap_get_mlo_sta(struct hostapd_data *hapd, const u8 *sta_addr);
 +struct sta_info *hapd_get_sta_from_mld(struct hostapd_mld *mld,
 +				       const u8 *sta_addr);
  void set_partner_sta_flags(struct hostapd_data *hapd,
  			   struct sta_info *psta,
  			   u32 flags);
--- 
-2.17.1
-
