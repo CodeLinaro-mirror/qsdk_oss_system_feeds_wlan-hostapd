@@ -14,11 +14,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/common/ieee802_11_common.h |  2 +-
  4 files changed, 40 insertions(+), 6 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 1e583c7..a4672a0 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1598,6 +1598,10 @@ void handle_probe_req(struct hostapd_data *hapd,
+@@ -1598,6 +1598,10 @@ void handle_probe_req(struct hostapd_dat
  				      elems.mbssid_known_bss,
  				      elems.mbssid_known_bss_len,
  				      &ml_data, true);
@@ -29,11 +27,9 @@ index 1e583c7..a4672a0 100644
  	if (resp == NULL)
  		return;
  
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 6747ed9..0af24dc 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3684,6 +3684,7 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -3684,6 +3684,7 @@ static void handle_auth(struct hostapd_d
  		if (ml_data.present) {
  			os_memcpy(link_addr, mgmt->sa, ETH_ALEN);
  			os_memcpy(mgmt->sa, ml_data.u.basic.mld_addr, ETH_ALEN);
@@ -41,7 +37,7 @@ index 6747ed9..0af24dc 100644
  		}
  	}
  
-@@ -6317,6 +6318,8 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -6317,6 +6318,8 @@ static void handle_assoc(struct hostapd_
  			   "FILS: Continue waiting for HLP processing before sending (Re)Association Response frame to "
  			   MACSTR, MAC2STR(sta->addr));
  		os_free(tmp);
@@ -50,7 +46,7 @@ index 6747ed9..0af24dc 100644
  		return;
  	}
  	if (sta) {
-@@ -6338,6 +6341,8 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -6338,6 +6341,8 @@ static void handle_assoc(struct hostapd_
  		eloop_cancel_timeout(fils_hlp_timeout, hapd, sta);
  		eloop_register_timeout(0, hapd->conf->fils_hlp_wait_time * 1024,
  				       fils_hlp_timeout, hapd, sta);
@@ -59,7 +55,7 @@ index 6747ed9..0af24dc 100644
  		return;
  	}
  #endif /* CONFIG_FILS */
-@@ -6346,6 +6351,9 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -6346,6 +6351,9 @@ static void handle_assoc(struct hostapd_
  		reply_res = send_assoc_resp(hapd, sta, mgmt->sa, resp, reassoc,
  					    pos, left, rssi, omit_rsnxe, &ml_data);
  
@@ -69,7 +65,19 @@ index 6747ed9..0af24dc 100644
  	os_free(tmp);
  
  	if (hostapd_ubus_handle_event(hapd, &req)) {
-@@ -8683,7 +8691,7 @@ static void hostapd_parse_probe_req_mle(struct hostapd_data *hapd,
+@@ -8624,8 +8632,10 @@ static void hostapd_parse_probe_req_mle(
+ 	u8 *mle_pos = (u8 *)mle;
+ 	u8 *sta_profile_start, sta_profile_len, link_id;
+ 
+-	if (!len)
++	if (!len) {
++		ml_data->present = false;
+ 		return;
++	}
+ 
+ 	cmn_info_len = *mle_pos;
+ 
+@@ -8683,7 +8693,7 @@ static void hostapd_parse_probe_req_mle(
  }
  
  static void hostapd_parse_basic_mle(struct hostapd_data *hapd,
@@ -78,7 +86,7 @@ index 6747ed9..0af24dc 100644
  				    struct multi_link_data *ml_data)
  {
  	u8 *mle_pos = (u8 *)mle;
-@@ -8786,19 +8794,33 @@ void hostapd_parse_mle(struct hostapd_data *hapd, u32 type,
+@@ -8786,19 +8796,33 @@ void hostapd_parse_mle(struct hostapd_da
  		       struct multi_link_data *ml_data)
  {
  	const u8 *mle;
@@ -116,7 +124,18 @@ index 6747ed9..0af24dc 100644
  
  	os_memcpy(&ml_data->control, mle, sizeof(struct multi_link_control));
  
-@@ -8816,6 +8838,7 @@ void hostapd_parse_mle(struct hostapd_data *hapd, u32 type,
+@@ -8808,6 +8832,10 @@ void hostapd_parse_mle(struct hostapd_da
+ 	if (ml_data->control.type == MULTI_LINK_PROBE_REQ &&
+ 	    type == WLAN_FC_STYPE_PROBE_REQ) {
+ 		hostapd_parse_probe_req_mle(hapd, mle, len, ml_data);
++
++		/* If the ML probe req was invalid, free the buf*/
++		if (ml_data->present == false)
++			wpabuf_free(mle_buf);
+ 		return;
+ 	}
+ 
+@@ -8816,6 +8844,7 @@ void hostapd_parse_mle(struct hostapd_da
  		if (*mle++ != ETH_ALEN + 1 || ml_data->control.presence) {
  			wpa_printf(MSG_ERROR, "Unexpected info present in AUTH basic MLE");
  			ml_data->present = false;
@@ -124,7 +143,7 @@ index 6747ed9..0af24dc 100644
  			return;
  		}
  		memcpy(ml_data->u.basic.mld_addr, mle, ETH_ALEN);
-@@ -8825,6 +8848,7 @@ void hostapd_parse_mle(struct hostapd_data *hapd, u32 type,
+@@ -8825,6 +8854,7 @@ void hostapd_parse_mle(struct hostapd_da
  	if (type != WLAN_FC_STYPE_ASSOC_REQ &&
  	    type != WLAN_FC_STYPE_REASSOC_REQ) {
  		ml_data->present = false;
@@ -132,7 +151,7 @@ index 6747ed9..0af24dc 100644
  		return;
  	}
  
-@@ -8832,10 +8856,12 @@ void hostapd_parse_mle(struct hostapd_data *hapd, u32 type,
+@@ -8832,10 +8862,12 @@ void hostapd_parse_mle(struct hostapd_da
  	    MLE_MEDIUM_SYNC_DELAY_PRESENT)) {
  		wpa_printf(MSG_ERROR, "Unexpected info present in (Re)Assoc Req MLE");
  		ml_data->present = false;
@@ -145,11 +164,9 @@ index 6747ed9..0af24dc 100644
  }
  
  static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index b4f38e6..c8ff3c9 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -2854,6 +2854,10 @@ struct wpabuf * ieee802_11_defrag(struct ieee802_11_elems *elems,
+@@ -2854,6 +2854,10 @@ struct wpabuf * ieee802_11_defrag(struct
  			data = elems->wrapped_data;
  			len = elems->wrapped_data_len;
  			break;
@@ -160,8 +177,6 @@ index b4f38e6..c8ff3c9 100644
  		default:
  			wpa_printf(MSG_DEBUG,
  				   "Defragmentation not supported. eid_ext=%u",
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index b3e3dce..4845a7d 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
 @@ -107,7 +107,7 @@ struct multi_link_data {
@@ -173,6 +188,3 @@ index b3e3dce..4845a7d 100644
  	struct multi_link_control control;
  
  	union {
--- 
-2.17.1
-
