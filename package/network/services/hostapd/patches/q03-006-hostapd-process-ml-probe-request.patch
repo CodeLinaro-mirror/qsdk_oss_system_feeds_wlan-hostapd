@@ -19,8 +19,6 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/common/ieee802_11_defs.h   |  21 +++
  6 files changed, 511 insertions(+), 14 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 67fc882..93fcaad 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
 @@ -34,6 +34,13 @@
@@ -37,7 +35,7 @@ index 67fc882..93fcaad 100644
  #ifdef NEED_AP_MLME
  
  static u8 * hostapd_eid_bss_load(struct hostapd_data *hapd, u8 *eid, size_t len)
-@@ -595,11 +602,240 @@ static u8 * hostapd_ext_capab_mbssid(struct hostapd_data *hapd, u8 *eid,
+@@ -595,11 +602,240 @@ static u8 * hostapd_ext_capab_mbssid(str
  	return eid;
  }
  
@@ -279,7 +277,7 @@ index 67fc882..93fcaad 100644
  {
  	struct ieee80211_mgmt *resp;
  	u8 *pos, *epos, *csa_pos, *ext_cap_pos;
-@@ -654,8 +890,9 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -654,8 +890,9 @@ static u8 * hostapd_gen_probe_resp(struc
  		buflen += 3 + sizeof(struct ieee80211_eht_operation);
  		if (hapd->iconf->ru_punct_bitmap)
  			buflen +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
@@ -291,7 +289,7 @@ index 67fc882..93fcaad 100644
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -815,9 +1052,10 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -815,9 +1052,10 @@ static u8 * hostapd_gen_probe_resp(struc
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
  		pos = hostapd_eid_eht_operation(hapd, pos, IEEE80211_MODE_AP);
@@ -305,7 +303,7 @@ index 67fc882..93fcaad 100644
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -1328,7 +1566,7 @@ void handle_probe_req(struct hostapd_data *hapd,
+@@ -1328,7 +1566,7 @@ void handle_probe_req(struct hostapd_dat
  		return;
  
  	if (elems.mle)
@@ -314,7 +312,7 @@ index 67fc882..93fcaad 100644
  				  &elems, &ml_data);
  
  	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
-@@ -1338,7 +1576,7 @@ void handle_probe_req(struct hostapd_data *hapd,
+@@ -1338,7 +1576,7 @@ void handle_probe_req(struct hostapd_dat
  				      &resp_len,
  				      elems.mbssid_known_bss,
  				      elems.mbssid_known_bss_len,
@@ -323,7 +321,7 @@ index 67fc882..93fcaad 100644
  	if (resp == NULL)
  		return;
  
-@@ -1409,7 +1647,7 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
+@@ -1409,7 +1647,7 @@ static u8 * hostapd_probe_resp_offloads(
  
  	/* Generate a Probe Response template for the non-P2P case */
  	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len,
@@ -332,7 +330,7 @@ index 67fc882..93fcaad 100644
  }
  #endif /* NEED_AP_MLME */
  
-@@ -1427,7 +1665,7 @@ static u8 * hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
+@@ -1427,7 +1665,7 @@ static u8 * hostapd_unsol_bcast_probe_re
  
  	return hostapd_gen_probe_resp(hapd, NULL, 0,
  				      &params->unsol_bcast_probe_resp_tmpl_len,
@@ -341,7 +339,7 @@ index 67fc882..93fcaad 100644
  }
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2273,6 +2511,9 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+@@ -2273,6 +2511,9 @@ int ieee802_11_set_beacon(struct hostapd
  		}
  	}
  
@@ -351,11 +349,9 @@ index 67fc882..93fcaad 100644
  	return 0;
  }
  
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 3bef523..cf21d52 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -382,6 +382,28 @@ static int hostapd_broadcast_wep_set(struct hostapd_data *hapd)
+@@ -385,6 +385,28 @@ static int hostapd_broadcast_wep_set(str
  #endif /* CONFIG_WEP */
  
  
@@ -384,19 +380,23 @@ index 3bef523..cf21d52 100644
  void hostapd_free_hapd_data(struct hostapd_data *hapd)
  {
  	os_free(hapd->probereq_cb);
-@@ -494,6 +516,10 @@ void hostapd_free_hapd_data(struct hostapd_data *hapd)
- #ifdef CONFIG_IEEE80211AX
- 	eloop_cancel_timeout(hostapd_switch_color_timeout_handler, hapd, NULL);
- #endif /* CONFIG_IEEE80211AX */
-+
-+	hostapd_free_per_sta_profiles(hapd);
-+
-+	hapd->mld = NULL;
- }
+@@ -2733,6 +2755,8 @@ void hostapd_mld_unlink_bss(struct hosta
+ 	if (!tbss || !tbss->mld)
+ 		return;
  
++	hostapd_free_per_sta_profiles(tbss);
++
+ 	bss = tbss->mld->bss;
  
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index 3771ca8..efe86b8 100644
+ 	if (bss == tbss) {
+@@ -2752,6 +2776,7 @@ void hostapd_mld_unlink_bss(struct hosta
+ 
+ unlink:
+ 	tbss->mld->num_links--;
++
+ 	if (!tbss->mld->num_links) {
+ 		hostapd_remove_mld(tbss);
+ 	}
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -27,6 +27,8 @@
@@ -429,11 +429,9 @@ index 3771ca8..efe86b8 100644
  };
  
  
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index fce40d7..1452529 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8012,6 +8012,107 @@ u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
+@@ -8012,6 +8012,107 @@ u8 * hostapd_eid_rnr(struct hostapd_data
  }
  
  
@@ -541,7 +539,7 @@ index fce40d7..1452529 100644
  size_t hostapd_eid_basic_mle_len(struct hostapd_data *hapd, u32 type,
  				 struct multi_link_data *ml_data)
  {
-@@ -8035,7 +8136,10 @@ size_t hostapd_eid_basic_mle_len(struct hostapd_data *hapd, u32 type,
+@@ -8035,7 +8136,10 @@ size_t hostapd_eid_basic_mle_len(struct
  		return total_len;
  	}
  
@@ -553,7 +551,7 @@ index fce40d7..1452529 100644
  	return total_len;
  }
  
-@@ -8093,19 +8197,91 @@ u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid, u32 type,
+@@ -8093,19 +8197,91 @@ u8 * hostapd_eid_basic_mle(struct hostap
  		return eid;
  	}
  
@@ -647,7 +645,7 @@ index fce40d7..1452529 100644
  		return;
  
  	ml_data->present = true;
-@@ -8114,7 +8290,10 @@ void hostapd_parse_mle(struct hostapd_data *hapd, u32 type,
+@@ -8114,7 +8290,10 @@ void hostapd_parse_mle(struct hostapd_da
  
  	os_memcpy(&ml_data->control, mle, sizeof(struct multi_link_control));
  
@@ -659,8 +657,6 @@ index fce40d7..1452529 100644
  }
  
  static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index ee191b9..797ff6e 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
 @@ -47,6 +47,8 @@ struct frag_ies_info {
@@ -704,8 +700,6 @@ index ee191b9..797ff6e 100644
  	/* TODO Common and type specific data */
  };
  
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 2248e2e..9f1b7f6 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -501,6 +501,7 @@
@@ -716,7 +710,7 @@ index 2248e2e..9f1b7f6 100644
  
  /* Extended Capabilities field */
  #define WLAN_EXT_CAPAB_20_40_COEX 0
-@@ -2464,8 +2465,28 @@ struct ieee80211_he_mu_edca_parameter_set {
+@@ -2464,8 +2465,28 @@ struct ieee80211_he_mu_edca_parameter_se
  #define MLE_EML_CAP_PRESENT			BIT(3)
  #define MLE_MLD_CAP_PRESENT			BIT(4)
  
@@ -745,6 +739,3 @@ index 2248e2e..9f1b7f6 100644
  /* IEEE P802.11be/D2.0, 9.4.2.311 - EHT Operation element */
  
  /* Figure 9-1002b: EHT Operation Parameters field subfields */
--- 
-2.17.1
-
