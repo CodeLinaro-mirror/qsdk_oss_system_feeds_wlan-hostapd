@@ -27,11 +27,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/drivers/driver_nl80211_event.c | 76 +++++++++++++++++++++++++++---
  3 files changed, 121 insertions(+), 37 deletions(-)
 
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index cf21d52..ef8b771 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1662,6 +1662,37 @@ void hostapd_channel_list_updated(struct hostapd_iface *iface, int initiator)
+@@ -1662,6 +1662,37 @@ void hostapd_channel_list_updated(struct
  	setup_interface2(iface);
  }
  
@@ -69,7 +67,7 @@ index cf21d52..ef8b771 100644
  
  static int setup_interface(struct hostapd_iface *iface)
  {
-@@ -1694,6 +1725,21 @@ static int setup_interface(struct hostapd_iface *iface)
+@@ -1694,6 +1725,21 @@ static int setup_interface(struct hostap
  		iface->bss[i]->drv_priv = hapd->drv_priv;
  	}
  
@@ -91,7 +89,7 @@ index cf21d52..ef8b771 100644
  	if (hostapd_validate_bssid_configuration(iface))
  		return -1;
  
-@@ -2167,19 +2213,6 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+@@ -2167,19 +2213,6 @@ static int hostapd_setup_interface_compl
  	hostapd_ubus_add_iface(iface);
  	wpa_printf(MSG_DEBUG, "Completing interface initialization");
  
@@ -111,7 +109,7 @@ index cf21d52..ef8b771 100644
  	if (iface->freq) {
  #ifdef NEED_AP_MLME
  		int res;
-@@ -2507,21 +2540,15 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
+@@ -2507,21 +2540,15 @@ int hostapd_setup_interface_complete(str
  	/* Once all link bss of the ifaces are setup, now start each beacon and chain these bsses*/
  #ifdef CONFIG_IEEE80211BE
  	for (i = 0; i < interfaces->mld_count; i++) {
@@ -138,11 +136,9 @@ index cf21d52..ef8b771 100644
  			}
  		}
  	}
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 6d977d7..29d27fd 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -8238,13 +8238,6 @@ static void i802_chain_link_bss(void *priv_bss1, void *priv_bss2)
+@@ -8239,13 +8239,6 @@ static void i802_chain_link_bss(void *pr
  		return;
  	}
  
@@ -156,11 +152,9 @@ index 6d977d7..29d27fd 100644
  	if (os_memcmp(bss1->ifname, bss2->ifname, IFNAMSIZ + 1)) {
  		wpa_printf(MSG_WARNING,
  			   "nl80211: Failed to chain bss(%s and %s) due to mismatch in ifname",
-diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index 0d83b11..60d1f80 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -27,6 +27,9 @@ nl80211_control_port_frame_tx_status(struct wpa_driver_nl80211_data *drv,
+@@ -27,6 +27,9 @@ nl80211_control_port_frame_tx_status(str
  				     struct nlattr *ack, struct nlattr *cookie);
  
  
@@ -170,7 +164,7 @@ index 0d83b11..60d1f80 100644
  static const char * nl80211_command_to_string(enum nl80211_commands cmd)
  {
  #define C2S(x) case x: return #x;
-@@ -918,7 +921,7 @@ static struct i802_bss *mlme_route_mgmt_by_addr(struct i802_bss *bss, u8 *addr)
+@@ -918,7 +921,7 @@ static struct i802_bss *mlme_route_mgmt_
  
  	while (new_bss != bss) {
  		if (!os_memcmp(new_bss->addr, addr, ETH_ALEN) == 0) {
@@ -179,7 +173,7 @@ index 0d83b11..60d1f80 100644
  			continue;
  		}
  
-@@ -942,7 +945,7 @@ static struct i802_bss *mlme_route_mgmt_by_freq(struct i802_bss *bss, int freq)
+@@ -942,7 +945,7 @@ static struct i802_bss *mlme_route_mgmt_
  
  	while (new_bss != bss) {
  		if (new_bss->freq != freq) {
@@ -188,7 +182,7 @@ index 0d83b11..60d1f80 100644
  			continue;
  		}
  		wpa_printf(MSG_DEBUG,
-@@ -3320,15 +3323,70 @@ nl80211_color_change_announcement_completed(struct wpa_driver_nl80211_data *drv)
+@@ -3324,15 +3327,75 @@ nl80211_color_change_announcement_comple
  
  #endif /* CONFIG_IEEE80211AX */
  
@@ -206,6 +200,11 @@ index 0d83b11..60d1f80 100644
 +	case NL80211_CMD_SCHED_SCAN_RESULTS:
 +	case NL80211_CMD_SCAN_ABORTED:
 +	case NL80211_CMD_REG_CHANGE:
++	case NL80211_CMD_RADAR_DETECT:
++		/* It is safe to route RADAR_DETECT command since in the
++		 * corresponding event handler, appropriate check is in place
++		 * whether the event is applicable for that BSS or not
++		 */
 +	case NL80211_CMD_WIPHY_REG_CHANGE:
 +		/* These commands are passed to each bss of the MLD */
 +		return true;
@@ -213,7 +212,7 @@ index 0d83b11..60d1f80 100644
 +		/* TODO Either handle routing for this command
 +		 * insider the default bss handler or return
 +		 * without any action based on NL attrs for
-+		 * unrelated bss. Ex. AWGN/RADAR events needs
++		 * unrelated bss. Ex. AWGN events needs
 +		 * to be handled only by corresponding bss which
 +		 * supports 6GHz/5GHz respectively.
 +		 */
@@ -262,7 +261,7 @@ index 0d83b11..60d1f80 100644
  
  #ifdef CONFIG_DRIVER_NL80211_QCA
  	if (cmd == NL80211_CMD_ROAM &&
-@@ -3598,6 +3656,12 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
+@@ -3602,6 +3665,12 @@ static void do_process_drv_event(struct
  			"(cmd=%d)", cmd);
  		break;
  	}
@@ -275,7 +274,7 @@ index 0d83b11..60d1f80 100644
  }
  
  
-@@ -3636,7 +3700,7 @@ int process_global_event(struct nl_msg *msg, void *arg)
+@@ -3640,7 +3709,7 @@ int process_global_event(struct nl_msg *
  			    (wiphy_idx_set && wiphy_idx == wiphy_idx_rx) ||
  			    (wdev_id_set && bss->wdev_id_set &&
  			     wdev_id == bss->wdev_id)) {
@@ -284,6 +283,3 @@ index 0d83b11..60d1f80 100644
  				return NL_SKIP;
  			}
  		}
--- 
-2.17.1
-
