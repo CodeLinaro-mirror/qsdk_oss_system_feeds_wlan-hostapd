@@ -165,7 +165,17 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	unsigned int logger_syslog; /* module bitfield */
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2045,6 +2045,45 @@ static void hostapd_owe_update_trans(str
+@@ -71,6 +71,9 @@ static void hostapd_switch_color_timeout
+ 						 void *user_ctx);
+ #endif /* CONFIG_IEEE80211AX */
+ 
++#ifdef CONFIG_IEEE80211BE
++void hostapd_mld_unlink_bss(struct hostapd_data *tbss);
++#endif
+ 
+ int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
+ 			       int (*cb)(struct hostapd_iface *iface,
+@@ -2048,6 +2051,45 @@ static void hostapd_owe_update_trans(str
  #endif /* CONFIG_OWE */
  }
  
@@ -211,7 +221,18 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  
  static void hostapd_interface_setup_failure_handler(void *eloop_ctx,
  						    void *timeout_ctx)
-@@ -2528,7 +2567,126 @@ void hostapd_interface_deinit(struct hos
+@@ -2487,6 +2529,10 @@ static void hostapd_bss_deinit(struct ho
+ 		return;
+ 	wpa_printf(MSG_DEBUG, "%s: deinit bss %s", __func__,
+ 		   hapd->conf ? hapd->conf->iface : "N/A");
++#ifdef CONFIG_IEEE80211BE
++	if (hapd->mld)
++		hostapd_mld_unlink_bss(hapd);
++#endif
+ 	hostapd_bss_deinit_no_free(hapd);
+ 	wpa_msg(hapd->msg_ctx, MSG_INFO, AP_EVENT_DISABLED);
+ #ifdef CONFIG_SQLITE
+@@ -2531,7 +2577,126 @@ void hostapd_interface_deinit(struct hos
  #endif /* NEED_AP_MLME */
  }
  
@@ -273,7 +294,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
 +		return;
 +
 +	hostapd_free_mld(interfaces->mld, idx, interfaces->mld_count);
-+
+ 
 +	if (interfaces->mld_count <= 0) {
 +		/* Note: number of mld in interfaces cannot be 0
 +			or less at this point, because this function
@@ -308,7 +329,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
 +
 +	if (!tbss || !tbss->mld)
 +		return;
- 
++
 +	bss = tbss->mld->bss;
 +
 +	if (bss == tbss) {
@@ -338,19 +359,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  void hostapd_interface_free(struct hostapd_iface *iface)
  {
  	size_t j;
-@@ -2538,6 +2696,11 @@ void hostapd_interface_free(struct hosta
- 			break;
- 		wpa_printf(MSG_DEBUG, "%s: free hapd %p",
- 			   __func__, iface->bss[j]);
-+#ifdef CONFIG_IEEE80211BE
-+		if(iface->bss[j]->mld) {
-+			hostapd_mld_unlink_bss(iface->bss[j]);
-+		}
-+#endif
- 		os_free(iface->bss[j]);
- 	}
- 	hostapd_cleanup_iface(iface);
-@@ -2572,7 +2735,12 @@ struct hostapd_iface * hostapd_init(stru
+@@ -2575,7 +2740,12 @@ struct hostapd_iface * hostapd_init(stru
  {
  	struct hostapd_iface *hapd_iface = NULL;
  	struct hostapd_config *conf = NULL;
@@ -364,7 +373,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	size_t i;
  
  	hapd_iface = hostapd_alloc_iface();
-@@ -2601,6 +2769,55 @@ struct hostapd_iface * hostapd_init(stru
+@@ -2604,6 +2774,55 @@ struct hostapd_iface * hostapd_init(stru
  		if (hapd == NULL)
  			goto fail;
  		hapd->msg_ctx = hapd;
@@ -420,7 +429,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	}
  
  	return hapd_iface;
-@@ -2617,6 +2834,14 @@ fail:
+@@ -2620,6 +2839,14 @@ fail:
  			   __func__, hapd_iface);
  		os_free(hapd_iface);
  	}
