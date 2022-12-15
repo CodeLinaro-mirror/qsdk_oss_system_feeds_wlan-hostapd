@@ -1,0 +1,146 @@
+From 5245ff61752eef218d974d0272dc15b97bc40f42 Mon Sep 17 00:00:00 2001
+From: Lorenzo Bianconi <lorenzo@kernel.org>
+Date: Sun, 6 Mar 2022 20:34:10 +0100
+Subject: [PATCH 4/9] DFS: Rely on channel_type in dfs_downgrade_bandwidth()
+
+Add the capability to specify all 3 channel type possibilities in
+dfs_downgrade_bandwidth(). This is a preliminary change to introduce
+radar/CAC background detection support.
+
+Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
+---
+ src/ap/dfs.c | 34 ++++++++++++++++------------------
+ 1 file changed, 16 insertions(+), 18 deletions(-)
+
+diff --git a/src/ap/dfs.c b/src/ap/dfs.c
+index 86b28aa..fe13481 100644
+--- a/src/ap/dfs.c
++++ b/src/ap/dfs.c
+@@ -1068,7 +1068,8 @@ int hostapd_dfs_pre_cac_expired(struct hostapd_iface *iface, int freq,
+ static struct hostapd_channel_data *
+ dfs_downgrade_bandwidth(struct hostapd_iface *iface, int *secondary_channel,
+ 			u8 *oper_centr_freq_seg0_idx,
+-			u8 *oper_centr_freq_seg1_idx, int *skip_radar)
++			u8 *oper_centr_freq_seg1_idx,
++			enum dfs_channel_type *channel_type)
+ {
+ 	struct hostapd_channel_data *channel;
+ 	int oper_chwidth;
+@@ -1077,16 +1078,15 @@ dfs_downgrade_bandwidth(struct hostapd_iface *iface, int *secondary_channel,
+ 		channel = dfs_get_valid_channel(iface, secondary_channel,
+ 						oper_centr_freq_seg0_idx,
+ 						oper_centr_freq_seg1_idx,
+-						*skip_radar ? DFS_AVAILABLE :
+-						DFS_ANY_CHANNEL);
++						*channel_type);
+ 		if (channel) {
+ 			wpa_printf(MSG_DEBUG, "DFS: Selected channel: %d",
+ 				   channel->chan);
+ 			return channel;
+ 		}
+ 
+-		if (*skip_radar) {
+-			*skip_radar = 0;
++		if (*channel_type != DFS_ANY_CHANNEL) {
++			*channel_type = DFS_ANY_CHANNEL;
+ 		} else {
+ 
+ 			oper_chwidth = hostapd_get_oper_chwidth(iface->conf);
+@@ -1096,14 +1096,14 @@ dfs_downgrade_bandwidth(struct hostapd_iface *iface, int *secondary_channel,
+ 				    !iface->conf->secondary_channel)
+ 					break;
+ 				iface->conf->secondary_channel = 0;
+-				*skip_radar = 1;
++				*channel_type = DFS_AVAILABLE;
+ 				continue;
+ 			} else if (oper_chwidth == CHANWIDTH_320MHZ) {
+ 				oper_chwidth = oper_chwidth - 7;
+ 			} else {
+ 				oper_chwidth = oper_chwidth - 1;
+ 			}
+-			*skip_radar = 1;
++			*channel_type = DFS_AVAILABLE;
+ 			hostapd_set_oper_chwidth(iface->conf, oper_chwidth);
+ 		}
+ 	}
+@@ -1121,7 +1121,7 @@ static int hostapd_dfs_start_channel_switch_cac(struct hostapd_iface *iface)
+ 	int secondary_channel;
+ 	u8 oper_centr_freq_seg0_idx = 0;
+ 	u8 oper_centr_freq_seg1_idx = 0;
+-	int skip_radar = 0;
++	enum dfs_channel_type channel_type = DFS_ANY_CHANNEL;
+ 	int err = 1;
+ 
+ 	/* Radar detected during active CAC */
+@@ -1129,14 +1129,13 @@ static int hostapd_dfs_start_channel_switch_cac(struct hostapd_iface *iface)
+ 	channel = dfs_get_valid_channel(iface, &secondary_channel,
+ 					&oper_centr_freq_seg0_idx,
+ 					&oper_centr_freq_seg1_idx,
+-					skip_radar ? DFS_AVAILABLE :
+-					DFS_ANY_CHANNEL);
++					channel_type);
+ 
+ 	if (!channel) {
+ 		channel = dfs_downgrade_bandwidth(iface, &secondary_channel,
+ 						  &oper_centr_freq_seg0_idx,
+ 						  &oper_centr_freq_seg1_idx,
+-						  &skip_radar);
++						  &channel_type);
+ 		if (!channel) {
+ 			wpa_printf(MSG_ERROR, "No valid channel available");
+ 			return err;
+@@ -1257,7 +1256,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+ 	u8 oper_centr_freq_seg0_idx;
+ 	u8 oper_centr_freq_seg1_idx;
+ 	u8 new_vht_oper_chwidth;
+-	int skip_radar = 1;
++	enum dfs_channel_type channel_type = DFS_AVAILABLE;
+ 	struct csa_settings csa_settings;
+ 	unsigned int i;
+ 	int err = 1;
+@@ -1282,7 +1281,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+ 	 * uniform spreading.
+ 	 */
+ 	if (iface->dfs_domain == HOSTAPD_DFS_REGION_ETSI)
+-		skip_radar = 0;
++		channel_type = DFS_ANY_CHANNEL;
+ 
+ 	if (iface->conf->dfs_test_mode)
+ 		return hostapd_dfs_testmode_set_beacon_csa(iface);
+@@ -1291,8 +1290,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+ 	channel = dfs_get_valid_channel(iface, &secondary_channel,
+ 					&oper_centr_freq_seg0_idx,
+ 					&oper_centr_freq_seg1_idx,
+-					skip_radar ? DFS_AVAILABLE :
+-					DFS_ANY_CHANNEL);
++					channel_type);
+ 
+ 	if (!channel) {
+ 		/*
+@@ -1300,11 +1298,11 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+ 		 * there is another channel where we can switch even if it
+ 		 * requires to perform a CAC first.
+ 		 */
+-		skip_radar = 0;
++		channel_type = DFS_ANY_CHANNEL;
+ 		channel = dfs_downgrade_bandwidth(iface, &secondary_channel,
+ 						  &oper_centr_freq_seg0_idx,
+ 						  &oper_centr_freq_seg1_idx,
+-						  &skip_radar);
++						  &channel_type);
+ 		if (!channel) {
+ 			/*
+ 			 * Toggle interface state to enter DFS state
+@@ -1315,7 +1313,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+ 			return 0;
+ 		}
+ 
+-		if (!skip_radar) {
++		if (channel_type == DFS_ANY_CHANNEL) {
+ 			iface->freq = channel->freq;
+ 			iface->conf->channel = channel->chan;
+ 			iface->conf->secondary_channel = secondary_channel;
+-- 
+2.17.1
+
