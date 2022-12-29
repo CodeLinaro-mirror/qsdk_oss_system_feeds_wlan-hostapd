@@ -12,11 +12,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/ap/ieee802_11.c | 105 +++++++++++++++++++++++++++++++-------------
  1 file changed, 75 insertions(+), 30 deletions(-)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 0af24dc..cabce2b 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8395,9 +8395,52 @@ u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
+@@ -8407,15 +8407,59 @@ u8 * hostapd_eid_rnr(struct hostapd_data
  }
  
  
@@ -70,7 +68,14 @@ index 0af24dc..cabce2b 100644
  {
  	struct hostapd_data *link_bss;
  	u8 link_id;
-@@ -8433,46 +8476,40 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
+ 	u8 *link_info_len, *profile;
+ 	u16 link_bmap;
+ 	size_t profile_len;
++	u8 link_tsf[BASIC_MLE_STA_INFO_TSF_LENGTH] = {0};
+ 
+ 	if (!hapd->mld)
+ 		return link_info;
+@@ -8445,46 +8489,45 @@ static u8 * hostapd_eid_basic_resp_mle(s
  		}
  
  		if (!(BIT(link_id) & link_bmap))
@@ -94,25 +99,32 @@ index 0af24dc..cabce2b 100644
 +				(link_id & MLE_STA_CONTROL_LINK_ID_MASK) |
 +				 (MLE_STA_CONTROL_COMPLETE_PROFILE |
 +				  MLE_STA_CONTROL_MAC_ADDR_PRESENT |
-+				  MLE_STA_CONTROL_BEACON_INT_PRESENT) << 4);
++				  MLE_STA_CONTROL_BEACON_INT_PRESENT |
++				  MLE_STA_CONTROL_TSF_OFFSET_PRESENT) << 4);
  
  		/* TODO NSTR info and bss change cnt to be added */
 -		*link_info++ = 0;
 -
 -		*link_info++ = MLE_STA_INFO_LENGTH;
-+		/* DTIM encoded by default */
-+		link_info = hostapd_add_mle_u8(link_info, &curr_len, 1);
-+		link_info = hostapd_add_mle_u8(link_info, &curr_len,
-+					       MLE_STA_INFO_LENGTH);
- 
+-
 -		memcpy(link_info, link_bss->own_addr, ETH_ALEN);
-+		link_info = hostapd_add_mle_data(link_info, &curr_len, link_bss->own_addr, ETH_ALEN);
- 
+-
 -		link_info += ETH_ALEN;
 -
 -		WPA_PUT_LE16(link_info, link_bss->iconf->beacon_int);
 -		link_info += 2;
++		/* DTIM encoded by default */
++		link_info = hostapd_add_mle_u8(link_info, &curr_len, 1);
++		link_info = hostapd_add_mle_u8(link_info, &curr_len,
++					       MLE_STA_INFO_LENGTH);
++
++		link_info = hostapd_add_mle_data(link_info, &curr_len, link_bss->own_addr, ETH_ALEN);
++
 +		link_info = hostapd_add_mle_le16(link_info, &curr_len, link_bss->iconf->beacon_int);
++
++		/* TSF offset - driver might support to find this, currently filled as 0*/
++		link_info = hostapd_add_mle_data(link_info, &curr_len,
++				link_tsf, BASIC_MLE_STA_INFO_TSF_LENGTH);
  
  		/* TODO confirm dtim count */
 -		*link_info++ = 1;
@@ -135,7 +147,7 @@ index 0af24dc..cabce2b 100644
  	}
  	return link_info;
  }
-@@ -8523,8 +8560,6 @@ static size_t hostapd_eid_basic_resp_mle_len(struct hostapd_data *hapd,
+@@ -8535,8 +8578,6 @@ static size_t hostapd_eid_basic_resp_mle
  		total_profile_len += profile_len;
  	}
  
@@ -144,7 +156,7 @@ index 0af24dc..cabce2b 100644
  	return total_profile_len;
  }
  
-@@ -8532,6 +8567,7 @@ size_t hostapd_eid_basic_mle_len(struct hostapd_data *hapd, u32 type,
+@@ -8544,6 +8585,7 @@ size_t hostapd_eid_basic_mle_len(struct
  				 struct multi_link_data *ml_data)
  {
  	size_t total_len = 0;
@@ -152,7 +164,7 @@ index 0af24dc..cabce2b 100644
  
  	if (!hapd->mld || !hapd->mld->num_links)
  		return 0;
-@@ -8556,7 +8592,12 @@ size_t hostapd_eid_basic_mle_len(struct hostapd_data *hapd, u32 type,
+@@ -8568,7 +8610,12 @@ size_t hostapd_eid_basic_mle_len(struct
  
  	total_len += hostapd_eid_basic_resp_mle_len(hapd, ml_data, type);
  
@@ -166,7 +178,7 @@ index 0af24dc..cabce2b 100644
  
  	return total_len;
  }
-@@ -8617,9 +8658,13 @@ u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid, u32 type,
+@@ -8629,9 +8676,13 @@ u8 * hostapd_eid_basic_mle(struct hostap
  		return eid;
  	}
  
@@ -182,6 +194,17 @@ index 0af24dc..cabce2b 100644
  	return eid;
  }
  
--- 
-2.17.1
-
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -2485,8 +2485,9 @@ struct ieee80211_he_mu_edca_parameter_se
+ #define MLE_STA_CONTROL_NSTR_BITMAP			BIT(6)
+ #define MLE_STA_CONTROL_BSS_PARAM_CHANGE_CNT_PRESENT	BIT(7)
+ 
+-/* STA Info Length, MAC, BI, DTIM included, TODO - NSTR, BSS change cnt*/
+-#define MLE_STA_INFO_LENGTH	11
++/* STA Info Length, MAC, BI, TSF, DTIM included, TODO - NSTR, BSS change cnt*/
++#define MLE_STA_INFO_LENGTH	19
++#define BASIC_MLE_STA_INFO_TSF_LENGTH 8
+ 
+ /* IEEE P802.11be/D2.0, 9.4.2.311 - EHT Operation element */
+ 
