@@ -365,7 +365,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	struct sta_info *sta;
 +	int ret = 0;
 +
-+	if (!hapd->mld || !psta->ml_sta)
++	if (!psta->ml_sta)
 +		return 0;
 +
 +	ml_sta = psta->ml_sta;
@@ -1017,7 +1017,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -6097,7 +6097,9 @@ static int nl80211_tx_control_port(void
+@@ -6189,7 +6189,9 @@ static int nl80211_tx_control_port(void
  	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, dest) ||
  	    nla_put(msg, NL80211_ATTR_FRAME, len, buf) ||
  	    (no_encrypt &&
