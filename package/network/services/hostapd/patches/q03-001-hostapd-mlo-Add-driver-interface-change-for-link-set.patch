@@ -123,7 +123,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	bss = get_bss_ifindex(drv, ifindex);
 +
 +	/* ML bsses addr need not change for iface change */
-+	if (bss->drv->mlo_link_id >= 0)
++	if (bss && bss->drv->mlo_link_id >= 0)
 +		return;
 +
  	if (bss &&
