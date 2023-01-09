@@ -1,0 +1,165 @@
+From 9d6b3b07ecdaed0051163f14b47d7dbdd1b1d8ea Mon Sep 17 00:00:00 2001
+From: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
+Date: Mon, 19 Dec 2022 13:33:43 +0530
+Subject: [PATCH] hostapd: Add ML IE for MBSSID
+
+Support for adding ML IE to beacon/probe response
+in non transmitted BSSID profile.
+
+Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
+
+Index: b/src/ap/beacon.c
+===================================================================
+--- a/src/ap/beacon.c	2022-12-27 12:19:10.018294699 +0530
++++ b/src/ap/beacon.c	2022-12-27 12:19:10.010294771 +0530
+@@ -494,7 +494,7 @@ static u8 * hostapd_set_mbssid_beacon(st
+ 	params->mbssid_count = iface->num_bss;
+ 
+ 	len = hostapd_eid_mbssid_len(tx_bss, WLAN_FC_STYPE_BEACON, &num_mbssid,
+-				     NULL, 0, &params->rnr_elem_len);
++				     NULL, 0, &params->rnr_elem_len, NULL);
+ 	if (hapd->iconf->ema) {
+ 		if (!iface->ema_max_periodicity) {
+ 			wpa_printf(MSG_WARNING, "MBSSID: Driver doesn't support"
+@@ -538,7 +538,8 @@ static u8 * hostapd_set_mbssid_beacon(st
+ 				 params->mbssid_elem_count,
+ 				 params->mbssid_elem_offset, NULL, 0,
+ 				 params->rnr_elem, params->rnr_elem_offset,
+-				 &params->rnr_elem_count, params->rnr_elem_len);
++				 &params->rnr_elem_count, params->rnr_elem_len,
++				 NULL);
+ 	params->mbssid_elem_len = end - params->mbssid_elem;
+ 
+         if (hapd->iconf->ema) {
+@@ -660,7 +661,7 @@ static u8 * hostapd_gen_probe_resp(struc
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ 	buflen += hostapd_eid_mbssid_len(hapd_probed, WLAN_FC_STYPE_PROBE_RESP,
+-					 NULL, known_bss, known_bss_len, NULL);
++					 NULL, known_bss, known_bss_len, NULL, ml_data);
+ 	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP);
+ 	buflen += hostapd_mbo_ie_len(hapd);
+ 	buflen += hostapd_eid_owe_trans_len(hapd);
+@@ -747,7 +748,8 @@ static u8 * hostapd_gen_probe_resp(struc
+ 	pos = hostapd_eid_ht_operation(hapd, pos);
+ 	pos = hostapd_eid_mbssid(hapd_probed, pos, epos,
+ 				 WLAN_FC_STYPE_PROBE_RESP, 0, NULL,
+-				 known_bss, known_bss_len, NULL, NULL, NULL, 0);
++				 known_bss, known_bss_len, NULL, NULL, NULL, 0,
++				 ml_data);
+ 
+ 	ext_cap_pos = pos;
+ 	pos = hostapd_eid_ext_capab(hapd, pos);
+Index: b/src/ap/ieee802_11.c
+===================================================================
+--- a/src/ap/ieee802_11.c	2022-12-27 12:19:10.018294699 +0530
++++ b/src/ap/ieee802_11.c	2022-12-27 12:26:23.894472176 +0530
+@@ -7773,7 +7773,8 @@ u8 * hostapd_eid_rnr(struct hostapd_data
+ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
+ 					  u32 frame_type, size_t *bss_index,
+ 					  const u8 *known_bss,
+-					  size_t known_bss_len)
++					  size_t known_bss_len,
++					  struct multi_link_data *ml_data)
+ {
+ 	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
+ 	size_t len = 3, i;
+@@ -7834,10 +7835,13 @@ static size_t hostapd_eid_mbssid_elem_le
+ 
+ 		nontx_profile_len += 1; /*Extension element ID length */
+ 
++		nontx_profile_len += hostapd_eid_basic_mle_len(bss, frame_type, ml_data);
++
+ 		if ((len + nontx_profile_len) > 255)
+ 			goto mbssid_too_big;
+ 
+ 		len += nontx_profile_len;
++
+ 	}
+ 
+ mbssid_too_big:
+@@ -7848,7 +7852,8 @@ mbssid_too_big:
+ 
+ size_t hostapd_eid_mbssid_len(struct hostapd_data *hapd, u32 frame_type,
+ 			      u8 *elem_count, const u8 *known_bss,
+-			      size_t known_bss_len, size_t *rnr_len)
++			      size_t known_bss_len, size_t *rnr_len,
++			      struct multi_link_data *ml_data)
+ {
+ 	size_t len = 0, bss_index = 1, rnr_cur_len = 0, rnr_count;
+ 
+@@ -7870,7 +7875,8 @@ size_t hostapd_eid_mbssid_len(struct hos
+ 		rnr_count = bss_index;
+ 		len += hostapd_eid_mbssid_elem_len(hapd, frame_type,
+ 						   &bss_index, known_bss,
+-						   known_bss_len);
++						   known_bss_len,
++						   ml_data);
+ 
+ 		if (frame_type == WLAN_FC_STYPE_BEACON)
+ 			*elem_count += 1;
+@@ -7894,11 +7900,13 @@ size_t hostapd_eid_mbssid_len(struct hos
+ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
+ 				    u32 frame_type, u8 max_bssid_indicator,
+ 				    size_t *bss_index, u8 elem_count,
+-				    const u8 *known_bss, size_t known_bss_len)
++				    const u8 *known_bss, size_t known_bss_len,
++				    struct multi_link_data *ml_data)
+ {
+ 	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
+ 	size_t i;
+ 	u8 *eid_len_offset, *max_bssid_indicator_offset;
++	int mle_len = 0;
+ 
+ 	*eid++ = WLAN_EID_MULTIPLE_BSSID;
+ 	eid_len_offset = eid++;
+@@ -7960,6 +7968,10 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 			*eid++ = i;
+ 		}
+ 
++		mle_len = hostapd_eid_basic_mle_len(bss, frame_type, ml_data);
++		eid = hostapd_eid_basic_mle(bss, eid, frame_type, ml_data);
++		*eid_len_pos = *eid_len_pos + mle_len;
++
+ 		auth = wpa_auth_get_wpa_ie(bss->wpa_auth, &auth_len);
+ 		if (auth) {
+ 			rsn = get_ie(auth, auth_len, WLAN_EID_RSN);
+@@ -8023,7 +8035,8 @@ mbssid_too_big:
+ u8 * hostapd_eid_mbssid(struct hostapd_data *hapd, u8 *eid, u8 *end,
+ 			u32 frame_type, u8 elem_count, u8 **elem_offset,
+ 			const u8 *known_bss, size_t known_bss_len, u8 *rnr_eid,
+-			u8 **rnr_offsets, int *rnr_count, int rnr_len)
++			u8 **rnr_offsets, int *rnr_count, int rnr_len,
++			struct multi_link_data *ml_data)
+ {
+ 	size_t bss_index = 1, cur_len = 0;
+ 	u8 elem_index = 0, *rnr_start_eid = rnr_eid;
+@@ -8059,7 +8072,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+ 		eid = hostapd_eid_mbssid_elem(hapd, eid, end, frame_type,
+ 					      max_bssid_indicator, &bss_index,
+ 					      elem_count, known_bss,
+-					      known_bss_len);
++					      known_bss_len, ml_data);
+ 
+ 		if (add_rnr == true) {
+ 			rnr_offsets[*rnr_count] = rnr_eid;
+Index: b/src/ap/ieee802_11.h
+===================================================================
+--- a/src/ap/ieee802_11.h	2022-12-27 12:19:10.018294699 +0530
++++ b/src/ap/ieee802_11.h	2022-12-27 12:19:10.014294736 +0530
+@@ -146,11 +146,13 @@ u8 * hostapd_eid_bss_max_idle_period(str
+ int auth_sae_init_committed(struct hostapd_data *hapd, struct sta_info *sta);
+ size_t hostapd_eid_mbssid_len(struct hostapd_data *hapd, u32 frame_type,
+ 			      u8 *elem_count, const u8 *known_bss,
+-			      size_t known_bss_len, size_t *rnr_len);
++			      size_t known_bss_len, size_t *rnr_len,
++			      struct multi_link_data *ml_data);
+ u8 * hostapd_eid_mbssid(struct hostapd_data *hapd, u8 *eid, u8 *end,
+ 			u32 frame_type, u8 elem_count, u8 **elem_offset,
+ 			const u8 *known_bss, size_t known_bss_len, u8 *rnr_eid,
+-			u8 **rnr_offsets, int *rnr_count, int rnr_len);
++			u8 **rnr_offsets, int *rnr_count, int rnr_len,
++			struct multi_link_data *ml_data);
+ #ifdef CONFIG_SAE
+ void sae_clear_retransmit_timer(struct hostapd_data *hapd,
+ 				struct sta_info *sta);
