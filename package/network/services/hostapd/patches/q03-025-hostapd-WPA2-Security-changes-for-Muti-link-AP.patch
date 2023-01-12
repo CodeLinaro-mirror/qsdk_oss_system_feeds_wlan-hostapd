@@ -146,10 +146,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  {
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -803,4 +803,5 @@ void fst_hostapd_fill_iface_obj(struct h
+@@ -806,4 +806,5 @@ void fst_hostapd_fill_iface_obj(struct h
  
  int hostapd_set_acl(struct hostapd_data *hapd);
- 
+ int hostapd_is_usable_ru_punct_bitmap(struct hostapd_iface *iface);
 +int update_pmksa(struct hostapd_data *hapd);
  #endif /* HOSTAPD_H */
 --- a/src/ap/ieee802_11.c
