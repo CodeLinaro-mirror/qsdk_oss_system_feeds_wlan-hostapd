@@ -297,7 +297,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +		else
 +			sta->flags &= ~WLAN_STA_SHORT_PREAMBLE;
 +
-+		update_ht_state(hapd, sta);
++		update_ht_state(link_hapd, sta);
 +
  		/* prepare per sta assoc resp template */
  		/* TODO might need to send link_sta_ies + inherited ies for some FILS use case */
@@ -649,7 +649,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  }
  
  
-@@ -8793,6 +9010,9 @@ static void hostapd_parse_basic_mle(stru
+@@ -8794,6 +9011,9 @@ static void hostapd_parse_basic_mle(stru
  	if (!len)
  		return;
  
@@ -659,7 +659,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	/* Link Info with one or more per STA subelems  */
  	while (len >= MLE_PER_STA_PROFILE_MIN_LENGTH &&
  	       *mle_pos++ == MLE_PER_STA_PROFILE_SUBELEM_ID) {
-@@ -8847,6 +9067,7 @@ static void hostapd_parse_basic_mle(stru
+@@ -8848,6 +9068,7 @@ static void hostapd_parse_basic_mle(stru
  			}
  			ml_data->u.basic.link_info[link_id].sta_profile = sub_elem;
  			ml_data->u.basic.link_info[link_id].sta_profile_len = sub_elem_len - (sub_elem - mle_pos);
