@@ -18,7 +18,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
 
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -263,6 +263,16 @@ static int hostapd_driver_init(struct ho
+@@ -266,6 +266,16 @@ static int hostapd_driver_init(struct ho
  		iface->drv_max_acl_mac_addrs = capa.max_acl_mac_addrs;
  		iface->ru_punct_supp_bw = capa.ru_punct_supp_bw;
  
@@ -37,7 +37,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  		 * available from the driver.
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -695,6 +695,8 @@ struct hostapd_iface {
+@@ -698,6 +698,8 @@ struct hostapd_iface {
  
  #ifdef CONFIG_IEEE80211BE
  	u8 mlo_link_id;
@@ -48,7 +48,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8762,7 +8762,7 @@ size_t hostapd_eid_basic_mle_len(struct
+@@ -8815,7 +8815,7 @@ size_t hostapd_eid_basic_mle_len(struct
  	else
  		total_len += MLE_COMMON_INFO_AUTH;
  
@@ -57,7 +57,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  
  	if (ml_data == NULL || !ml_data->present)
  		return total_len;
-@@ -8802,7 +8802,7 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -8855,7 +8855,7 @@ u8 * hostapd_eid_basic_mle(struct hostap
  	if (type != WLAN_FC_STYPE_AUTH) {
  		/* Fill these info by default currently */
  		presence_bmap = MLE_LINK_ID_PRESENT | MLE_BSS_PARAM_CHANGE_PRESENT |
@@ -66,7 +66,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  	}
  
  	*eid++ = MLE_TYPE_BASIC | ((presence_bmap & 0x0f) << MLE_PRESENCE_BMAP_SHIFT);
-@@ -8821,11 +8821,16 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -8874,11 +8874,16 @@ u8 * hostapd_eid_basic_mle(struct hostap
  	if (presence_bmap & MLE_BSS_PARAM_CHANGE_PRESENT)
  		*eid++ = 0; /* TODO */
  
@@ -133,20 +133,24 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  				      struct nlattr *tb)
  {
  	int rem = 0, i;
-@@ -862,6 +863,12 @@ static void wiphy_info_extended_capab(st
+@@ -862,6 +863,16 @@ static void wiphy_info_extended_capab(st
  		drv->num_iface_ext_capa++;
  		if (drv->num_iface_ext_capa == NL80211_IFTYPE_MAX)
  			break;
 +
-+		drv_capa->eml_cap = nla_get_u16(tb1[NL80211_ATTR_EML_CAPABILITY]);
-+		drv_capa->mld_cap = nla_get_u16(tb1[NL80211_ATTR_MLD_CAPA_AND_OPS]);
++		if (tb1[NL80211_ATTR_EML_CAPABILITY])
++			drv_capa->eml_cap = nla_get_u16(tb1[NL80211_ATTR_EML_CAPABILITY]);
++
++		if (tb1[NL80211_ATTR_MLD_CAPA_AND_OPS])
++			drv_capa->mld_cap = nla_get_u16(tb1[NL80211_ATTR_MLD_CAPA_AND_OPS]);
++
 +		wpa_printf(MSG_DEBUG,
 +			   "nl80211: Driver-advertised EML Capability:0x%x MLD Capability:0x%x",
 +			   drv_capa->eml_cap, drv_capa->mld_cap);
  	}
  
  	return;
-@@ -1022,7 +1029,7 @@ static int wiphy_info_handler(struct nl_
+@@ -1022,7 +1033,7 @@ static int wiphy_info_handler(struct nl_
  		}
  	}
  
@@ -155,7 +159,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  
  	if (tb[NL80211_ATTR_VENDOR_DATA]) {
  		struct nlattr *nl;
-@@ -1161,6 +1168,9 @@ static int wiphy_info_handler(struct nl_
+@@ -1161,6 +1172,9 @@ static int wiphy_info_handler(struct nl_
  		}
  	}
  
