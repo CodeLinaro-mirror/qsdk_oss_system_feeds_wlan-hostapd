@@ -24,11 +24,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/ap/hostapd.c    | 68 +++++++++++++++++++++++++++++++++++++++++++--
  3 files changed, 99 insertions(+), 4 deletions(-)
 
-diff --git a/hostapd/main.c b/hostapd/main.c
-index ee58d0f..57baa8c 100644
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -170,7 +170,8 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
+@@ -170,7 +170,8 @@ static int hostapd_driver_init(struct ho
  	u8 *b = conf->bssid;
  	struct wpa_driver_capa capa;
  
@@ -38,7 +36,7 @@ index ee58d0f..57baa8c 100644
  		wpa_printf(MSG_ERROR, "No hostapd driver wrapper available");
  		return -1;
  	}
-@@ -203,8 +204,24 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
+@@ -203,8 +204,24 @@ static int hostapd_driver_init(struct ho
  	}
  	params.bssid = b;
  	params.ifname = hapd->conf->iface;
@@ -74,11 +72,9 @@ index ee58d0f..57baa8c 100644
  	}
  
  	/* Allocate and parse configuration for per-BSS files */
-diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
-index 48c0786..bcca860 100644
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -57,6 +57,7 @@ int hostapd_if_add(struct hostapd_data *hapd, enum wpa_driver_if_type type,
+@@ -57,6 +57,7 @@ int hostapd_if_add(struct hostapd_data *
  		   const char *ifname, const u8 *addr, void *bss_ctx,
  		   void **drv_priv, char *force_ifname, u8 *if_addr,
  		   const char *bridge, int use_existing);
@@ -86,7 +82,7 @@ index 48c0786..bcca860 100644
  int hostapd_if_remove(struct hostapd_data *hapd, enum wpa_driver_if_type type,
  		      const char *ifname);
  int hostapd_set_ieee8021x(struct hostapd_data *hapd,
-@@ -235,9 +236,19 @@ static inline int hostapd_drv_set_ap(struct hostapd_data *hapd,
+@@ -235,9 +236,19 @@ static inline int hostapd_drv_set_ap(str
  {
  	if (hapd->driver == NULL || hapd->driver->set_ap == NULL)
  		return 0;
@@ -106,11 +102,9 @@ index 48c0786..bcca860 100644
  static inline int hostapd_drv_set_radius_acl_auth(struct hostapd_data *hapd,
  						  const u8 *mac, int accepted,
  						  u32 session_timeout)
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 9bc19d1..3bef523 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1188,6 +1188,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first,
+@@ -1193,6 +1193,7 @@ static int hostapd_setup_bss(struct host
  	char force_ifname[IFNAMSIZ];
  	u8 if_addr[ETH_ALEN];
  	int flush_old_stations = 1;
@@ -118,7 +112,7 @@ index 9bc19d1..3bef523 100644
  
  	wpa_printf(MSG_DEBUG, "%s(hapd=%p (%s), first=%d)",
  		   __func__, hapd, conf->iface, first);
-@@ -1231,11 +1232,16 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first,
+@@ -1236,11 +1237,16 @@ static int hostapd_setup_bss(struct host
  		}
  
  		hapd->interface_added = 1;
@@ -136,7 +130,7 @@ index 9bc19d1..3bef523 100644
  			wpa_printf(MSG_ERROR, "Failed to add BSS (BSSID="
  				   MACSTR ")", MAC2STR(hapd->own_addr));
  			hapd->interface_added = 0;
-@@ -1244,6 +1250,19 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first,
+@@ -1249,6 +1255,19 @@ static int hostapd_setup_bss(struct host
  
  		if (!addr)
  			os_memcpy(hapd->own_addr, if_addr, ETH_ALEN);
@@ -156,7 +150,7 @@ index 9bc19d1..3bef523 100644
  	}
  
  	if (is_zero_ether_addr(conf->bssid))
-@@ -1572,6 +1591,11 @@ static int start_ctrl_iface(struct hostapd_iface *iface)
+@@ -1577,6 +1596,11 @@ static int start_ctrl_iface(struct hosta
  
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
@@ -168,7 +162,7 @@ index 9bc19d1..3bef523 100644
  		if (iface->interfaces->ctrl_iface_init(hapd)) {
  			wpa_printf(MSG_ERROR,
  				   "Failed to setup control interface for %s",
-@@ -2116,6 +2140,20 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+@@ -2209,6 +2233,20 @@ static int hostapd_setup_interface_compl
  
  	hostapd_ubus_add_iface(iface);
  	wpa_printf(MSG_DEBUG, "Completing interface initialization");
@@ -189,7 +183,7 @@ index 9bc19d1..3bef523 100644
  	if (iface->freq) {
  #ifdef NEED_AP_MLME
  		int res;
-@@ -2222,7 +2260,7 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+@@ -2315,7 +2353,7 @@ static int hostapd_setup_interface_compl
  		if (j)
  			os_memcpy(hapd->own_addr, prev_addr, ETH_ALEN);
  		if (hostapd_setup_bss(hapd, j == 0,
@@ -198,7 +192,7 @@ index 9bc19d1..3bef523 100644
  			for (;;) {
  				hapd = iface->bss[j];
  				hostapd_bss_deinit_no_free(hapd);
-@@ -2237,6 +2275,7 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+@@ -2330,6 +2368,7 @@ static int hostapd_setup_interface_compl
  			prev_addr = hapd->own_addr;
  	}
  
@@ -206,7 +200,7 @@ index 9bc19d1..3bef523 100644
  	if (hapd->iconf->mbssid) {
  		for (j = 0; j < iface->num_bss; j++) {
  			hapd = iface->bss[j];
-@@ -2439,6 +2478,29 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
+@@ -2534,6 +2573,29 @@ int hostapd_setup_interface_complete(str
  		}
  	}
  
@@ -236,7 +230,7 @@ index 9bc19d1..3bef523 100644
  	return 0;
  }
  
-@@ -2792,6 +2854,7 @@ struct hostapd_iface * hostapd_init(struct hapd_interfaces *interfaces,
+@@ -2886,6 +2948,7 @@ struct hostapd_iface * hostapd_init(stru
  				}
  				mld->num_links++;
  				hapd->nbss = NULL;
@@ -244,7 +238,7 @@ index 9bc19d1..3bef523 100644
  			}
  
  			if (!hapd->mld) {
-@@ -2810,6 +2873,7 @@ struct hostapd_iface * hostapd_init(struct hapd_interfaces *interfaces,
+@@ -2904,6 +2967,7 @@ struct hostapd_iface * hostapd_init(stru
  				//TODO: Need to know if this has to be parsed from config.
  				hapd->mld->mld_id = interfaces->mld_count + 1;
  				hapd->nbss = NULL;
@@ -252,6 +246,39 @@ index 9bc19d1..3bef523 100644
  				all_mld = os_realloc_array(interfaces->mld,
  							   interfaces->mld_count + 1,
  							   sizeof(struct hostapd_mld *));
--- 
-2.17.1
-
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -488,7 +488,7 @@ static void ap_ht40_scan_retry(void *elo
+ 		wpa_printf(MSG_ERROR,
+ 			   "Failed to request a scan of neighboring BSSes ret=%d (%s) - try to scan again (attempt %d)",
+ 			   ret, strerror(-ret), iface->num_ht40_scan_tries);
+-		eloop_register_timeout(1, 0, ap_ht40_scan_retry, iface, NULL);
++		eloop_register_timeout(5, 0, ap_ht40_scan_retry, iface, NULL);
+ 		return;
+ 	}
+ 
+@@ -538,7 +538,7 @@ static int ieee80211n_check_40mhz(struct
+ 			   ret, strerror(-ret));
+ 		iface->num_ht40_scan_tries = 1;
+ 		eloop_cancel_timeout(ap_ht40_scan_retry, iface, NULL);
+-		eloop_register_timeout(1, 0, ap_ht40_scan_retry, iface, NULL);
++		eloop_register_timeout(2, 0, ap_ht40_scan_retry, iface, NULL);
+ 		return 1;
+ 	}
+ 
+--- a/src/drivers/driver_nl80211_scan.c
++++ b/src/drivers/driver_nl80211_scan.c
+@@ -384,6 +384,13 @@ int wpa_driver_nl80211_scan(struct i802_
+ 	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
+ 	msg = NULL;
+ 	if (ret) {
++		/* For Multi Link BSS, retry scan if any other links are busy scanning */
++		if (ret == -EBUSY && drv->mlo_link_id >= 0) {
++			wpa_printf(MSG_DEBUG, "nl80211: Scan trigger on Multi Link BSS failed"
++				       " due to ongoing scan possibly on other link, retrying..");
++			goto fail;
++		}
++
+ 		wpa_printf(MSG_DEBUG, "nl80211: Scan trigger failed: ret=%d "
+ 			   "(%s)", ret, strerror(-ret));
+ 		if (drv->hostapd && is_ap_interface(drv->nlmode)) {
