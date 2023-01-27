@@ -230,13 +230,14 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #ifdef CONFIG_MBO
  	sta->auth_rssi = rssi;
  #endif /* CONFIG_MBO */
-@@ -5822,8 +5875,9 @@ static void ap_link_sta_add(struct hosta
+@@ -5812,8 +5865,10 @@ static void ap_link_sta_add(struct hosta
  		}
  
  		sta->listen_interval = psta->listen_interval;
 +		sta->sae = psta->sae;
  		sta->wpa_sm = psta->wpa_sm;
 -
++		sta->auth_alg = psta->auth_alg;
 +		
  		link_sta_ies = ml_data->u.basic.link_info[link_id].sta_profile;
  		link_sta_ies_len = ml_data->u.basic.link_info[link_id].sta_profile_len;
