@@ -100,7 +100,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8141,4 +8141,77 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -8143,4 +8143,77 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  	return eid;
  }
  
@@ -191,9 +191,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +	}
 +
  	seg0 = hostapd_get_oper_centr_freq_seg0_idx(conf);
- 
- 	switch (chwidth) {
-@@ -207,6 +213,12 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 	if (!seg0)
+ 		seg0 = hapd->iconf->channel;
+@@ -209,6 +215,12 @@ u8 * hostapd_eid_eht_operation(struct ho
  		break;
  	case CONF_OPER_CHWIDTH_160MHZ:
  		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_160MHZ;
@@ -206,20 +206,24 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		seg1 = seg0;
  		if (hapd->iconf->channel < seg0)
  			seg0 -= 8;
-@@ -217,16 +229,23 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -219,6 +231,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_80MHZ;
  		break;
  	case CONF_OPER_CHWIDTH_USE_HT:
 +		hapd->iconf->ru_punct_bitmap = 0;
- 		if (seg0)
- 			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_40MHZ;
+ 		if ((is_6ghz_op_class(hapd->iconf->op_class) &&
+ 		    op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
+ 		    hapd->iconf->secondary_channel)
+@@ -228,6 +241,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 
  		break;
  	default:
 +		hapd->iconf->ru_punct_bitmap = 0;
- 		return eid;
+ 		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_20MHZ;
+ 		break;
  	}
- 
- 	oper->oper_info.ccfs0 = seg0 ? seg0 : hapd->iconf->channel;
+@@ -235,6 +249,11 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 	oper->oper_info.ccfs0 = seg0;
  	oper->oper_info.ccfs1 = seg1;
  
 +	if (hapd->iconf->ru_punct_bitmap) {
