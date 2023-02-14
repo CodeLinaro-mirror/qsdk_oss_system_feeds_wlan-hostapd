@@ -44,8 +44,8 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 
 Index: hostapd-2021-12-13/src/ap/ap_drv_ops.c
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/ap_drv_ops.c	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/ap_drv_ops.c	2022-12-22 12:55:38.820867498 +0530
+--- hostapd-2021-12-13.orig/src/ap/ap_drv_ops.c
++++ hostapd-2021-12-13/src/ap/ap_drv_ops.c
 @@ -423,7 +423,7 @@ int hostapd_sta_add(struct hostapd_data
  		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
  		    const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab,
@@ -65,8 +65,8 @@ Index: hostapd-2021-12-13/src/ap/ap_drv_ops.c
  
 Index: hostapd-2021-12-13/src/ap/ap_drv_ops.h
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/ap_drv_ops.h	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/ap_drv_ops.h	2022-12-22 12:55:38.824867506 +0530
+--- hostapd-2021-12-13.orig/src/ap/ap_drv_ops.h
++++ hostapd-2021-12-13/src/ap/ap_drv_ops.h
 @@ -48,7 +48,7 @@ int hostapd_sta_add(struct hostapd_data
  		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
  		    const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab,
@@ -78,8 +78,8 @@ Index: hostapd-2021-12-13/src/ap/ap_drv_ops.h
  			     size_t elem_len);
 Index: hostapd-2021-12-13/src/ap/beacon.c
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/beacon.c	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/beacon.c	2022-12-22 12:55:38.824867506 +0530
+--- hostapd-2021-12-13.orig/src/ap/beacon.c
++++ hostapd-2021-12-13/src/ap/beacon.c
 @@ -34,6 +34,12 @@
  #include "ieee802_11_auth.h"
  
@@ -199,8 +199,8 @@ Index: hostapd-2021-12-13/src/ap/beacon.c
  
 Index: hostapd-2021-12-13/src/ap/hostapd.c
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/hostapd.c	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/hostapd.c	2022-12-22 12:55:38.824867506 +0530
+--- hostapd-2021-12-13.orig/src/ap/hostapd.c
++++ hostapd-2021-12-13/src/ap/hostapd.c
 @@ -1450,6 +1450,11 @@ static int hostapd_setup_bss(struct host
  		return -1;
  	}
@@ -215,8 +215,8 @@ Index: hostapd-2021-12-13/src/ap/hostapd.c
  
 Index: hostapd-2021-12-13/src/ap/hostapd.h
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/hostapd.h	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/hostapd.h	2022-12-22 12:55:38.824867506 +0530
+--- hostapd-2021-12-13.orig/src/ap/hostapd.h
++++ hostapd-2021-12-13/src/ap/hostapd.h
 @@ -443,6 +443,11 @@ struct hostapd_data {
  #ifdef CONFIG_CTRL_IFACE_UDP
         unsigned char ctrl_iface_cookie[CTRL_IFACE_COOKIE_LEN];
@@ -229,7 +229,7 @@ Index: hostapd-2021-12-13/src/ap/hostapd.h
  };
  
  
-@@ -622,6 +627,8 @@ struct hostapd_iface {
+@@ -637,6 +642,8 @@ struct hostapd_iface {
  
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
@@ -240,8 +240,8 @@ Index: hostapd-2021-12-13/src/ap/hostapd.h
  /* hostapd.c */
 Index: hostapd-2021-12-13/src/ap/ieee802_11.c
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/ieee802_11.c	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/ieee802_11.c	2022-12-22 12:57:10.945068554 +0530
+--- hostapd-2021-12-13.orig/src/ap/ieee802_11.c
++++ hostapd-2021-12-13/src/ap/ieee802_11.c
 @@ -84,7 +84,7 @@ static void pasn_fils_auth_resp(struct h
  #endif /* CONFIG_PASN */
  
@@ -251,20 +251,21 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  			int rssi, int from_queue,
  			struct hostapd_frame_info *fi);
  
-@@ -380,8 +380,11 @@ static int send_auth_reply(struct hostap
+@@ -380,8 +380,12 @@ static int send_auth_reply(struct hostap
  	u8 *buf;
  	size_t rlen;
  	int reply_res = WLAN_STATUS_UNSPECIFIED_FAILURE;
 +	u8 mle_len = 0;
  
 -	rlen = IEEE80211_HDRLEN + sizeof(reply->u.auth) + ies_len;
-+	mle_len = hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_AUTH, NULL);
++	if (sta->is_mld)
++		mle_len = hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_AUTH, NULL);
 +
 +	rlen = IEEE80211_HDRLEN + sizeof(reply->u.auth) + ies_len + mle_len;
  	buf = os_zalloc(rlen);
  	if (buf == NULL)
  		return -1;
-@@ -400,6 +403,10 @@ static int send_auth_reply(struct hostap
+@@ -400,6 +404,10 @@ static int send_auth_reply(struct hostap
  	if (ies && ies_len)
  		os_memcpy(reply->u.auth.variable, ies, ies_len);
  
@@ -275,7 +276,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  	wpa_printf(MSG_DEBUG, "authentication reply: STA=" MACSTR
  		   " auth_alg=%d auth_transaction=%d resp=%d (IE len=%lu) (dbg=%s)",
  		   MAC2STR(dst), auth_alg, auth_transaction,
-@@ -1647,7 +1654,7 @@ void auth_sae_process_commit(void *eloop
+@@ -1647,7 +1655,7 @@ void auth_sae_process_commit(void *eloop
  	wpa_printf(MSG_DEBUG,
  		   "SAE: Process next available message from queue");
  	dl_list_del(&q->list);
@@ -284,7 +285,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  		    q->rssi, 1, NULL);
  	os_free(q);
  
-@@ -3553,7 +3560,7 @@ static void handle_auth_pasn(struct host
+@@ -3553,7 +3561,7 @@ static void handle_auth_pasn(struct host
  
  
  static void handle_auth(struct hostapd_data *hapd,
@@ -293,7 +294,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  			int rssi, int from_queue,
  			struct hostapd_frame_info *fi)
  {
-@@ -3572,6 +3579,8 @@ static void handle_auth(struct hostapd_d
+@@ -3572,6 +3580,8 @@ static void handle_auth(struct hostapd_d
  		.mgmt_frame = mgmt,
  		.frame_info = fi,
  	};
@@ -302,7 +303,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  
  	if (len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth)) {
  		wpa_printf(MSG_INFO, "handle_auth - too short payload (len=%lu)",
-@@ -3589,6 +3598,27 @@ static void handle_auth(struct hostapd_d
+@@ -3589,6 +3599,27 @@ static void handle_auth(struct hostapd_d
  	}
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -330,7 +331,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  	auth_alg = le_to_host16(mgmt->u.auth.auth_alg);
  	auth_transaction = le_to_host16(mgmt->u.auth.auth_transaction);
  	status_code = le_to_host16(mgmt->u.auth.status_code);
-@@ -3827,6 +3857,12 @@ static void handle_auth(struct hostapd_d
+@@ -3827,6 +3858,12 @@ static void handle_auth(struct hostapd_d
  	}
  	sta->last_seq_ctrl = seq_ctrl;
  	sta->last_subtype = WLAN_FC_STYPE_AUTH;
@@ -343,7 +344,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  #ifdef CONFIG_MBO
  	sta->auth_rssi = rssi;
  #endif /* CONFIG_MBO */
-@@ -4500,9 +4536,30 @@ static bool check_sa_query(struct hostap
+@@ -4500,9 +4537,30 @@ static bool check_sa_query(struct hostap
  	return false;
  }
  
@@ -375,7 +376,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  {
  	struct ieee802_11_elems elems;
  	int resp;
-@@ -4512,8 +4569,8 @@ static int check_assoc_ies(struct hostap
+@@ -4512,8 +4570,8 @@ static int check_assoc_ies(struct hostap
  
  	if (ieee802_11_parse_elems(ies, ies_len, &elems, 1) == ParseFailed) {
  		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
@@ -386,7 +387,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  		return WLAN_STATUS_UNSPECIFIED_FAILURE;
  	}
  
-@@ -4604,6 +4661,10 @@ static int check_assoc_ies(struct hostap
+@@ -4604,6 +4662,10 @@ static int check_assoc_ies(struct hostap
  						 elems.eht_240mhz_len);
  		if (resp != WLAN_STATUS_SUCCESS)
  			return resp;
@@ -397,7 +398,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -5063,7 +5124,7 @@ static int add_associated_sta(struct hos
+@@ -5063,7 +5125,7 @@ static int add_associated_sta(struct hos
  			    sta->vht_opmode, sta->p2p_ie ? 1 : 0,
  			    sta->flags_ext & WLAN_STA_EXT_EHT? sta->eht_240mhz_capab : NULL,
  			    sta->flags_ext & WLAN_STA_EXT_EHT? sta->eht_240mhz_len : 0,
@@ -406,7 +407,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  		hostapd_logger(hapd, sta->addr,
  			       HOSTAPD_MODULE_IEEE80211, HOSTAPD_LEVEL_NOTICE,
  			       "Could not %s STA to kernel driver",
-@@ -5086,7 +5147,7 @@ static int add_associated_sta(struct hos
+@@ -5086,7 +5148,7 @@ static int add_associated_sta(struct hos
  static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
  			   const u8 *addr, u16 status_code, int reassoc,
  			   const u8 *ies, size_t ies_len, int rssi,
@@ -415,7 +416,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  {
  	int send_len;
  	u8 *buf;
-@@ -5119,6 +5180,10 @@ static u16 send_assoc_resp(struct hostap
+@@ -5119,6 +5181,10 @@ static u16 send_assoc_resp(struct hostap
  		if (is_5ghz_freq(hapd->iface->freq))
  			buflen += (6 + 2 + 4 +
  				   sizeof(struct ieee80211_240mhz_vendor_oper));
@@ -426,7 +427,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -5373,6 +5438,10 @@ rsnxe_done:
+@@ -5373,6 +5439,10 @@ rsnxe_done:
  		p += wpabuf_len(hapd->conf->assocresp_elements);
  	}
  
@@ -437,7 +438,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  	send_len += p - reply->u.assoc_resp.variable;
  
  #ifdef CONFIG_FILS
-@@ -5492,7 +5561,7 @@ void fils_hlp_finish_assoc(struct hostap
+@@ -5492,7 +5562,7 @@ void fils_hlp_finish_assoc(struct hostap
  	reply_res = send_assoc_resp(hapd, sta, sta->addr, WLAN_STATUS_SUCCESS,
  				    sta->fils_pending_assoc_is_reassoc,
  				    sta->fils_pending_assoc_req,
@@ -446,7 +447,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  	os_free(sta->fils_pending_assoc_req);
  	sta->fils_pending_assoc_req = NULL;
  	sta->fils_pending_assoc_req_len = 0;
-@@ -5542,6 +5611,7 @@ static void handle_assoc(struct hostapd_
+@@ -5542,6 +5612,7 @@ static void handle_assoc(struct hostapd_
  	int delay_assoc = 0;
  #endif /* CONFIG_FILS */
  	int omit_rsnxe = 0;
@@ -454,7 +455,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  
  	if (len < IEEE80211_HDRLEN + (reassoc ? sizeof(mgmt->u.reassoc_req) :
  				      sizeof(mgmt->u.assoc_req))) {
-@@ -5756,7 +5826,7 @@ static void handle_assoc(struct hostapd_
+@@ -5756,7 +5827,7 @@ static void handle_assoc(struct hostapd_
  
  	/* followed by SSID and Supported rates; and HT capabilities if 802.11n
  	 * is used */
@@ -463,7 +464,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  	if (resp != WLAN_STATUS_SUCCESS)
  		goto fail;
  	omit_rsnxe = !get_ie(pos, left, WLAN_EID_RSNX);
-@@ -5887,6 +5957,8 @@ static void handle_assoc(struct hostapd_
+@@ -5887,6 +5958,8 @@ static void handle_assoc(struct hostapd_
  			   "FILS: Continue waiting for HLP processing before sending (Re)Association Response frame to "
  			   MACSTR, MAC2STR(sta->addr));
  		os_free(tmp);
@@ -472,7 +473,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  		return;
  	}
  	if (sta) {
-@@ -5908,13 +5980,19 @@ static void handle_assoc(struct hostapd_
+@@ -5908,13 +5981,19 @@ static void handle_assoc(struct hostapd_
  		eloop_cancel_timeout(fils_hlp_timeout, hapd, sta);
  		eloop_register_timeout(0, hapd->conf->fils_hlp_wait_time * 1024,
  				       fils_hlp_timeout, hapd, sta);
@@ -493,7 +494,7 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  	os_free(tmp);
  
  	if (hostapd_ubus_handle_event(hapd, &req)) {
-@@ -7770,6 +7848,260 @@ u8 * hostapd_eid_rnr(struct hostapd_data
+@@ -7770,6 +7849,260 @@ u8 * hostapd_eid_rnr(struct hostapd_data
  }
  
  
@@ -756,8 +757,8 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.c
  					  const u8 *known_bss,
 Index: hostapd-2021-12-13/src/ap/ieee802_11.h
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/ieee802_11.h	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/ieee802_11.h	2022-12-22 12:55:38.828867515 +0530
+--- hostapd-2021-12-13.orig/src/ap/ieee802_11.h
++++ hostapd-2021-12-13/src/ap/ieee802_11.h
 @@ -25,6 +25,9 @@ enum colocation_mode {
          COLOCATED_6GHZ,
          COLOCATED_LOWER_BAND,
@@ -787,8 +788,8 @@ Index: hostapd-2021-12-13/src/ap/ieee802_11.h
  #endif /* IEEE802_11_H */
 Index: hostapd-2021-12-13/src/ap/sta_info.c
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/sta_info.c	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/sta_info.c	2022-12-22 12:55:38.828867515 +0530
+--- hostapd-2021-12-13.orig/src/ap/sta_info.c
++++ hostapd-2021-12-13/src/ap/sta_info.c
 @@ -771,7 +771,6 @@ struct sta_info * ap_sta_add(struct host
  	return sta;
  }
@@ -817,8 +818,8 @@ Index: hostapd-2021-12-13/src/ap/sta_info.c
  			       HOSTAPD_LEVEL_NOTICE,
 Index: hostapd-2021-12-13/src/ap/sta_info.h
 ===================================================================
---- hostapd-2021-12-13.orig/src/ap/sta_info.h	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/ap/sta_info.h	2022-12-22 12:55:38.828867515 +0530
+--- hostapd-2021-12-13.orig/src/ap/sta_info.h
++++ hostapd-2021-12-13/src/ap/sta_info.h
 @@ -55,6 +55,7 @@
  #define WLAN_SUPP_HT_RATES_MAX 77
  
@@ -847,8 +848,8 @@ Index: hostapd-2021-12-13/src/ap/sta_info.h
  
 Index: hostapd-2021-12-13/src/common/ieee802_11_common.c
 ===================================================================
---- hostapd-2021-12-13.orig/src/common/ieee802_11_common.c	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/common/ieee802_11_common.c	2022-12-22 12:55:38.828867515 +0530
+--- hostapd-2021-12-13.orig/src/common/ieee802_11_common.c
++++ hostapd-2021-12-13/src/common/ieee802_11_common.c
 @@ -350,6 +350,10 @@ static int ieee802_11_parse_extension(co
  		elems->eht_operation = pos;
  		elems->eht_operation_len = elen;
@@ -873,8 +874,8 @@ Index: hostapd-2021-12-13/src/common/ieee802_11_common.c
  				   "Defragmentation not supported. eid_ext=%u",
 Index: hostapd-2021-12-13/src/common/ieee802_11_common.h
 ===================================================================
---- hostapd-2021-12-13.orig/src/common/ieee802_11_common.h	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/common/ieee802_11_common.h	2022-12-22 12:55:38.832867525 +0530
+--- hostapd-2021-12-13.orig/src/common/ieee802_11_common.h
++++ hostapd-2021-12-13/src/common/ieee802_11_common.h
 @@ -47,6 +47,53 @@ struct frag_ies_info {
  	u8 last_eid_ext;
  };
@@ -947,8 +948,8 @@ Index: hostapd-2021-12-13/src/common/ieee802_11_common.h
  	struct frag_ies_info frag_ies;
 Index: hostapd-2021-12-13/src/common/ieee802_11_defs.h
 ===================================================================
---- hostapd-2021-12-13.orig/src/common/ieee802_11_defs.h	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/common/ieee802_11_defs.h	2022-12-22 12:55:38.832867525 +0530
+--- hostapd-2021-12-13.orig/src/common/ieee802_11_defs.h
++++ hostapd-2021-12-13/src/common/ieee802_11_defs.h
 @@ -498,6 +498,7 @@
  #define WLAN_EID_EXT_EHT_CAPABILITY 108
  
@@ -1010,9 +1011,9 @@ Index: hostapd-2021-12-13/src/common/ieee802_11_defs.h
  #define EHT_MCS_NSS_CAPAB_MAX_LEN   9
 Index: hostapd-2021-12-13/src/drivers/driver.h
 ===================================================================
---- hostapd-2021-12-13.orig/src/drivers/driver.h	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/drivers/driver.h	2022-12-22 12:55:38.832867525 +0530
-@@ -2396,6 +2396,7 @@ struct hostapd_sta_add_params {
+--- hostapd-2021-12-13.orig/src/drivers/driver.h
++++ hostapd-2021-12-13/src/drivers/driver.h
+@@ -2403,6 +2403,7 @@ struct hostapd_sta_add_params {
  	u16 ru_punct_bitmap;
  	const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab;
  	size_t eht_240mhz_len;
@@ -1022,9 +1023,9 @@ Index: hostapd-2021-12-13/src/drivers/driver.h
  struct mac_address {
 Index: hostapd-2021-12-13/src/drivers/driver_nl80211.c
 ===================================================================
---- hostapd-2021-12-13.orig/src/drivers/driver_nl80211.c	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/drivers/driver_nl80211.c	2022-12-22 12:55:38.836867532 +0530
-@@ -5210,13 +5210,21 @@ static int wpa_driver_nl80211_sta_add(vo
+--- hostapd-2021-12-13.orig/src/drivers/driver_nl80211.c
++++ hostapd-2021-12-13/src/drivers/driver_nl80211.c
+@@ -5215,13 +5215,21 @@ static int wpa_driver_nl80211_sta_add(vo
  	    !(drv->capa.flags & WPA_DRIVER_FLAGS_TDLS_SUPPORT))
  		return -EOPNOTSUPP;
  
@@ -1050,8 +1051,8 @@ Index: hostapd-2021-12-13/src/drivers/driver_nl80211.c
  	 * 1. New station is added, already associated.
 Index: hostapd-2021-12-13/src/drivers/nl80211_copy.h
 ===================================================================
---- hostapd-2021-12-13.orig/src/drivers/nl80211_copy.h	2022-12-22 12:55:38.844867551 +0530
-+++ hostapd-2021-12-13/src/drivers/nl80211_copy.h	2022-12-22 12:55:38.836867532 +0530
+--- hostapd-2021-12-13.orig/src/drivers/nl80211_copy.h
++++ hostapd-2021-12-13/src/drivers/nl80211_copy.h
 @@ -2604,7 +2604,7 @@ enum nl80211_commands {
   * This attribute type is u8 and valid range is 0 to 1.
   * 0 for disable AP power save mode.
