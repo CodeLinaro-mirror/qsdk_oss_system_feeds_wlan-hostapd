@@ -48,7 +48,7 @@ index 7341080..6fc1091 100644
  	nla_nest_end(msg, beacon_csa);
 +
 +	if (settings->handle_dfs && nla_put_flag(msg, NL80211_ATTR_HANDLE_DFS))
-+		goto error;
++		goto fail;
 +
  	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
  	if (ret) {
