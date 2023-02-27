@@ -1,0 +1,67 @@
+From d97a3ac7d0fa0fc8fc4fefc8756da64f0e842ecc Mon Sep 17 00:00:00 2001
+From: Rameshkumar Sundaram <quic_ramess@quicinc.com>
+Date: Tue, 28 Feb 2023 20:57:54 +0530
+Subject: [PATCH 2/3] hostapd: Synchronize MBSSID Birngup in MLO
+
+Add changes to do START_AP/SET_BEACON to Non-TX vdev only after
+starting TX vdev in case of MLD.
+
+Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
+---
+ src/ap/hostapd.c | 28 ++++++++++++++++++++++++----
+ 1 file changed, 24 insertions(+), 4 deletions(-)
+
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index e683901..b96b966 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -2444,8 +2444,7 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+ 			prev_addr = hapd->own_addr;
+ 	}
+ 
+-	/* TODO handle MBSS MLO cases */
+-	if (hapd->iconf->mbssid) {
++	if (hapd->iconf->mbssid && !hapd->iface->bss[0]->mld) {
+ 		for (j = 0; j < iface->num_bss; j++) {
+ 			hapd = iface->bss[j];
+ 			if (hostapd_set_beacon(hapd)) {
+@@ -2717,13 +2716,34 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
+ 			link_bss = mld->bss;
+ 
+ 			while (link_bss) {
+-				hostapd_set_beacon(link_bss);
++				/* Allow TX vdev bring up first in case of mbssid. */
++				if (hostapd_mbssid_get_tx_bss(link_bss) == link_bss)
++					hostapd_set_beacon(link_bss);
++
+ 				link_bss = link_bss->nbss;
+ 			}
+ 		}
+ 	}
+-#endif
+ 
++	/* If MBSSID Tx vdev beacon is set, bring up all non-tx vdevs. */
++	for (i = 0; i < interfaces->count; i++) {
++		struct hostapd_iface *iface;
++		struct hostapd_data *tx_hapd;
++		size_t j;
++
++		iface = interfaces->iface[i];
++		if (!iface)
++			continue;
++		/* First BSS is TX BSS if MBSSID is enabled. */
++		tx_hapd = iface->bss[0];
++
++		if (tx_hapd && tx_hapd->iconf->mbssid &&
++		    (tx_hapd->beacon_set_done))
++			for (j = 1; j < iface->num_bss; j++)
++				if (hostapd_set_beacon(iface->bss[j]))
++					return -1;
++	}
++#endif
+ 	return 0;
+ }
+ 
+-- 
+2.17.1
+
