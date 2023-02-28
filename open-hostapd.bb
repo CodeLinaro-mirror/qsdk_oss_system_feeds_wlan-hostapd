@@ -1,9 +1,9 @@
 SUMMARY = "hostapd daemon"
 LICENSE = "BSD-3-Clause"
 SECTION = "network"
-LIC_FILES_CHKSUM = "file://COPYING;md5=279b4f5abb9c153c285221855ddb78cc"
+LIC_FILES_CHKSUM = "file://COPYING;md5=5ebcb90236d1ad640558c3d3cd3035df"
 PKG_NAME = "hostapd"
-PV = "2_10"
+PV = "9_19"
 
 FILESEXTRAPATHS_append := "${THISDIR}/package/network/services/hostapd/patches:"
 FILESEXTRAPATHS_append := "${THISDIR}/package/network/services/hostapd/files:"
@@ -13,7 +13,7 @@ SRC_URI = "git://w1.fi/hostap.git;nobranch=1 \
 	file://wpa_supplicant-mesh.config \
 "
 
-SRCREV = "b26f5c0fe35cd0472ea43f533b981ac2d91cdf1f"
+SRCREV = "01944c0957ba20ee1790eb2473cc5970f8b1f17e"
 
 FILES_${PN} += "/usr/sbin/*"
 
@@ -39,6 +39,7 @@ do_compile() {
 	sed -i '/CONFIG_TLS=internal/d' ${S}/wpa_supplicant/.config
 	echo 'CONFIG_CTRL_IFACE_MIB=y' >> ${S}/wpa_supplicant/.config
 	echo 'CONFIG_IEEE80211AX=y' >> ${S}/wpa_supplicant/.config
+	echo 'CONFIG_IEEE80211BE=y' >> ${S}/wpa_supplicant/.config
 	make V=s  -C ${S}/${PKG_NAME}
 	make V=s  -C ${S}/wpa_supplicant
 }
