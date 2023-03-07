@@ -36,11 +36,11 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  wpa_supplicant/ibss_rsn.c    |   4 +-
  11 files changed, 239 insertions(+), 29 deletions(-)
 
-diff --git a/src/ap/ap_drv_ops.c b/src/ap/ap_drv_ops.c
-index 3625011..58d7b39 100644
---- a/src/ap/ap_drv_ops.c
-+++ b/src/ap/ap_drv_ops.c
-@@ -272,12 +272,12 @@ int hostapd_set_authorized(struct hostapd_data *hapd,
+Index: hostapd-2022-09-19/src/ap/ap_drv_ops.c
+===================================================================
+--- hostapd-2022-09-19.orig/src/ap/ap_drv_ops.c	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/ap/ap_drv_ops.c	2023-03-07 12:04:45.813437839 +0530
+@@ -272,12 +272,12 @@ int hostapd_set_authorized(struct hostap
  		return hostapd_sta_set_flags(hapd, sta->addr,
  					     hostapd_sta_flags_to_drv(
  						     sta->flags),
@@ -55,7 +55,7 @@ index 3625011..58d7b39 100644
  }
  
  
-@@ -293,7 +293,7 @@ int hostapd_set_sta_flags(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -293,7 +293,7 @@ int hostapd_set_sta_flags(struct hostapd
  	flags_or = total_flags & set_flags;
  	flags_and = total_flags | ~set_flags;
  	return hostapd_sta_set_flags(hapd, sta->addr, total_flags,
@@ -64,7 +64,7 @@ index 3625011..58d7b39 100644
  }
  
  
-@@ -430,7 +430,7 @@ int hostapd_sta_add(struct hostapd_data *hapd,
+@@ -430,7 +430,7 @@ int hostapd_sta_add(struct hostapd_data
  		    size_t eht_capab_len,
  		    const struct ieee80211_he_6ghz_band_cap *he_6ghz_capab,
  		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
@@ -73,7 +73,7 @@ index 3625011..58d7b39 100644
  {
  	struct hostapd_sta_add_params params;
  
-@@ -438,6 +438,8 @@ int hostapd_sta_add(struct hostapd_data *hapd,
+@@ -438,6 +438,8 @@ int hostapd_sta_add(struct hostapd_data
  		return 0;
  	if (hapd->driver->sta_add == NULL)
  		return 0;
@@ -82,7 +82,7 @@ index 3625011..58d7b39 100644
  
  	os_memset(&params, 0, sizeof(params));
  	params.addr = addr;
-@@ -459,7 +461,13 @@ int hostapd_sta_add(struct hostapd_data *hapd,
+@@ -459,7 +461,13 @@ int hostapd_sta_add(struct hostapd_data
  	params.qosinfo = qosinfo;
  	params.support_p2p_ps = supp_p2p_ps;
  	params.set = set;
@@ -97,7 +97,7 @@ index 3625011..58d7b39 100644
  }
  
  
-@@ -606,12 +614,13 @@ int hostapd_set_frag(struct hostapd_data *hapd, int frag)
+@@ -606,12 +614,13 @@ int hostapd_set_frag(struct hostapd_data
  
  
  int hostapd_sta_set_flags(struct hostapd_data *hapd, u8 *addr,
@@ -113,11 +113,11 @@ index 3625011..58d7b39 100644
  }
  
  
-diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
-index bcca860..1db739b 100644
---- a/src/ap/ap_drv_ops.h
-+++ b/src/ap/ap_drv_ops.h
-@@ -47,7 +47,7 @@ int hostapd_sta_add(struct hostapd_data *hapd,
+Index: hostapd-2022-09-19/src/ap/ap_drv_ops.h
+===================================================================
+--- hostapd-2022-09-19.orig/src/ap/ap_drv_ops.h	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/ap/ap_drv_ops.h	2023-03-07 12:04:45.813437839 +0530
+@@ -47,7 +47,7 @@ int hostapd_sta_add(struct hostapd_data
  		    size_t eht_capab_len,
  		    const struct ieee80211_he_6ghz_band_cap *he_6ghz_capab,
  		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
@@ -126,7 +126,7 @@ index bcca860..1db739b 100644
  int hostapd_set_privacy(struct hostapd_data *hapd, int enabled);
  int hostapd_set_generic_elem(struct hostapd_data *hapd, const u8 *elem,
  			     size_t elem_len);
-@@ -74,7 +74,8 @@ int hostapd_set_freq(struct hostapd_data *hapd, enum hostapd_hw_mode mode,
+@@ -74,7 +74,8 @@ int hostapd_set_freq(struct hostapd_data
  int hostapd_set_rts(struct hostapd_data *hapd, int rts);
  int hostapd_set_frag(struct hostapd_data *hapd, int frag);
  int hostapd_sta_set_flags(struct hostapd_data *hapd, u8 *addr,
@@ -136,7 +136,7 @@ index bcca860..1db739b 100644
  int hostapd_sta_set_airtime_weight(struct hostapd_data *hapd, const u8 *addr,
  				   unsigned int weight);
  int hostapd_set_country(struct hostapd_data *hapd, const char *country);
-@@ -170,12 +171,13 @@ static inline int hostapd_drv_set_countermeasures(struct hostapd_data *hapd,
+@@ -170,12 +171,13 @@ static inline int hostapd_drv_set_counte
  
  static inline int hostapd_drv_set_sta_vlan(const char *ifname,
  					   struct hostapd_data *hapd,
@@ -152,7 +152,7 @@ index bcca860..1db739b 100644
  }
  
  static inline int hostapd_drv_get_inact_sec(struct hostapd_data *hapd,
-@@ -194,6 +196,14 @@ static inline int hostapd_drv_sta_remove(struct hostapd_data *hapd,
+@@ -194,6 +196,14 @@ static inline int hostapd_drv_sta_remove
  	return hapd->driver->sta_remove(hapd->drv_priv, addr);
  }
  
@@ -167,11 +167,11 @@ index bcca860..1db739b 100644
  static inline int hostapd_drv_hapd_send_eapol(struct hostapd_data *hapd,
  					      const u8 *addr, const u8 *data,
  					      size_t data_len, int encrypt,
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index cabce2b..33ce0d7 100644
---- a/src/ap/ieee802_11.c
-+++ b/src/ap/ieee802_11.c
-@@ -5277,7 +5277,7 @@ static int add_associated_sta(struct hostapd_data *hapd,
+Index: hostapd-2022-09-19/src/ap/ieee802_11.c
+===================================================================
+--- hostapd-2022-09-19.orig/src/ap/ieee802_11.c	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/ap/ieee802_11.c	2023-03-07 12:04:45.817437810 +0530
+@@ -5282,7 +5282,7 @@ static int add_associated_sta(struct hos
  			    sta->he_6ghz_capab,
  			    sta->flags | WLAN_STA_ASSOC, sta->qosinfo,
  			    sta->vht_opmode, sta->p2p_ie ? 1 : 0,
@@ -180,11 +180,11 @@ index cabce2b..33ce0d7 100644
  		hostapd_logger(hapd, sta->addr,
  			       HOSTAPD_MODULE_IEEE80211, HOSTAPD_LEVEL_NOTICE,
  			       "Could not %s STA to kernel driver",
-diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index 501a22e..ede8571 100644
---- a/src/ap/sta_info.c
-+++ b/src/ap/sta_info.c
-@@ -1097,6 +1097,7 @@ int ap_sta_bind_vlan(struct hostapd_data *hapd, struct sta_info *sta)
+Index: hostapd-2022-09-19/src/ap/sta_info.c
+===================================================================
+--- hostapd-2022-09-19.orig/src/ap/sta_info.c	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/ap/sta_info.c	2023-03-07 12:04:45.817437810 +0530
+@@ -1097,6 +1097,7 @@ int ap_sta_bind_vlan(struct hostapd_data
  	struct hostapd_vlan *vlan = NULL;
  	int ret;
  	int old_vlanid = sta->vlan_id_bound;
@@ -204,7 +204,7 @@ index 501a22e..ede8571 100644
  	if (ret < 0) {
  		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_DEBUG, "could not bind the STA "
-@@ -1583,7 +1587,7 @@ int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -1583,7 +1587,7 @@ int ap_sta_re_add(struct hostapd_data *h
  			    sta->supported_rates,
  			    sta->supported_rates_len,
  			    0, NULL, NULL, NULL, 0, NULL, 0, NULL,
@@ -213,11 +213,11 @@ index 501a22e..ede8571 100644
  		hostapd_logger(hapd, sta->addr,
  			       HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_NOTICE,
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index deeab07..66fa36a 100644
---- a/src/drivers/driver.h
-+++ b/src/drivers/driver.h
-@@ -2449,6 +2449,8 @@ struct hostapd_sta_add_params {
+Index: hostapd-2022-09-19/src/drivers/driver.h
+===================================================================
+--- hostapd-2022-09-19.orig/src/drivers/driver.h	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/drivers/driver.h	2023-03-07 12:04:45.821437779 +0530
+@@ -2462,6 +2462,8 @@ struct hostapd_sta_add_params {
  	size_t supp_oper_classes_len;
  	int support_p2p_ps;
  	u16 ru_punct_bitmap;
@@ -226,11 +226,10 @@ index deeab07..66fa36a 100644
  };
  
  struct mac_address {
-@@ -3648,6 +3650,24 @@ struct wpa_driver_ops {
- 	 */
+@@ -3673,6 +3675,24 @@ struct wpa_driver_ops {
  	int (*sta_add)(void *priv, struct hostapd_sta_add_params *params);
  
-+	/**
+ 	/**
 +	 * link_sta_add_mod - Add/Modify a link station entry(for ML STA)
 +	 * @priv: Private driver interface data
 +	 * @params: Link Station parameters
@@ -248,10 +247,11 @@ index deeab07..66fa36a 100644
 +	 */
 +	int (*link_sta_remove)(void *priv, const u8 *mld_addr, int link_id);
 +
- 	/**
++	/**
  	 * get_inact_sec - Get station inactivity duration (AP only)
  	 * @priv: Private driver interface data
-@@ -3695,11 +3715,13 @@ struct wpa_driver_ops {
+ 	 * @addr: Station address
+@@ -3719,11 +3739,13 @@ struct wpa_driver_ops {
  	 * @total_flags: Bitmap of all WPA_STA_* flags currently set
  	 * @flags_or: Bitmap of WPA_STA_* flags to add
  	 * @flags_and: Bitmap of WPA_STA_* flags to us as a mask
@@ -266,7 +266,7 @@ index deeab07..66fa36a 100644
  
  	/**
  	 * sta_set_airtime_weight - Set station airtime weight (AP only)
-@@ -3765,6 +3787,7 @@ struct wpa_driver_ops {
+@@ -3789,6 +3811,7 @@ struct wpa_driver_ops {
  	 * @ifname: Interface (main or virtual BSS or VLAN)
  	 * @addr: MAC address of the associated station
  	 * @vlan_id: VLAN ID
@@ -274,7 +274,7 @@ index deeab07..66fa36a 100644
  	 * Returns: 0 on success, -1 on failure
  	 *
  	 * This function is used to bind a station to a specific virtual
-@@ -3774,7 +3797,7 @@ struct wpa_driver_ops {
+@@ -3798,7 +3821,7 @@ struct wpa_driver_ops {
  	 * domains to be used with a single BSS.
  	 */
  	int (*set_sta_vlan)(void *priv, const u8 *addr, const char *ifname,
@@ -283,11 +283,11 @@ index deeab07..66fa36a 100644
  
  	/**
  	 * commit - Optional commit changes handler (AP only)
-diff --git a/src/drivers/driver_atheros.c b/src/drivers/driver_atheros.c
-index cb66dfa..13aab65 100644
---- a/src/drivers/driver_atheros.c
-+++ b/src/drivers/driver_atheros.c
-@@ -452,7 +452,7 @@ atheros_set_sta_authorized(void *priv, const u8 *addr, int authorized)
+Index: hostapd-2022-09-19/src/drivers/driver_atheros.c
+===================================================================
+--- hostapd-2022-09-19.orig/src/drivers/driver_atheros.c	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/drivers/driver_atheros.c	2023-03-07 12:04:45.821437779 +0530
+@@ -452,7 +452,7 @@ atheros_set_sta_authorized(void *priv, c
  static int
  atheros_sta_set_flags(void *priv, const u8 *addr,
  		      unsigned int total_flags, unsigned int flags_or,
@@ -296,10 +296,10 @@ index cb66dfa..13aab65 100644
  {
  	/* For now, only support setting Authorized flag */
  	if (flags_or & WPA_STA_AUTHORIZED)
-diff --git a/src/drivers/driver_bsd.c b/src/drivers/driver_bsd.c
-index 00d970a..217a2f7 100644
---- a/src/drivers/driver_bsd.c
-+++ b/src/drivers/driver_bsd.c
+Index: hostapd-2022-09-19/src/drivers/driver_bsd.c
+===================================================================
+--- hostapd-2022-09-19.orig/src/drivers/driver_bsd.c	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/drivers/driver_bsd.c	2023-03-07 12:04:45.821437779 +0530
 @@ -1059,7 +1059,7 @@ bsd_deinit(void *priv)
  static int
  bsd_set_sta_authorized(void *priv, const u8 *addr,
@@ -309,11 +309,11 @@ index 00d970a..217a2f7 100644
  {
  	int authorized = -1;
  
-diff --git a/src/drivers/driver_hostap.c b/src/drivers/driver_hostap.c
-index 2d9ac07..7d88151 100644
---- a/src/drivers/driver_hostap.c
-+++ b/src/drivers/driver_hostap.c
-@@ -327,7 +327,8 @@ static int hostap_send_eapol(void *priv, const u8 *addr, const u8 *data,
+Index: hostapd-2022-09-19/src/drivers/driver_hostap.c
+===================================================================
+--- hostapd-2022-09-19.orig/src/drivers/driver_hostap.c	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/drivers/driver_hostap.c	2023-03-07 12:05:16.801205598 +0530
+@@ -327,7 +327,8 @@ static int hostap_send_eapol(void *priv,
  
  static int hostap_sta_set_flags(void *priv, const u8 *addr,
  				unsigned int total_flags, unsigned int flags_or,
@@ -323,11 +323,20 @@ index 2d9ac07..7d88151 100644
  {
  	struct hostap_driver_data *drv = priv;
  	struct prism2_hostapd_param param;
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 7b8b0fc..6d977d7 100644
---- a/src/drivers/driver_nl80211.c
-+++ b/src/drivers/driver_nl80211.c
-@@ -5355,7 +5355,136 @@ static u32 sta_plink_state_nl80211(enum mesh_plink_state state)
+@@ -663,7 +664,7 @@ static int hostap_sta_remove(void *priv,
+ 	struct hostap_driver_data *drv = priv;
+ 	struct prism2_hostapd_param param;
+ 
+-	hostap_sta_set_flags(drv, addr, 0, 0, ~WPA_STA_AUTHORIZED);
++	hostap_sta_set_flags(drv, addr, 0, 0, ~WPA_STA_AUTHORIZED, NULL, -1);
+ 
+ 	memset(&param, 0, sizeof(param));
+ 	param.cmd = PRISM2_HOSTAPD_REMOVE_STA;
+Index: hostapd-2022-09-19/src/drivers/driver_nl80211.c
+===================================================================
+--- hostapd-2022-09-19.orig/src/drivers/driver_nl80211.c	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/src/drivers/driver_nl80211.c	2023-03-07 12:04:45.825437750 +0530
+@@ -5397,7 +5397,136 @@ static u32 sta_plink_state_nl80211(enum
  	return -1;
  }
  #endif /* CONFIG_MESH */
@@ -405,7 +414,7 @@ index 7b8b0fc..6d977d7 100644
 +			    params->ht_capabilities))
 +			goto fail;
 +	}
- 
++
 +	if (params->vht_capabilities) {
 +		wpa_hexdump(MSG_DEBUG, "  * vht_capabilities",
 +			    (u8 *) params->vht_capabilities,
@@ -459,12 +468,12 @@ index 7b8b0fc..6d977d7 100644
 +fail:
 +	nlmsg_free(msg);
 +	return ret;
-+
+ 
 +}
  
  static int wpa_driver_nl80211_sta_add(void *priv,
  				      struct hostapd_sta_add_params *params)
-@@ -5377,6 +5506,17 @@ static int wpa_driver_nl80211_sta_add(void *priv,
+@@ -5419,6 +5548,17 @@ static int wpa_driver_nl80211_sta_add(vo
  	if (!msg || nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, params->addr))
  		goto fail;
  
@@ -482,7 +491,7 @@ index 7b8b0fc..6d977d7 100644
  	/*
  	 * Set the below properties only in one of the following cases:
  	 * 1. New station is added, already associated.
-@@ -6086,7 +6226,9 @@ static int wpa_driver_nl80211_hapd_send_eapol(
+@@ -6128,7 +6268,9 @@ static int wpa_driver_nl80211_hapd_send_
  static int wpa_driver_nl80211_sta_set_flags(void *priv, const u8 *addr,
  					    unsigned int total_flags,
  					    unsigned int flags_or,
@@ -493,7 +502,7 @@ index 7b8b0fc..6d977d7 100644
  {
  	struct i802_bss *bss = priv;
  	struct nl_msg *msg;
-@@ -6102,6 +6244,17 @@ static int wpa_driver_nl80211_sta_set_flags(void *priv, const u8 *addr,
+@@ -6144,6 +6286,17 @@ static int wpa_driver_nl80211_sta_set_fl
  	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, addr))
  		goto fail;
  
@@ -511,7 +520,7 @@ index 7b8b0fc..6d977d7 100644
  	/*
  	 * Backwards compatibility version using NL80211_ATTR_STA_FLAGS. This
  	 * can be removed eventually.
-@@ -7693,7 +7846,8 @@ fail:
+@@ -7739,7 +7892,8 @@ fail:
  
  
  static int i802_set_sta_vlan(struct i802_bss *bss, const u8 *addr,
@@ -521,7 +530,7 @@ index 7b8b0fc..6d977d7 100644
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
  	struct nl_msg *msg;
-@@ -7712,6 +7866,11 @@ static int i802_set_sta_vlan(struct i802_bss *bss, const u8 *addr,
+@@ -7758,6 +7912,11 @@ static int i802_set_sta_vlan(struct i802
  		return -ENOBUFS;
  	}
  
@@ -533,7 +542,7 @@ index 7b8b0fc..6d977d7 100644
  	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
  	if (ret < 0) {
  		wpa_printf(MSG_ERROR, "nl80211: NL80211_ATTR_STA_VLAN (addr="
-@@ -7964,7 +8123,7 @@ static int i802_set_wds_sta(void *priv, const u8 *addr, int aid, int val,
+@@ -8010,7 +8169,7 @@ static int i802_set_wds_sta(void *priv,
  			wpa_printf(MSG_ERROR, "nl80211: Failed to set WDS STA "
  				   "interface %s up", name);
  		}
@@ -542,7 +551,7 @@ index 7b8b0fc..6d977d7 100644
  	} else {
  		if (bridge_ifname &&
  		    linux_br_del_if(drv->global->ioctl_sock, bridge_ifname,
-@@ -7973,7 +8132,7 @@ static int i802_set_wds_sta(void *priv, const u8 *addr, int aid, int val,
+@@ -8019,7 +8178,7 @@ static int i802_set_wds_sta(void *priv,
  				   "nl80211: Failed to remove interface %s from bridge %s: %s",
  				   name, bridge_ifname, strerror(errno));
  
@@ -551,7 +560,7 @@ index 7b8b0fc..6d977d7 100644
  		nl80211_remove_iface(drv, if_nametoindex(name));
  		os_memset(&event, 0, sizeof(event));
  		event.wds_sta_interface.sta_addr = addr;
-@@ -10141,10 +10300,11 @@ static int driver_nl80211_sta_remove(void *priv, const u8 *addr)
+@@ -10186,10 +10345,11 @@ static int driver_nl80211_sta_remove(voi
  
  
  static int driver_nl80211_set_sta_vlan(void *priv, const u8 *addr,
@@ -565,7 +574,7 @@ index 7b8b0fc..6d977d7 100644
  }
  
  
-@@ -13220,6 +13380,8 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+@@ -13269,6 +13429,8 @@ const struct wpa_driver_ops wpa_driver_n
  	.get_hw_feature_data = nl80211_get_hw_feature_data,
  	.sta_add = wpa_driver_nl80211_sta_add,
  	.sta_remove = driver_nl80211_sta_remove,
@@ -574,11 +583,11 @@ index 7b8b0fc..6d977d7 100644
  	.tx_control_port = nl80211_tx_control_port,
  	.hapd_send_eapol = wpa_driver_nl80211_hapd_send_eapol,
  	.sta_set_flags = wpa_driver_nl80211_sta_set_flags,
-diff --git a/wpa_supplicant/driver_i.h b/wpa_supplicant/driver_i.h
-index c072e61..9f3b4cf 100644
---- a/wpa_supplicant/driver_i.h
-+++ b/wpa_supplicant/driver_i.h
-@@ -387,12 +387,13 @@ static inline int wpa_drv_hapd_send_eapol(struct wpa_supplicant *wpa_s,
+Index: hostapd-2022-09-19/wpa_supplicant/driver_i.h
+===================================================================
+--- hostapd-2022-09-19.orig/wpa_supplicant/driver_i.h	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/wpa_supplicant/driver_i.h	2023-03-07 12:04:45.825437750 +0530
+@@ -387,12 +387,13 @@ static inline int wpa_drv_hapd_send_eapo
  
  static inline int wpa_drv_sta_set_flags(struct wpa_supplicant *wpa_s,
  					const u8 *addr, int total_flags,
@@ -594,11 +603,11 @@ index c072e61..9f3b4cf 100644
  	return -1;
  }
  
-diff --git a/wpa_supplicant/ibss_rsn.c b/wpa_supplicant/ibss_rsn.c
-index 874c2bf..be2ab30 100644
---- a/wpa_supplicant/ibss_rsn.c
-+++ b/wpa_supplicant/ibss_rsn.c
-@@ -390,12 +390,12 @@ static void ibss_set_sta_authorized(struct ibss_rsn *ibss_rsn,
+Index: hostapd-2022-09-19/wpa_supplicant/ibss_rsn.c
+===================================================================
+--- hostapd-2022-09-19.orig/wpa_supplicant/ibss_rsn.c	2023-03-07 12:04:45.829437719 +0530
++++ hostapd-2022-09-19/wpa_supplicant/ibss_rsn.c	2023-03-07 12:04:45.825437750 +0530
+@@ -390,12 +390,12 @@ static void ibss_set_sta_authorized(stru
  	if (authorized) {
  		res = wpa_drv_sta_set_flags(ibss_rsn->wpa_s, peer->addr,
  					    WPA_STA_AUTHORIZED,
@@ -613,6 +622,3 @@ index 874c2bf..be2ab30 100644
  		wpa_printf(MSG_DEBUG, "AUTH: " MACSTR " unauthorizing port",
  			   MAC2STR(peer->addr));
  	}
--- 
-2.17.1
-
