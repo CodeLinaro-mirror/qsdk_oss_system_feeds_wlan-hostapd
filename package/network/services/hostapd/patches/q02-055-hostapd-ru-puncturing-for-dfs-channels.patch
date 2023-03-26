@@ -96,7 +96,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	/* Proceed only if DFS is not offloaded to the driver */
  	if (iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD)
-@@ -1660,6 +1696,26 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1660,6 +1696,24 @@ int hostapd_dfs_radar_detected(struct ho
  			return 0;
  	}
  
@@ -114,11 +114,9 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 +			oper_centr_freq_seg0_idx, oper_centr_freq_seg1_idx);
 +	}
 +
-+	if (iface->conf->use_ru_puncture_dfs) {
-+		/* Switch channel with random channel selection for invalid puncturing pattern */
-+		iface->radar_bit_pattern = 0;
-+		iface->conf->ru_punct_bitmap = 0;
-+	}
++	/* Switch channel with random channel selection for invalid puncturing pattern */
++	iface->radar_bit_pattern = 0;
++	iface->conf->ru_punct_bitmap = 0;
 +
  	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
  		if (!iface->conf->disable_csa_dfs) {
