@@ -728,6 +728,9 @@ wpa_supplicant_add_network() {
 		[ -n "$disable_csa_dfs" ] && {
 			disable_csa_dfs="disable_csa_dfs=$disable_csa_dfs"
 		}
+		[ -n "$freq_list" ] && {
+			freq_list="freq_list=$freq_list"
+		}
 	}
 
 	[[ "$_w_mode" = "adhoc" -o "$_w_mode" = "mesh" ]] && append network_data "$_w_modestr" "$N$T"
@@ -877,6 +880,7 @@ network={
 	enable_320mhz_bw=$enable_320mhz_bw
 	$ru_punct_str
 	ccfs=$ccfs
+	$freq_list
 }
 EOF
 	return 0
