@@ -16,7 +16,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -3686,10 +3686,12 @@ int process_global_event(struct nl_msg *
+@@ -3706,10 +3706,12 @@ int process_global_event(struct nl_msg *
  	struct nlattr *tb[NL80211_ATTR_MAX + 1];
  	struct wpa_driver_nl80211_data *drv, *tmp;
  	int ifidx = -1, wiphy_idx = -1, wiphy_idx_rx = -1;
@@ -30,7 +30,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
  		  genlmsg_attrlen(gnlh, 0), NULL);
-@@ -3704,6 +3706,18 @@ int process_global_event(struct nl_msg *
+@@ -3724,6 +3726,18 @@ int process_global_event(struct nl_msg *
  		wiphy_idx_set = 1;
  	}
  
@@ -49,14 +49,20 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	dl_list_for_each_safe(drv, tmp, &global->interfaces,
  			      struct wpa_driver_nl80211_data, list) {
  		for (bss = drv->first_bss; bss; bss = bss->next) {
-@@ -3714,14 +3728,32 @@ int process_global_event(struct nl_msg *
+@@ -3734,19 +3748,38 @@ int process_global_event(struct nl_msg *
  			    (wiphy_idx_set && wiphy_idx == wiphy_idx_rx) ||
  			    (wdev_id_set && bss->wdev_id_set &&
  			     wdev_id == bss->wdev_id)) {
--				do_process_drv_event(bss, gnlh->cmd, tb, true);
+-				if (wiphy_idx_set)
 +				if (!mlo_link_id_set) {
-+					do_process_drv_event(bss, gnlh->cmd, tb, true);
-+					return NL_SKIP;
++					if (!wiphy_idx_set) {
++						do_process_drv_event(bss, gnlh->cmd,
++								     tb, true);
++						return NL_SKIP;
++					}
+ 					return process_global_mlo_wiphy_event(global,
+ 									      gnlh->cmd,
+ 									      tb);
 +				}
 +
 +				if (!(drv->mlo_link_id >= 0))
@@ -71,9 +77,11 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +						   gnlh->cmd, nl80211_command_to_string(gnlh->cmd));
 +					break;
 +				}
-+
+ 
+-				do_process_drv_event(bss, gnlh->cmd, tb, true);
+-				return NL_SKIP;
 +				do_process_drv_event(link_bss, gnlh->cmd, tb, false);
- 				return NL_SKIP;
++ 				return NL_SKIP;
  			}
  		}
  		wpa_printf(MSG_DEBUG,
