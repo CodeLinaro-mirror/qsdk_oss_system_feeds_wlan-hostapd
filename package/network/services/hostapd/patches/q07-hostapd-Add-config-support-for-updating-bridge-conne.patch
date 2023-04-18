@@ -1,8 +1,7 @@
-From 841e00fad9ad0e6ba3f0a110f069afe26010d902 Mon Sep 17 00:00:00 2001
+From 9401af4506decfb133e0cb947dba07c1da6f3b01 Mon Sep 17 00:00:00 2001
 From: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
-Date: Fri, 14 Apr 2023 18:47:38 -0700
-Subject: [PATCH] hostapd: Add config support for updating
- bridge connections
+Date: Mon, 17 Apr 2023 21:40:55 -0700
+Subject: [PATCH] hostapd: Add config support for updating  bridge connections
 
 Add config support for updating bridge connections during
 bringup.
@@ -12,9 +11,9 @@ are up.
 Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
 ---
  hostapd/config_file.c  |  2 ++
+ hostapd/main.c         |  2 ++
  src/ap/ap_config.h     |  1 +
  src/ap/drv_callbacks.c | 26 ++++++++++++++++++++++++++
- src/ap/hostapd.c       |  2 ++
  src/ap/hostapd.h       |  1 +
  5 files changed, 32 insertions(+)
 
@@ -31,6 +30,19 @@ index af90ede..4502b39 100644
  #endif /* CONFIG_IEEE80211BE */
  	} else if (os_strcmp(buf, "disable_csa_dfs") == 0) {
  		conf->disable_csa_dfs = atoi(pos);
+diff --git a/hostapd/main.c b/hostapd/main.c
+index f4e0ad1..29cbe53 100644
+--- a/hostapd/main.c
++++ b/hostapd/main.c
+@@ -242,6 +242,8 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
+ 	params.own_addr = hapd->own_addr;
+ 
+ 	hapd->drv_priv = hapd->driver->hapd_init(hapd, &params);
++	if (hapd->conf->is_bonded_iface_enabled)
++		hostapd_mld_update_bridge_conn(hapd->conf->bridge, hapd->mld->name);
+ 	os_free(params.bridge);
+ 	if (hapd->drv_priv == NULL) {
+ 		wpa_printf(MSG_ERROR, "%s driver initialization failed.",
 diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
 index 193f8cf..454a84a 100644
 --- a/src/ap/ap_config.h
@@ -80,19 +92,6 @@ index 1ddc4e0..0a8962a 100644
  
  static void hostapd_mld_if_disable(struct hostapd_mld *mld)
  {
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 52e79c2..81d0c6e 100644
---- a/src/ap/hostapd.c
-+++ b/src/ap/hostapd.c
-@@ -2691,6 +2691,8 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
- 
- 	/* Once all link bss of the ifaces are setup, now start each beacon */
- #ifdef CONFIG_IEEE80211BE
-+	if (hapd->conf->is_bonded_iface_enabled)
-+		hostapd_mld_update_bridge_conn(hapd->conf->bridge, hapd->mld->name);
- 	for (i = 0; i < interfaces->mld_count; i++) {
- 		struct hostapd_data *link_bss, *tx_hapd;
- 		struct hostapd_mld *mld;
 diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
 index 0e508a5..d022cf0 100644
 --- a/src/ap/hostapd.h
