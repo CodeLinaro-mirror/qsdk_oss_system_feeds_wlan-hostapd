@@ -44,7 +44,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  				      iface->conf->ru_punct_ofdma);
  
  	if (err) {
-@@ -1626,14 +1627,49 @@ static int hostapd_dfs_start_channel_swi
+@@ -1626,14 +1627,48 @@ static int hostapd_dfs_start_channel_swi
  						  oper_centr_freq_seg1_idx);
  }
  
@@ -84,7 +84,6 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 +
 +	if (iface->conf->use_ru_puncture_dfs) {
 +		radar_bit_pattern = iface->radar_bit_pattern | iface->conf->ru_punct_bitmap;
-+		cur_punct_bits = iface->conf->ru_punct_bitmap;
 +
 +		/* Radar detected already punctured sub channel*/
 +		if (!radar_bitmap || (radar_bit_pattern & radar_bitmap))
@@ -96,8 +95,15 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	/* Proceed only if DFS is not offloaded to the driver */
  	if (iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD)
-@@ -1660,6 +1696,24 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1656,10 +1691,30 @@ int hostapd_dfs_radar_detected(struct ho
+ 	if (!hostapd_dfs_is_background_event(iface, freq)) {
+ 		/* Skip if reported radar event not overlapped our channels */
+ 		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
+-						 cf1, cf2))
++						 cf1, cf2)) {
++			iface->conf->ru_punct_bitmap = cur_punct_bits;
  			return 0;
++		}
  	}
  
 +	if (iface->conf->use_ru_puncture_dfs && hostapd_is_usable_ru_punct_bitmap(iface)) {
@@ -277,7 +283,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  #endif /* HOSTAPD_H */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8259,6 +8259,27 @@ static void ru_punct_update_bw_160(u8 bi
+@@ -8213,6 +8213,27 @@ static void ru_punct_update_bw_160(u8 bi
  	}
  }
  
@@ -305,7 +311,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  void ru_punct_update_bw(u16 bitmap, u8 pri_chan, enum oper_chan_width *width, u8 *seg0, u8 *seg1)
  {
-@@ -8275,8 +8296,12 @@ void ru_punct_update_bw(u16 bitmap, u8 p
+@@ -8229,8 +8250,12 @@ void ru_punct_update_bw(u16 bitmap, u8 p
  		*seg1 = 0;
  		ru_punct_update_bw_160(bitmap & 0xFF, pri_chan, width, seg0);
  	}
@@ -352,7 +358,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		non_ofdma_bitmap_count = ARRAY_SIZE(ru_punct_bitmap_160);
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1179,6 +1179,7 @@ struct hostapd_config {
+@@ -1177,6 +1177,7 @@ struct hostapd_config {
  	u8 ru_punct_acs_threshold;
  	int enable_320mhz_bw;
  	int disable_csa_dfs;
