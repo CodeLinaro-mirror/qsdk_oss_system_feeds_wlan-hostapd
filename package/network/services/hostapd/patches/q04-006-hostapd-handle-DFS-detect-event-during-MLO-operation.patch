@@ -28,11 +28,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/ap/dfs.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++--
  1 file changed, 46 insertions(+), 2 deletions(-)
 
-diff --git a/src/ap/dfs.c b/src/ap/dfs.c
-index 793bb74..1603534 100644
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1554,6 +1554,8 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+@@ -1554,6 +1554,8 @@ static int hostapd_dfs_start_channel_swi
  	u8 oper_centr_freq_seg1_idx;
  	enum dfs_channel_type channel_type = DFS_AVAILABLE;
  	u8 current_vht_oper_chwidth = hostapd_get_oper_chwidth(iface->conf);
@@ -41,12 +39,10 @@ index 793bb74..1603534 100644
  
  	wpa_printf(MSG_DEBUG, "%s called (CAC active: %s, CSA active: %s)",
  		   __func__, iface->cac_started ? "yes" : "no",
-@@ -1584,6 +1586,47 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
- 					channel_type);
- 
+@@ -1586,6 +1588,48 @@ static int hostapd_dfs_start_channel_swi
  	if (!channel) {
-+		/*
-+		 * If there is no channel to switch immediately to, check if
+ 		/*
+ 		 * If there is no channel to switch immediately to, check if
 +		 * there is a possibility to operate in reduced BW.
 +		 */
 +		 for (;;) {
@@ -72,7 +68,8 @@ index 793bb74..1603534 100644
 +			}
 +
 +			hostapd_set_oper_chwidth(iface->conf,
-+						 oper_chwidth - 1);
++						 oper_chwidth == CONF_OPER_CHWIDTH_320MHZ ?
++						 CONF_OPER_CHWIDTH_160MHZ : oper_chwidth - 1);
 +		}
 +	}
 +
@@ -86,10 +83,12 @@ index 793bb74..1603534 100644
 +			oper_chwidth = current_vht_oper_chwidth;
 +		}
 +
- 		/*
- 		 * If there is no channel to switch immediately to, check if
++		/*
++		 * If there is no channel to switch immediately to, check if
  		 * there is another channel where we can switch even if it
-@@ -1599,6 +1642,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+ 		 * requires to perform a CAC first.
+ 		 */
+@@ -1599,6 +1643,7 @@ static int hostapd_dfs_start_channel_swi
  			 * Toggle interface state to enter DFS state
  			 * until NOP is finished.
  			 */
@@ -97,7 +96,7 @@ index 793bb74..1603534 100644
  			hostapd_disable_iface(iface);
  			hostapd_enable_iface(iface);
  			return 0;
-@@ -1612,7 +1656,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+@@ -1612,7 +1657,7 @@ static int hostapd_dfs_start_channel_swi
  				iface->conf, oper_centr_freq_seg0_idx);
  			hostapd_set_oper_centr_freq_seg1_idx(
  				iface->conf, oper_centr_freq_seg1_idx);
@@ -106,7 +105,7 @@ index 793bb74..1603534 100644
  			hostapd_disable_iface(iface);
  			hostapd_enable_iface(iface);
  			return 0;
-@@ -1622,7 +1666,7 @@ static int hostapd_dfs_start_channel_switch(struct hostapd_iface *iface)
+@@ -1622,7 +1667,7 @@ static int hostapd_dfs_start_channel_swi
  	return hostapd_dfs_request_channel_switch(iface, channel->chan,
  						  channel->freq,
  						  secondary_channel,
@@ -115,6 +114,3 @@ index 793bb74..1603534 100644
  						  oper_centr_freq_seg0_idx,
  						  oper_centr_freq_seg1_idx);
  }
--- 
-2.17.1
-
