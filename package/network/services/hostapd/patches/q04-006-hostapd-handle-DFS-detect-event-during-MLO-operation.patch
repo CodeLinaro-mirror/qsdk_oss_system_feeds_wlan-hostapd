@@ -105,12 +105,3 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  			hostapd_disable_iface(iface);
  			hostapd_enable_iface(iface);
  			return 0;
-@@ -1622,7 +1667,7 @@ static int hostapd_dfs_start_channel_swi
- 	return hostapd_dfs_request_channel_switch(iface, channel->chan,
- 						  channel->freq,
- 						  secondary_channel,
--						  current_vht_oper_chwidth,
-+						  oper_chwidth,
- 						  oper_centr_freq_seg0_idx,
- 						  oper_centr_freq_seg1_idx);
- }
