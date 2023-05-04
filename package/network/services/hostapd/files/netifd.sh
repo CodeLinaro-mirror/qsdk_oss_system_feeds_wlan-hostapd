@@ -142,6 +142,7 @@ hostapd_common_add_bss_config() {
 
 	config_add_boolean rsn_preauth auth_cache
 	config_add_int ieee80211w sae_pwe
+	config_add_int beacon_prot
 	config_add_string sae_password
 
 	config_add_string 'auth_server:host' 'server:host'
@@ -278,6 +279,7 @@ hostapd_set_bss_options() {
 		psk|sae*)
 			json_get_vars key wpa_psk_file
 			json_get_var ieee80211w ieee80211w
+			json_get_var beacon_prot
 			if [ ${#key} -lt 8 ]; then
 				wireless_setup_vif_failed INVALID_WPA_PSK
 				return 1
@@ -292,9 +294,13 @@ hostapd_set_bss_options() {
 			}
 			wps_possible=1
 			if [ $ieee80211w -eq 2 ] || [ $ieee80211w -eq 1 ]; then
-				append wpa_key_mgmt "WPA-PSK WPA-PSK-SHA256"
+				append wpa_key_mgmt "WPA-PSK WPA-PSK-SHA256" "$N"
 			else
-				append wpa_key_mgmt "WPA-PSK"
+				append wpa_key_mgmt "WPA-PSK" "$N"
+			fi
+
+			if [ $ieee80211w -gt 0 ] && [ $beacon_prot -gt 0 ]; then
+				append bss_conf "beacon_prot=1" "$N"
 			fi
 		;;
 		eap)
@@ -684,7 +690,7 @@ wpa_supplicant_add_network() {
 		ssid bssid key basic_rate mcast_rate ieee80211w \
 		wps_device_type wps_device_name wps_manufacturer \
 		wps_config wps_model_name wps_model_number \
-		wps_serial_number
+		wps_serial_number beacon_prot
 
 	local key_mgmt='NONE'
 	local enc_str=
@@ -764,6 +770,10 @@ wpa_supplicant_add_network() {
 				passphrase="psk=\"${key}\""
 			fi
 			append network_data "$passphrase" "$N$T"
+
+			if [ $ieee80211w -gt 0 ] && [ $beacon_prot -gt 0 ]; then
+					[[ "$_w_mode" == "sta" ]] && append network_data "beacon_prot=1" "$N$T"
+			fi
 		;;
 		eap)
 			key_mgmt='WPA-EAP'
@@ -799,6 +809,10 @@ wpa_supplicant_add_network() {
 			fi
 			append network_data "$passphrase" "$N$T"
 			append network_data "ieee80211w=2" "$N$T"
+
+			if [ $beacon_prot -gt 0 ]; then
+				[[ "$_w_mode" == "sta" ]] && append network_data "beacon_prot=1" "$N$T"
+			fi
 		;;
 	esac
 
