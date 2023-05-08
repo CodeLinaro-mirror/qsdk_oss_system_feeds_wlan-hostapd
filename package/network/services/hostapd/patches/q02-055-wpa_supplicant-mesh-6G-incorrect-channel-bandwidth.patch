@@ -15,26 +15,22 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  wpa_supplicant/wpa_supplicant.c | 9 ++-------
  1 file changed, 2 insertions(+), 7 deletions(-)
 
-diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
-index 0ee9be5..7b9ba42 100644
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2718,13 +2718,8 @@ void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
+@@ -3094,14 +3094,8 @@ void ibss_mesh_setup_freq(struct wpa_sup
  	}
  
  	hw_mode = ieee80211_freq_to_chan(freq->freq, &channel);
 -	for (i = 0; wpa_s->hw.modes && i < wpa_s->hw.num_modes; i++) {
--		if (wpa_s->hw.modes[i].mode == hw_mode) {
+-		if (wpa_s->hw.modes[i].mode == hw_mode &&
+-		    hw_mode_get_channel(&wpa_s->hw.modes[i], freq->freq,
+-					NULL) != NULL) {
 -			mode = &wpa_s->hw.modes[i];
 -			break;
 -		}
 -	}
--
 +	mode = get_mode(wpa_s->hw.modes, wpa_s->hw.num_modes,
 +			hw_mode, is_6ghz_freq(ssid->frequency));
+ 
  	if (!mode)
  		return;
- 
--- 
-2.17.1
-

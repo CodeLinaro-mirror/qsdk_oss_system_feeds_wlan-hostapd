@@ -28,7 +28,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -863,6 +863,9 @@ static void hostapd_gen_per_sta_profiles
+@@ -826,6 +826,9 @@ static void hostapd_gen_per_sta_profiles
  		if (hapd == link_bss)
  			continue;
  
@@ -38,7 +38,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		link_id = link_bss->iface->mlo_link_id;
  
  		if (link_id > MAX_SUPPORTED_LINKS)
-@@ -2626,6 +2629,9 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2609,6 +2612,9 @@ int ieee802_11_set_beacon(struct hostapd
  	size_t i, j;
  	bool is_6g;
  
@@ -48,7 +48,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	ret = __ieee802_11_set_beacon(hapd);
  	if (ret != 0)
  		return ret;
-@@ -2645,6 +2651,9 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2628,6 +2634,9 @@ int ieee802_11_set_beacon(struct hostapd
  		if (is_6g == is_6ghz_op_class(colocated->conf->op_class))
  			continue;
  
@@ -58,7 +58,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		for (i = 0; i < colocated->num_bss; i++) {
  			colocated_hapd = colocated->bss[i];
  
-@@ -2653,7 +2662,7 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2636,7 +2645,7 @@ int ieee802_11_set_beacon(struct hostapd
  
  			if (colocated_hapd->mld && !colocated_hapd->beacon_set_done)
  				continue;
@@ -69,29 +69,27 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	}
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2728,7 +2728,9 @@ int hostapd_setup_interface_complete(str
+@@ -2765,7 +2765,9 @@ int hostapd_setup_interface_complete(str
  				 * in case of mbssid.
  				 */
  				tx_hapd = hostapd_mbssid_get_tx_bss(link_bss);
 -				if (tx_hapd == link_bss || tx_hapd->beacon_set_done)
-+				if ((tx_hapd == link_bss && !tx_hapd->beacon_set_done) ||
++				if (tx_hapd == link_bss || !tx_hapd->beacon_set_done ||
 +				    (tx_hapd != link_bss && !link_bss->beacon_set_done &&
 +				     tx_hapd->beacon_set_done))
- 					hostapd_set_beacon(link_bss);
+ 					hostapd_start_beacon(link_bss, true);
  
  				link_bss = link_bss->nbss;
-@@ -2761,6 +2763,10 @@ int hostapd_setup_interface_complete(str
+@@ -2798,6 +2800,8 @@ int hostapd_setup_interface_complete(str
  				if (non_tx_hapd->mld &&
  				    non_tx_hapd->mld->mld_start_blocked)
  					continue;
-+
 +				if (non_tx_hapd->beacon_set_done)
 +					continue;
-+
- 				if (hostapd_set_beacon(non_tx_hapd))
+ 				if (hostapd_start_beacon(non_tx_hapd, true))
  					return -1;
  			}
-@@ -3463,6 +3469,45 @@ int hostapd_enable_iface(struct hostapd_
+@@ -3509,6 +3513,45 @@ int hostapd_enable_iface(struct hostapd_
  		return -1;
  	}
  
@@ -137,7 +135,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return 0;
  }
  
-@@ -3505,6 +3550,61 @@ int hostapd_disable_iface(struct hostapd
+@@ -3566,6 +3609,61 @@ int hostapd_disable_iface(struct hostapd
  		return -1;
  	}
  
@@ -199,7 +197,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	wpa_msg(hapd_iface->bss[0]->msg_ctx, MSG_INFO, AP_EVENT_DISABLED);
  	driver = hapd_iface->bss[0]->driver;
  	drv_priv = hapd_iface->bss[0]->drv_priv;
-@@ -3537,6 +3637,7 @@ int hostapd_disable_iface(struct hostapd
+@@ -3598,6 +3696,7 @@ int hostapd_disable_iface(struct hostapd
  		   hapd_iface->bss[0]->conf->iface);
  	hostapd_set_state(hapd_iface, HAPD_IFACE_DISABLED);
  	hostapd_interface_update_fils_ubpr(hapd_iface, false);
@@ -209,7 +207,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -707,6 +707,7 @@ struct hostapd_iface {
+@@ -711,6 +711,7 @@ struct hostapd_iface {
  	struct hostapd_multi_hw_info *multi_hw_info;
  	u8 num_multi_hws;
  	struct hostapd_multi_hw_info *current_hw_info;
@@ -219,7 +217,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  /* hostapd.c */
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -8730,6 +8730,7 @@ static int wpa_driver_nl80211_if_add(voi
+@@ -8944,6 +8944,7 @@ static int wpa_driver_nl80211_if_add(voi
  	nlmode = wpa_driver_nl80211_if_type(type);
  	if (!first_link_bss) {
  		ifidx = if_nametoindex(ifname);

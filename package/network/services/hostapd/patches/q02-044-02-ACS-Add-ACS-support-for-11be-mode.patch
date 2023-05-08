@@ -12,12 +12,10 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  src/ap/acs.c | 37 +++++++++++++++++++++++++++++++++----
  1 file changed, 33 insertions(+), 4 deletions(-)
 
-Index: b/src/ap/acs.c
-===================================================================
---- a/src/ap/acs.c	2022-10-12 17:04:21.929054931 +0530
-+++ b/src/ap/acs.c	2022-10-12 17:05:00.864770507 +0530
-@@ -417,6 +417,18 @@ static int acs_usable_bw160_chan(const s
- 	return 0;
+--- a/src/ap/acs.c
++++ b/src/ap/acs.c
+@@ -421,6 +421,18 @@ acs_survey_chan_interference_factor(stru
+ 		chan->interference_factor /= count;
  }
  
 +static int acs_usable_bw320_chan(const struct hostapd_channel_data *chan)
@@ -33,9 +31,9 @@ Index: b/src/ap/acs.c
 +	return 0;
 +}
  
- static int acs_survey_is_sufficient(struct freq_survey *survey)
- {
-@@ -892,7 +904,8 @@ acs_find_ideal_chan_mode(struct hostapd_
+ static bool acs_usable_bw_chan(const struct hostapd_channel_data *chan,
+ 			       enum bw_type bw)
+@@ -931,7 +943,8 @@ acs_find_ideal_chan_mode(struct hostapd_
  		}
  
  		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
@@ -44,8 +42,8 @@ Index: b/src/ap/acs.c
 +		     iface->conf->ieee80211be)) {
  			if (hostapd_get_oper_chwidth(iface->conf) ==
  			    CONF_OPER_CHWIDTH_80MHZ &&
- 			    !acs_usable_bw80_chan(chan)) {
-@@ -910,6 +923,16 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			    !acs_usable_bw_chan(chan, ACS_BW80)) {
+@@ -949,6 +962,16 @@ acs_find_ideal_chan_mode(struct hostapd_
  					   chan->chan);
  				continue;
  			}
@@ -62,7 +60,7 @@ Index: b/src/ap/acs.c
  		}
  
  		factor = 0;
-@@ -1064,7 +1087,8 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1123,7 +1146,8 @@ acs_find_ideal_chan(struct hostapd_iface
  	    iface->conf->secondary_channel)
  		n_chans = 2;
  
@@ -72,7 +70,7 @@ Index: b/src/ap/acs.c
  		switch (hostapd_get_oper_chwidth(iface->conf)) {
  		case CONF_OPER_CHWIDTH_80MHZ:
  			n_chans = 4;
-@@ -1074,6 +1098,7 @@ acs_find_ideal_chan(struct hostapd_iface
+@@ -1133,6 +1157,7 @@ acs_find_ideal_chan(struct hostapd_iface
  			break;
  		default:
  			break;
@@ -80,8 +78,8 @@ Index: b/src/ap/acs.c
  		}
  	}
  
-@@ -1118,12 +1143,29 @@ bw_selected:
- 	return rand_chan;
+@@ -1199,12 +1224,29 @@ static void acs_adjust_secondary(struct
+ 	}
  }
  
 +static int acs_get_center_freq_320mhz(int channel)
@@ -111,34 +109,34 @@ Index: b/src/ap/acs.c
  	u8 bw = hostapd_get_oper_chwidth(iface->conf);
  	bool acs_exclude_6ghz_non_psc = iface->conf->acs_exclude_6ghz_non_psc;
  	bool is_sec_psc_chan = false;
-@@ -1149,6 +1191,26 @@ static void acs_adjust_center_freq(struc
- 		else
- 			offset = 6;
- 		break;
+@@ -1230,6 +1272,26 @@ static void acs_adjust_center_freq(struc
+                 else
+                         offset = 6;
+                 break;
 +	case CONF_OPER_CHWIDTH_320MHZ:
-+		if (acs_exclude_6ghz_non_psc) {
-+			for (i = 0; i < ARRAY_SIZE(psc_chan_320_1); i++) {
-+				if (psc_chan_320_1[i] == iface->conf->channel) {
-+					is_sec_psc_chan = (i%2) ? true : false;
-+					offset  = is_sec_psc_chan ? 10 : 26;
-+					break;
-+				}
-+			}
-+			for (i = 0; i < ARRAY_SIZE(psc_chan_320_2); i++) {
-+				if (psc_chan_320_2[i] == iface->conf->channel) {
-+					is_sec_psc_chan = (i%2) ? true : false;
-+					offset = is_sec_psc_chan ? -22 : -6;
-+					break;
-+				}
-+			}
-+			seg0 = iface->conf->channel + offset;
-+		} else
-+			seg0 = acs_get_center_freq_320mhz(iface->conf->channel);
-+		/* fallthrough */
++                if (acs_exclude_6ghz_non_psc) {
++                        for (i = 0; i < ARRAY_SIZE(psc_chan_320_1); i++) {
++                                if (psc_chan_320_1[i] == iface->conf->channel) {
++                                        is_sec_psc_chan = (i%2) ? true : false;
++                                        offset  = is_sec_psc_chan ? 10 : 26;
++                                        break;
++                                }
++                        }
++                        for (i = 0; i < ARRAY_SIZE(psc_chan_320_2); i++) {
++                                if (psc_chan_320_2[i] == iface->conf->channel) {
++                                        is_sec_psc_chan = (i%2) ? true : false;
++                                        offset = is_sec_psc_chan ? -22 : -6;
++                                        break;
++                                }
++                        }
++                        seg0 = iface->conf->channel + offset;
++                } else
++                        seg0 = acs_get_center_freq_320mhz(iface->conf->channel);
++                /* fallthrough */
  	case CONF_OPER_CHWIDTH_160MHZ:
  		/* In 160MHz, if primary 20MHz present in secondary 80MHz, then
- 		 * subtract with -6 to find the center frequency of the 160MHz
-@@ -1162,12 +1224,16 @@ static void acs_adjust_center_freq(struc
+                  * subtract with -6 to find the center frequency of the 160MHz
+@@ -1243,12 +1305,16 @@ static void acs_adjust_center_freq(struc
  		/* TODO: How can this be calculated? Adjust
  		 * acs_find_ideal_chan() */
  		wpa_printf(MSG_INFO,
@@ -156,13 +154,13 @@ Index: b/src/ap/acs.c
  }
  
  
-@@ -1224,7 +1290,8 @@ static void acs_study(struct hostapd_ifa
+@@ -1305,7 +1371,8 @@ static void acs_study(struct hostapd_ifa
  	iface->freq = ideal_chan->freq;
  	iface->conf->ru_punct_bitmap = ideal_chan->ru_punct_bitmap;
  
--	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax)
+-	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax) {
 +	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
-+	    iface->conf->ieee80211be)
++	    iface->conf->ieee80211be) {
+ 		acs_adjust_secondary(iface);
  		acs_adjust_center_freq(iface);
- 
- 	err = 0;
+ 	}

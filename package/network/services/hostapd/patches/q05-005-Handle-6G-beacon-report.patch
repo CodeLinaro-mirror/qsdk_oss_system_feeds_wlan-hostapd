@@ -18,7 +18,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
 
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -2033,6 +2033,9 @@ const struct oper_class_map global_op_cl
+@@ -2074,6 +2074,9 @@ const struct oper_class_map global_op_cl
  	{ HOSTAPD_MODE_IEEE80211A, 135, 1, 233, 16, BW80P80, NO_P2P_SUPP },
  	{ HOSTAPD_MODE_IEEE80211A, 136, 2, 2, 4, BW20, NO_P2P_SUPP },
  
@@ -40,39 +40,35 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  
  	for (i = 0; i < mode->num_channels; i++) {
  		bool chan_is_6ghz;
-@@ -103,7 +104,14 @@ static enum chan_allowed verify_80mhz(st
+@@ -102,6 +103,13 @@ static enum chan_allowed verify_80mhz(st
+ 		if (allow_channel(mode, op_class, adj_chan, &flags) ==
  		    NOT_ALLOWED)
  			return NOT_ALLOWED;
- 
--		if ((i == 0 && !(flags & HOSTAPD_CHAN_VHT_10_70)) ||
 +		/* Check HE PHY capability flag for oper bw in 6 GHz */
 +		if (is_6ghz_op_class(op_class) &&
 +		    (!(mode->he_capab[WPAS_MODE_INFRA].phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
-+		    HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G))) {
++		     HE_PHYCAP_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G))) {
 +			return NOT_ALLOWED;
 +		}
 +
-+		else if ((i == 0 && !(flags & HOSTAPD_CHAN_VHT_10_70)) ||
- 		    (i == 1 && !(flags & HOSTAPD_CHAN_VHT_30_50)) ||
- 		    (i == 2 && !(flags & HOSTAPD_CHAN_VHT_50_30)) ||
- 		    (i == 3 && !(flags & HOSTAPD_CHAN_VHT_70_10)))
-@@ -175,7 +183,14 @@ static enum chan_allowed verify_160mhz(s
+ 
+ 		if (!(flags & HOSTAPD_CHAN_VHT_80MHZ_SUBCHANNEL))
+ 			return NOT_ALLOWED;
+@@ -172,6 +180,13 @@ static enum chan_allowed verify_160mhz(s
  		    NOT_ALLOWED)
  			return NOT_ALLOWED;
  
--		if ((i == 0 && !(flags & HOSTAPD_CHAN_VHT_10_150)) ||
 +		/* Check HE PHY capability flag for oper bw in 6 GHz */
-+                if (is_6ghz_op_class(op_class) &&
-+                    (!(mode->he_capab[WPAS_MODE_INFRA].phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
-+                    HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G))) {
-+                        return NOT_ALLOWED;
-+                }
++		if (is_6ghz_op_class(op_class) &&
++		    (!(mode->he_capab[WPAS_MODE_INFRA].phy_cap[HE_PHYCAP_CHANNEL_WIDTH_SET_IDX] &
++		    HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G))) {
++			return NOT_ALLOWED;
++		}
 +
-+		else if ((i == 0 && !(flags & HOSTAPD_CHAN_VHT_10_150)) ||
- 		    (i == 1 && !(flags & HOSTAPD_CHAN_VHT_30_130)) ||
- 		    (i == 2 && !(flags & HOSTAPD_CHAN_VHT_50_110)) ||
- 		    (i == 3 && !(flags & HOSTAPD_CHAN_VHT_70_90)) ||
-@@ -195,7 +210,64 @@ static enum chan_allowed verify_160mhz(s
+ 		if (!(flags & HOSTAPD_CHAN_VHT_80MHZ_SUBCHANNEL) ||
+ 		    !(flags & HOSTAPD_CHAN_VHT_160MHZ_SUBCHANNEL))
+ 			return NOT_ALLOWED;
+@@ -186,7 +201,64 @@ static enum chan_allowed verify_160mhz(s
  	return ALLOWED;
  }
  
@@ -105,7 +101,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
 +	const u8 *center_channels;
 +	size_t num_chan;
 +	const u8 center_channels_6ghz[] = { 31, 63, 95, 127, 159, 191 };
- 
++
 +	if (!is_6ghz_op_class(op_class))
 +		return NOT_ALLOWED;
 +
@@ -121,7 +117,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
 +	for (i = 0; i < 16; i++) {
 +		unsigned int flags;
 +		u8 adj_chan = center_chan - 30 + i * 4;
-+
+ 
 +		if (allow_channel(mode, op_class, adj_chan, &flags) ==
 +		    NOT_ALLOWED)
 +			return NOT_ALLOWED;
@@ -137,7 +133,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  enum chan_allowed verify_channel(struct hostapd_hw_modes *mode, u8 op_class,
  				 u8 channel, u8 bw)
  {
-@@ -237,6 +309,8 @@ enum chan_allowed verify_channel(struct
+@@ -228,6 +300,8 @@ enum chan_allowed verify_channel(struct
  		 * result and use only the 80 MHz specific version.
  		 */
  		res2 = res = verify_80mhz(mode, op_class, channel);
@@ -177,7 +173,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  	return wpas_add_channels(op, mode, channels, num_chan);
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -337,7 +337,7 @@ struct oper_class_map {
+@@ -336,7 +336,7 @@ struct oper_class_map {
  	u8 max_chan;
  	u8 inc;
  	enum { BW20, BW40PLUS, BW40MINUS, BW40, BW80, BW2160, BW160, BW80P80,

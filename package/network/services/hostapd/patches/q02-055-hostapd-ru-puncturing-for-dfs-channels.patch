@@ -34,7 +34,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  enum dfs_channel_type {
  	DFS_ANY_CHANNEL,
-@@ -1107,7 +1107,8 @@ static int hostapd_dfs_request_channel_s
+@@ -1111,7 +1111,8 @@ static int hostapd_dfs_request_channel_s
  				      &cmode->he_capab[ieee80211_mode],
  				      &cmode->eht_capab[ieee80211_mode],
  				      iface->conf->he_6ghz_reg_pwr_type,
@@ -44,7 +44,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  				      iface->conf->ru_punct_ofdma);
  
  	if (err) {
-@@ -1626,14 +1627,48 @@ static int hostapd_dfs_start_channel_swi
+@@ -1630,14 +1631,48 @@ static int hostapd_dfs_start_channel_swi
  						  oper_centr_freq_seg1_idx);
  }
  
@@ -95,7 +95,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	/* Proceed only if DFS is not offloaded to the driver */
  	if (iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD)
-@@ -1656,10 +1691,30 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1660,10 +1695,30 @@ int hostapd_dfs_radar_detected(struct ho
  	if (!hostapd_dfs_is_background_event(iface, freq)) {
  		/* Skip if reported radar event not overlapped our channels */
  		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
@@ -143,7 +143,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  int hostapd_handle_dfs(struct hostapd_iface *iface);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4006,6 +4006,9 @@ static int hostapd_fill_csa_settings(str
+@@ -4033,6 +4033,9 @@ static int hostapd_fill_csa_settings(str
  	struct hostapd_freq_params old_freq;
  	int ret;
  	u8 chan, bandwidth;
@@ -153,7 +153,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	os_memset(&old_freq, 0, sizeof(old_freq));
  	if (!iface || !iface->freq || hapd->csa_in_progress)
-@@ -4032,16 +4035,39 @@ static int hostapd_fill_csa_settings(str
+@@ -4056,16 +4059,39 @@ static int hostapd_fill_csa_settings(str
  		break;
  	}
  
@@ -195,7 +195,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			   settings->freq_params.vht_enabled,
  			   settings->freq_params.he_enabled,
  			   settings->freq_params.eht_enabled);
-@@ -4065,6 +4091,37 @@ static int hostapd_fill_csa_settings(str
+@@ -4089,6 +4115,37 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -233,7 +233,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	/* set channel switch parameters for csa ie */
  	hapd->cs_freq_params = settings->freq_params;
  	hapd->cs_count = settings->cs_count;
-@@ -4133,16 +4190,28 @@ int hostapd_switch_channel(struct hostap
+@@ -4157,16 +4214,28 @@ int hostapd_switch_channel(struct hostap
  			   struct csa_settings *settings)
  {
  	int ret;
@@ -264,7 +264,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	free_beacon_data(&settings->beacon_after);
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -683,6 +683,9 @@ struct hostapd_iface {
+@@ -687,6 +687,9 @@ struct hostapd_iface {
  	/* Minimum bandwidth the driver supports RU puncturing */
  	u8 ru_punct_supp_bw;
  
@@ -274,16 +274,17 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
  
-@@ -795,5 +798,5 @@ void fst_hostapd_fill_iface_obj(struct h
+@@ -798,6 +801,7 @@ void fst_hostapd_fill_iface_obj(struct h
  #endif /* CONFIG_FST */
  
  int hostapd_set_acl(struct hostapd_data *hapd);
--
 +int hostapd_is_usable_ru_punct_bitmap(struct hostapd_iface *iface);
- #endif /* HOSTAPD_H */
+ struct hostapd_data * hostapd_mbssid_get_tx_bss(struct hostapd_data *hapd);
+ int hostapd_mbssid_get_bss_index(struct hostapd_data *hapd);
+ 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8213,6 +8213,27 @@ static void ru_punct_update_bw_160(u8 bi
+@@ -7338,6 +7338,27 @@ static void ru_punct_update_bw_160(u8 bi
  	}
  }
  
@@ -311,7 +312,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  void ru_punct_update_bw(u16 bitmap, u8 pri_chan, enum oper_chan_width *width, u8 *seg0, u8 *seg1)
  {
-@@ -8229,8 +8250,12 @@ void ru_punct_update_bw(u16 bitmap, u8 p
+@@ -7354,8 +7375,12 @@ void ru_punct_update_bw(u16 bitmap, u8 p
  		*seg1 = 0;
  		ru_punct_update_bw_160(bitmap & 0xFF, pri_chan, width, seg0);
  	}
@@ -358,7 +359,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		non_ofdma_bitmap_count = ARRAY_SIZE(ru_punct_bitmap_160);
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1177,6 +1177,7 @@ struct hostapd_config {
+@@ -1195,6 +1195,7 @@ struct hostapd_config {
  	u8 ru_punct_acs_threshold;
  	int enable_320mhz_bw;
  	int disable_csa_dfs;
@@ -380,7 +381,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4742,6 +4742,8 @@ static int hostapd_config_fill(struct ho
+@@ -4770,6 +4770,8 @@ static int hostapd_config_fill(struct ho
  #endif /* CONFIG_IEEE80211BE */
  	} else if (os_strcmp(buf, "disable_csa_dfs") == 0) {
  		conf->disable_csa_dfs = atoi(pos);
@@ -391,17 +392,17 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		conf->mlo = atoi(pos);
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2838,6 +2838,7 @@ static const struct parse_data ssid_fiel
+@@ -2889,6 +2889,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(enable_160mhz_bw, 0, 1)},
  	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
  	{ INT(ru_punct_bitmap) },
 +	{ INT_RANGE(use_ru_puncture_dfs, 0, 1) },
+ 	{ INT_RANGE(disable_eht, 0, 1)},
+ 	{ INT_RANGE(enable_4addr_mode, 0, 1)},
  };
- 
- #undef OFFSET
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -420,6 +420,7 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+@@ -423,6 +423,7 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  			    ssid->eht) {
  				conf->ieee80211be = 1;
  				conf->ru_punct_bitmap = ssid->ru_punct_bitmap;
@@ -411,15 +412,15 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  				conf->ieee80211ac = 1;
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1241,6 +1241,11 @@ struct wpa_ssid {
- 	 * lowest bit for the channel with the lowest frequency.
- 	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.*/
-         u16 ru_punct_bitmap;
-+	/**
-+	 *Enable dfs punctuing - set it 1 to enable dfs sub channel puncturing
+@@ -1297,6 +1297,11 @@ struct wpa_ssid {
+ 	u16 ru_punct_bitmap;
+ 
+ 	/**
++	 * Enable dfs punctuing - set it 1 to enable dfs sub channel puncturing
 +	 */
 +	int use_ru_puncture_dfs;
-+	
- };
- 
- #endif /* CONFIG_SSID_H */
++
++	/**
+ 	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
+ 	 *
+ 	 * By default, use it if it is available, but this can be configured

@@ -17,7 +17,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4691,6 +4691,14 @@ static int hostapd_config_fill(struct ho
+@@ -4738,6 +4738,14 @@ static int hostapd_config_fill(struct ho
  		conf->ru_punct_bitmap = atoi(pos);
  	} else if (os_strcmp(buf, "ru_punct_ofdma") == 0) {
  		conf->ru_punct_ofdma = atoi(pos);
@@ -34,7 +34,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		wpa_printf(MSG_ERROR,
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -1028,6 +1028,12 @@ wmm_ac_vo_acm=0
+@@ -1059,6 +1059,12 @@ wmm_ac_vo_acm=0
  # RU puncturing bitmap. Default value is 0.
  #ru_punct_ofdma=1
  
@@ -49,11 +49,11 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  # Require IEEE 802.1X authorization
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1150,6 +1150,7 @@ struct hostapd_config {
- 	unsigned int ch_switch_eht_config;
+@@ -1180,6 +1180,7 @@ struct hostapd_config {
+ 	u8 ema;
  	u16 ru_punct_bitmap;
  	u8 ru_punct_ofdma;
 +	u8 ru_punct_acs_threshold;
- };
  
- static inline u8 hostapd_get_he_6ghz_reg_pwr_type(struct hostapd_config *conf)
+ 	enum mbssid {
+ 		MBSSID_DISABLED = 0,

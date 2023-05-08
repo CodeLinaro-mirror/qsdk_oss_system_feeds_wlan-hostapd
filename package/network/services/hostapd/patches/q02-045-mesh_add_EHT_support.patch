@@ -13,7 +13,7 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
 ---
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -324,6 +324,14 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+@@ -326,6 +326,14 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  
  		if (mode && is_6ghz_freq(ssid->frequency) &&
  		    conf->hw_mode == HOSTAPD_MODE_IEEE80211A) {
@@ -28,7 +28,7 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  #ifdef CONFIG_P2P
  			wpas_conf_ap_he_6ghz(wpa_s, mode, ssid, conf);
  #endif /* CONFIG_P2P */
-@@ -402,6 +410,10 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+@@ -409,6 +417,10 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  					    ssid->mode)].he_supported &&
  			    ssid->he)
  				conf->ieee80211ax = 1;
@@ -41,17 +41,17 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  				conf->ieee80211ac = 1;
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2833,6 +2833,7 @@ static const struct parse_data ssid_fiel
+@@ -2882,6 +2882,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(disable_40mhz_scan, 0, 1)},
  	{ INT_RANGE(beacon_tx_mode, 1, 2)},
  	{ INT_RANGE(enable_160mhz_bw, 0, 1)},
 +	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
+ 	{ INT_RANGE(disable_eht, 0, 1)},
+ 	{ INT_RANGE(enable_4addr_mode, 0, 1)},
  };
- 
- #undef OFFSET
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
-@@ -227,7 +227,7 @@ static int wpas_mesh_update_freq_params(
+@@ -226,7 +226,7 @@ static int wpas_mesh_update_freq_params(
  		    ifmsh->conf->ieee80211n,
  		    ifmsh->conf->ieee80211ac,
  		    ifmsh->conf->ieee80211ax,
@@ -60,7 +60,7 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  		    ifmsh->conf->secondary_channel,
  		    hostapd_get_oper_chwidth(ifmsh->conf),
  		    hostapd_get_oper_centr_freq_seg0_idx(ifmsh->conf),
-@@ -469,6 +469,9 @@ static int wpa_supplicant_mesh_init(stru
+@@ -468,6 +468,9 @@ static int wpa_supplicant_mesh_init(stru
  		case 160:
  			conf->op_class = 134;
  			break;
@@ -70,7 +70,7 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  		default:
  			conf->op_class = 131;
  			break;
-@@ -660,6 +663,7 @@ int wpa_supplicant_join_mesh(struct wpa_
+@@ -659,6 +662,7 @@ int wpa_supplicant_join_mesh(struct wpa_
  	wpa_s->mesh_ht_enabled = !!params->freq.ht_enabled;
  	wpa_s->mesh_vht_enabled = !!params->freq.vht_enabled;
  	wpa_s->mesh_he_enabled = !!params->freq.he_enabled;
@@ -78,7 +78,7 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  	if (params->freq.ht_enabled && params->freq.sec_channel_offset)
  		ssid->ht40 = params->freq.sec_channel_offset;
  
-@@ -681,6 +685,9 @@ int wpa_supplicant_join_mesh(struct wpa_
+@@ -680,6 +684,9 @@ int wpa_supplicant_join_mesh(struct wpa_
  		case 160:
  			ssid->max_oper_chwidth = CONF_OPER_CHWIDTH_160MHZ;
  			break;
@@ -88,7 +88,7 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  		default:
  			ssid->max_oper_chwidth = CONF_OPER_CHWIDTH_USE_HT;
  			break;
-@@ -688,6 +695,8 @@ int wpa_supplicant_join_mesh(struct wpa_
+@@ -687,6 +694,8 @@ int wpa_supplicant_join_mesh(struct wpa_
  	}
  	if (wpa_s->mesh_he_enabled)
  		ssid->he = 1;
@@ -158,92 +158,9 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  	params.flags |= WPA_STA_WMM;
  	params.flags_mask |= WPA_STA_AUTHENTICATED;
  	if (conf->security == MESH_CONF_SEC_NONE) {
---- a/wpa_supplicant/wpa_supplicant.c
-+++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2624,7 +2624,25 @@ static bool ibss_mesh_is_80mhz_avail(int
- 	return true;
- }
- 
-+static int ibss_get_center_320mhz(int channel)
-+{
-+	int seg0;
-+
-+	if (channel >= 1 && channel <= 45)
-+		seg0 = 31;
-+	else if (channel >= 49 && channel <= 77)
-+		seg0 = 63;
-+	else if (channel >= 81 && channel <= 109)
-+		seg0 = 95;
-+	else if (channel >= 113 && channel <= 141)
-+		seg0 = 127;
-+	else if (channel >= 145 && channel <= 173)
-+		seg0 = 159;
-+	else
-+		seg0 = 191;
- 
-+	return seg0;
-+}
- void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
- 			  const struct wpa_ssid *ssid,
- 			  struct hostapd_freq_params *freq)
-@@ -2646,6 +2664,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
- 				     6595, 6655, 6675, 6735,
- 				     6755, 6815, 6835, 6895,
- 				     6915, 6975, 6995, 7055 };
-+	unsigned int bw_320[] = { 5500, 5720, 5955, 6255, 6115,
-+				  6415, 6275, 6575, 6435, 6735,
-+				  6595, 6895, 6755, 7055};
- 	struct hostapd_channel_data *pri_chan = NULL, *sec_chan = NULL;
- 	u8 channel,  chan_80mhz;
- 	int i, chan_idx, ht40 = -1, res, obss_scan = 1;
-@@ -2867,8 +2888,9 @@ skip_to_6ghz:
- 	if (!vht_freq.vht_enabled && !is_6ghz)
- 		return;
- 
--	/* Enable HE with VHT for 5 GHz */
-+	/* Enable HE, EHT with VHT for 5 GHz */
- 	vht_freq.he_enabled = mode->he_capab[ieee80211_mode].he_supported;
-+	vht_freq.eht_enabled = mode->eht_capab[ieee80211_mode].eht_supported;
- 
- #ifdef CONFIG_HE_OVERRIDES
- 	if (is_24ghz)
-@@ -2932,6 +2954,19 @@ skip_to_6ghz:
- 		}
- 	}
- 
-+	if ((ssid->enable_320mhz_bw) && (mode->eht_capab[ieee80211_mode].phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
-+	     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK) && is_6ghz) {
-+
-+		for (i = 0; i < ARRAY_SIZE(bw_320); i+=2) {
-+			if (freq->freq >= bw_320[i] &&
-+		    	    freq->freq <= bw_320[i+1])
-+				break;
-+		}
-+
-+		seg0 = ibss_get_center_320mhz(freq->channel);
-+		chwidth = CONF_OPER_CHWIDTH_320MHZ;
-+	}
-+
- 	if (ssid->max_oper_chwidth == CONF_OPER_CHWIDTH_80P80MHZ) {
- 		/* setup center_freq2, bandwidth */
- 		for (k = 0; k < ARRAY_SIZE(bw_80_160); k++) {
-@@ -2995,11 +3030,11 @@ skip_to_6ghz:
- 				    freq->channel, ssid->enable_edmg,
- 				    ssid->edmg_channel, freq->ht_enabled,
- 				    vht_freq.vht_enabled, vht_freq.he_enabled,
--				    false,
-+				    vht_freq.eht_enabled,
- 				    freq->sec_channel_offset,
- 				    chwidth, seg0, seg1, vht_caps,
- 				    &mode->he_capab[ieee80211_mode],
--				    NULL, 0,
-+				    &mode->eht_capab[ieee80211_mode], 0,
- 				    freq->ru_punct_bitmap,
- 				    freq->ru_punct_ofdma) != 0)
- 		return;
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
-@@ -1053,6 +1053,7 @@ struct wpa_supplicant {
+@@ -1003,6 +1003,7 @@ struct wpa_supplicant {
  	unsigned int mesh_ht_enabled:1;
  	unsigned int mesh_vht_enabled:1;
  	unsigned int mesh_he_enabled:1;
@@ -253,7 +170,7 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  	/* struct external_pmksa_cache::list */
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4280,6 +4280,8 @@ static int hostapd_config_fill(struct ho
+@@ -4298,6 +4298,8 @@ static int hostapd_config_fill(struct ho
  	} else if (os_strcmp(buf, "wowlan_triggers") == 0) {
  		os_free(bss->wowlan_triggers);
  		bss->wowlan_triggers = os_strdup(pos);
@@ -264,47 +181,39 @@ Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
  	} else if (os_strcmp(buf, "disable_40mhz_scan") == 0) {
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1163,6 +1163,7 @@ struct hostapd_config {
+@@ -1183,6 +1183,7 @@ struct hostapd_config {
  	u16 ru_punct_bitmap;
  	u8 ru_punct_ofdma;
  	u8 ru_punct_acs_threshold;
 +	int enable_320mhz_bw;
- };
  
- 
+ 	enum mbssid {
+ 		MBSSID_DISABLED = 0,
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1308,6 +1308,10 @@ struct wpa_driver_associate_params {
- 	 * Enable 160MHz BW - set it 1 to enable mesh 160MHz 6G
- 	 */
+@@ -1356,6 +1356,11 @@ struct wpa_driver_associate_params {
  	int enable_160mhz_bw;
-+	/**
+ 
+ 	/**
 +	 * Enable 320MHz BW - set it 1 to enable mesh 320MHz 6G
 +	 */
 +	int enable_320mhz_bw;
- };
- 
- enum hide_ssid {
---- a/wpa_supplicant/config_file.c
-+++ b/wpa_supplicant/config_file.c
-@@ -889,6 +889,7 @@ static void wpa_config_write_network(FIL
- 	INT(disable_40mhz_scan);
- 	INT(beacon_tx_mode);
- 	INT(enable_160mhz_bw);
-+	INT(enable_320mhz_bw);
- #undef STR
- #undef INT
- #undef INT_DEF
++
++	/**
+ 	 * disable_eht - Disable EHT for this connection
+ 	 */
+ 	int disable_eht;
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1219,6 +1219,10 @@ struct wpa_ssid {
- 	 * Enable 160MHz BW - set it 1 to enable mesh 160MHz 6G
- 	 */
+@@ -1286,6 +1286,11 @@ struct wpa_ssid {
  	int enable_160mhz_bw;
-+	/**
+ 
+ 	/**
 +	 * Enable 320MHz BW - set it 1 to enable mesh 320MHz 6G
 +	 */
 +	int enable_320mhz_bw;
- };
- 
- #endif /* CONFIG_SSID_H */
++
++	/**
+ 	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
+ 	 *
+ 	 * By default, use it if it is available, but this can be configured

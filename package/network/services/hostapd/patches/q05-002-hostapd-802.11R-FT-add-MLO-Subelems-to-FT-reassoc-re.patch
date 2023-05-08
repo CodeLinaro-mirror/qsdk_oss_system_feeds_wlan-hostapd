@@ -19,7 +19,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -3920,6 +3920,144 @@ void wpa_add_per_link_mlo_igtk(struct wp
+@@ -3984,6 +3984,144 @@ void wpa_add_per_link_mlo_igtk(struct wp
  	*pos = ptr;
  }
  
@@ -164,54 +164,52 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  void wpa_add_per_link_mlo_kdes(struct wpa_authenticator *wpa_auth,
  			       u8 **pos, struct wpa_state_machine *sm)
  {
-@@ -3928,6 +4066,22 @@ void wpa_add_per_link_mlo_kdes(struct wp
- 	wpa_add_per_link_mlo_bigtk(wpa_auth, pos, sm);
+@@ -4067,6 +4205,20 @@ static u8 *wpa_add_mlo_link_kde_partner(
+ 	return pos;
  }
  
 +int wpa_add_per_link_ft_mlo_subelems(struct wpa_authenticator *wpa_auth,
-+				      u8 **pos, u8 link_id,
-+				      struct wpa_state_machine *sm)
++                                     u8 **pos, u8 link_id,
++                                     struct wpa_state_machine *sm)
 +{
-+	int ret;
++       int ret;
 +
-+	ret = wpa_add_per_link_ft_mlo_gtk_subelem(wpa_auth, pos, link_id, sm);
-+	if (!ret && sm->mgmt_frame_prot)
-+		ret = wpa_add_per_link_ft_mlo_igtk_subelem(wpa_auth, pos, link_id, sm);
-+	if (!ret && sm->mgmt_frame_prot && wpa_auth->conf.beacon_prot)
-+		ret = wpa_add_per_link_ft_mlo_bigtk_subelem(wpa_auth, pos, link_id, sm);
-+
-+	return ret;
++       ret = wpa_add_per_link_ft_mlo_gtk_subelem(wpa_auth, pos, link_id, sm);
++       if (!ret && sm->mgmt_frame_prot)
++               ret = wpa_add_per_link_ft_mlo_igtk_subelem(wpa_auth, pos, link_id, sm);
++       if (!ret && sm->mgmt_frame_prot && wpa_auth->conf.beacon_prot)
++               ret = wpa_add_per_link_ft_mlo_bigtk_subelem(wpa_auth, pos, link_id, sm);
++        return ret;
 +}
 +
-+
- static u8 *add_mlo_link_kde(u8 *pos, u8 link_id, u8 *mac,
- 			    struct wpa_authenticator *wpa_auth,
- 			    struct wpa_state_machine *sm)
-@@ -4015,6 +4169,23 @@ static u8 *wpa_add_mlo_gtk_kde(struct wp
+ static u8 *wpa_add_mlo_gtk_kde(struct wpa_state_machine *sm, u8 *pos)
+ {
+ 	u8 *start = pos;
+@@ -4079,6 +4231,23 @@ static u8 *wpa_add_mlo_gtk_kde(struct wp
  	return pos;
  }
  
 +int wpa_add_ft_mlo_subelems(struct wpa_state_machine *sm, u8 *pos)
 +{
-+	int ret;
++        int ret;
 +
-+	if (!sm->is_ml)
-+		return -1;
++        if (!sm->is_ml)
++                return -1;
 +
-+	u8 *start = pos;
-+	ret = sm->wpa_auth->cb->add_up_partner_ft_mlo_subelems(sm->wpa_auth->cb_ctx,
-+							       sm->addr, &pos);
-+	if (ret)
-+		return ret;
++        u8 *start = pos;
++        ret = sm->wpa_auth->cb->add_up_partner_ft_mlo_subelems(sm->wpa_auth->cb_ctx,
++                                                               sm->addr, &pos);
++        if (ret)
++                return ret;
 +
-+	wpa_hexdump(MSG_DEBUG, "MLO-FT-GTK-subelems:", start, (pos - start));
-+	return ret;
++        wpa_hexdump(MSG_DEBUG, "MLO-FT-GTK-subelems:", start, (pos - start));
++        return ret;
 +}
 +
  void wpa_add_to_mlo_link_kde_length(struct wpa_authenticator *wpa_auth,
  				    struct wpa_state_machine *sm,
  				    int *len)
-@@ -4083,6 +4254,73 @@ static int ieee80211w_kde_len_bigtk_mlo(
+@@ -4147,6 +4316,73 @@ static int ieee80211w_kde_len_bigtk_mlo(
  	return len;
  }
  
@@ -285,18 +283,18 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  void wpa_add_to_mlo_kde_length(struct wpa_authenticator *wpa_auth,
  			       struct wpa_state_machine *sm,
  			       int *total_len)
-@@ -4108,6 +4346,16 @@ static int mlo_gtk_kde_len(struct wpa_st
+@@ -4172,6 +4408,16 @@ static int mlo_gtk_kde_len(struct wpa_st
  	return length;
  }
  
 +int ft_mlo_subelems_len(struct wpa_state_machine *sm)
 +{
-+	int length = 0;
++        int length = 0;
 +
-+	sm->wpa_auth->cb->add_up_partner_ft_mlo_subelems_len(sm->wpa_auth->cb_ctx,
-+							    sm->addr,
-+							    &length);
-+	return length;
++        sm->wpa_auth->cb->add_up_partner_ft_mlo_subelems_len(sm->wpa_auth->cb_ctx,
++                                                            sm->addr,
++                                                            &length);
++        return length;
 +}
 +
  static int mlo_link_kde_len(struct wpa_state_machine *sm)
@@ -304,17 +302,17 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	int length = 0;
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
-@@ -324,6 +324,9 @@ struct wpa_auth_callbacks {
+@@ -323,6 +323,9 @@ struct wpa_auth_callbacks {
+ 	void (*add_partner_mlo_link_kde)(void *ctx, const u8 *addr, u8 **pos);
+ 	void (*add_up_partner_gtk_kde_lengths)(void *ctx, const u8 *addr,
  					       int *len);
++	void (*add_up_partner_ft_mlo_subelems_len)(void *ctx, const u8 *addr,
++                                                  int *len);
++	int (*add_up_partner_ft_mlo_subelems)(void *ctx, const u8 *addr, u8 **pos);
  	void (*add_up_partner_mlo_kde_lengths)(void *ctx, const u8 *addr,
  						int *len);
-+	void (*add_up_partner_ft_mlo_subelems_len)(void *ctx, const u8 *addr,
-+						   int *len);
-+	int (*add_up_partner_ft_mlo_subelems)(void *ctx, const u8 *addr, u8 **pos);
  	int (*for_each_sta)(void *ctx, int (*cb)(struct wpa_state_machine *sm,
- 						 void *ctx), void *cb_ctx);
- 	int (*for_each_auth)(void *ctx, int (*cb)(struct wpa_authenticator *a,
-@@ -443,6 +446,12 @@ void wpa_add_per_link_ft_mlo_kdes(struct
+@@ -444,6 +447,12 @@ void wpa_add_per_link_ft_mlo_kdes(struct
  void wpa_add_to_mlo_ft_kde_length(struct wpa_authenticator *wpa_auth,
  			       struct wpa_state_machine *sm,
  			       int *total_len);
@@ -327,7 +325,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  void wpa_remove_ptk(struct wpa_state_machine *sm);
  int wpa_auth_sm_event(struct wpa_state_machine *sm, enum wpa_event event);
  void wpa_auth_sm_notify(struct wpa_state_machine *sm);
-@@ -628,6 +637,8 @@ enum wpa_auth_ocv_override_frame {
+@@ -636,6 +645,8 @@ enum wpa_auth_ocv_override_frame {
  void wpa_auth_set_ocv_override_freq(struct wpa_authenticator *wpa_auth,
  				    enum wpa_auth_ocv_override_frame frame,
  				    unsigned int freq);
@@ -338,7 +336,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  void *wpa_init_ml(struct wpa_authenticator *wpa_auth, u8 *mld_mac_addr,
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
-@@ -2611,61 +2611,82 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
+@@ -2661,61 +2661,82 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
  	pos += res;
  
  	/* Fast BSS Transition Information */
@@ -466,8 +464,8 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (wpa_auth_uses_ocv(sm)) {
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -624,6 +624,33 @@ static void hostapd_wpa_auth_add_partner
- 				      hostapd_wpa_auth_add_partner_mlo_link_cb);
+@@ -693,6 +693,33 @@ int hostapd_wpa_auth_send_eapol(void *ct
+ 					   encrypt, flags);
  }
  
 +static int hostapd_wpa_auth_ft_add_mlo_subelems_cb(struct hostapd_data *hapd,
@@ -498,10 +496,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +}
 +
  
- static void hostapd_wpa_auth_add_mlo_link_len(void *ctx, const u8 *addr,
- 					      int *len)
-@@ -640,6 +667,29 @@ static void hostapd_wpa_auth_add_mlo_lin
- 				      hostapd_wpa_auth_add_mlo_link_len_cb);
+ static int hostapd_wpa_auth_for_each_sta(
+ 	void *ctx, int (*cb)(struct wpa_state_machine *sm, void *ctx),
+@@ -708,6 +735,29 @@ static int hostapd_wpa_auth_for_each_sta
+ 	return 0;
  }
  
 +static int hostapd_wpa_auth_ft_add_mlo_subelems_len_cb(struct hostapd_data *hapd,
@@ -528,20 +526,20 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +}
 +
  
- static int hostapd_wpa_auth_set_partner_gkey_cb(struct hostapd_data *hapd,
- 						 struct sta_info *sta,
+ struct wpa_auth_iface_iter_data {
+ 	int (*cb)(struct wpa_authenticator *sm, void *ctx);
 @@ -1652,6 +1702,8 @@ int hostapd_setup_wpa(struct hostapd_dat
+ 		.add_partner_gtk_to_mlo_kde = hostapd_wpa_auth_add_partner_gtk,
  		.add_partner_mlo_link_kde = hostapd_wpa_auth_add_partner_mlo_link,
  		.add_up_partner_gtk_kde_lengths = hostapd_wpa_auth_add_mlo_gtk_len,
- 		.add_up_partner_mlo_kde_lengths = hostapd_wpa_auth_add_mlo_link_len,
 +		.add_up_partner_ft_mlo_subelems_len = hostapd_wpa_auth_ft_add_mlo_subelems_len,
 +		.add_up_partner_ft_mlo_subelems = hostapd_wpa_auth_ft_add_mlo_subelems,
+ 		.add_up_partner_mlo_kde_lengths = hostapd_wpa_auth_add_mlo_link_len,
  		.for_each_sta = hostapd_wpa_auth_for_each_sta,
  		.for_each_auth = hostapd_wpa_auth_for_each_auth,
- 		.send_ether = hostapd_wpa_auth_send_ether,
 --- a/src/common/wpa_common.h
 +++ b/src/common/wpa_common.h
-@@ -404,6 +404,9 @@ struct rsn_ftie_sha384 {
+@@ -458,6 +458,9 @@ struct rsn_ftie_sha512 {
  #define FTIE_SUBELEM_IGTK 4
  #define FTIE_SUBELEM_OCI 5
  #define FTIE_SUBELEM_BIGTK 6
@@ -553,7 +551,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	u8 id;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -471,11 +471,11 @@ static void handle_auth_ft_finish(void *
+@@ -487,11 +487,11 @@ static void handle_auth_ft_finish(void *
  	struct sta_info *sta;
  	int reply_res;
  

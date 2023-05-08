@@ -1,6 +1,6 @@
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1815,6 +1815,39 @@ static void hostapd_event_wds_sta_interf
+@@ -1827,6 +1827,39 @@ static void hostapd_event_wds_sta_interf
  		ifname, MAC2STR(addr));
  }
  
@@ -40,7 +40,7 @@
  
  #ifdef CONFIG_OWE
  static int hostapd_notif_update_dh_ie(struct hostapd_data *hapd,
-@@ -2150,6 +2183,9 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2162,6 +2195,9 @@ void hostapd_wpa_event(void *ctx, enum w
  		hostapd_cleanup_cca_params(hapd);
  		break;
  #endif /* CONFIG_IEEE80211AX */
@@ -52,7 +52,7 @@
  		break;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5450,6 +5450,15 @@ enum wpa_event_type {
+@@ -5584,6 +5584,15 @@ enum wpa_event_type {
  	 * Described in wpa_event_data.ch_switch.
  	 */
  	EVENT_LINK_CH_SWITCH_STARTED,
@@ -68,22 +68,23 @@
  };
  
  
-@@ -6358,6 +6367,15 @@ union wpa_event_data {
- 	 */
+@@ -6493,6 +6502,16 @@ union wpa_event_data {
  	struct pasn_auth pasn_auth;
  
-+	/**
-+	 * struct update_muedca - Data for EVENT_UPDATE_MU_EDCA_PARAMS
-+	 */
+ 	/**
++	* struct update_muedca - Data for EVENT_UPDATE_MU_EDCA_PARAMS
++	*/
 +	struct update_muedca {
 +		u8 he_mu_ac_be_param[3];
 +		u8 he_mu_ac_bk_param[3];
 +		u8 he_mu_ac_vi_param[3];
 +		u8 he_mu_ac_vo_param[3];
 +	} update_muedca;
- };
- 
- /**
++
++	/**
+ 	 * struct port_authorized - Data for EVENT_PORT_AUTHORIZED
+ 	 */
+ 	struct port_authorized {
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
 @@ -184,6 +184,7 @@ static const char * nl80211_command_to_s
@@ -94,7 +95,7 @@
  	C2S(__NL80211_CMD_AFTER_LAST)
  	}
  #undef C2S
-@@ -3022,6 +3023,35 @@ static void nl80211_sta_opmode_change_ev
+@@ -3274,6 +3275,35 @@ static void nl80211_sta_opmode_change_ev
  	wpa_supplicant_event(drv->ctx, EVENT_STATION_OPMODE_CHANGED, &ed);
  }
  
@@ -130,7 +131,7 @@
  
  static void nl80211_control_port_frame(struct wpa_driver_nl80211_data *drv,
  				       struct nlattr **tb)
-@@ -3184,7 +3214,6 @@ nl80211_color_change_announcement_comple
+@@ -3436,7 +3466,6 @@ nl80211_color_change_announcement_comple
  
  #endif /* CONFIG_IEEE80211AX */
  
@@ -138,7 +139,7 @@
  static void do_process_drv_event(struct i802_bss *bss, int cmd,
  				 struct nlattr **tb)
  {
-@@ -3448,6 +3477,9 @@ static void do_process_drv_event(struct
+@@ -3700,6 +3729,9 @@ static void do_process_drv_event(struct
  		nl80211_color_change_announcement_completed(drv);
  		break;
  #endif /* CONFIG_IEEE80211AX */
@@ -150,7 +151,7 @@
  			"(cmd=%d)", cmd);
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -1273,6 +1273,11 @@
+@@ -1281,6 +1281,11 @@
   * @NL80211_CMD_MODIFY_LINK_STA: Modify a link of an MLD station
   * @NL80211_CMD_REMOVE_LINK_STA: Remove a link of an MLD station
   *
@@ -162,7 +163,7 @@
   * @NL80211_CMD_MAX: highest used command number
   * @__NL80211_CMD_AFTER_LAST: internal use
   */
-@@ -1524,6 +1529,7 @@ enum nl80211_commands {
+@@ -1532,6 +1537,7 @@ enum nl80211_commands {
  	NL80211_CMD_MODIFY_LINK_STA,
  	NL80211_CMD_REMOVE_LINK_STA,
  
@@ -170,19 +171,19 @@
  	/* add new commands above here */
  
  	/* used to define NL80211_CMD_MAX below */
-@@ -2741,6 +2747,9 @@ enum nl80211_commands {
-  *	When used with %NL80211_CMD_FRAME_TX_STATUS, indicates the ack RX
-  *	timestamp. When used with %NL80211_CMD_FRAME RX notification, indicates
+@@ -2751,6 +2757,9 @@ enum nl80211_commands {
   *	the incoming frame RX timestamp.
+  * @NL80211_ATTR_TD_BITMAP: Transition Disable bitmap, for subsequent
+  *	(re)associations.
 + * @NL80211_ATTR_HE_MUEDCA_PARAMS: MU-EDCA AC parameters for the
-+ *	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS command.
++ * 	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS command.
 + *
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -3269,6 +3278,7 @@ enum nl80211_attrs {
- 	NL80211_ATTR_TX_HW_TIMESTAMP,
+@@ -3280,6 +3289,7 @@ enum nl80211_attrs {
  	NL80211_ATTR_RX_HW_TIMESTAMP,
+ 	NL80211_ATTR_TD_BITMAP,
  
 +	NL80211_ATTR_HE_MUEDCA_PARAMS,
  	/* add attributes here, update the policy in nl80211.c */
@@ -200,7 +201,7 @@
  	return "UNKNOWN";
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3616,6 +3616,10 @@ static int hostapd_fill_csa_settings(str
+@@ -3703,6 +3703,10 @@ static int hostapd_fill_csa_settings(str
  	hapd->cs_count = settings->cs_count;
  	hapd->cs_block_tx = settings->block_tx;
  
@@ -213,7 +214,7 @@
  		free_beacon_data(&settings->beacon_after);
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -1293,6 +1293,11 @@ static int hostapd_ctrl_iface_set(struct
+@@ -1301,6 +1301,11 @@ static int hostapd_ctrl_iface_set(struct
  		} else if (os_strncmp(cmd, "wme_ac_", 7) == 0 ||
  			   os_strncmp(cmd, "wmm_ac_", 7) == 0) {
  			hapd->parameter_set_count++;

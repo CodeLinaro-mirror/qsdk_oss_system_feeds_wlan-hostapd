@@ -16,7 +16,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -160,12 +160,14 @@ u8 * hostapd_eid_supp_rates(struct hosta
+@@ -168,13 +168,14 @@ u8 * hostapd_eid_supp_rates(struct hosta
  }
  
  
@@ -27,12 +27,13 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	int i, num, count;
  	int h2e_required;
  
+-	hapd->conf->xrates_supported = false;
 +	if (len)
 +		*len = 0;
  	if (hapd->iface->current_rates == NULL)
  		return eid;
  
-@@ -183,6 +185,10 @@ u8 * hostapd_eid_ext_supp_rates(struct h
+@@ -196,6 +197,10 @@ u8 * hostapd_eid_ext_supp_rates(struct h
  	if (num <= 8)
  		return eid;
  	num -= 8;
@@ -43,7 +44,15 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  	*pos++ = WLAN_EID_EXT_SUPP_RATES;
  	*pos++ = num;
-@@ -5199,7 +5205,7 @@ static u16 send_assoc_resp(struct hostap
+@@ -236,7 +241,6 @@ u8 * hostapd_eid_ext_supp_rates(struct h
+ 			*pos++ = 0x80 | BSS_MEMBERSHIP_SELECTOR_SAE_H2E_ONLY;
+ 	}
+ 
+-	hapd->conf->xrates_supported = true;
+ 	return pos;
+ }
+ 
+@@ -4312,7 +4316,7 @@ static u16 send_assoc_resp(struct hostap
  	/* Supported rates */
  	p = hostapd_eid_supp_rates(hapd, reply->u.assoc_resp.variable);
  	/* Extended supported rates */
@@ -52,7 +61,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  	/* Radio measurement capabilities */
  	p = hostapd_eid_rm_enabled_capab(hapd, p, buf + buflen - p);
-@@ -7838,12 +7844,13 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -6979,12 +6983,13 @@ static size_t hostapd_eid_mbssid_elem_le
  					  size_t known_bss_len)
  {
  	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
@@ -67,20 +76,22 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 +		size_t nontx_profile_len, auth_len, xrate_len;
  		u8 ie_count = 0;
  
- 		if (known_bss && (known_bss_len > (i / 8))) {
-@@ -7887,6 +7894,11 @@ static size_t hostapd_eid_mbssid_elem_le
+ 		if (!bss || !bss->conf || !bss->started ||
+@@ -7023,9 +7028,10 @@ static size_t hostapd_eid_mbssid_elem_le
  			ie_count++;
  		if (!rsnx && hostapd_wpa_ie(tx_bss, WLAN_EID_RSNX))
  			ie_count++;
+-		if (bss->conf->xrates_supported)
+-			nontx_profile_len += 8;
+-		else if (hapd->conf->xrates_supported)
 +		hostapd_eid_ext_supp_rates(bss, NULL, &xrate_len);
 +		if (xrate_len)
 +			nontx_profile_len += xrate_len;
 +		else if (tx_xrate_len)
-+			ie_count++;
+ 			ie_count++;
  		if (ie_count)
- 			nontx_profile_len += (4 + ie_count);
- 
-@@ -7953,9 +7965,10 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 			nontx_profile_len += 4 + ie_count;
+@@ -7092,9 +7098,10 @@ static u8 * hostapd_eid_mbssid_elem(stru
  				    const u8 *known_bss, size_t known_bss_len)
  {
  	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
@@ -92,40 +103,33 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	*eid++ = WLAN_EID_MULTIPLE_BSSID;
  	eid_len_offset = eid++;
  	max_bssid_indicator_offset = eid++;
-@@ -7965,8 +7978,8 @@ static u8 * hostapd_eid_mbssid_elem(stru
- 		struct hostapd_bss_config *conf;
+@@ -7105,7 +7112,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		u8 *eid_len_pos, *nontx_bss_start = eid;
  		const u8 *auth, *rsn = NULL, *rsnx = NULL;
--		u8 ie_count = 0, non_inherit_ie[2];
+ 		u8 ie_count = 0, non_inherit_ie[3];
 -		size_t auth_len = 0;
-+		u8 ie_count = 0, non_inherit_ie[3];
 +		size_t auth_len = 0, xrate_len = 0;
  		u16 capab_info;
  
- 		if (known_bss && (known_bss_len > (i / 8))) {
-@@ -8030,6 +8043,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
- 				eid += (2 + rsnx[1]);
+ 		if (!bss || !bss->conf || !bss->started ||
+@@ -7166,12 +7173,12 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 				eid += 2 + rsnx[1];
  			}
  		}
 +		eid = hostapd_eid_ext_supp_rates(bss, eid, &xrate_len);
- 		if (!rsn && hostapd_wpa_ie(tx_bss, WLAN_EID_RSN)) {
- 			non_inherit_ie[ie_count] = WLAN_EID_RSN;
- 			ie_count++;
-@@ -8038,6 +8052,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
- 			non_inherit_ie[ie_count] = WLAN_EID_RSNX;
- 			ie_count++;
- 		}
-+		if (tx_xrate_len &&
-+		    !xrate_len) {
-+			non_inherit_ie[ie_count] = WLAN_EID_EXT_SUPP_RATES;
-+			ie_count++;
-+		}
+ 		if (!rsn && hostapd_wpa_ie(tx_bss, WLAN_EID_RSN))
+ 			non_inherit_ie[ie_count++] = WLAN_EID_RSN;
+ 		if (!rsnx && hostapd_wpa_ie(tx_bss, WLAN_EID_RSNX))
+ 			non_inherit_ie[ie_count++] = WLAN_EID_RSNX;
+-		if (hapd->conf->xrates_supported &&
+-		    !bss->conf->xrates_supported)
++		if (tx_xrate_len && !xrate_len)
+ 			non_inherit_ie[ie_count++] = WLAN_EID_EXT_SUPP_RATES;
  		if (ie_count) {
  			*eid++ = WLAN_EID_EXTENSION;
- 			*eid++ = 2 + ie_count;
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -717,7 +717,7 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -681,7 +681,7 @@ static u8 * hostapd_gen_probe_resp(struc
  	pos = hostapd_eid_erp_info(hapd, pos);
  
  	/* Extended supported rates */
@@ -134,7 +138,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  	pos = hostapd_get_rsne(hapd, pos, epos - pos);
  	pos = hostapd_eid_bss_load(hapd, pos, epos - pos);
-@@ -1810,7 +1810,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1778,7 +1778,7 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_erp_info(hapd, tailpos);
  
  	/* Extended supported rates */
@@ -145,8 +149,8 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	tailpos = hostapd_eid_bss_load(hapd, tailpos, tailend - tailpos);
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -52,7 +52,7 @@ void ap_ht2040_timeout(void *eloop_data,
- u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid);
+@@ -53,7 +53,7 @@ u8 * hostapd_eid_ext_capab(struct hostap
+ 			   bool mbssid_complete);
  u8 * hostapd_eid_qos_map_set(struct hostapd_data *hapd, u8 *eid);
  u8 * hostapd_eid_supp_rates(struct hostapd_data *hapd, u8 *eid);
 -u8 * hostapd_eid_ext_supp_rates(struct hostapd_data *hapd, u8 *eid);
@@ -165,3 +169,13 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		wpabuf_put_data(buf, supp_rates, pos - supp_rates);
  
  		/* IE: RSN IE */
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -937,7 +937,6 @@ struct hostapd_bss_config {
+ 	u8 rnr;
+ 	int beacon_tx_mode;
+ 	char *config_id;
+-	bool xrates_supported;
+ };
+ 
+ /**

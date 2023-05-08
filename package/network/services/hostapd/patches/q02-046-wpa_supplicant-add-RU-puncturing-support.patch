@@ -57,20 +57,21 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		wpa_printf(MSG_ERROR,
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1319,6 +1319,12 @@ struct wpa_driver_associate_params {
- 	 * Enable 320MHz BW - set it 1 to enable mesh 320MHz 6G
- 	 */
+@@ -1361,6 +1361,13 @@ struct wpa_driver_associate_params {
  	int enable_320mhz_bw;
-+
-+	/**
+ 
+ 	/**
 +	 * RU puncturing bitmap - Each bit corresponds to a 20 MHz subchannel,
 +	 * lowest bit for the channel with the lowest frequency.
-+	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.*/
++	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.
++	 */
 +	u16 ru_punct_bitmap;
- };
- 
- enum hide_ssid {
-@@ -2427,6 +2433,7 @@ struct hostapd_sta_add_params {
++
++	/**
+ 	 * disable_eht - Disable EHT for this connection
+ 	 */
+ 	int disable_eht;
+@@ -2506,6 +2513,7 @@ struct hostapd_sta_add_params {
  	const u8 *supp_oper_classes;
  	size_t supp_oper_classes_len;
  	int support_p2p_ps;
@@ -80,7 +81,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  struct mac_address {
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5507,6 +5507,12 @@ static int wpa_driver_nl80211_sta_add(vo
+@@ -5542,6 +5542,12 @@ static int wpa_driver_nl80211_sta_add(vo
  		nla_nest_end(msg, wme);
  	}
  
@@ -95,7 +96,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (ret)
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -416,9 +416,10 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+@@ -419,9 +419,10 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  				conf->ieee80211ax = 1;
  			if (mode->eht_capab[wpas_mode_to_ieee80211_mode(
  					    ssid->mode)].eht_supported &&
@@ -110,16 +111,16 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  				conf->vht_capab |= mode->vht_capab;
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2837,6 +2837,7 @@ static const struct parse_data ssid_fiel
+@@ -2883,6 +2883,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(beacon_tx_mode, 1, 2)},
  	{ INT_RANGE(enable_160mhz_bw, 0, 1)},
  	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
 +	{ INT(ru_punct_bitmap) },
+ 	{ INT_RANGE(disable_eht, 0, 1)},
+ 	{ INT_RANGE(enable_4addr_mode, 0, 1)},
  };
- 
- #undef OFFSET
-@@ -3359,6 +3360,7 @@ void wpa_config_set_network_defaults(str
- 	ssid->mac_addr = -1;
+@@ -3407,6 +3408,7 @@ void wpa_config_set_network_defaults(str
+ 	ssid->mac_addr = WPAS_MAC_ADDR_STYLE_NOT_SET;
  	ssid->max_oper_chwidth = DEFAULT_MAX_OPER_CHWIDTH;
  	ssid->beacon_tx_mode = DEFAULT_BEACON_TX_MODE;
 +	ssid->ru_punct_bitmap = 0;
@@ -128,29 +129,29 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 --- a/wpa_supplicant/config_file.c
 +++ b/wpa_supplicant/config_file.c
-@@ -893,6 +893,7 @@ static void wpa_config_write_network(FIL
+@@ -902,6 +902,7 @@ static void wpa_config_write_network(FIL
+ 	INT(disable_40mhz_scan);
  	INT(beacon_tx_mode);
  	INT(enable_160mhz_bw);
- 	INT(enable_320mhz_bw);
 +	INT(ru_punct_bitmap);
+ 	INT(enable_4addr_mode);
+ 
  #undef STR
- #undef INT
- #undef INT_DEF
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1235,6 +1235,12 @@ struct wpa_ssid {
- 	 * Enable 320MHz BW - set it 1 to enable mesh 320MHz 6G
- 	 */
+@@ -1291,6 +1291,12 @@ struct wpa_ssid {
  	int enable_320mhz_bw;
-+
-+	/**
+ 
+ 	/**
 +	 * RU puncturing bitmap - Each bit corresponds to a 20 MHz subchannel,
 +	 * lowest bit for the channel with the lowest frequency.
 +	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.*/
-+        u16 ru_punct_bitmap;
- };
- 
- #endif /* CONFIG_SSID_H */
++	u16 ru_punct_bitmap;
++
++	/**
+ 	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
+ 	 *
+ 	 * By default, use it if it is available, but this can be configured
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
 @@ -411,6 +411,7 @@ static int wpa_supplicant_mesh_init(stru
@@ -230,46 +231,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (conf->security == MESH_CONF_SEC_NONE) {
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -3046,6 +3046,27 @@ skip_to_6ghz:
- 		freq->eht_enabled = 0;
- 	}
- #endif /* CONFIG_EHT_OVERRIDES */
-+	freq->ru_punct_bitmap = ssid->ru_punct_bitmap;
-+	freq->ru_punct_ofdma = 0; /* Default to disabled for mesh. */
-+
-+	if (ssid->ru_punct_bitmap && wpa_s->drv_capa_known) {
-+		switch (chwidth) {
-+		case CONF_OPER_CHWIDTH_320MHZ:
-+			 break;
-+		case CONF_OPER_CHWIDTH_160MHZ:
-+			if (wpa_s->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ)
-+				freq->ru_punct_bitmap = 0;
-+			break;
-+		case CONF_OPER_CHWIDTH_80MHZ:
-+			if ((wpa_s->ru_punct_supp_bw == CONF_OPER_CHWIDTH_160MHZ) ||
-+			    (wpa_s->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ))
-+				freq->ru_punct_bitmap = 0;
-+			break;
-+		default:
-+			freq->ru_punct_bitmap = 0;
-+		}
-+	}
-+
- 	if (hostapd_set_freq_params(&vht_freq, mode->mode, freq->freq,
- 				    freq->channel, ssid->enable_edmg,
- 				    ssid->edmg_channel, freq->ht_enabled,
-@@ -3061,8 +3082,8 @@ skip_to_6ghz:
- 
- 	*freq = vht_freq;
- 
--	wpa_printf(MSG_DEBUG, "IBSS: VHT setup freq cf1 %d, cf2 %d, bw %d",
--		   freq->center_freq1, freq->center_freq2, freq->bandwidth);
-+	wpa_printf(MSG_DEBUG, "IBSS: VHT setup freq cf1 %d, cf2 %d, bw %d ru_punct_bitmap 0x%x",
-+		   freq->center_freq1, freq->center_freq2, freq->bandwidth, freq->ru_punct_bitmap);
- }
- 
- 
-@@ -7079,6 +7100,7 @@ static int wpa_supplicant_init_iface(str
+@@ -7144,6 +7144,7 @@ static int wpa_supplicant_init_iface(str
  			capa.num_multichan_concurrent;
  		wpa_s->wmm_ac_supported = capa.wmm_ac_supported;
  		wpa_s->max_num_akms = capa.max_num_akms;
@@ -279,7 +241,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			wpa_s->mac_addr_rand_supported |= MAC_ADDR_RAND_SCAN;
 --- a/wpa_supplicant/wpa_supplicant.conf
 +++ b/wpa_supplicant/wpa_supplicant.conf
-@@ -1711,6 +1711,13 @@ fast_reauth=1
+@@ -1772,6 +1772,13 @@ fast_reauth=1
  # during radar detection
  #disable_csa_dfs=1
  
@@ -295,10 +257,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  # Simple case: WPA-PSK, PSK as an ASCII passphrase, allow all valid ciphers
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
-@@ -1572,6 +1572,8 @@ struct wpa_supplicant {
- 	unsigned int enable_dscp_policy_capa:1;
- 	unsigned int connection_dscp:1;
+@@ -1529,6 +1529,8 @@ struct wpa_supplicant {
  	unsigned int wait_for_dscp_req:1;
+ 
+ 	struct wpa_signal_info last_signal_info;
 +	/* Minimum bandwidth the driver supports RU puncturing */
 +	u8 ru_punct_supp_bw;
  };

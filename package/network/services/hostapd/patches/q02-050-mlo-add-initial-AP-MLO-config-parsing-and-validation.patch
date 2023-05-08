@@ -36,7 +36,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
 
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -3155,6 +3155,9 @@ own_ip_addr=127.0.0.1
+@@ -3179,6 +3179,9 @@ own_ip_addr=127.0.0.1
  # as the defaults for the following BSSes. However, it is recommended that all
  # BSSes include explicit configuration of all relevant configuration items.
  #
@@ -58,7 +58,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	params.driver_params = hapd->iconf->driver_params;
  	params.use_pae_group_addr = hapd->conf->use_pae_group_addr;
  
-@@ -625,6 +628,27 @@ static int gen_uuid(const char *txt_addr
+@@ -624,6 +627,27 @@ static int gen_uuid(const char *txt_addr
  #define HOSTAPD_CLEANUP_INTERVAL 10
  #endif /* HOSTAPD_CLEANUP_INTERVAL */
  
@@ -86,7 +86,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  static int hostapd_periodic_call(struct hostapd_iface *iface, void *ctx)
  {
  	hostapd_periodic_iface(iface);
-@@ -662,6 +686,9 @@ int main(int argc, char *argv[])
+@@ -661,6 +685,9 @@ int main(int argc, char *argv[])
  #ifdef CONFIG_DPP
  	struct dpp_global_config dpp_conf;
  #endif /* CONFIG_DPP */
@@ -96,7 +96,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  
  	if (os_program_init())
  		return -1;
-@@ -886,6 +913,23 @@ int main(int argc, char *argv[])
+@@ -885,6 +912,23 @@ int main(int argc, char *argv[])
  		}
  	}
  
@@ -120,7 +120,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	/*
  	 * Enable configured interfaces. Depending on channel configuration,
  	 * this may complete full initialization before returning or use a
-@@ -926,6 +970,10 @@ int main(int argc, char *argv[])
+@@ -925,6 +969,10 @@ int main(int argc, char *argv[])
  	interfaces.iface = NULL;
  	interfaces.count = 0;
  
@@ -133,7 +133,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  #endif /* CONFIG_DPP */
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -1287,6 +1287,17 @@ static int hostapd_config_check_bss(stru
+@@ -1296,6 +1296,17 @@ static int hostapd_config_check_bss(stru
  					   conf->bss[i]->iface, bss->iface);
  				return -1;
  			}
@@ -175,7 +175,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  
  int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
  			       int (*cb)(struct hostapd_iface *iface,
-@@ -2048,6 +2051,133 @@ static void hostapd_owe_update_trans(str
+@@ -2058,6 +2061,133 @@ static void hostapd_owe_update_trans(str
  #endif /* CONFIG_OWE */
  }
  
@@ -309,7 +309,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  
  static void hostapd_interface_setup_failure_handler(void *eloop_ctx,
  						    void *timeout_ctx)
-@@ -2487,6 +2617,10 @@ static void hostapd_bss_deinit(struct ho
+@@ -2496,6 +2626,10 @@ static void hostapd_bss_deinit(struct ho
  		return;
  	wpa_printf(MSG_DEBUG, "%s: deinit bss %s", __func__,
  		   hapd->conf ? hapd->conf->iface : "N/A");
@@ -320,7 +320,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	hostapd_bss_deinit_no_free(hapd);
  	wpa_msg(hapd->msg_ctx, MSG_INFO, AP_EVENT_DISABLED);
  #ifdef CONFIG_SQLITE
-@@ -2531,7 +2665,126 @@ void hostapd_interface_deinit(struct hos
+@@ -2540,7 +2674,126 @@ void hostapd_interface_deinit(struct hos
  #endif /* NEED_AP_MLME */
  }
  
@@ -447,7 +447,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  void hostapd_interface_free(struct hostapd_iface *iface)
  {
  	size_t j;
-@@ -2575,7 +2828,12 @@ struct hostapd_iface * hostapd_init(stru
+@@ -2584,7 +2837,12 @@ struct hostapd_iface * hostapd_init(stru
  {
  	struct hostapd_iface *hapd_iface = NULL;
  	struct hostapd_config *conf = NULL;
@@ -461,7 +461,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	size_t i;
  
  	hapd_iface = hostapd_alloc_iface();
-@@ -2604,6 +2862,55 @@ struct hostapd_iface * hostapd_init(stru
+@@ -2613,6 +2871,55 @@ struct hostapd_iface * hostapd_init(stru
  		if (hapd == NULL)
  			goto fail;
  		hapd->msg_ctx = hapd;
@@ -517,7 +517,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	}
  
  	return hapd_iface;
-@@ -2620,6 +2927,14 @@ fail:
+@@ -2629,6 +2936,14 @@ fail:
  			   __func__, hapd_iface);
  		os_free(hapd_iface);
  	}
@@ -567,7 +567,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  	struct hostapd_config *iconf;
  	struct hostapd_bss_config *conf;
  	struct hostapd_ubus_bss ubus;
-@@ -474,6 +486,20 @@ struct hostapd_sta_info {
+@@ -478,6 +490,20 @@ struct hostapd_sta_info {
  #endif /* CONFIG_TAXONOMY */
  };
  
@@ -588,7 +588,7 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  /**
   * struct hostapd_iface - hostapd per-interface data structure
   */
-@@ -655,6 +681,10 @@ struct hostapd_iface {
+@@ -656,6 +682,10 @@ struct hostapd_iface {
  
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
@@ -599,19 +599,19 @@ Subject: [PATCH] mlo: add initial AP MLO config parsing and validation support
  };
  
  /* hostapd.c */
-@@ -749,6 +779,9 @@ struct hostapd_data * hostapd_get_iface(
+@@ -751,6 +781,9 @@ struct hostapd_data * hostapd_get_iface(
  void hostapd_event_sta_opmode_changed(struct hostapd_data *hapd, const u8 *addr,
  				      enum smps_mode smps_mode,
  				      enum chan_width chan_width, u8 rx_nss);
 +#ifdef CONFIG_IEEE80211BE
 +int hostapd_mld_validate_link_conf(struct hostapd_mld *mld);
 +#endif
- struct hostapd_data * hostapd_mbssid_get_tx_bss(struct hostapd_data *hapd);
- int hostapd_mbssid_get_bss_index(struct hostapd_data *hapd);
  
+ #ifdef CONFIG_FST
+ void fst_hostapd_fill_iface_obj(struct hostapd_data *hapd,
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2450,6 +2450,9 @@ struct wpa_init_params {
+@@ -2463,6 +2463,9 @@ struct wpa_init_params {
  	void *global_priv;
  	const u8 *bssid;
  	const char *ifname;

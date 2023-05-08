@@ -12,13 +12,11 @@ Signed-off-by: P Praneesh <ppranees@codeaurora.org>
  wpa_supplicant/wpa_supplicant.c | 30 ++++++++++++++++++++++++++++++
  1 file changed, 30 insertions(+)
 
-Index: hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.c
-===================================================================
---- hostapd-2021-02-18.orig/wpa_supplicant/wpa_supplicant.c
-+++ hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.c
-@@ -2378,6 +2378,57 @@ static int drv_supports_vht(struct wpa_s
- 	return mode->vht_capab != 0;
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -2621,6 +2621,57 @@ static int drv_supports_vht(struct wpa_s
  }
+ 
  
 +static void ibss_mesh_setup_2G_he40(struct hostapd_freq_params *freq,
 +				    struct hostapd_hw_modes *mode,
@@ -74,80 +72,86 @@ Index: hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.c
  static bool ibss_mesh_is_80mhz_avail(int channel, struct hostapd_hw_modes *mode)
  {
  	int i;
-@@ -2498,6 +2549,11 @@ void ibss_mesh_setup_freq(struct wpa_sup
- 		else
- #endif /* CONFIG_HE_OVERRIDES */
- 			freq->he_enabled = mode->he_capab[ieee80211_mode].he_supported;
-+
-+		if (freq->he_enabled)
-+			ibss_mesh_setup_2G_he40(freq, mode, wpa_s,
-+						ssid, ieee80211_mode);
-+		return;
- 	}
+@@ -2987,7 +3038,7 @@ void ibss_mesh_setup_freq(struct wpa_sup
+ 	struct hostapd_hw_modes *mode = NULL;
+ 	int i, obss_scan = 1;
+ 	u8 channel;
+-	bool is_6ghz;
++	bool is_6ghz, is_24ghz;
  
- 	for (chan_idx = 0; chan_idx < mode->num_channels; chan_idx++) {
-Index: hostapd-2021-02-18/src/drivers/driver.h
-===================================================================
---- hostapd-2021-02-18.orig/src/drivers/driver.h
-+++ hostapd-2021-02-18/src/drivers/driver.h
-@@ -1203,6 +1203,11 @@ struct wpa_driver_associate_params {
- 	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
- 	 */
- 	int sae_pwe;
+ 	freq->freq = ssid->frequency;
+ 
+@@ -3016,6 +3067,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
+ 	if (!mode)
+ 		return;
+ 
++	is_24ghz = hw_mode == HOSTAPD_MODE_IEEE80211G ||
++                hw_mode == HOSTAPD_MODE_IEEE80211B;
 +
-+	/**
+ 	is_6ghz = is_6ghz_freq(freq->freq);
+ 
+ 	freq->ht_enabled = 0;
+@@ -3029,6 +3083,9 @@ void ibss_mesh_setup_freq(struct wpa_sup
+ 	if (freq->vht_enabled || is_6ghz)
+ 		freq->he_enabled = ibss_mesh_can_use_he(wpa_s, ssid, mode,
+ 							ieee80211_mode);
++	if(is_24ghz)
++		ibss_mesh_setup_2G_he40(freq, mode, wpa_s,
++					ssid, ieee80211_mode);
+ 	freq->channel = channel;
+ 	/* Setup higher BW only for 5 GHz */
+ 	if (mode->mode == HOSTAPD_MODE_IEEE80211A) {
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -1296,6 +1296,11 @@ struct wpa_driver_associate_params {
+ 	enum sae_pwe sae_pwe;
+ 
+ 	/**
 +	 * Disable HE40MHz coexistence scan
 +	 */
 +	int disable_40mhz_scan;
- };
- 
- enum hide_ssid {
-Index: hostapd-2021-02-18/wpa_supplicant/config.c
-===================================================================
---- hostapd-2021-02-18.orig/wpa_supplicant/config.c
-+++ hostapd-2021-02-18/wpa_supplicant/config.c
-@@ -2804,6 +2804,7 @@ static const struct parse_data ssid_fiel
++
++	/**
+ 	 * disable_eht - Disable EHT for this connection
+ 	 */
+ 	int disable_eht;
+--- a/wpa_supplicant/config.c
++++ b/wpa_supplicant/config.c
+@@ -2876,6 +2876,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(beacon_prot, 0, 1) },
  	{ INT_RANGE(transition_disable, 0, 255) },
  	{ INT_RANGE(sae_pk, 0, 2) },
 +	{ INT_RANGE(disable_40mhz_scan, 0, 1)},
+ 	{ INT_RANGE(disable_eht, 0, 1)},
+ 	{ INT_RANGE(enable_4addr_mode, 0, 1)},
  };
- 
- #undef OFFSET
-Index: hostapd-2021-02-18/wpa_supplicant/config_file.c
-===================================================================
---- hostapd-2021-02-18.orig/wpa_supplicant/config_file.c
-+++ hostapd-2021-02-18/wpa_supplicant/config_file.c
-@@ -885,7 +885,7 @@ static void wpa_config_write_network(FIL
- #ifdef CONFIG_HE_OVERRIDES
+--- a/wpa_supplicant/config_file.c
++++ b/wpa_supplicant/config_file.c
+@@ -897,6 +897,7 @@ static void wpa_config_write_network(FIL
  	INT(disable_he);
  #endif /* CONFIG_HE_OVERRIDES */
--
+ 	INT(disable_eht);
 +	INT(disable_40mhz_scan);
+ 	INT(enable_4addr_mode);
+ 
  #undef STR
- #undef INT
- #undef INT_DEF
-Index: hostapd-2021-02-18/wpa_supplicant/config_ssid.h
-===================================================================
---- hostapd-2021-02-18.orig/wpa_supplicant/config_ssid.h
-+++ hostapd-2021-02-18/wpa_supplicant/config_ssid.h
-@@ -1165,6 +1165,11 @@ struct wpa_ssid {
-	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
-	 */
-	int sae_pwe;
-+
-+	/**
+--- a/wpa_supplicant/config_ssid.h
++++ b/wpa_supplicant/config_ssid.h
+@@ -1256,6 +1256,11 @@ struct wpa_ssid {
+ 	enum sae_pwe sae_pwe;
+ 
+ 	/**
 +	 * disable_40mhz_scan - Disable 40MHz coex scan
 +	 */
 +	int disable_40mhz_scan;
- };
- 
- #endif /* CONFIG_SSID_H */
-Index: hostapd-2021-02-18/wpa_supplicant/wpa_cli.c
-===================================================================
---- hostapd-2021-02-18.orig/wpa_supplicant/wpa_cli.c
-+++ hostapd-2021-02-18/wpa_supplicant/wpa_cli.c
-@@ -1482,7 +1482,8 @@ static const char *network_fields[] = {
++
++	/**
+ 	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
+ 	 *
+ 	 * By default, use it if it is available, but this can be configured
+--- a/wpa_supplicant/wpa_cli.c
++++ b/wpa_supplicant/wpa_cli.c
+@@ -1498,7 +1498,8 @@ static const char *network_fields[] = {
  #ifdef CONFIG_HS20
  	"update_identifier",
  #endif /* CONFIG_HS20 */
@@ -157,11 +161,9 @@ Index: hostapd-2021-02-18/wpa_supplicant/wpa_cli.c
  };
  
  
-Index: hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.conf
-===================================================================
---- hostapd-2021-02-18.orig/wpa_supplicant/wpa_supplicant.conf
-+++ hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.conf
-@@ -158,6 +158,9 @@ ap_scan=1
+--- a/wpa_supplicant/wpa_supplicant.conf
++++ b/wpa_supplicant/wpa_supplicant.conf
+@@ -161,6 +161,9 @@ ap_scan=1
  # 1 = deny unless in accept list
  macaddr_acl=0
  
@@ -171,7 +173,7 @@ Index: hostapd-2021-02-18/wpa_supplicant/wpa_supplicant.conf
  # Accept/deny lists are read from separate files (containing list of
  # MAC addresses, one per line). Use absolute path name to make sure that the
  # files can be read on SIGHUP configuration reloads.
-@@ -1983,6 +1986,15 @@ network={
+@@ -2038,6 +2041,15 @@ network={
  	psk="very secret passphrase"
  }
  

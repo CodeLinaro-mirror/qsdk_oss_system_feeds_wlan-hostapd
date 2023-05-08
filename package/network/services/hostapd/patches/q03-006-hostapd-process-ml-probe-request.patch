@@ -35,9 +35,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  #ifdef NEED_AP_MLME
  
  static u8 * hostapd_eid_bss_load(struct hostapd_data *hapd, u8 *eid, size_t len)
-@@ -595,11 +602,281 @@ static u8 * hostapd_ext_capab_mbssid(str
- 	return eid;
+@@ -554,11 +561,281 @@ static u8 * hostapd_eid_mbssid_config(st
  }
+ 
  
 +static bool hostapd_is_restricted_eid_in_sta_profile(u8 eid)
 +{
@@ -317,20 +317,20 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +				   bool include_mle)
  {
  	struct ieee80211_mgmt *resp;
- 	u8 *pos, *epos, *csa_pos, *ext_cap_pos;
-@@ -654,8 +931,9 @@ static u8 * hostapd_gen_probe_resp(struc
+ 	u8 *pos, *epos, *csa_pos;
+@@ -610,8 +887,9 @@ static u8 * hostapd_gen_probe_resp(struc
+ 	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
+ 		buflen += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
  		buflen += 3 + sizeof(struct ieee80211_eht_operation);
- 		if (hapd->iconf->ru_punct_bitmap)
- 			buflen +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
 -		buflen += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_PROBE_RESP,
--						       ml_data);
+-						    ml_data);
 +		if (include_mle)
 +			buflen += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_PROBE_RESP,
 +							    ml_data);
+ 		if (hapd->iconf->ru_punct_bitmap)
+ 			buflen +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
  	}
- #endif /* CONFIG_IEEE80211BE */
- 
-@@ -815,9 +1093,10 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -780,9 +1058,10 @@ static u8 * hostapd_gen_probe_resp(struc
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
  		pos = hostapd_eid_eht_operation(hapd, pos, IEEE80211_MODE_AP);
@@ -344,7 +344,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -1328,7 +1607,7 @@ void handle_probe_req(struct hostapd_dat
+@@ -1296,7 +1575,7 @@ void handle_probe_req(struct hostapd_dat
  		return;
  
  	if (elems.mle)
@@ -353,25 +353,25 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  				  &elems, &ml_data);
  
  	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
-@@ -1338,7 +1617,7 @@ void handle_probe_req(struct hostapd_dat
- 				      &resp_len,
- 				      elems.mbssid_known_bss,
+@@ -1305,7 +1584,7 @@ void handle_probe_req(struct hostapd_dat
+ 	resp = hostapd_gen_probe_resp(hapd, mgmt, elems.p2p != NULL,
+ 				      &resp_len, elems.mbssid_known_bss,
  				      elems.mbssid_known_bss_len,
 -				      &ml_data);
 +				      &ml_data, true);
  	if (resp == NULL)
  		return;
  
-@@ -1409,7 +1688,7 @@ static u8 * hostapd_probe_resp_offloads(
+@@ -1375,7 +1654,7 @@ static u8 * hostapd_probe_resp_offloads(
+ 			   "this");
  
  	/* Generate a Probe Response template for the non-P2P case */
- 	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len,
--				      NULL, 0, NULL);
-+				      NULL, 0, NULL, true);
+-	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len, NULL, 0, NULL);
++	return hostapd_gen_probe_resp(hapd, NULL, 0, resp_len, NULL, 0, NULL, true);
  }
- #endif /* NEED_AP_MLME */
  
-@@ -1439,7 +1718,7 @@ static u8 * hostapd_unsol_bcast_probe_re
+ #endif /* NEED_AP_MLME */
+@@ -1406,7 +1685,7 @@ static u8 * hostapd_unsol_bcast_probe_re
  
  	return hostapd_gen_probe_resp(hapd, NULL, 0,
  				      &params->unsol_bcast_probe_resp_tmpl_len,
@@ -380,7 +380,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  }
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2298,6 +2577,9 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2283,6 +2562,9 @@ int ieee802_11_set_beacon(struct hostapd
  		}
  	}
  
@@ -392,7 +392,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -387,6 +387,28 @@ static int hostapd_broadcast_wep_set(str
+@@ -398,6 +398,28 @@ static int hostapd_broadcast_wep_set(str
  #endif /* CONFIG_WEP */
  
  
@@ -421,7 +421,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  void hostapd_free_hapd_data(struct hostapd_data *hapd)
  {
  	os_free(hapd->probereq_cb);
-@@ -2825,6 +2847,8 @@ void hostapd_mld_unlink_bss(struct hosta
+@@ -2838,6 +2860,8 @@ void hostapd_mld_unlink_bss(struct hosta
  	if (!tbss || !tbss->mld)
  		return;
  
@@ -430,7 +430,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	bss = tbss->mld->bss;
  
  	if (bss == tbss) {
-@@ -2844,6 +2868,7 @@ void hostapd_mld_unlink_bss(struct hosta
+@@ -2857,6 +2881,7 @@ void hostapd_mld_unlink_bss(struct hosta
  
  unlink:
  	tbss->mld->num_links--;
@@ -461,7 +461,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  /**
   * struct hostapd_data - hostapd per-BSS data structure
   */
-@@ -475,6 +482,8 @@ struct hostapd_data {
+@@ -479,6 +486,8 @@ struct hostapd_data {
  #ifdef CONFIG_CTRL_IFACE_UDP
         unsigned char ctrl_iface_cookie[CTRL_IFACE_COOKIE_LEN];
  #endif /* CONFIG_CTRL_IFACE_UDP */
@@ -472,7 +472,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8025,6 +8025,107 @@ u8 * hostapd_eid_rnr(struct hostapd_data
+@@ -7148,6 +7148,107 @@ static bool mbssid_known_bss(unsigned in
  }
  
  
@@ -580,7 +580,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  size_t hostapd_eid_basic_mle_len(struct hostapd_data *hapd, u32 type,
  				 struct multi_link_data *ml_data)
  {
-@@ -8048,7 +8149,10 @@ size_t hostapd_eid_basic_mle_len(struct
+@@ -7171,7 +7272,10 @@ size_t hostapd_eid_basic_mle_len(struct
  		return total_len;
  	}
  
@@ -592,7 +592,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return total_len;
  }
  
-@@ -8106,19 +8210,91 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -7229,19 +7333,91 @@ u8 * hostapd_eid_basic_mle(struct hostap
  		return eid;
  	}
  
@@ -686,7 +686,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		return;
  
  	ml_data->present = true;
-@@ -8127,7 +8303,10 @@ void hostapd_parse_mle(struct hostapd_da
+@@ -7250,7 +7426,10 @@ void hostapd_parse_mle(struct hostapd_da
  
  	os_memcpy(&ml_data->control, mle, sizeof(struct multi_link_control));
  
@@ -700,8 +700,8 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -47,6 +47,8 @@ struct frag_ies_info {
- 	u8 last_eid_ext;
+@@ -31,6 +31,8 @@ struct mb_ies_info {
+ 	u8 nof_ies;
  };
  
 +#define MAX_SUPPORTED_LINKS 15
@@ -709,7 +709,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  enum multi_link_elem_type {
  	MULTI_LINK_BASIC,
  	MULTI_LINK_PROBE_REQ,
-@@ -61,12 +63,31 @@ struct multi_link_control {
+@@ -45,12 +47,31 @@ struct multi_link_control {
  	u16 presence : 12;
  };
  
@@ -743,40 +743,36 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -501,6 +501,7 @@
+@@ -502,6 +502,7 @@
+ #define WLAN_EID_EXT_TID_TO_LINK_MAPPING 109
+ #define WLAN_EID_EXT_MULTI_LINK_TRAFFIC_INDICATION 110
  #define WLAN_EID_EXT_AKM_SUITE_SELECTOR 114
- 
- #define WLAN_EID_SUBELEMENT_NONTRANSMITTED_BSSID_PROFILE 0
-+#define WLAN_EID_SUBELEMENT_PER_STA_PROFILE 		 0
++#define WLAN_EID_SUBELEMENT_PER_STA_PROFILE             0
  
  /* Extended Capabilities field */
  #define WLAN_EXT_CAPAB_20_40_COEX 0
-@@ -2464,8 +2465,28 @@ struct ieee80211_he_mu_edca_parameter_se
- #define MLE_EML_CAP_PRESENT			BIT(3)
- #define MLE_MLD_CAP_PRESENT			BIT(4)
+@@ -2507,7 +2508,24 @@ struct ieee80211_he_mu_edca_parameter_se
+ #define MLE_MEDIUM_SYNC_DELAY_PRESENT          BIT(2)
+ #define MLE_EML_CAP_PRESENT                    BIT(3)
+ #define MLE_MLD_CAP_PRESENT                    BIT(4)
++#define MLE_MLD_ID_PRESENT                     BIT(0)
  
-+/* ML Probe Request Precense bitmap */
-+#define MLE_MLD_ID_PRESENT			BIT(0)
++#define MLE_PER_STA_PROFILE_SUBELEM_ID         0
++#define MLE_PER_STA_PROFILE_MIN_LENGTH         4
 +
- #define MLE_PRESENCE_BMAP_SHIFT			4
- 
-+#define MLE_PER_STA_PROFILE_SUBELEM_ID		0
-+#define MLE_PER_STA_PROFILE_MIN_LENGTH		4
-+
-+#define MLE_STA_CONTROL_LINK_ID_MASK		 ((u8) (BIT(0) | BIT(1) | BIT(2) | BIT(3)))
++#define MLE_STA_CONTROL_LINK_ID_MASK            ((u8) (BIT(0) | BIT(1) | BIT(2) | BIT(3)))
 +/* bitmap of presence indicator field B4-B10 */
-+#define MLE_STA_CONTROL_COMPLETE_PROFILE		BIT(0)
-+#define MLE_STA_CONTROL_MAC_ADDR_PRESENT		BIT(1)
-+#define MLE_STA_CONTROL_BEACON_INT_PRESENT		BIT(2)
++#define MLE_STA_CONTROL_COMPLETE_PROFILE               BIT(0)
++#define MLE_STA_CONTROL_MAC_ADDR_PRESENT               BIT(1)
++#define MLE_STA_CONTROL_BEACON_INT_PRESENT             BIT(2)
 +#define MLE_STA_CONTROL_TSF_OFFSET_PRESENT              BIT(3)
-+#define MLE_STA_CONTROL_DTIM_PRESENT			BIT(4)
-+#define MLE_STA_CONTROL_NSTR_PAIR_PRESENT		BIT(5)
-+#define MLE_STA_CONTROL_NSTR_BITMAP			BIT(6)
-+#define MLE_STA_CONTROL_BSS_PARAM_CHANGE_CNT_PRESENT	BIT(7)
++#define MLE_STA_CONTROL_DTIM_PRESENT                   BIT(4)
++#define MLE_STA_CONTROL_NSTR_PAIR_PRESENT              BIT(5)
++#define MLE_STA_CONTROL_NSTR_BITMAP                    BIT(6)
++#define MLE_STA_CONTROL_BSS_PARAM_CHANGE_CNT_PRESENT   BIT(7)
 +
 +/* STA Info Length, MAC, BI, DTIM included, TODO - NSTR, BSS change cnt*/
-+#define MLE_STA_INFO_LENGTH	11
-+
- /* IEEE P802.11be/D2.0, 9.4.2.311 - EHT Operation element */
++#define MLE_STA_INFO_LENGTH    11
+ #define MLE_PRESENCE_BMAP_SHIFT                        4
  
- /* Figure 9-1002b: EHT Operation Parameters field subfields */
+ 

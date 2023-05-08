@@ -45,7 +45,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  	int set_beacon = 0;
  
  	accounting_sta_stop(hapd, sta);
-@@ -388,13 +389,17 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -400,13 +401,17 @@ void ap_free_sta(struct hostapd_data *ha
  #endif /* CONFIG_NO_RADIUS */
  
  #ifndef CONFIG_NO_VLAN
@@ -64,7 +64,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  	if (sta->vlan_id_bound) {
  		/*
  		 * Need to remove the STA entry before potentially removing the
-@@ -405,7 +410,7 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -417,7 +422,7 @@ void ap_free_sta(struct hostapd_data *ha
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
@@ -73,7 +73,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  	}
  #endif /* CONFIG_NO_VLAN */
  
-@@ -1159,10 +1164,16 @@ int ap_sta_wps_cancel(struct hostapd_dat
+@@ -1171,10 +1176,16 @@ int ap_sta_wps_cancel(struct hostapd_dat
  static int ap_sta_get_free_vlan_id(struct hostapd_data *hapd)
  {
  	struct hostapd_vlan *vlan;
@@ -91,7 +91,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  		if (vlan->vlan_id == vlan_id) {
  			vlan_id++;
  			goto retry;
-@@ -1177,6 +1188,7 @@ static int ap_sta_set_vlan_helper(struct
+@@ -1189,6 +1200,7 @@ static int ap_sta_set_vlan_helper(struct
  				  struct vlan_description *vlan_desc)
  {
  	struct hostapd_vlan *vlan = NULL, *wildcard_vlan = NULL;
@@ -99,7 +99,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  	int old_vlan_id, vlan_id = 0, ret = 0;
  
  	/* Check if there is something to do */
-@@ -1189,13 +1201,18 @@ static int ap_sta_set_vlan_helper(struct
+@@ -1201,13 +1213,18 @@ static int ap_sta_set_vlan_helper(struct
  		return 0; /* nothing to change */
  	}
  
@@ -119,7 +119,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  			if (vlan->vlan_id == VLAN_ID_WILDCARD)
  				break;
  		}
-@@ -1209,7 +1226,7 @@ static int ap_sta_set_vlan_helper(struct
+@@ -1221,7 +1238,7 @@ static int ap_sta_set_vlan_helper(struct
  			goto done;
  		}
  	} else if (vlan_desc && vlan_desc->notempty) {
@@ -128,7 +128,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  			if (!vlan_compare(&vlan->vlan_desc, vlan_desc))
  				break;
  			if (vlan->vlan_id == VLAN_ID_WILDCARD)
-@@ -1222,10 +1239,10 @@ static int ap_sta_set_vlan_helper(struct
+@@ -1234,10 +1251,10 @@ static int ap_sta_set_vlan_helper(struct
  			vlan_id = vlan_desc->untagged;
  			if (vlan_desc->tagged[0]) {
  				/* Tagged VLAN configuration */
@@ -141,7 +141,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  				       HOSTAPD_MODULE_IEEE80211,
  				       HOSTAPD_LEVEL_DEBUG,
  				       "missing vlan and wildcard for vlan=%d%s",
-@@ -1238,9 +1255,9 @@ static int ap_sta_set_vlan_helper(struct
+@@ -1250,9 +1267,9 @@ static int ap_sta_set_vlan_helper(struct
  	}
  
  	if (vlan && vlan->vlan_id == VLAN_ID_WILDCARD) {
@@ -153,7 +153,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  				       HOSTAPD_MODULE_IEEE80211,
  				       HOSTAPD_LEVEL_DEBUG,
  				       "could not add dynamic VLAN interface for vlan=%d%s",
-@@ -1252,13 +1269,13 @@ static int ap_sta_set_vlan_helper(struct
+@@ -1264,13 +1281,13 @@ static int ap_sta_set_vlan_helper(struct
  			goto done;
  		}
  
@@ -169,7 +169,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  			       HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_DEBUG,
  			       "updated existing dynamic VLAN interface '%s'",
-@@ -1270,7 +1287,7 @@ done:
+@@ -1282,7 +1299,7 @@ done:
  	sta->vlan_desc = vlan ? &vlan->vlan_desc : NULL;
  
  	if (vlan_id != old_vlan_id && old_vlan_id)
@@ -178,7 +178,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  
  	return ret;
  }
-@@ -1301,6 +1318,7 @@ static int ap_sta_bind_vlan_helper(struc
+@@ -1313,6 +1330,7 @@ static int ap_sta_bind_vlan_helper(struc
  #ifndef CONFIG_NO_VLAN
  	const char *iface;
  	struct hostapd_vlan *vlan = NULL;
@@ -186,7 +186,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  	int ret;
  	int old_vlanid = sta->vlan_id_bound;
  	int link_id = -1;
-@@ -1312,12 +1330,17 @@ static int ap_sta_bind_vlan_helper(struc
+@@ -1324,12 +1342,17 @@ static int ap_sta_bind_vlan_helper(struc
  		return 0;
  	}
  
@@ -205,7 +205,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  			if (vlan->vlan_id == sta->vlan_id)
  				break;
  		}
-@@ -1334,7 +1357,7 @@ static int ap_sta_bind_vlan_helper(struc
+@@ -1346,7 +1369,7 @@ static int ap_sta_bind_vlan_helper(struc
  		goto skip_counting;
  
  	if (sta->vlan_id > 0 && !vlan) {
@@ -214,7 +214,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  			       HOSTAPD_LEVEL_DEBUG, "could not find VLAN for "
  			       "binding station to (vlan_id=%d)",
  			       sta->vlan_id);
-@@ -1342,7 +1365,7 @@ static int ap_sta_bind_vlan_helper(struc
+@@ -1354,7 +1377,7 @@ static int ap_sta_bind_vlan_helper(struc
  		goto done;
  	} else if (vlan && vlan->dynamic_vlan > 0) {
  		vlan->dynamic_vlan++;
@@ -223,7 +223,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  			       HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_DEBUG,
  			       "updated existing dynamic VLAN interface '%s'",
-@@ -1353,7 +1376,7 @@ static int ap_sta_bind_vlan_helper(struc
+@@ -1365,7 +1388,7 @@ static int ap_sta_bind_vlan_helper(struc
  	sta->vlan_id_bound = sta->vlan_id;
  
  skip_counting:
@@ -232,7 +232,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  		       HOSTAPD_LEVEL_DEBUG, "binding station to interface "
  		       "'%s'", iface);
  
-@@ -1372,7 +1395,7 @@ skip_counting:
+@@ -1384,7 +1407,7 @@ skip_counting:
  
  	/* During 1x reauth, if the vlan id changes, then remove the old id. */
  	if (old_vlanid > 0 && old_vlanid != sta->vlan_id)
@@ -281,7 +281,7 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -448,10 +448,16 @@ static int hostapd_wpa_auth_set_key_help
+@@ -449,10 +449,16 @@ static int hostapd_wpa_auth_set_key_help
  				    size_t key_len, enum key_flag key_flag)
  {
  	struct hostapd_data *hapd = ctx;
@@ -301,11 +301,11 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
  	}
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6008,6 +6008,7 @@ static void ap_link_sta_add(struct hosta
+@@ -5162,6 +5162,7 @@ static void ap_link_sta_add(struct hosta
+ 		sta->sae = psta->sae;
  		sta->wpa_sm = psta->wpa_sm;
- 		wpa_mlo_partner_sta_iter(sta->wpa_sm, wpa_init_partner_link_group, NULL);
  		sta->auth_alg = psta->auth_alg;
 +		sta->vlan_id = psta->vlan_id;
+ 		wpa_mlo_partner_sta_iter(sta->wpa_sm, wpa_init_partner_link_group, NULL);
  
  		link_sta_ies = ml_data->u.basic.link_info[link_id].sta_profile;
- 		link_sta_ies_len = ml_data->u.basic.link_info[link_id].sta_profile_len;

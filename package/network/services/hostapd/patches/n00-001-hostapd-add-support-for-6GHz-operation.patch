@@ -539,17 +539,6 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		wpa_printf(MSG_ERROR, "Error updating mesh frequency params");
  		wpa_supplicant_mesh_deinit(wpa_s, true);
  		return -1;
---- a/wpa_supplicant/wpa_supplicant.c
-+++ b/wpa_supplicant/wpa_supplicant.c
-@@ -2971,7 +2971,7 @@ skip_to_6ghz:
- 				    freq->sec_channel_offset,
- 				    chwidth, seg0, seg1, vht_caps,
- 				    &mode->he_capab[ieee80211_mode],
--				    NULL) != 0)
-+				    NULL, 0) != 0)
- 		return;
- 
- 	*freq = vht_freq;
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
 @@ -3550,6 +3550,15 @@ static int hostapd_config_fill(struct ho

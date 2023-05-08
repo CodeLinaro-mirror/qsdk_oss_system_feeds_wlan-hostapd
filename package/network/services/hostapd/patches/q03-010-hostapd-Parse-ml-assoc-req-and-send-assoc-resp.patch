@@ -24,11 +24,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/common/ieee802_11_common.h |   2 +
  7 files changed, 357 insertions(+), 45 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 93fcaad..1e583c7 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -634,7 +634,7 @@ static size_t hostapd_add_sta_profile(struct ieee80211_mgmt *own_fdata,
+@@ -593,7 +593,7 @@ static size_t hostapd_add_sta_profile(st
  				    struct ieee80211_mgmt *link_fdata,
  				    size_t own_data_len,
  				    size_t link_data_len,
@@ -37,7 +35,7 @@ index 93fcaad..1e583c7 100644
  {
  	/* the bitmap of parsed eids, max eid is 256, hence 32bytes to store the bitmap */
  	u8 parsed_eid_bmap[32] = {0}, parsed_ext_eid_bmap[32] = {0};
-@@ -647,17 +647,33 @@ static size_t hostapd_add_sta_profile(struct ieee80211_mgmt *own_fdata,
+@@ -606,17 +606,33 @@ static size_t hostapd_add_sta_profile(st
  	u8 extra_len = 2;
  	size_t sta_profile_len = 0;
  
@@ -56,7 +54,7 @@ index 93fcaad..1e583c7 100644
 +			memcpy(sta_profile, &link_fdata->u.probe_resp.capab_info, sizeof(le16));
 +			sta_profile += sizeof(le16);
 +		}
- 
++
 +		own_data = own_fdata->u.probe_resp.variable;
 +		link_data = link_fdata->u.probe_resp.variable;
 +	} else {
@@ -70,7 +68,7 @@ index 93fcaad..1e583c7 100644
  
 +	       /* include len for status code */
 +		sta_profile_len += sizeof(le16);
-+
+ 
 +		own_data = own_fdata->u.assoc_resp.variable;
 +		link_data = link_fdata->u.assoc_resp.variable;
 +	}
@@ -78,7 +76,7 @@ index 93fcaad..1e583c7 100644
  	/* The below logic takes the reporting bss data and reported bss data and performs
  	 * intersection to build the sta profile of the reported bss. Also certain IEs are
  	 * not added to the sta profile as recommended in spec. Matching IE information
-@@ -742,18 +758,22 @@ static size_t hostapd_add_sta_profile(struct ieee80211_mgmt *own_fdata,
+@@ -701,18 +717,22 @@ static size_t hostapd_add_sta_profile(st
  	return sta_profile_len;
  }
  
@@ -107,7 +105,7 @@ index 93fcaad..1e583c7 100644
  
  	if (!(*sta_profile_len))
  		return NULL;
-@@ -764,7 +784,7 @@ static u8 * hostapd_gen_sta_profile(struct ieee80211_mgmt *own_data,
+@@ -723,7 +743,7 @@ static u8 * hostapd_gen_sta_profile(stru
  		return NULL;
  
  	hostapd_add_sta_profile(own_data, link_data, own_data_len,
@@ -116,7 +114,7 @@ index 93fcaad..1e583c7 100644
  
  	return sta_profile;
  }
-@@ -817,7 +837,8 @@ static void hostapd_gen_per_sta_profiles(struct hostapd_data *hapd)
+@@ -776,7 +796,8 @@ static void hostapd_gen_per_sta_profiles
  
  		sta_profile = hostapd_gen_sta_profile(own_data, link_data,
  						      own_data_len, link_data_len,
@@ -126,11 +124,9 @@ index 93fcaad..1e583c7 100644
  
  		os_free(hapd->link_profile[link_id].presp_data);
  
-diff --git a/src/ap/beacon.h b/src/ap/beacon.h
-index b980596..c018c7a 100644
 --- a/src/ap/beacon.h
 +++ b/src/ap/beacon.h
-@@ -32,4 +32,9 @@ void sta_track_claim_taxonomy_info(struct hostapd_iface *iface, const u8 *addr,
+@@ -32,4 +32,9 @@ void sta_track_claim_taxonomy_info(struc
  
  const u8 * hostapd_wpa_ie(struct hostapd_data *hapd, u8 eid);
  
@@ -140,11 +136,9 @@ index b980596..c018c7a 100644
 +			     size_t link_data_len,
 +			     size_t *sta_profile_len, u32 type);
  #endif /* BEACON_H */
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index b38b900..6747ed9 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4603,6 +4603,27 @@ static bool check_sa_query(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -3706,6 +3706,27 @@ static bool check_sa_query(struct hostap
  	return false;
  }
  
@@ -172,7 +166,7 @@ index b38b900..6747ed9 100644
  static int mark_elems(u8 *mark_array, const u8 **ie_ptr, u8 *ie_len)
  {
  	const u8 *pos;
-@@ -4663,7 +4684,7 @@ static void mark_non_inheritance_elems(struct non_inheritance_elems *non_inherit
+@@ -3766,7 +3787,7 @@ static void mark_non_inheritance_elems(s
  static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
  			   const u8 *ies, size_t ies_len,
  			   const u8* inherit_ies, size_t inherit_ies_len,
@@ -181,7 +175,7 @@ index b38b900..6747ed9 100644
  {
  	struct ieee802_11_elems elems;
  	int resp;
-@@ -4795,6 +4816,13 @@ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -3907,6 +3928,13 @@ static int check_assoc_ies(struct hostap
  					  elems.eht_capabilities_len);
  		if (resp != WLAN_STATUS_SUCCESS)
  			return resp;
@@ -195,7 +189,7 @@ index b38b900..6747ed9 100644
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -5268,12 +5296,12 @@ static int add_associated_sta(struct hostapd_data *hapd,
+@@ -4380,12 +4408,12 @@ static int add_associated_sta(struct hos
  }
  
  
@@ -211,19 +205,18 @@ index b38b900..6747ed9 100644
  	u8 *buf;
  	size_t buflen;
  	struct ieee80211_mgmt *reply;
-@@ -5301,6 +5329,11 @@ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -4411,6 +4439,10 @@ static u16 send_assoc_resp(struct hostap
+ 	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
+ 		buflen += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
  		buflen += 3 + sizeof(struct ieee80211_eht_operation);
- 		if (hapd->iconf->ru_punct_bitmap)
- 			buflen +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
-+
 +		if (ml_data && ml_data->present)
 +			buflen += hostapd_eid_basic_mle_len(hapd,
 +							    WLAN_FC_STYPE_ASSOC_RESP,
 +							    ml_data);
+ 		if (hapd->iconf->ru_punct_bitmap)
+ 			buflen +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
  	}
- #endif /* CONFIG_IEEE80211BE */
- 
-@@ -5318,8 +5351,8 @@ static u16 send_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -4430,8 +4462,8 @@ static u16 send_assoc_resp(struct hostap
  	os_memcpy(reply->sa, hapd->own_addr, ETH_ALEN);
  	os_memcpy(reply->bssid, hapd->own_addr, ETH_ALEN);
  
@@ -234,7 +227,7 @@ index b38b900..6747ed9 100644
  	reply->u.assoc_resp.capab_info =
  		host_to_le16(hostapd_own_capab_info(hapd));
  	reply->u.assoc_resp.status_code = host_to_le16(status_code);
-@@ -5555,7 +5588,11 @@ rsnxe_done:
+@@ -4667,7 +4699,11 @@ rsnxe_done:
  		p += wpabuf_len(hapd->conf->assocresp_elements);
  	}
  
@@ -247,7 +240,7 @@ index b38b900..6747ed9 100644
  
  #ifdef CONFIG_FILS
  	if (sta &&
-@@ -5576,28 +5613,238 @@ rsnxe_done:
+@@ -4688,28 +4724,238 @@ rsnxe_done:
  		*p++ = 1 + FILS_SESSION_LEN; /* Length */
  		*p++ = WLAN_EID_EXT_FILS_SESSION; /* Element ID Extension */
  		os_memcpy(p, elems.fils_session, FILS_SESSION_LEN);
@@ -490,7 +483,7 @@ index b38b900..6747ed9 100644
  
  #ifdef CONFIG_OWE
  u8 * owe_assoc_req_process(struct hostapd_data *hapd, struct sta_info *sta,
-@@ -5674,7 +5921,7 @@ void fils_hlp_finish_assoc(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -4786,7 +5032,7 @@ void fils_hlp_finish_assoc(struct hostap
  	reply_res = send_assoc_resp(hapd, sta, sta->addr, WLAN_STATUS_SUCCESS,
  				    sta->fils_pending_assoc_is_reassoc,
  				    sta->fils_pending_assoc_req,
@@ -499,7 +492,7 @@ index b38b900..6747ed9 100644
  	os_free(sta->fils_pending_assoc_req);
  	sta->fils_pending_assoc_req = NULL;
  	sta->fils_pending_assoc_req_len = 0;
-@@ -5724,6 +5971,7 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -4836,6 +5082,7 @@ static void handle_assoc(struct hostapd_
  	int delay_assoc = 0;
  #endif /* CONFIG_FILS */
  	int omit_rsnxe = 0;
@@ -507,7 +500,7 @@ index b38b900..6747ed9 100644
  
  	if (len < IEEE80211_HDRLEN + (reassoc ? sizeof(mgmt->u.reassoc_req) :
  				      sizeof(mgmt->u.assoc_req))) {
-@@ -5938,7 +6186,7 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -5050,7 +5297,7 @@ static void handle_assoc(struct hostapd_
  
  	/* followed by SSID and Supported rates; and HT capabilities if 802.11n
  	 * is used */
@@ -516,7 +509,7 @@ index b38b900..6747ed9 100644
  	if (resp != WLAN_STATUS_SUCCESS)
  		goto fail;
  	omit_rsnxe = !get_ie(pos, left, WLAN_EID_RSNX);
-@@ -6096,7 +6344,8 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -5208,7 +5455,8 @@ static void handle_assoc(struct hostapd_
  
  	if (resp >= 0)
  		reply_res = send_assoc_resp(hapd, sta, mgmt->sa, resp, reassoc,
@@ -526,7 +519,7 @@ index b38b900..6747ed9 100644
  	os_free(tmp);
  
  	if (hostapd_ubus_handle_event(hapd, &req)) {
-@@ -8140,11 +8389,13 @@ u8 * hostapd_eid_rnr(struct hostapd_data *hapd, u8 *eid, u32 type)
+@@ -7251,11 +7499,13 @@ static bool mbssid_known_bss(unsigned in
  
  static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
  				       struct multi_link_data *ml_data,
@@ -542,7 +535,7 @@ index b38b900..6747ed9 100644
  
  	if (!hapd->mld)
  		return link_info;
-@@ -8158,6 +8409,22 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
+@@ -7269,6 +7519,22 @@ static u8 * hostapd_eid_basic_resp_mle(s
  		if (link_id > MAX_SUPPORTED_LINKS)
  			continue;
  
@@ -565,7 +558,7 @@ index b38b900..6747ed9 100644
  		if (ml_data->u.preq.link_bmap &&
  		    !(BIT(link_id) & ml_data->u.preq.link_bmap))
  			continue;
-@@ -8166,7 +8433,7 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
+@@ -7277,7 +7543,7 @@ static u8 * hostapd_eid_basic_resp_mle(s
  
  		link_info_len = link_info++;
  
@@ -574,7 +567,7 @@ index b38b900..6747ed9 100644
  		*link_info++ = (link_id & MLE_STA_CONTROL_LINK_ID_MASK) |
  				(MLE_STA_CONTROL_COMPLETE_PROFILE |
  				 MLE_STA_CONTROL_MAC_ADDR_PRESENT |
-@@ -8190,10 +8457,9 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
+@@ -7301,10 +7567,9 @@ static u8 * hostapd_eid_basic_resp_mle(s
  
  		*link_info++ = link_bss->conf->dtim_period;
  
@@ -587,7 +580,7 @@ index b38b900..6747ed9 100644
  
  		/* update link info len */
  		*link_info_len = link_info - link_info_len - 1;
-@@ -8204,11 +8470,14 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
+@@ -7315,11 +7580,14 @@ static u8 * hostapd_eid_basic_resp_mle(s
  }
  
  static size_t hostapd_eid_basic_resp_mle_len(struct hostapd_data *hapd,
@@ -603,7 +596,7 @@ index b38b900..6747ed9 100644
  
  	if (!hapd->mld)
  		return 0;
-@@ -8223,15 +8492,27 @@ static size_t hostapd_eid_basic_resp_mle_len(struct hostapd_data *hapd,
+@@ -7334,15 +7602,27 @@ static size_t hostapd_eid_basic_resp_mle
  		if (link_id > MAX_SUPPORTED_LINKS)
  			continue;
  
@@ -634,7 +627,7 @@ index b38b900..6747ed9 100644
  	}
  
  	/* TODO detect fragmentation */
-@@ -8265,7 +8546,7 @@ size_t hostapd_eid_basic_mle_len(struct hostapd_data *hapd, u32 type,
+@@ -7376,7 +7656,7 @@ size_t hostapd_eid_basic_mle_len(struct
  		return total_len;
  	}
  
@@ -643,7 +636,7 @@ index b38b900..6747ed9 100644
  
  	/* TODO detect fragmentation */
  
-@@ -8328,7 +8609,7 @@ u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid, u32 type,
+@@ -7439,7 +7719,7 @@ u8 * hostapd_eid_basic_mle(struct hostap
  		return eid;
  	}
  
@@ -652,25 +645,23 @@ index b38b900..6747ed9 100644
  
  	*eid_len = eid - eid_len - 1;
  	return eid;
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 8aff7eb..8fd148c 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -238,4 +238,9 @@ u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid,
+@@ -240,6 +240,11 @@ u8 * hostapd_eid_basic_mle(struct hostap
  void hostapd_parse_mle(struct hostapd_data *hapd, u32 type,
  		       struct ieee802_11_elems *elems,
  		       struct multi_link_data *ml_data);
 +u8 * hostapd_gen_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
-+			   const u8 *addr, u16 status_code, int reassoc,
-+			   const u8 *ies, size_t ies_len, int rssi,
-+			   int omit_rsnxe, struct multi_link_data *ml_data,
-+			   int *send_len, u16 *res);
- #endif /* IEEE802_11_H */
-diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index 778ec7a..501a22e 100644
++			    const u8 *addr, u16 status_code, int reassoc,
++			    const u8 *ies, size_t ies_len, int rssi,
++			    int omit_rsnxe, struct multi_link_data *ml_data,
++			    int *send_len, u16 *res);
+ size_t hostapd_eid_mbssid_len(struct hostapd_data *hapd, u32 frame_type,
+ 			      u8 *elem_count, const u8 *known_bss,
+ 			      size_t known_bss_len, size_t *rnr_len);
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -706,7 +706,6 @@ void ap_sta_session_warning_timeout(struct hostapd_data *hapd,
+@@ -706,7 +706,6 @@ void ap_sta_session_warning_timeout(stru
  			       hapd, sta);
  }
  
@@ -678,7 +669,7 @@ index 778ec7a..501a22e 100644
  void ap_ml_sta_add(struct hostapd_data *hapd, struct sta_info *sta,
  		   const u8 *addr)
  {
-@@ -803,7 +802,6 @@ struct sta_info * ap_sta_add(struct hostapd_data *hapd, const u8 *addr)
+@@ -803,7 +802,6 @@ struct sta_info * ap_sta_add(struct host
  	return sta;
  }
  
@@ -686,7 +677,7 @@ index 778ec7a..501a22e 100644
  static int ap_sta_remove(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	ieee802_1x_notify_port_enabled(sta->eapol_sm, 0);
-@@ -825,7 +823,6 @@ static int ap_sta_remove(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -825,7 +823,6 @@ static int ap_sta_remove(struct hostapd_
  	return 0;
  }
  
@@ -694,11 +685,9 @@ index 778ec7a..501a22e 100644
  static void ap_sta_remove_in_other_bss(struct hostapd_data *hapd,
  				       struct sta_info *sta)
  {
-diff --git a/src/ap/sta_info.h b/src/ap/sta_info.h
-index 39d99fe..39b3020 100644
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -53,6 +53,7 @@
+@@ -54,6 +54,7 @@
  #define WLAN_SUPP_HT_RATES_MAX 77
  
  struct hostapd_data;
@@ -706,11 +695,9 @@ index 39d99fe..39b3020 100644
  
  struct mbo_non_pref_chan_info {
  	struct mbo_non_pref_chan_info *next;
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index cd27e6b..b3e3dce 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -88,6 +88,8 @@ struct multi_link_basic_info {
+@@ -72,6 +72,8 @@ struct multi_link_basic_info {
  		u8 addr[ETH_ALEN];
  		u8 *sta_profile;
  		u8 sta_profile_len;
@@ -719,6 +706,3 @@ index cd27e6b..b3e3dce 100644
  	} link_info[MAX_SUPPORTED_LINKS];
  };
  
--- 
-2.17.1
-
