@@ -57,9 +57,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  			"freq=%d dfs=%d", freq, is_dfs);
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -10976,6 +10976,16 @@ static int nl80211_switch_channel(void *
+@@ -10997,6 +10997,16 @@ static int nl80211_switch_channel(void *
  	if (settings->handle_dfs && nla_put_flag(msg, NL80211_ATTR_HANDLE_DFS))
- 		goto error;
+ 		goto fail;
  
 +	if (drv->mlo_link_id >= 0) {
 +		wpa_printf(MSG_DEBUG, "nl80211: Channel switch request on link_id=%d",
@@ -109,3 +109,35 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	default:
  		/* TODO Either handle routing for this command
  		 * insider the default bss handler or return
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -2736,6 +2736,29 @@ static int hostapd_ctrl_iface_chan_switc
+                 return -1;
+         }
+ 
++#ifdef CONFIG_IEEE80211BE
++        if (iface->num_hw_features > 1) {
++        	bool block_eht_disabling = false;
++
++        	/* If any of the BSS in the iface is part of an MLD or is
++        	 * operating as SL0, we can't allow disabling EHT dynamically.
++        	 */
++		if (iface->conf->ieee80211be && !settings.freq_params.eht_enabled) {
++			for (i = 0; i < iface->num_bss; i++) {
++				if (iface->bss[i]->mld) {
++					block_eht_disabling = true;
++					break;
++				}
++			}
++
++			if (block_eht_disabling) {
++				wpa_printf(MSG_INFO, "chanswitch: can't disable EHT dynamically when already operating in SLO/MLO");
++				return -1;
++			}
++		}
++        }
++#endif /* CONFIG_IEEE80211BE */
++
+ 	ret = hostapd_ctrl_check_freq_params(&settings.freq_params);
+ 	if (ret) {
+ 		wpa_printf(MSG_INFO,
