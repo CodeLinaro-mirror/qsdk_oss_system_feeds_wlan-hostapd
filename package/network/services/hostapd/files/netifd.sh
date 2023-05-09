@@ -709,6 +709,12 @@ wpa_supplicant_add_network() {
 		[ "$_w_driver" = "nl80211" ] ||	wpa_key_mgmt="WPA-NONE"
 	}
 
+	[[ "$_w_mode" = "sta" ]] && {
+		[ -n "$freq_list" ] && {
+			freq_list="freq_list=$freq_list"
+		}
+	}
+
 	[[ "$_w_mode" = "mesh" ]] && {
 		append network_data "mode=5" "$N$T"
 		[ -n "$channel" ] && {
@@ -875,6 +881,7 @@ $serial_number
 $config_methods
 $saepwe
 $disable_csa_dfs
+$freq_list
 
 network={
 	$scan_ssid
