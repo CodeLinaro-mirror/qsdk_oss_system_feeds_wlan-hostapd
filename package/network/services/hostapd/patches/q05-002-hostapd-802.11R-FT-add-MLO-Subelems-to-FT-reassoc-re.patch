@@ -551,3 +551,19 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  struct rsn_rdie {
  	u8 id;
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -471,11 +471,11 @@ static void handle_auth_ft_finish(void *
+ 	struct sta_info *sta;
+ 	int reply_res;
+ 
+-	reply_res = send_auth_reply(hapd, NULL, dst, bssid, WLAN_AUTH_FT,
++	sta = ap_get_sta(hapd, dst);
++	reply_res = send_auth_reply(hapd, sta, dst, bssid, WLAN_AUTH_FT,
+ 				    auth_transaction, status, ies, ies_len,
+ 				    "auth-ft-finish");
+ 
+-	sta = ap_get_sta(hapd, dst);
+ 	if (sta == NULL)
+ 		return;
+ 
