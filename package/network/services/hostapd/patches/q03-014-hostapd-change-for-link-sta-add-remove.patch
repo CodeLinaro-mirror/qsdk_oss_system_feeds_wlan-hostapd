@@ -833,20 +833,17 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return 0;
  }
  
-@@ -1572,6 +1668,21 @@ int ap_sta_pending_delayed_1x_auth_fail_
+@@ -1572,6 +1668,18 @@ int ap_sta_pending_delayed_1x_auth_fail_
  
  int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta)
  {
 +	u8 *mld_addr = NULL;
 +	int link_id = -1;
-+	bool ml_sta = false;
 +	u8 *link_addr = sta->addr;
 +
 +	if (sta->ml_sta) {
 +		mld_addr = sta->addr;
 +		link_addr = sta->link_addr;
-+		if (sta->ml_sta->linksta != sta)
-+			ml_sta = true;
 +	}
 +
 +	if (hapd->mld)
@@ -855,7 +852,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	/*
  	 * If a station that is already associated to the AP, is trying to
  	 * authenticate again, remove the STA entry, in order to make sure the
-@@ -1583,11 +1694,11 @@ int ap_sta_re_add(struct hostapd_data *h
+@@ -1583,11 +1691,11 @@ int ap_sta_re_add(struct hostapd_data *h
  	hostapd_drv_sta_remove(hapd, sta->addr);
  	sta->flags &= ~(WLAN_STA_ASSOC | WLAN_STA_AUTH | WLAN_STA_AUTHORIZED);
  
@@ -865,7 +862,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			    sta->supported_rates_len,
  			    0, NULL, NULL, NULL, 0, NULL, 0, NULL,
 -			    sta->flags, 0, 0, 0, 0, false, -1, NULL)) {
-+			    sta->flags, 0, 0, 0, 0, ml_sta, link_id, mld_addr)) {
++			    sta->flags, 0, 0, 0, 0, false, link_id, mld_addr)) {
  		hostapd_logger(hapd, sta->addr,
  			       HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_NOTICE,
