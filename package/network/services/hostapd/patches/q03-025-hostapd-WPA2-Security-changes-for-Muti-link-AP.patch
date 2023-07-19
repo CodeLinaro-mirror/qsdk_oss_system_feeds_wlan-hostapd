@@ -50,7 +50,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2462,6 +2462,11 @@ static int __ieee802_11_set_beacon(struc
+@@ -2448,6 +2448,11 @@ static int __ieee802_11_set_beacon(struc
  		return -1;
  	}
  
@@ -93,7 +93,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_WARNING,
  				   "Failed to initialize WPA state machine");
-@@ -1300,9 +1304,11 @@ static void hostapd_notif_auth(struct ho
+@@ -1315,9 +1319,11 @@ static void hostapd_notif_auth(struct ho
  #ifdef CONFIG_IEEE80211R_AP
  	if (rx_auth->auth_type == WLAN_AUTH_FT && hapd->wpa_auth) {
  		sta->auth_alg = WLAN_AUTH_FT;
@@ -146,15 +146,17 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  {
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -808,4 +808,5 @@ void fst_hostapd_fill_iface_obj(struct h
+@@ -814,6 +814,7 @@ void fst_hostapd_fill_iface_obj(struct h
  
  int hostapd_set_acl(struct hostapd_data *hapd);
  int hostapd_is_usable_ru_punct_bitmap(struct hostapd_iface *iface);
 +int update_pmksa(struct hostapd_data *hapd);
- #endif /* HOSTAPD_H */
+ struct hostapd_data * hostapd_mbssid_get_tx_bss(struct hostapd_data *hapd);
+ int hostapd_mbssid_get_bss_index(struct hostapd_data *hapd);
+ 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -1914,9 +1914,11 @@ void handle_auth_fils(struct hostapd_dat
+@@ -1828,9 +1828,11 @@ void handle_auth_fils(struct hostapd_dat
  		goto fail;
  	}
  
@@ -168,7 +170,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (!sta->wpa_sm) {
  		wpa_printf(MSG_DEBUG,
  			   "FILS: Failed to initialize RSN state machine");
-@@ -4027,9 +4029,12 @@ static void handle_auth(struct hostapd_d
+@@ -3133,9 +3135,12 @@ static void handle_auth(struct hostapd_d
  #ifdef CONFIG_IEEE80211R_AP
  	case WLAN_AUTH_FT:
  		sta->auth_alg = WLAN_AUTH_FT;
@@ -183,7 +185,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_DEBUG, "FT: Failed to initialize WPA "
  				   "state machine");
-@@ -4049,10 +4054,13 @@ static void handle_auth(struct hostapd_d
+@@ -3155,10 +3160,13 @@ static void handle_auth(struct hostapd_d
  #ifdef CONFIG_MESH
  		if (status_code == WLAN_STATUS_SUCCESS &&
  		    hapd->conf->mesh & MESH_ENABLED) {
@@ -199,7 +201,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			if (sta->wpa_sm == NULL) {
  				wpa_printf(MSG_DEBUG,
  					   "SAE: Failed to initialize WPA state machine");
-@@ -4587,9 +4595,11 @@ u16 owe_process_rsn_ie(struct hostapd_da
+@@ -3691,9 +3699,11 @@ u16 owe_process_rsn_ie(struct hostapd_da
  		goto end;
  	}
  
@@ -213,7 +215,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (!sta->wpa_sm) {
  		wpa_printf(MSG_WARNING,
  			   "OWE: Failed to initialize WPA state machine");
-@@ -4972,10 +4982,13 @@ static int check_assoc_ies(struct hostap
+@@ -4085,10 +4095,13 @@ static int check_assoc_ies(struct hostap
  
  		wpa_ie -= 2;
  		wpa_ie_len += 2;
@@ -229,7 +231,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_WARNING, "Failed to initialize WPA "
  				   "state machine");
-@@ -5117,9 +5130,12 @@ static int check_assoc_ies(struct hostap
+@@ -4230,9 +4243,12 @@ static int check_assoc_ies(struct hostap
  		}
  
  		wpa_printf(MSG_DEBUG, "HS 2.0: OSEN association");
@@ -244,7 +246,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_WARNING, "Failed to initialize WPA "
  				   "state machine");
-@@ -5795,6 +5811,7 @@ static void ap_link_sta_add(struct hosta
+@@ -4905,6 +4921,7 @@ static void ap_link_sta_add(struct hosta
  		}
  
  		sta->listen_interval = psta->listen_interval;
@@ -252,7 +254,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  		link_sta_ies = ml_data->u.basic.link_info[link_id].sta_profile;
  		link_sta_ies_len = ml_data->u.basic.link_info[link_id].sta_profile_len;
-@@ -7573,6 +7590,11 @@ void hostapd_eapol_tx_status(struct host
+@@ -6696,6 +6713,11 @@ void hostapd_eapol_tx_status(struct host
  	struct hostapd_iface *iface = hapd->iface;
  
  	sta = ap_get_sta(hapd, dst);
@@ -264,7 +266,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (sta == NULL && iface->num_bss > 1) {
  		size_t j;
  		for (j = 0; j < iface->num_bss; j++) {
-@@ -7627,6 +7649,11 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6750,6 +6772,11 @@ void ieee802_11_rx_from_unknown(struct h
  	struct sta_info *sta;
  
  	sta = ap_get_sta(hapd, src);
@@ -473,7 +475,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	eloop_cancel_timeout(ap_sta_disassoc_cb_timeout, hapd, sta);
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -381,6 +381,33 @@ struct sta_info {
+@@ -345,6 +345,33 @@ struct sta_info {
  /* Number of seconds to keep STA entry after it has been deauthenticated. */
  #define AP_MAX_INACTIVITY_AFTER_DEAUTH (1 * 5)
  
@@ -507,7 +509,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  int ap_for_each_sta(struct hostapd_data *hapd,
  		    int (*cb)(struct hostapd_data *hapd, struct sta_info *sta,
-@@ -446,4 +473,14 @@ void ap_ml_sta_add(struct hostapd_data *
+@@ -412,4 +439,14 @@ void ap_ml_sta_add(struct hostapd_data *
  		   const u8 *addr);
  void ap_link_sta_remove(struct hostapd_data *phapd,
  		        struct sta_info *psta);
@@ -524,7 +526,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #endif /* STA_INFO_H */
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -142,12 +142,13 @@ static inline int wpa_auth_set_key(struc
+@@ -145,12 +145,13 @@ static inline int wpa_auth_set_key(struc
  				   int vlan_id,
  				   enum wpa_alg alg, const u8 *addr, int idx,
  				   u8 *key, size_t key_len,
@@ -540,7 +542,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  }
  
  
-@@ -659,10 +660,36 @@ int wpa_reconfig(struct wpa_authenticato
+@@ -663,10 +664,36 @@ int wpa_reconfig(struct wpa_authenticato
  	return 0;
  }
  
@@ -578,7 +580,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  {
  	struct wpa_state_machine *sm;
  
-@@ -677,6 +704,17 @@ wpa_auth_sta_init(struct wpa_authenticat
+@@ -681,6 +708,17 @@ wpa_auth_sta_init(struct wpa_authenticat
  		os_memcpy(sm->p2p_dev_addr, p2p_dev_addr, ETH_ALEN);
  
  	sm->wpa_auth = wpa_auth;
@@ -596,7 +598,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	sm->group = wpa_auth->group;
  	wpa_group_get(sm->wpa_auth, sm->group);
  
-@@ -775,12 +813,13 @@ static void wpa_free_sta_sm(struct wpa_s
+@@ -779,12 +817,13 @@ static void wpa_free_sta_sm(struct wpa_s
  }
  
  
@@ -612,7 +614,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	wpa_auth = sm->wpa_auth;
  	if (wpa_auth->conf.wpa_strict_rekey && sm->has_GTK) {
-@@ -806,8 +845,11 @@ void wpa_auth_sta_deinit(struct wpa_stat
+@@ -810,8 +849,11 @@ void wpa_auth_sta_deinit(struct wpa_stat
  			   "WPA: Registering pending STA state machine deinit for "
  			   MACSTR, MAC2STR(sm->addr));
  		sm->pending_deinit = 1;
@@ -625,7 +627,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  }
  
  
-@@ -1795,12 +1837,12 @@ void wpa_remove_ptk(struct wpa_state_mac
+@@ -1834,12 +1876,12 @@ void wpa_remove_ptk(struct wpa_state_mac
  	wpa_auth_remove_ptksa(sm->wpa_auth, sm->addr, sm->pairwise);
  
  	if (wpa_auth_set_key(sm->wpa_auth, 0, WPA_ALG_NONE, sm->addr, 0, NULL,
@@ -640,7 +642,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		wpa_printf(MSG_DEBUG,
  			   "RSN: PTK Key ID 1 removal from the driver failed");
  	sm->pairwise_set = false;
-@@ -2203,12 +2245,32 @@ SM_STATE(WPA_PTK, INITPSK)
+@@ -2249,12 +2291,32 @@ SM_STATE(WPA_PTK, INITPSK)
  	sm->req_replay_counter_used = 0;
  }
  
@@ -674,7 +676,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	SM_ENTRY_MA(WPA_PTK, PTKSTART, wpa_ptk);
  	sm->PTKRequest = false;
-@@ -2302,8 +2364,8 @@ SM_STATE(WPA_PTK, PTKSTART)
+@@ -2348,8 +2410,8 @@ SM_STATE(WPA_PTK, PTKSTART)
  			 * Calculate PMKID since no PMKSA cache entry was
  			 * available with pre-calculated PMKID.
  			 */
@@ -685,7 +687,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  				  sm->wpa_key_mgmt);
  			wpa_hexdump(MSG_DEBUG,
  				    "RSN: Message 1/4 PMKID derived from PMK",
-@@ -2312,11 +2374,21 @@ SM_STATE(WPA_PTK, PTKSTART)
+@@ -2358,11 +2420,21 @@ SM_STATE(WPA_PTK, PTKSTART)
  	}
  	if (!pmkid)
  		pmkid_len = 0;
@@ -708,7 +710,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  }
  
  
-@@ -2343,7 +2415,8 @@ static int wpa_derive_ptk(struct wpa_sta
+@@ -2391,7 +2463,8 @@ static int wpa_derive_ptk(struct wpa_sta
  
  			ret = wpa_pmk_r1_to_ptk(sm->pmk_r1, sm->pmk_r1_len,
  						sm->SNonce, sm->ANonce,
@@ -718,7 +720,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  						sm->pmk_r1_name, ptk,
  						ptk_name, sm->wpa_key_mgmt,
  						sm->pairwise, kdk_len);
-@@ -2382,7 +2455,7 @@ static int wpa_derive_ptk(struct wpa_sta
+@@ -2432,7 +2505,7 @@ static int wpa_derive_ptk(struct wpa_sta
  	if (force_sha256)
  		akmp |= WPA_KEY_MGMT_PSK_SHA256;
  	ret = wpa_pmk_to_ptk(pmk, pmk_len, "Pairwise key expansion",
@@ -727,7 +729,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			     snonce, ptk, akmp, sm->pairwise, z, z_len,
  			     kdk_len);
  	if (ret) {
-@@ -2425,7 +2498,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
+@@ -2475,7 +2548,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
  	else
  		kdk_len = 0;
  
@@ -736,25 +738,25 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			      snonce, anonce, dhss, dhss_len,
  			      &sm->PTK, ick, &ick_len,
  			      sm->wpa_key_mgmt, sm->pairwise,
-@@ -2460,7 +2533,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
+@@ -2509,7 +2582,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
  				      conf->mobility_domain,
  				      conf->r0_key_holder,
  				      conf->r0_key_holder_len,
 -				      sm->addr, pmk_r0, pmk_r0_name,
-+					  sm->encr_key_mac_addr, pmk_r0, pmk_r0_name,
- 				      use_sha384) < 0)
++				      sm->encr_key_mac_addr, pmk_r0, pmk_r0_name,
+ 				      sm->wpa_key_mgmt) < 0)
  			return -1;
  
-@@ -2468,7 +2541,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
+@@ -2517,7 +2590,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
  		forced_memzero(fils_ft, sizeof(fils_ft));
  
  		res = wpa_derive_pmk_r1_name(pmk_r0_name, conf->r1_key_holder,
 -					     sm->addr, sm->pmk_r1_name,
-+						 sm->encr_key_mac_addr, sm->pmk_r1_name,
- 					     use_sha384);
++					     sm->encr_key_mac_addr, sm->pmk_r1_name,
+ 					     fils_ft_len);
  		forced_memzero(pmk_r0, PMK_LEN_MAX);
  		if (res < 0)
-@@ -2480,7 +2553,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
+@@ -2529,7 +2602,7 @@ int fils_auth_pmk_to_ptk(struct wpa_stat
  #endif /* CONFIG_IEEE80211R_AP */
  
  	res = fils_key_auth_sk(ick, ick_len, snonce, anonce,
@@ -763,7 +765,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			       g_sta ? wpabuf_head(g_sta) : NULL,
  			       g_sta ? wpabuf_len(g_sta) : 0,
  			       g_ap ? wpabuf_head(g_ap) : NULL,
-@@ -2944,7 +3017,7 @@ int fils_set_tk(struct wpa_state_machine
+@@ -2993,7 +3066,7 @@ int fils_set_tk(struct wpa_state_machine
  
  	wpa_printf(MSG_DEBUG, "FILS: Configure TK to the driver");
  	if (wpa_auth_set_key(sm->wpa_auth, 0, alg, sm->addr, 0,
@@ -772,7 +774,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		wpa_printf(MSG_DEBUG, "FILS: Failed to set TK to the driver");
  		return -1;
  	}
-@@ -3553,7 +3626,7 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
+@@ -3617,7 +3690,7 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
  				     sm->addr,
  				     sm->keyidx_active, sm->PTK.tk,
  				     wpa_cipher_key_len(sm->pairwise),
@@ -781,7 +783,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			wpa_sta_disconnect(sm->wpa_auth, sm->addr,
  					   WLAN_REASON_PREV_AUTH_NOT_VALID);
  			return;
-@@ -3775,11 +3848,11 @@ SM_STATE(WPA_PTK, PTKINITDONE)
+@@ -3838,11 +3911,11 @@ SM_STATE(WPA_PTK, PTKINITDONE)
  		if (sm->use_ext_key_id)
  			res = wpa_auth_set_key(sm->wpa_auth, 0, 0, sm->addr,
  					       sm->keyidx_active, NULL, 0,
@@ -795,7 +797,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (res) {
  			wpa_sta_disconnect(sm->wpa_auth, sm->addr,
  					   WLAN_REASON_PREV_AUTH_NOT_VALID);
-@@ -3840,7 +3913,7 @@ SM_STATE(WPA_PTK, PTKINITDONE)
+@@ -3903,7 +3976,7 @@ SM_STATE(WPA_PTK, PTKINITDONE)
  		MACSTR, MAC2STR(sm->addr));
  
  #ifdef CONFIG_IEEE80211R_AP
@@ -804,7 +806,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #endif /* CONFIG_IEEE80211R_AP */
  
  	sm->ptkstart_without_success = 0;
-@@ -4487,7 +4560,7 @@ static int wpa_group_config_group_keys(s
+@@ -4550,7 +4623,7 @@ static int wpa_group_config_group_keys(s
  			     wpa_cipher_to_alg(conf->wpa_group),
  			     broadcast_ether_addr, group->GN,
  			     group->GTK[group->GN - 1], group->GTK_len,
@@ -813,7 +815,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		ret = -1;
  
  	if (conf->ieee80211w != NO_MGMT_FRAME_PROTECTION) {
-@@ -4501,14 +4574,14 @@ static int wpa_group_config_group_keys(s
+@@ -4564,14 +4637,14 @@ static int wpa_group_config_group_keys(s
  		    wpa_auth_set_key(wpa_auth, group->vlan_id, alg,
  				     broadcast_ether_addr, group->GN_igtk,
  				     group->IGTK[group->GN_igtk - 4], len,
@@ -830,7 +832,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			ret = -1;
  	}
  
-@@ -4940,7 +5013,7 @@ int wpa_auth_pmksa_add(struct wpa_state_
+@@ -5013,7 +5086,7 @@ int wpa_auth_pmksa_add(struct wpa_state_
  	wpa_hexdump_key(MSG_DEBUG, "RSN: Cache PMK", pmk, pmk_len);
  	if (pmksa_cache_auth_add(sm->wpa_auth->pmksa, pmk, pmk_len, NULL,
  				 sm->PTK.kck, sm->PTK.kck_len,
@@ -841,7 +843,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
-@@ -287,6 +287,17 @@ typedef enum {
+@@ -288,6 +288,17 @@ typedef enum {
  	WPA_EAPOL_keyDone, WPA_EAPOL_inc_EapolFramesTx
  } wpa_eapol_variable;
  
@@ -859,7 +861,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  struct wpa_auth_callbacks {
  	void (*logger)(void *ctx, const u8 *addr, logger_level level,
  		       const char *txt);
-@@ -302,7 +313,7 @@ struct wpa_auth_callbacks {
+@@ -303,7 +314,7 @@ struct wpa_auth_callbacks {
  	int (*get_msk)(void *ctx, const u8 *addr, u8 *msk, size_t *len);
  	int (*set_key)(void *ctx, int vlan_id, enum wpa_alg alg,
  		       const u8 *addr, int idx, u8 *key, size_t key_len,
@@ -868,7 +870,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	int (*get_seqnum)(void *ctx, const u8 *addr, int idx, u8 *seq);
  	int (*send_eapol)(void *ctx, const u8 *addr, const u8 *data,
  			  size_t data_len, int encrypt);
-@@ -388,11 +399,12 @@ void wpa_auth_set_ocv(struct wpa_state_m
+@@ -389,11 +400,12 @@ void wpa_auth_set_ocv(struct wpa_state_m
  int wpa_auth_uses_ocv(struct wpa_state_machine *sm);
  struct wpa_state_machine *
  wpa_auth_sta_init(struct wpa_authenticator *wpa_auth, const u8 *addr,
@@ -883,7 +885,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  void wpa_receive(struct wpa_authenticator *wpa_auth,
  		 struct wpa_state_machine *sm,
  		 u8 *data, size_t data_len);
-@@ -582,6 +594,10 @@ enum wpa_auth_ocv_override_frame {
+@@ -590,6 +602,10 @@ enum wpa_auth_ocv_override_frame {
  void wpa_auth_set_ocv_override_freq(struct wpa_authenticator *wpa_auth,
  				    enum wpa_auth_ocv_override_frame frame,
  				    unsigned int freq);
@@ -896,7 +898,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
-@@ -2796,12 +2796,13 @@ static inline int wpa_auth_set_key(struc
+@@ -2870,12 +2870,13 @@ static inline int wpa_auth_set_key(struc
  				   int vlan_id,
  				   enum wpa_alg alg, const u8 *addr, int idx,
  				   u8 *key, size_t key_len,
@@ -912,7 +914,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  }
  
  
-@@ -2860,7 +2861,7 @@ void wpa_ft_install_ptk(struct wpa_state
+@@ -2934,7 +2935,7 @@ void wpa_ft_install_ptk(struct wpa_state
  	 * optimized by adding the STA entry earlier.
  	 */
  	if (wpa_auth_set_key(sm->wpa_auth, 0, alg, sm->addr, sm->keyidx_active,
@@ -923,7 +925,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #ifdef CONFIG_PASN
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -442,8 +442,7 @@ static int hostapd_wpa_auth_get_msk(void
+@@ -443,8 +443,7 @@ static int hostapd_wpa_auth_get_msk(void
  	return 0;
  }
  
@@ -933,7 +935,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  				    const u8 *addr, int idx, u8 *key,
  				    size_t key_len, enum key_flag key_flag)
  {
-@@ -499,6 +498,46 @@ static int hostapd_wpa_auth_set_key(void
+@@ -500,6 +499,46 @@ static int hostapd_wpa_auth_set_key(void
  #endif /* CONFIG_TESTING_OPTIONS */
  	return hostapd_drv_set_key(ifname, hapd, alg, addr, idx, vlan_id, 1,
  				   NULL, 0, key, key_len, key_flag);
@@ -980,7 +982,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  }
  
  
-@@ -1071,7 +1110,9 @@ hostapd_wpa_auth_add_sta(void *ctx, cons
+@@ -1072,7 +1111,9 @@ hostapd_wpa_auth_add_sta(void *ctx, cons
  		return sta->wpa_sm;
  	}
  
@@ -993,7 +995,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		return NULL;
 --- a/src/ap/wpa_auth_i.h
 +++ b/src/ap/wpa_auth_i.h
-@@ -171,6 +171,9 @@ struct wpa_state_machine {
+@@ -172,6 +172,9 @@ struct wpa_state_machine {
  	void *eapol_status_cb_ctx1;
  	void *eapol_status_cb_ctx2;
  #endif /* CONFIG_TESTING_OPTIONS */
@@ -1003,7 +1005,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  };
  
  
-@@ -241,6 +244,11 @@ struct wpa_authenticator {
+@@ -242,6 +245,11 @@ struct wpa_authenticator {
  #ifdef CONFIG_P2P
  	struct bitfield *ip_pool;
  #endif /* CONFIG_P2P */
@@ -1017,7 +1019,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -6202,7 +6202,9 @@ static int nl80211_tx_control_port(void
+@@ -6316,7 +6316,9 @@ static int nl80211_tx_control_port(void
  	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, dest) ||
  	    nla_put(msg, NL80211_ATTR_FRAME, len, buf) ||
  	    (no_encrypt &&
@@ -1051,7 +1053,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		return -1;
 --- a/wpa_supplicant/ibss_rsn.c
 +++ b/wpa_supplicant/ibss_rsn.c
-@@ -314,7 +314,7 @@ static int auth_send_eapol(void *ctx, co
+@@ -315,7 +315,7 @@ static int auth_send_eapol(void *ctx, co
  
  static int auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
  			const u8 *addr, int idx, u8 *key, size_t key_len,
@@ -1060,7 +1062,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  {
  	struct ibss_rsn *ibss_rsn = ctx;
  	u8 seq[6];
-@@ -471,7 +471,7 @@ static int ibss_rsn_auth_init_group(stru
+@@ -472,7 +472,7 @@ static int ibss_rsn_auth_init_group(stru
  static int ibss_rsn_auth_init(struct ibss_rsn *ibss_rsn,
  			      struct ibss_rsn_peer *peer)
  {

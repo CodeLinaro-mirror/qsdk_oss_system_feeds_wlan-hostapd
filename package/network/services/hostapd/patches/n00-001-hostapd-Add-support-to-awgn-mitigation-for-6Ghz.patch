@@ -47,7 +47,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 
 --- a/hostapd/Makefile
 +++ b/hostapd/Makefile
-@@ -1199,6 +1199,7 @@ OBJS += ../src/ap/ap_list.o
+@@ -1201,6 +1201,7 @@ OBJS += ../src/pasn/pasn_responder.o
  OBJS += ../src/ap/ieee802_11.o
  OBJS += ../src/ap/hw_features.o
  OBJS += ../src/ap/dfs.o
@@ -57,15 +57,15 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  OBJS += ../src/ap/ieee802_11_ht.o
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3574,6 +3574,8 @@ static int hostapd_config_fill(struct ho
+@@ -3581,6 +3581,8 @@ static int hostapd_config_fill(struct ho
  			return 1;
  		}
  		bss->unsol_bcast_probe_resp_interval = val;
 +	} else if (os_strcmp(buf, "discard_6g_awgn_event") == 0) {
 +		conf->discard_6g_awgn_event = atoi(pos);
- #endif /* CONFIG_IEEE80211AX */
- 	} else if (os_strcmp(buf, "max_listen_interval") == 0) {
- 		bss->max_listen_interval = atoi(pos);
+ 	} else if (os_strcmp(buf, "mbssid") == 0) {
+ 		int mbssid = atoi(pos);
+ 		if (mbssid < 0 || mbssid > ENHANCED_MBSSID_ENABLED) {
 --- a/src/ap/Makefile
 +++ b/src/ap/Makefile
 @@ -36,6 +36,7 @@ LIB_OBJS= \
@@ -88,14 +88,14 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	/* The third octet of the country string uses an ASCII space character
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1114,6 +1114,7 @@ struct hostapd_config {
+@@ -1131,6 +1131,7 @@ struct hostapd_config {
  	u8 he_6ghz_rx_ant_pat;
  	u8 he_6ghz_tx_ant_pat;
  	u8 he_6ghz_reg_pwr_type;
 +	bool discard_6g_awgn_event;
+ 	bool require_he;
  #endif /* CONFIG_IEEE80211AX */
  
- 	/* VHT enable/disable config from CHAN_SWITCH */
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
 @@ -43,6 +43,7 @@
@@ -106,7 +106,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  
  #ifdef CONFIG_FILS
-@@ -1732,6 +1733,13 @@ static void hostapd_event_dfs_radar_dete
+@@ -1744,6 +1745,13 @@ static void hostapd_event_dfs_radar_dete
  				   radar->cf1, radar->cf2);
  }
  
@@ -120,7 +120,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  static void hostapd_event_dfs_pre_cac_expired(struct hostapd_data *hapd,
  					      struct dfs_event *radar)
-@@ -2071,6 +2079,11 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2083,6 +2091,11 @@ void hostapd_wpa_event(void *ctx, enum w
  			break;
  		hostapd_event_dfs_radar_detected(hapd, &data->dfs_event);
  		break;
@@ -578,7 +578,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 +
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5478,6 +5478,7 @@ enum wpa_event_type {
+@@ -5612,6 +5612,7 @@ enum wpa_event_type {
  	 * beacon.
  	 */
  	EVENT_UPDATE_MUEDCA_PARAMS,
@@ -586,12 +586,10 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  };
  
  
-@@ -6395,6 +6396,17 @@ union wpa_event_data {
- 		u8 he_mu_ac_vi_param[3];
- 		u8 he_mu_ac_vo_param[3];
+@@ -6531,6 +6532,17 @@ union wpa_event_data {
  	} update_muedca;
-+
-+	/**
+ 
+ 	/**
 +	 * Data for EVENT_AWGN
 +	 */
 +	struct awgn_event {
@@ -601,9 +599,11 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 +		int cf2;
 +		u32 chan_bw_interference_bitmap;
 +	} awgn_event;
- };
- 
- /**
++
++	/**
+ 	 * struct port_authorized - Data for EVENT_PORT_AUTHORIZED
+ 	 */
+ 	struct port_authorized {
 --- a/src/drivers/driver_common.c
 +++ b/src/drivers/driver_common.c
 @@ -99,6 +99,7 @@ const char * event_to_string(enum wpa_ev
@@ -624,7 +624,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	C2S(__NL80211_CMD_AFTER_LAST)
  	}
  #undef C2S
-@@ -1991,6 +1992,32 @@ static void nl80211_radar_event(struct w
+@@ -2206,6 +2207,32 @@ static void nl80211_radar_event(struct w
  	}
  }
  
@@ -657,7 +657,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  static void nl80211_spurious_frame(struct i802_bss *bss, struct nlattr **tb,
  				   int wds)
-@@ -3480,6 +3507,9 @@ static void do_process_drv_event(struct
+@@ -3732,6 +3759,9 @@ static void do_process_drv_event(struct
  	case NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS:
  		nl80211_update_muedca_params_event(drv, tb);
  		break;
@@ -669,7 +669,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  			"(cmd=%d)", cmd);
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -1278,6 +1278,10 @@
+@@ -1286,6 +1286,10 @@
   *	were indicated by driver and now need to be reflected in
   *	Beacon frame.
   *
@@ -680,7 +680,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
   * @NL80211_CMD_MAX: highest used command number
   * @__NL80211_CMD_AFTER_LAST: internal use
   */
-@@ -1530,6 +1534,8 @@ enum nl80211_commands {
+@@ -1538,6 +1542,8 @@ enum nl80211_commands {
  	NL80211_CMD_REMOVE_LINK_STA,
  
  	NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS,
@@ -689,7 +689,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	/* add new commands above here */
  
  	/* used to define NL80211_CMD_MAX below */
-@@ -2754,6 +2760,9 @@ enum nl80211_commands {
+@@ -2764,6 +2770,9 @@ enum nl80211_commands {
   * 	staggered mode or burst mode in %NL80211_CMD_START_AP from
   * 	user-space.
   *
@@ -699,7 +699,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
   * @NUM_NL80211_ATTR: total number of nl80211_attrs available
   * @NL80211_ATTR_MAX: highest attribute number currently defined
   * @__NL80211_ATTR_AFTER_LAST: internal use
-@@ -2849,7 +2858,6 @@ enum nl80211_attrs {
+@@ -2859,7 +2868,6 @@ enum nl80211_attrs {
  
  	NL80211_ATTR_FREQ_FIXED,
  
@@ -707,7 +707,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	NL80211_ATTR_WIPHY_RETRY_SHORT,
  	NL80211_ATTR_WIPHY_RETRY_LONG,
  	NL80211_ATTR_WIPHY_FRAG_THRESHOLD,
-@@ -3286,6 +3294,12 @@ enum nl80211_attrs {
+@@ -3297,6 +3305,12 @@ enum nl80211_attrs {
  
  	NL80211_ATTR_BEACON_TX_MODE,
  
@@ -722,7 +722,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	__NL80211_ATTR_AFTER_LAST,
 --- a/wpa_supplicant/Makefile
 +++ b/wpa_supplicant/Makefile
-@@ -996,6 +996,7 @@ OBJS += ../src/ap/ap_list.o
+@@ -1010,6 +1010,7 @@ OBJS += ../src/pasn/pasn_responder.o
  OBJS += ../src/ap/ieee802_11.o
  OBJS += ../src/ap/hw_features.o
  OBJS += ../src/ap/dfs.o

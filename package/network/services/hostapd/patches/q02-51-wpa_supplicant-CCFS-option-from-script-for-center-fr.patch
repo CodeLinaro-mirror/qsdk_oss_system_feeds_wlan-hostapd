@@ -9,11 +9,9 @@ config.
 
 Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 
-Index: b/hostapd/config_file.c
-===================================================================
---- a/hostapd/config_file.c	2023-02-06 13:43:34.629297255 +0530
-+++ b/hostapd/config_file.c	2023-02-06 13:43:34.597297472 +0530
-@@ -4284,6 +4284,8 @@ static int hostapd_config_fill(struct ho
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -4302,6 +4302,8 @@ static int hostapd_config_fill(struct ho
  		bss->wowlan_triggers = os_strdup(pos);
  	} else if (os_strcmp(buf, "enable_320mhz_bw") == 0) {
  		conf->enable_320mhz_bw = atoi(pos);
@@ -22,88 +20,63 @@ Index: b/hostapd/config_file.c
  	} else if (os_strcmp(buf, "enable_160mhz_bw") == 0) {
  		conf->enable_160mhz_bw = atoi(pos);
  	} else if (os_strcmp(buf, "disable_40mhz_scan") == 0) {
-Index: b/src/ap/ap_config.h
-===================================================================
---- a/src/ap/ap_config.h	2023-02-06 13:43:34.629297255 +0530
-+++ b/src/ap/ap_config.h	2023-02-06 13:43:34.605297418 +0530
-@@ -1184,6 +1184,7 @@ struct hostapd_config {
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -1200,6 +1200,7 @@ struct hostapd_config {
  #ifdef CONFIG_IEEE80211BE
  	u8 mlo;
  #endif
 +	int ccfs;
- };
  
- 
-Index: b/src/drivers/driver.h
-===================================================================
---- a/src/drivers/driver.h	2023-02-06 13:43:34.629297255 +0530
-+++ b/src/drivers/driver.h	2023-02-06 13:43:34.609297391 +0530
-@@ -1325,6 +1325,11 @@ struct wpa_driver_associate_params {
- 	 * lowest bit for the channel with the lowest frequency.
- 	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.*/
+ 	enum mbssid {
+ 		MBSSID_DISABLED = 0,
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -1368,6 +1368,12 @@ struct wpa_driver_associate_params {
  	u16 ru_punct_bitmap;
-+	/**
+ 
+ 	/**
 +	 * Center Frequency - 320MHz has overlapping bands and by default, center frequency
 +	 * will be selected from non-overlapping bands.
 +	 * CCFS can be configured from script to select particular range. */
 +	int ccfs;
- };
- 
- enum hide_ssid {
-Index: b/wpa_supplicant/config.c
-===================================================================
---- a/wpa_supplicant/config.c	2023-02-06 13:43:34.629297255 +0530
-+++ b/wpa_supplicant/config.c	2023-02-06 13:44:18.708997438 +0530
-@@ -2839,6 +2839,7 @@ static const struct parse_data ssid_fiel
++
++	/**
+ 	 * disable_eht - Disable EHT for this connection
+ 	 */
+ 	int disable_eht;
+--- a/wpa_supplicant/config.c
++++ b/wpa_supplicant/config.c
+@@ -2885,6 +2885,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
  	{ INT(ru_punct_bitmap) },
  	{ INT_RANGE(use_ru_puncture_dfs, 0, 1) },
 +	{ INT(ccfs) },
+ 	{ INT_RANGE(disable_eht, 0, 1)},
+ 	{ INT_RANGE(enable_4addr_mode, 0, 1)},
  };
- 
- #undef OFFSET
-Index: b/wpa_supplicant/config_file.c
-===================================================================
---- a/wpa_supplicant/config_file.c	2023-02-06 13:43:34.629297255 +0530
-+++ b/wpa_supplicant/config_file.c	2023-02-06 13:43:34.617297337 +0530
-@@ -894,6 +894,7 @@ static void wpa_config_write_network(FIL
+--- a/wpa_supplicant/config_file.c
++++ b/wpa_supplicant/config_file.c
+@@ -903,6 +903,7 @@ static void wpa_config_write_network(FIL
+ 	INT(beacon_tx_mode);
  	INT(enable_160mhz_bw);
- 	INT(enable_320mhz_bw);
  	INT(ru_punct_bitmap);
 +	INT(ccfs);
+ 	INT(enable_4addr_mode);
+ 
  #undef STR
- #undef INT
- #undef INT_DEF
-Index: b/wpa_supplicant/config_ssid.h
-===================================================================
---- a/wpa_supplicant/config_ssid.h	2023-02-06 13:43:34.629297255 +0530
-+++ b/wpa_supplicant/config_ssid.h	2023-02-06 13:44:01.929111600 +0530
-@@ -1245,7 +1245,11 @@ struct wpa_ssid {
- 	 *Enable dfs punctuing - set it 1 to enable dfs sub channel puncturing
- 	 */
+--- a/wpa_supplicant/config_ssid.h
++++ b/wpa_supplicant/config_ssid.h
+@@ -1302,6 +1302,12 @@ struct wpa_ssid {
  	int use_ru_puncture_dfs;
--	
-+	/**
+ 
+ 	/**
 +	 * Center Frequency - 320MHz has overlapping bands and by default, center frequency
 +	 * will be selected from non-overlapping bands.
 +	 * CCFS can be configured from script to select particular range.*/
 +	int ccfs;
- };
- 
- #endif /* CONFIG_SSID_H */
-Index: b/wpa_supplicant/wpa_supplicant.c
-===================================================================
---- a/wpa_supplicant/wpa_supplicant.c	2023-02-06 13:43:34.629297255 +0530
-+++ b/wpa_supplicant/wpa_supplicant.c	2023-02-06 13:43:34.629297255 +0530
-@@ -2975,7 +2975,10 @@ skip_to_6ghz:
- 					break;
- 			}
- 
--			seg0 = ibss_get_center_320mhz(freq->channel);
-+			if (ssid->ccfs)
-+				seg0 = ssid->ccfs;
-+			else
-+				seg0 = ibss_get_center_320mhz(freq->channel);
- 			chwidth = CONF_OPER_CHWIDTH_320MHZ;
- 		} else {
- 			/* There is only one 320MHz(240+80 Punctured) in 5 GHz Band */
++
++	/**
+ 	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
+ 	 *
+ 	 * By default, use it if it is available, but this can be configured

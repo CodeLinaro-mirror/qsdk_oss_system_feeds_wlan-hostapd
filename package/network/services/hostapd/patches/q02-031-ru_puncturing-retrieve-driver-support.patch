@@ -21,11 +21,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/drivers/nl80211_copy.h        | 12 ++++++++++++
  5 files changed, 37 insertions(+)
 
-diff --git a/hostapd/main.c b/hostapd/main.c
-index 6e54e9d66fd6..aeef81146306 100644
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -240,6 +240,7 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
+@@ -241,6 +241,7 @@ static int hostapd_driver_init(struct ho
  		iface->extended_capa_mask = capa.extended_capa_mask;
  		iface->extended_capa_len = capa.extended_capa_len;
  		iface->drv_max_acl_mac_addrs = capa.max_acl_mac_addrs;
@@ -33,13 +31,11 @@ index 6e54e9d66fd6..aeef81146306 100644
  
  		/*
  		 * Override extended capa with per-interface type (AP), if
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index ccc1c8514878..6cdd2c4e77d5 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -617,6 +617,9 @@ struct hostapd_iface {
- 	/* Maximum profile periodicity for enhanced MBSSID advertisements */
- 	u8 ema_max_periodicity;
+@@ -654,6 +654,9 @@ struct hostapd_iface {
+ 	/* Maximum profile periodicity for enhanced MBSSID advertisement */
+ 	unsigned int ema_max_periodicity;
  
 +	/* Minimum bandwidth the driver supports RU puncturing */
 +	u8 ru_punct_supp_bw;
@@ -47,25 +43,21 @@ index ccc1c8514878..6cdd2c4e77d5 100644
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
  };
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 4a60239be32f..2252a651c6ab 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2275,6 +2275,9 @@ struct wpa_driver_capa {
- 	u8 mbssid_max_interfaces;
- 	/* Maximum profile periodicity for enhanced MBSSID advertisements */
- 	u8 ema_max_periodicity;
+@@ -2378,6 +2378,9 @@ struct wpa_driver_capa {
+ 	unsigned int mbssid_max_interfaces;
+ 	/* Maximum profile periodicity for enhanced MBSSID advertisement */
+ 	unsigned int ema_max_periodicity;
 +
 +	/* Minimum bandwidth the driver supports RU Puncturing */
 +	u8 ru_punct_supp_bw;
  };
  
  
-diff --git a/src/drivers/driver_nl80211_capa.c b/src/drivers/driver_nl80211_capa.c
-index dc85e21290ae..593fa47fe854 100644
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -1100,6 +1100,24 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
+@@ -1173,6 +1173,24 @@ static int wiphy_info_handler(struct nl_
  	if (tb[NL80211_ATTR_MBSSID_CONFIG])
  		wiphy_info_mbssid(capa, tb[NL80211_ATTR_MBSSID_CONFIG]);
  
@@ -90,13 +82,11 @@ index dc85e21290ae..593fa47fe854 100644
  	return NL_SKIP;
  }
  
-diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
-index 7666f18f3e95..77c7a8445e97 100644
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -3120,6 +3120,10 @@ enum nl80211_attrs {
+@@ -3316,6 +3316,10 @@ enum nl80211_attrs {
  
- 	NL80211_ATTR_DISABLE_EHT,
+ 	NL80211_ATTR_EMA_RNR_ELEMS,
  
 +	NL80211_ATTR_RU_PUNCT_SUPP_BW,
 +	NL80211_ATTR_RU_PUNCT_SUPP_HE,
@@ -105,7 +95,7 @@ index 7666f18f3e95..77c7a8445e97 100644
  	/* add attributes here, update the policy in nl80211.c */
  
  	__NL80211_ATTR_AFTER_LAST,
-@@ -7487,4 +7491,12 @@ enum nl80211_beacon_tx_mode {
+@@ -7816,4 +7820,12 @@ enum nl80211_beacon_tx_mode {
  	NL80211_BEACON_STAGGERED_MODE = 1,
  	NL80211_BEACON_BURST_MODE = 2,
  };
@@ -118,6 +108,3 @@ index 7666f18f3e95..77c7a8445e97 100644
 +};
 +
  #endif /* __LINUX_NL80211_H */
--- 
-2.31.1
-

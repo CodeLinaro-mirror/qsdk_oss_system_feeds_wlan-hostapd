@@ -14,7 +14,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -83,6 +83,10 @@ static void pasn_fils_auth_resp(struct h
+@@ -80,6 +80,10 @@ static void pasn_fils_auth_resp(struct h
  #endif /* CONFIG_FILS */
  #endif /* CONFIG_PASN */
  
@@ -25,7 +25,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  static void handle_auth(struct hostapd_data *hapd,
  			struct ieee80211_mgmt *mgmt, size_t len,
  			int rssi, int from_queue,
-@@ -8408,19 +8412,79 @@ u8 * hostapd_eid_rnr(struct hostapd_data
+@@ -7531,19 +7535,79 @@ static bool mbssid_known_bss(unsigned in
  }
  
  
@@ -106,7 +106,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	for (link_bss = hapd->mld->bss; link_bss != NULL; link_bss = link_bss->nbss) {
  		if (hapd == link_bss)
  			continue;
-@@ -8446,46 +8510,71 @@ static u8 * hostapd_eid_basic_resp_mle(s
+@@ -7569,46 +7633,71 @@ static u8 * hostapd_eid_basic_resp_mle(s
  		}
  
  		if (!(BIT(link_id) & link_bmap))
@@ -202,7 +202,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	}
  	return link_info;
  }
-@@ -8536,8 +8625,6 @@ static size_t hostapd_eid_basic_resp_mle
+@@ -7659,8 +7748,6 @@ static size_t hostapd_eid_basic_resp_mle
  		total_profile_len += profile_len;
  	}
  
@@ -211,7 +211,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return total_profile_len;
  }
  
-@@ -8545,6 +8632,7 @@ size_t hostapd_eid_basic_mle_len(struct
+@@ -7668,6 +7755,7 @@ size_t hostapd_eid_basic_mle_len(struct
  				 struct multi_link_data *ml_data)
  {
  	size_t total_len = 0;
@@ -219,7 +219,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	if (!hapd->mld || !hapd->mld->num_links)
  		return 0;
-@@ -8569,7 +8657,12 @@ size_t hostapd_eid_basic_mle_len(struct
+@@ -7692,7 +7780,12 @@ size_t hostapd_eid_basic_mle_len(struct
  
  	total_len += hostapd_eid_basic_resp_mle_len(hapd, ml_data, type);
  
@@ -233,7 +233,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	return total_len;
  }
-@@ -8630,9 +8723,13 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -7753,9 +7846,13 @@ u8 * hostapd_eid_basic_mle(struct hostap
  		return eid;
  	}
  
@@ -251,15 +251,15 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2485,8 +2485,9 @@ struct ieee80211_he_mu_edca_parameter_se
- #define MLE_STA_CONTROL_NSTR_BITMAP			BIT(6)
- #define MLE_STA_CONTROL_BSS_PARAM_CHANGE_CNT_PRESENT	BIT(7)
+@@ -2525,8 +2525,9 @@ struct ieee80211_he_mu_edca_parameter_se
+ #define MLE_STA_CONTROL_NSTR_BITMAP                    BIT(6)
+ #define MLE_STA_CONTROL_BSS_PARAM_CHANGE_CNT_PRESENT   BIT(7)
  
 -/* STA Info Length, MAC, BI, DTIM included, TODO - NSTR, BSS change cnt*/
--#define MLE_STA_INFO_LENGTH	11
+-#define MLE_STA_INFO_LENGTH    11
 +/* STA Info Length, MAC, BI, TSF, DTIM included, TODO - NSTR, BSS change cnt*/
-+#define MLE_STA_INFO_LENGTH	19
++#define MLE_STA_INFO_LENGTH    19
 +#define BASIC_MLE_STA_INFO_TSF_LENGTH 8
+ #define MLE_PRESENCE_BMAP_SHIFT                        4
  
- /* IEEE P802.11be/D2.0, 9.4.2.311 - EHT Operation element */
  

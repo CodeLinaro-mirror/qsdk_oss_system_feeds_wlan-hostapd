@@ -17,7 +17,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4709,6 +4709,10 @@ static int hostapd_config_fill(struct ho
+@@ -4724,6 +4724,10 @@ static int hostapd_config_fill(struct ho
  		conf->eht_phy_capab.su_beamformee = atoi(pos);
  	} else if (os_strcmp(buf, "eht_mu_beamformer") == 0) {
  		conf->eht_phy_capab.mu_beamformer = atoi(pos);
@@ -50,12 +50,12 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  # Require IEEE 802.1X authorization
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1159,6 +1159,8 @@ struct hostapd_config {
+@@ -1173,6 +1173,8 @@ struct hostapd_config {
  	unsigned int ch_switch_eht_config;
  	u8 mbssid;
  	u8 ema;
 +	u16 ru_punct_bitmap;
 +	u8 ru_punct_ofdma;
- };
  
- 
+ 	enum mbssid {
+ 		MBSSID_DISABLED = 0,

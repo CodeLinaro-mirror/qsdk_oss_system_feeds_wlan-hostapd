@@ -18,7 +18,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4682,6 +4682,10 @@ static int hostapd_config_fill(struct ho
+@@ -4710,6 +4710,10 @@ static int hostapd_config_fill(struct ho
  			return 1;
  	} else if (os_strcmp(buf, "rnr") == 0) {
  		bss->rnr = atoi(pos);
@@ -31,7 +31,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		conf->ieee80211be = atoi(pos);
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -1031,6 +1031,16 @@ wmm_ac_vo_acm=0
+@@ -1034,6 +1034,16 @@ wmm_ac_vo_acm=0
  #eht_oper_chwidth (see vht_oper_chwidth)
  #eht_oper_centr_freq_seg0_idx
  
@@ -50,9 +50,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  # Require IEEE 802.1X authorization
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -1536,6 +1536,11 @@ int hostapd_config_check(struct hostapd_
+@@ -1558,6 +1558,11 @@ int hostapd_config_check(struct hostapd_
+ 		return -1;
  	}
- #endif /* CONFIG_IEEE80211BE */
  
 +	if (!conf->mbssid && conf->ema) {
 +		wpa_printf(MSG_ERROR, "mbssid must be enabled to enable ema");
@@ -64,12 +64,11 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  			return -1;
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1156,6 +1156,8 @@ struct hostapd_config {
+@@ -1174,6 +1174,7 @@ struct hostapd_config {
  #define CH_SWITCH_EHT_ENABLED BIT(0)
  #define CH_SWITCH_EHT_DISABLED BIT(1)
  	unsigned int ch_switch_eht_config;
-+	u8 mbssid;
 +	u8 ema;
- };
  
- 
+ 	enum mbssid {
+ 		MBSSID_DISABLED = 0,

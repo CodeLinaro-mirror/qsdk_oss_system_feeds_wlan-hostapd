@@ -14,11 +14,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/common/ieee802_11_common.h |  15 +++++
  3 files changed, 195 insertions(+), 24 deletions(-)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index d1b2195..b38b900 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4603,9 +4603,67 @@ static bool check_sa_query(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -3710,9 +3710,67 @@ static bool check_sa_query(struct hostap
  	return false;
  }
  
@@ -87,7 +85,7 @@ index d1b2195..b38b900 100644
  {
  	struct ieee802_11_elems elems;
  	int resp;
-@@ -4613,11 +4671,43 @@ static int check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -3720,11 +3778,43 @@ static int check_assoc_ies(struct hostap
  	size_t wpa_ie_len;
  	const u8 *p2p_dev_addr = NULL;
  
@@ -136,7 +134,7 @@ index d1b2195..b38b900 100644
  	}
  
  	resp = check_ssid(hapd, sta, elems.ssid, elems.ssid_len);
-@@ -5848,7 +5938,7 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -4964,7 +5054,7 @@ static void handle_assoc(struct hostapd_
  
  	/* followed by SSID and Supported rates; and HT capabilities if 802.11n
  	 * is used */
@@ -145,17 +143,15 @@ index d1b2195..b38b900 100644
  	if (resp != WLAN_STATUS_SUCCESS)
  		goto fail;
  	omit_rsnxe = !get_ie(pos, left, WLAN_EID_RSNX);
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index c0deea0..b4f38e6 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -199,9 +199,29 @@ static int ieee802_11_parse_vendor_specific(const u8 *pos, size_t elen,
+@@ -198,6 +198,23 @@ static int ieee802_11_parse_vendor_speci
+ 	return 0;
  }
- 
  
 +static int
 +is_part_of_non_inheritance(struct non_inheritance_elems *non_inherit,
-+			   u8 id)
++						   u8 id)
 +{
 +
 +	if (non_inherit == NULL)
@@ -170,19 +166,23 @@ index c0deea0..b4f38e6 100644
 +		return 0;
 +	return (non_inherit->non_inherit_ext[id/8] & (1 << (id%8)));
 +}
-+
+ 
+ static int ieee802_11_parse_mle(const u8 *pos, size_t elen, size_t **total_len,
+ 				struct ieee802_11_elems *elems,
+@@ -265,7 +282,9 @@ static size_t ieee802_11_fragments_lengt
  static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
  				      struct ieee802_11_elems *elems,
+ 				      const u8 *start, size_t len,
 -				      int show_errors)
 +				      int show_errors,
 +				      int is_ml_sta_profile_ie,
 +				      struct non_inheritance_elems *non_inherit)
  {
  	u8 ext_id;
- 
-@@ -218,6 +238,10 @@ static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
- 
- 	elems->frag_ies.last_eid_ext = 0;
+ 	size_t *total_len = NULL;
+@@ -281,6 +300,10 @@ static int ieee802_11_parse_extension(co
+ 	ext_id = *pos++;
+ 	elen--;
  
 +	if (is_part_of_non_inheritance_ext(non_inherit, ext_id)) {
 +		return 0;
@@ -191,32 +191,42 @@ index c0deea0..b4f38e6 100644
  	switch (ext_id) {
  	case WLAN_EID_EXT_ASSOC_DELAY_INFO:
  		if (elen != 1)
-@@ -320,8 +344,22 @@ static int ieee802_11_parse_extension(const u8 *pos, size_t elen,
- 		elems->mbssid_known_bss_len = elen;
+@@ -381,6 +404,23 @@ static int ieee802_11_parse_extension(co
+ 		elems->eht_operation_len = elen;
  		break;
  	case WLAN_EID_EXT_MULTI_LINK:
++		/*
++                 * This check is needed to make sure we don't
++                 * 1. allow ML-IE inside STA-Profile IEs
++                 * 2. parse Multi-link again as part of the parent IEs
++                 *
++                 * Elaborating on point number-2, we have already parsed
++                 * the Multi-Link element in the outer core frame, then
++                 * we don't want to parse it again when this function is called
++                 * as part of the STA clone creation (copying the inherited
++                 * IEs to the clone STA). ML-IE from the parent should not be
++                 * part of the cloned STA.
++                 */
++                if ((non_inherit == NULL) && !is_ml_sta_profile_ie) {
++                        elems->mle = pos;
++                        elems->mle_len = elen;
++                }
++
+ 		if (elen < 2)
+ 			break;
+ 		if (ieee802_11_parse_mle(pos, elen, &total_len, elems,
+@@ -391,10 +431,6 @@ static int ieee802_11_parse_extension(co
+ 		elems->mbssid_known_bss = pos;
+ 		elems->mbssid_known_bss_len = elen;
+ 		break;
+-	case WLAN_EID_EXT_MULTI_LINK:
 -		elems->mle = pos;
 -		elems->mle_len = elen;
-+		/*
-+		 * This check is needed to make sure we don't
-+		 * 1. allow ML-IE inside STA-Profile IEs
-+		 * 2. parse Multi-link again as part of the parent IEs
-+		 *
-+		 * Elaborating on point number-2, we have already parsed
-+		 * the Multi-Link element in the outer core frame, then
-+		 * we don't want to parse it again when this function is called
-+		 * as part of the STA clone creation (copying the inherited
-+		 * IEs to the clone STA). ML-IE from the parent should not be
-+		 * part of the cloned STA.
-+		 */
-+		if ((non_inherit == NULL) && !is_ml_sta_profile_ie) {
-+			elems->mle = pos;
-+			elems->mle_len = elen;
-+		}
- 		break;
+-		break;
  	default:
  		if (show_errors) {
-@@ -365,22 +403,17 @@ static void ieee802_11_parse_fragment(struct frag_ies_info *frag_ies,
+ 			wpa_printf(MSG_MSGDUMP,
+@@ -412,22 +448,17 @@ static int ieee802_11_parse_extension(co
  }
  
  
@@ -246,9 +256,9 @@ index c0deea0..b4f38e6 100644
  
  	if (!start)
  		return ParseOK;
-@@ -389,6 +422,9 @@ ParseRes ieee802_11_parse_elems(const u8 *start, size_t len,
- 		u8 id = elem->id, elen = elem->datalen;
- 		const u8 *pos = elem->data;
+@@ -442,6 +473,9 @@ ParseRes ieee802_11_parse_elems(const u8
+ 		}
+ 		elems->num_frag_elems = 0;
  
 +		if (is_part_of_non_inheritance(non_inherit, id))
 +			continue;
@@ -256,7 +266,7 @@ index c0deea0..b4f38e6 100644
  		switch (id) {
  		case WLAN_EID_SSID:
  			if (elen > SSID_MAX_LEN) {
-@@ -397,7 +433,7 @@ ParseRes ieee802_11_parse_elems(const u8 *start, size_t len,
+@@ -450,7 +484,7 @@ ParseRes ieee802_11_parse_elems(const u8
  					   elen);
  				break;
  			}
@@ -265,18 +275,18 @@ index c0deea0..b4f38e6 100644
  				wpa_printf(MSG_MSGDUMP,
  					   "Ignored duplicated SSID element");
  				break;
-@@ -596,7 +632,9 @@ ParseRes ieee802_11_parse_elems(const u8 *start, size_t len,
+@@ -651,7 +685,9 @@ ParseRes ieee802_11_parse_elems(const u8
  			break;
  		case WLAN_EID_EXTENSION:
- 			if (ieee802_11_parse_extension(pos, elen, elems,
--						       show_errors))
-+						       show_errors,
+ 			if (ieee802_11_parse_extension(pos, elen, elems, start,
+-						       len, show_errors))
++						       len, show_errors,
 +						       is_ie_part_of_sta_profile,
 +						       non_inherit))
  				unknown++;
  			break;
  		default:
-@@ -631,6 +669,34 @@ done:
+@@ -680,6 +716,34 @@ done:
  }
  
  
@@ -311,11 +321,9 @@ index c0deea0..b4f38e6 100644
  int ieee802_11_ie_count(const u8 *ies, size_t ies_len)
  {
  	const struct element *elem;
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index afb93e9..cd27e6b 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -256,9 +256,24 @@ struct ieee802_11_elems {
+@@ -255,9 +255,24 @@ struct ieee802_11_elems {
  
  typedef enum { ParseOK = 0, ParseUnknown = 1, ParseFailed = -1 } ParseRes;
  
@@ -340,6 +348,3 @@ index afb93e9..cd27e6b 100644
  int ieee802_11_ie_count(const u8 *ies, size_t ies_len);
  struct wpabuf * ieee802_11_vendor_ie_concat(const u8 *ies, size_t ies_len,
  					    u32 oui_type);
--- 
-2.17.1
-

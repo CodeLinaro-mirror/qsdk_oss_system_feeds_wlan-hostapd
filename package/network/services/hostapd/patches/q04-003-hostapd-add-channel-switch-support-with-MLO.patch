@@ -21,7 +21,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
 @@ -888,6 +888,10 @@ void hostapd_event_ch_switch(struct host
- 	int channel, chwidth, is_dfs;
+ 	int channel, chwidth, is_dfs0, is_dfs;
  	u8 seg0_idx = 0, seg1_idx = 0, op_class;
  	size_t i;
 +#ifdef CONFIG_IEEE80211BE
@@ -31,7 +31,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  	hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
  		       HOSTAPD_LEVEL_INFO,
-@@ -1030,6 +1034,23 @@ void hostapd_event_ch_switch(struct host
+@@ -1037,6 +1041,23 @@ void hostapd_event_ch_switch(struct host
  
  		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_CSA_FINISHED
  			"freq=%d dfs=%d", freq, is_dfs);
@@ -53,11 +53,11 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +		}
 +#endif
  	} else if (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD) {
- 		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_CSA_FINISHED
- 			"freq=%d dfs=%d", freq, is_dfs);
+ 		/* Complete AP configuration for the first bring up. */
+ 		if (is_dfs0 > 0 &&
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -10997,6 +10997,16 @@ static int nl80211_switch_channel(void *
+@@ -11229,6 +11229,16 @@ static int nl80211_switch_channel(void *
  	if (settings->handle_dfs && nla_put_flag(msg, NL80211_ATTR_HANDLE_DFS))
  		goto fail;
  
@@ -76,7 +76,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		wpa_printf(MSG_DEBUG, "nl80211: switch_channel failed err=%d (%s)",
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -801,8 +801,8 @@ static void mlme_event_ch_switch(struct
+@@ -1010,8 +1010,8 @@ static void mlme_event_ch_switch(struct
  	int chan_offset = 0;
  	int ifidx;
  
@@ -87,16 +87,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  	if (!freq)
  		return;
-@@ -877,7 +877,7 @@ static void mlme_event_ch_switch(struct
- 				EVENT_LINK_CH_SWITCH_STARTED, &data);
- 		}
- 
--		if (link_id != drv->mlo_assoc_link_id)
-+		if (drv->associated && (link_id != drv->mlo_assoc_link_id))
- 			return;
- 	}
- 
-@@ -3354,6 +3354,12 @@ static bool check_route_global_event(int
+@@ -3606,6 +3606,12 @@ static bool check_route_global_event(int
  	case NL80211_CMD_WIPHY_REG_CHANGE:
  		/* These commands are passed to each bss of the MLD */
  		return true;
@@ -111,7 +102,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		 * insider the default bss handler or return
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2736,6 +2736,29 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2754,6 +2754,29 @@ static int hostapd_ctrl_iface_chan_switc
                  return -1;
          }
  

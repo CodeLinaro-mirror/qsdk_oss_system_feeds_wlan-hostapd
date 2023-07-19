@@ -104,7 +104,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  						  u32 session_timeout)
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1193,6 +1193,7 @@ static int hostapd_setup_bss(struct host
+@@ -1203,6 +1203,7 @@ static int hostapd_setup_bss(struct host
  	char force_ifname[IFNAMSIZ];
  	u8 if_addr[ETH_ALEN];
  	int flush_old_stations = 1;
@@ -112,7 +112,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	wpa_printf(MSG_DEBUG, "%s(hapd=%p (%s), first=%d)",
  		   __func__, hapd, conf->iface, first);
-@@ -1236,11 +1237,16 @@ static int hostapd_setup_bss(struct host
+@@ -1246,11 +1247,16 @@ static int hostapd_setup_bss(struct host
  		}
  
  		hapd->interface_added = 1;
@@ -130,7 +130,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			wpa_printf(MSG_ERROR, "Failed to add BSS (BSSID="
  				   MACSTR ")", MAC2STR(hapd->own_addr));
  			hapd->interface_added = 0;
-@@ -1249,6 +1255,19 @@ static int hostapd_setup_bss(struct host
+@@ -1259,6 +1265,19 @@ static int hostapd_setup_bss(struct host
  
  		if (!addr)
  			os_memcpy(hapd->own_addr, if_addr, ETH_ALEN);
@@ -150,7 +150,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	}
  
  	if (is_zero_ether_addr(conf->bssid))
-@@ -1577,6 +1596,11 @@ static int start_ctrl_iface(struct hosta
+@@ -1590,6 +1609,11 @@ static int start_ctrl_iface(struct hosta
  
  	for (i = 0; i < iface->num_bss; i++) {
  		struct hostapd_data *hapd = iface->bss[i];
@@ -162,7 +162,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		if (iface->interfaces->ctrl_iface_init(hapd)) {
  			wpa_printf(MSG_ERROR,
  				   "Failed to setup control interface for %s",
-@@ -2209,6 +2233,20 @@ static int hostapd_setup_interface_compl
+@@ -2222,6 +2246,20 @@ static int hostapd_setup_interface_compl
  
  	hostapd_ubus_add_iface(iface);
  	wpa_printf(MSG_DEBUG, "Completing interface initialization");
@@ -183,24 +183,25 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (iface->freq) {
  #ifdef NEED_AP_MLME
  		int res;
-@@ -2315,7 +2353,7 @@ static int hostapd_setup_interface_compl
+@@ -2327,7 +2365,8 @@ static int hostapd_setup_interface_compl
+ 		hapd = iface->bss[j];
  		if (j)
  			os_memcpy(hapd->own_addr, prev_addr, ETH_ALEN);
- 		if (hostapd_setup_bss(hapd, j == 0,
--				      (hapd->iconf->mbssid? 0 : 1))) {
-+				      ((hapd->iconf->mbssid || hapd->mld)? 0 : 1))) {
+-		if (hostapd_setup_bss(hapd, j == 0, !iface->conf->mbssid)) {
++		if (hostapd_setup_bss(hapd, j == 0,
++					((hapd->iconf->mbssid || hapd->mld)? 0 : 1))) {
  			for (;;) {
  				hapd = iface->bss[j];
  				hostapd_bss_deinit_no_free(hapd);
-@@ -2330,6 +2368,7 @@ static int hostapd_setup_interface_compl
+@@ -2342,6 +2381,7 @@ static int hostapd_setup_interface_compl
  			prev_addr = hapd->own_addr;
  	}
  
 +	/* TODO handle MBSS MLO cases */
  	if (hapd->iconf->mbssid) {
- 		for (j = 0; j < iface->num_bss; j++) {
+ 		for (j = 0; hapd->iconf->mbssid && j < iface->num_bss; j++) {
  			hapd = iface->bss[j];
-@@ -2534,6 +2573,29 @@ int hostapd_setup_interface_complete(str
+@@ -2546,6 +2586,29 @@ int hostapd_setup_interface_complete(str
  		}
  	}
  
@@ -230,7 +231,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return 0;
  }
  
-@@ -2886,6 +2948,7 @@ struct hostapd_iface * hostapd_init(stru
+@@ -2898,6 +2961,7 @@ struct hostapd_iface * hostapd_init(stru
  				}
  				mld->num_links++;
  				hapd->nbss = NULL;
@@ -238,7 +239,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			}
  
  			if (!hapd->mld) {
-@@ -2904,6 +2967,7 @@ struct hostapd_iface * hostapd_init(stru
+@@ -2916,6 +2980,7 @@ struct hostapd_iface * hostapd_init(stru
  				//TODO: Need to know if this has to be parsed from config.
  				hapd->mld->mld_id = interfaces->mld_count + 1;
  				hapd->nbss = NULL;
@@ -284,7 +285,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		if (drv->hostapd && is_ap_interface(drv->nlmode)) {
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2248,6 +2248,7 @@ fail:
+@@ -2235,6 +2235,7 @@ fail:
  int ieee802_11_set_beacon(struct hostapd_data *hapd)
  {
  	struct hostapd_iface *iface = hapd->iface;
@@ -292,7 +293,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	int ret;
  	size_t i, j;
  	bool is_6g;
-@@ -2272,8 +2273,15 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2259,8 +2260,15 @@ int ieee802_11_set_beacon(struct hostapd
  			continue;
  
  		for (i = 0; i < colocated->num_bss; i++) {

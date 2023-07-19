@@ -21,11 +21,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/common/ieee802_11_defs.h |  1 +
  5 files changed, 110 insertions(+), 9 deletions(-)
 
-Index: hostapd-2022-09-19/src/ap/hostapd.h
-===================================================================
---- hostapd-2022-09-19.orig/src/ap/hostapd.h
-+++ hostapd-2022-09-19/src/ap/hostapd.h
-@@ -507,6 +507,7 @@ struct hostapd_mld {
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -511,6 +511,7 @@ struct hostapd_mld {
  	u8 mld_id;
  	u16 free_link_bitmap;
  	struct hostapd_data *bss; /* List Head of Link BSS affiliated with this MLD */
@@ -33,11 +31,9 @@ Index: hostapd-2022-09-19/src/ap/hostapd.h
  	u8 num_links;
  };
  #endif
-Index: hostapd-2022-09-19/src/ap/ieee802_11.c
-===================================================================
---- hostapd-2022-09-19.orig/src/ap/ieee802_11.c
-+++ hostapd-2022-09-19/src/ap/ieee802_11.c
-@@ -84,7 +84,7 @@ static void pasn_fils_auth_resp(struct h
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -81,7 +81,7 @@ static void pasn_fils_auth_resp(struct h
  #endif /* CONFIG_PASN */
  
  static void handle_auth(struct hostapd_data *hapd,
@@ -46,7 +42,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  			int rssi, int from_queue,
  			struct hostapd_frame_info *fi);
  
-@@ -380,8 +380,12 @@ static int send_auth_reply(struct hostap
+@@ -400,8 +400,12 @@ static int send_auth_reply(struct hostap
  	u8 *buf;
  	size_t rlen;
  	int reply_res = WLAN_STATUS_UNSPECIFIED_FAILURE;
@@ -60,7 +56,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  	buf = os_zalloc(rlen);
  	if (buf == NULL)
  		return -1;
-@@ -400,6 +404,10 @@ static int send_auth_reply(struct hostap
+@@ -420,6 +424,10 @@ static int send_auth_reply(struct hostap
  	if (ies && ies_len)
  		os_memcpy(reply->u.auth.variable, ies, ies_len);
  
@@ -71,7 +67,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  	wpa_printf(MSG_DEBUG, "authentication reply: STA=" MACSTR
  		   " auth_alg=%d auth_transaction=%d resp=%d (IE len=%lu) (dbg=%s)",
  		   MAC2STR(dst), auth_alg, auth_transaction,
-@@ -1662,7 +1670,7 @@ void auth_sae_process_commit(void *eloop
+@@ -1575,7 +1583,7 @@ void auth_sae_process_commit(void *eloop
  	wpa_printf(MSG_DEBUG,
  		   "SAE: Process next available message from queue");
  	dl_list_del(&q->list);
@@ -80,7 +76,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  		    q->rssi, 1, NULL);
  	os_free(q);
  
-@@ -3633,7 +3641,7 @@ static void handle_auth_pasn(struct host
+@@ -2738,7 +2746,7 @@ static void handle_auth_pasn(struct host
  
  
  static void handle_auth(struct hostapd_data *hapd,
@@ -89,7 +85,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  			int rssi, int from_queue,
  			struct hostapd_frame_info *fi)
  {
-@@ -3652,6 +3660,8 @@ static void handle_auth(struct hostapd_d
+@@ -2757,6 +2765,8 @@ static void handle_auth(struct hostapd_d
  		.mgmt_frame = mgmt,
  		.frame_info = fi,
  	};
@@ -98,7 +94,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  
  	if (len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth)) {
  		wpa_printf(MSG_INFO, "handle_auth - too short payload (len=%lu)",
-@@ -3659,6 +3669,25 @@ static void handle_auth(struct hostapd_d
+@@ -2764,6 +2774,25 @@ static void handle_auth(struct hostapd_d
  		return;
  	}
  
@@ -124,7 +120,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  #ifdef CONFIG_TESTING_OPTIONS
  	if (hapd->iconf->ignore_auth_probability > 0.0 &&
  	    drand48() < hapd->iconf->ignore_auth_probability) {
-@@ -3907,6 +3936,14 @@ static void handle_auth(struct hostapd_d
+@@ -3012,6 +3041,14 @@ static void handle_auth(struct hostapd_d
  	}
  	sta->last_seq_ctrl = seq_ctrl;
  	sta->last_subtype = WLAN_FC_STYPE_AUTH;
@@ -139,7 +135,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  #ifdef CONFIG_MBO
  	sta->auth_rssi = rssi;
  #endif /* CONFIG_MBO */
-@@ -8136,7 +8173,10 @@ size_t hostapd_eid_basic_mle_len(struct
+@@ -7231,7 +7268,10 @@ size_t hostapd_eid_basic_mle_len(struct
  
  	total_len += MLE_HEADER_LEN;
  
@@ -151,7 +147,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  
  	/* TODO EML caps and Medium Synchronization Delay Info fields */
  
-@@ -8170,9 +8210,11 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -7265,9 +7305,11 @@ u8 * hostapd_eid_basic_mle(struct hostap
  	eid_len = eid++;
  	*eid++ = WLAN_EID_EXT_MULTI_LINK;
  
@@ -166,7 +162,7 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  
  	*eid++ = MLE_TYPE_BASIC | ((presence_bmap & 0x0f) << MLE_PRESENCE_BMAP_SHIFT);
  
-@@ -8412,6 +8454,17 @@ void hostapd_parse_mle(struct hostapd_da
+@@ -7507,6 +7549,17 @@ void hostapd_parse_mle(struct hostapd_da
  		return;
  	}
  
@@ -184,10 +180,8 @@ Index: hostapd-2022-09-19/src/ap/ieee802_11.c
  	if (type != WLAN_FC_STYPE_ASSOC_REQ &&
  	    type != WLAN_FC_STYPE_REASSOC_REQ) {
  		ml_data->present = false;
-Index: hostapd-2022-09-19/src/ap/sta_info.c
-===================================================================
---- hostapd-2022-09-19.orig/src/ap/sta_info.c
-+++ hostapd-2022-09-19/src/ap/sta_info.c
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
 @@ -707,6 +707,38 @@ void ap_sta_session_warning_timeout(stru
  }
  
@@ -227,12 +221,10 @@ Index: hostapd-2022-09-19/src/ap/sta_info.c
  struct sta_info * ap_sta_add(struct hostapd_data *hapd, const u8 *addr)
  {
  	struct sta_info *sta;
-Index: hostapd-2022-09-19/src/ap/sta_info.h
-===================================================================
---- hostapd-2022-09-19.orig/src/ap/sta_info.h
-+++ hostapd-2022-09-19/src/ap/sta_info.h
-@@ -107,10 +107,23 @@ struct pasn_data {
- #endif /* CONFIG_FILS */
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
+@@ -70,10 +70,23 @@ struct pending_eapol_rx {
+ 	enum frame_encryption encrypted;
  };
  
 +struct ml_sta_info {
@@ -256,22 +248,20 @@ Index: hostapd-2022-09-19/src/ap/sta_info.h
  	be32 ipaddr;
  	struct dl_list ip6addr; /* list head for struct ip6addr */
  	u16 aid; /* STA's unique AID (1 .. 2007) or 0 if not yet assigned */
-@@ -415,4 +428,6 @@ int ap_sta_re_add(struct hostapd_data *h
+@@ -381,4 +394,6 @@ int ap_sta_re_add(struct hostapd_data *h
  
  void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta);
  
 +void ap_ml_sta_add(struct hostapd_data *hapd, struct sta_info *sta,
 +		   const u8 *addr);
  #endif /* STA_INFO_H */
-Index: hostapd-2022-09-19/src/common/ieee802_11_defs.h
-===================================================================
---- hostapd-2022-09-19.orig/src/common/ieee802_11_defs.h
-+++ hostapd-2022-09-19/src/common/ieee802_11_defs.h
-@@ -2452,6 +2452,7 @@ struct ieee80211_he_mu_edca_parameter_se
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -2496,6 +2496,7 @@ struct ieee80211_he_mu_edca_parameter_se
   * MLD Capabilities (2)
-  */
- #define MLE_COMMON_INFO_BCN			11
-+#define MLE_COMMON_INFO_AUTH			7
+ */
+ #define MLE_COMMON_INFO_BCN                    11
++#define MLE_COMMON_INFO_AUTH                   7
  
- #define MLE_TYPE_BASIC				0
- #define MLE_TYPE_PREQ				1
+ #define MLE_TYPE_BASIC                         0
+ #define MLE_TYPE_PREQ                          1

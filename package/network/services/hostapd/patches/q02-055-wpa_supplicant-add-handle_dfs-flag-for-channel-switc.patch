@@ -13,11 +13,9 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  src/drivers/driver_nl80211.c | 4 ++++
  3 files changed, 6 insertions(+)
 
-diff --git a/src/ap/ctrl_iface_ap.c b/src/ap/ctrl_iface_ap.c
-index bf3cf43..477badf 100644
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1118,6 +1118,7 @@ int hostapd_parse_csa_settings(const char *pos,
+@@ -1170,6 +1170,7 @@ int hostapd_parse_csa_settings(const cha
  	settings->freq_params.ru_punct_ofdma = !!os_strstr(pos,
  							   " ru_punct_ofdma");
  	settings->block_tx = !!os_strstr(pos, " blocktx");
@@ -25,11 +23,9 @@ index bf3cf43..477badf 100644
  #undef SET_CSA_SETTING
  
  	return 0;
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index abed54e..e574aa0 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2635,6 +2635,7 @@ struct csa_settings {
+@@ -2720,6 +2720,7 @@ struct csa_settings {
  
  	u16 counter_offset_beacon[2];
  	u16 counter_offset_presp[2];
@@ -37,11 +33,9 @@ index abed54e..e574aa0 100644
  };
  
  /**
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index b1cd78b..723f949 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -10464,6 +10464,10 @@ static int nl80211_switch_channel(void *priv, struct csa_settings *settings)
+@@ -10816,6 +10816,10 @@ static int nl80211_switch_channel(void *
  		goto fail;
  
  	nla_nest_end(msg, beacon_csa);
@@ -52,6 +46,3 @@ index b1cd78b..723f949 100644
  	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
  	if (ret) {
  		wpa_printf(MSG_DEBUG, "nl80211: switch_channel failed err=%d (%s)",
--- 
-2.17.1
-

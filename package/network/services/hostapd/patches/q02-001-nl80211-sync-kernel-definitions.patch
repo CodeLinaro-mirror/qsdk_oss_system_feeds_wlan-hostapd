@@ -10,7 +10,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -1881,7 +1881,8 @@ enum nl80211_commands {
+@@ -1889,7 +1889,8 @@ enum nl80211_commands {
   *	features NL80211_EXT_FEATURE_BEACON_RATE_LEGACY,
   *	NL80211_EXT_FEATURE_BEACON_RATE_HT,
   *	NL80211_EXT_FEATURE_BEACON_RATE_VHT and
@@ -20,7 +20,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   *
   * @NL80211_ATTR_FRAME_MATCH: A binary attribute which typically must contain
   *	at least one byte, currently used with @NL80211_CMD_REGISTER_FRAME.
-@@ -3952,6 +3953,8 @@ enum nl80211_mpath_info {
+@@ -3963,6 +3964,8 @@ enum nl80211_mpath_info {
  	NL80211_MPATH_INFO_MAX = __NL80211_MPATH_INFO_AFTER_LAST - 1
  };
  
@@ -29,7 +29,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  /**
   * enum nl80211_band_iftype_attr - Interface type data attributes
   *
-@@ -5204,6 +5207,9 @@ enum nl80211_key_attributes {
+@@ -5217,6 +5220,9 @@ enum nl80211_key_attributes {
   *	see &struct nl80211_txrate_he
   * @NL80211_TXRATE_HE_GI: configure HE GI, 0.8us, 1.6us and 3.2us.
   * @NL80211_TXRATE_HE_LTF: configure HE LTF, 1XLTF, 2XLTF and 4XLTF.
@@ -39,7 +39,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   * @__NL80211_TXRATE_AFTER_LAST: internal
   * @NL80211_TXRATE_MAX: highest TX rate attribute
   */
-@@ -5216,6 +5222,7 @@ enum nl80211_tx_rate_attributes {
+@@ -5229,6 +5235,7 @@ enum nl80211_tx_rate_attributes {
  	NL80211_TXRATE_HE,
  	NL80211_TXRATE_HE_GI,
  	NL80211_TXRATE_HE_LTF,
@@ -47,7 +47,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	/* keep last */
  	__NL80211_TXRATE_AFTER_LAST,
-@@ -5249,6 +5256,14 @@ enum nl80211_txrate_gi {
+@@ -5262,6 +5269,14 @@ enum nl80211_txrate_gi {
  };
  
  /**
@@ -62,9 +62,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   * enum nl80211_band - Frequency band
   * @NL80211_BAND_2GHZ: 2.4 GHz ISM band
   * @NL80211_BAND_5GHZ: around 5 GHz band (4.9 - 5.7 GHz)
-@@ -6333,6 +6348,12 @@ enum nl80211_feature_flags {
-  * @NL80211_EXT_FEATURE_RADAR_BACKGROUND: Device supports background radar/CAC
-  *	detection.
+@@ -6354,6 +6369,12 @@ enum nl80211_feature_flags {
+  *	might apply, e.g. no scans in progress, no offchannel operations
+  *	in progress, and no active connections.
   *
 + * @NL80211_EXT_FEATURE_WIDE_BAND_SCAN: Driver/device supports wide band scan
 + * 	on a frequency along with its corresponding phymode (40Mhz, 80Mhz)
@@ -75,7 +75,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
   * @NUM_NL80211_EXT_FEATURES: number of extended features.
   * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
   */
-@@ -6399,7 +6420,10 @@ enum nl80211_ext_feature_index {
+@@ -6420,7 +6441,10 @@ enum nl80211_ext_feature_index {
  	NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE,
  	NL80211_EXT_FEATURE_BSS_COLOR,
  	NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD,
@@ -83,6 +83,6 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	NL80211_EXT_FEATURE_RADAR_BACKGROUND,
 +	NL80211_EXT_FEATURE_STA_MGMT_RTS_CTS,
 +	NL80211_EXT_FEATURE_BEACON_RATE_EHT,
+ 	NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE,
  
  	/* add new features before the definition below */
- 	NUM_NL80211_EXT_FEATURES,

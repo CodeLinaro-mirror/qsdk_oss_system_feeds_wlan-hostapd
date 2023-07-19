@@ -22,11 +22,9 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  wpa_supplicant/scan.c | 15 +++++++++++++++
  1 file changed, 15 insertions(+)
 
-diff --git a/wpa_supplicant/scan.c b/wpa_supplicant/scan.c
-index c8e4d9c..740cb45 100644
 --- a/wpa_supplicant/scan.c
 +++ b/wpa_supplicant/scan.c
-@@ -495,6 +495,21 @@ static void wpa_supplicant_optimize_freqs(
+@@ -555,6 +555,22 @@ static void wpa_supplicant_optimize_freq
  		wpa_s->known_wps_freq = 0; /* only do this once */
  	}
  #endif /* CONFIG_WPS */
@@ -43,11 +41,9 @@ index c8e4d9c..740cb45 100644
 +		if (hw_mode == NUM_HOSTAPD_MODES)
 +			return;
 +		wpa_add_scan_freqs_list(wpa_s, hw_mode,
-+					params, is_6ghz_freq(ssid->frequency));
++					params, is_6ghz_freq(ssid->frequency),
++					false, false);
 +	}
  }
  
  
--- 
-2.17.1
-

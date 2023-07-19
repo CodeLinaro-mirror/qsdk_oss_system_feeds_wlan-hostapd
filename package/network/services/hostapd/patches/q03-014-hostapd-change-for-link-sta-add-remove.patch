@@ -89,7 +89,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  #include "sta_info.h"
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4119,6 +4119,62 @@ u8 hostapd_max_bssid_indicator(struct ho
+@@ -3220,6 +3220,62 @@ static u8 hostapd_max_bssid_indicator(st
  }
  
  
@@ -152,7 +152,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	int i, j = 32, aid;
-@@ -4136,9 +4192,15 @@ int hostapd_get_aid(struct hostapd_data
+@@ -3237,20 +3293,36 @@ int hostapd_get_aid(struct hostapd_data
  		if (hapd->sta_aid[i] == (u32) -1)
  			continue;
  		for (j = 0; j < 32; j++) {
@@ -169,17 +169,16 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		if (j < 32)
  			break;
  	}
-@@ -4146,6 +4208,9 @@ int hostapd_get_aid(struct hostapd_data
+ 	if (j == 32)
  		return -1;
- 	aid = i * 32 + j;
- 
-+	/* TODO MLO MBSSID needs to consider this aid at MLD level
-+	 * across all link max MBSSID
-+	 */
- 	aid += (1 << hostapd_max_bssid_indicator(hapd));
- 
++
++      /* TODO MLO MBSSID needs to consider this aid at MLD level
++       * across all link max MBSSID
++       */
++
+ 	aid = i * 32 + j + (1 << hostapd_max_bssid_indicator(hapd));
  	if (aid > 2007)
-@@ -4153,6 +4218,11 @@ int hostapd_get_aid(struct hostapd_data
+ 		return -1;
  
  	sta->aid = aid;
  	hapd->sta_aid[i] |= BIT(j);
@@ -191,7 +190,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	wpa_printf(MSG_DEBUG, "  new AID %d", sta->aid);
  	return 0;
  }
-@@ -5208,6 +5278,22 @@ static int add_associated_sta(struct hos
+@@ -4315,6 +4387,22 @@ static int add_associated_sta(struct hos
  	struct ieee80211_he_capabilities he_cap;
  	struct ieee80211_eht_capabilities eht_cap;
  	int set = 1;
@@ -214,7 +213,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	/*
  	 * Remove the STA entry to ensure the STA PS state gets cleared and
-@@ -5236,7 +5322,7 @@ static int add_associated_sta(struct hos
+@@ -4343,7 +4431,7 @@ static int add_associated_sta(struct hos
  		   wpa_auth_sta_ft_tk_already_set(sta->wpa_sm),
  		   wpa_auth_sta_fils_tk_already_set(sta->wpa_sm));
  
@@ -223,7 +222,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	    (!(sta->flags & WLAN_STA_AUTHORIZED) ||
  	     (reassoc && sta->ft_over_ds && sta->auth_alg == WLAN_AUTH_FT) ||
  	     (!wpa_auth_sta_ft_tk_already_set(sta->wpa_sm) &&
-@@ -5274,7 +5360,7 @@ static int add_associated_sta(struct hos
+@@ -4381,7 +4469,7 @@ static int add_associated_sta(struct hos
  	 * will be set when the ACK frame for the (Re)Association Response frame
  	 * is processed (TX status driver event).
  	 */
@@ -232,7 +231,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			    sta->supported_rates, sta->supported_rates_len,
  			    sta->listen_interval,
  			    sta->flags & WLAN_STA_HT ? &ht_cap : NULL,
-@@ -5286,13 +5372,13 @@ static int add_associated_sta(struct hos
+@@ -4393,13 +4481,13 @@ static int add_associated_sta(struct hos
  			    sta->he_6ghz_capab,
  			    sta->flags | WLAN_STA_ASSOC, sta->qosinfo,
  			    sta->vht_opmode, sta->p2p_ie ? 1 : 0,
@@ -251,7 +250,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
-@@ -5664,22 +5750,18 @@ static void ap_link_sta_add(struct hosta
+@@ -4770,22 +4858,18 @@ static void ap_link_sta_add(struct hosta
  	int lassoc_len;
  	struct ieee80211_mgmt *lassoc;
  	u16 res;
@@ -277,7 +276,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	for (link_hapd = hapd->mld->bss; link_hapd != NULL; link_hapd = link_hapd->nbss) {
  		if (hapd == link_hapd)
-@@ -5695,8 +5777,8 @@ static void ap_link_sta_add(struct hosta
+@@ -4801,8 +4885,8 @@ static void ap_link_sta_add(struct hosta
  		if (!(BIT(link_id) & ml_data->u.basic.link_bmap))
  			continue;
  
@@ -288,7 +287,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  		if (sta == NULL) {
  			wpa_printf(MSG_DEBUG, "Link STA creation failed)");
-@@ -5723,17 +5805,24 @@ static void ap_link_sta_add(struct hosta
+@@ -4829,17 +4913,24 @@ static void ap_link_sta_add(struct hosta
  				link_sta_ies_len,
  				ies, ies_len, NULL, reassoc);
  
@@ -315,7 +314,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			continue;
  		}
  
-@@ -5746,7 +5835,7 @@ static void ap_link_sta_add(struct hosta
+@@ -4852,7 +4943,7 @@ static void ap_link_sta_add(struct hosta
  						      WLAN_FC_STYPE_ASSOC_RESP);
  
  		if (sta_profile == NULL) {
@@ -324,7 +323,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			os_free(buf);
  			continue;
  		}
-@@ -5756,67 +5845,128 @@ static void ap_link_sta_add(struct hosta
+@@ -4862,67 +4953,128 @@ static void ap_link_sta_add(struct hosta
  
  		tail_sta->lnext = sta;
  		sta->ml_sta = ml_sta;
@@ -484,7 +483,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return res;
  }
  
-@@ -5830,11 +5980,7 @@ static u16 send_assoc_resp(struct hostap
+@@ -4936,11 +5088,7 @@ static u16 send_assoc_resp(struct hostap
  	u8 *buf = NULL;
  	struct ieee80211_mgmt *reply;
  	u16 res = WLAN_STATUS_SUCCESS;
@@ -497,7 +496,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	buf = hostapd_gen_assoc_resp(hapd, sta, addr, status_code, reassoc,
  			       ies, ies_len, rssi, omit_rsnxe, ml_data,
-@@ -5853,6 +5999,19 @@ static u16 send_assoc_resp(struct hostap
+@@ -4959,6 +5107,19 @@ static u16 send_assoc_resp(struct hostap
  	}
  
  	os_free(buf);
@@ -517,7 +516,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return res;
  }
  
-@@ -6201,6 +6360,16 @@ static void handle_assoc(struct hostapd_
+@@ -5307,6 +5468,16 @@ static void handle_assoc(struct hostapd_
  		goto fail;
  	omit_rsnxe = !get_ie(pos, left, WLAN_EID_RSNX);
  
@@ -534,7 +533,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (hostapd_get_aid(hapd, sta) < 0) {
  		hostapd_logger(hapd, mgmt->sa, HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_INFO, "No room for more AIDs");
-@@ -6208,8 +6377,6 @@ static void handle_assoc(struct hostapd_
+@@ -5314,8 +5485,6 @@ static void handle_assoc(struct hostapd_
  		goto fail;
  	}
  
@@ -543,7 +542,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (hapd->iface->current_mode &&
  	    hapd->iface->current_mode->mode == HOSTAPD_MODE_IEEE80211G)
  		sta->flags |= WLAN_STA_NONERP;
-@@ -6219,6 +6386,7 @@ static void handle_assoc(struct hostapd_
+@@ -5325,6 +5494,7 @@ static void handle_assoc(struct hostapd_
  			break;
  		}
  	}
@@ -551,7 +550,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (sta->flags & WLAN_STA_NONERP && !sta->nonerp_set) {
  		sta->nonerp_set = 1;
  		hapd->iface->num_sta_non_erp++;
-@@ -6379,6 +6547,7 @@ static void handle_assoc(struct hostapd_
+@@ -5485,6 +5655,7 @@ static void handle_assoc(struct hostapd_
  	 */
  	if (sta && ((reply_res != WLAN_STATUS_SUCCESS &&
  		     resp == WLAN_STATUS_SUCCESS) || sta->added_unassoc)) {
@@ -559,7 +558,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		hostapd_drv_sta_remove(hapd, sta->addr);
  		sta->added_unassoc = 0;
  	}
-@@ -6407,6 +6576,14 @@ static void handle_disassoc(struct hosta
+@@ -5513,6 +5684,14 @@ static void handle_disassoc(struct hosta
  		return;
  	}
  
@@ -574,7 +573,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	ap_sta_set_authorized(hapd, sta, 0);
  	sta->last_seq_ctrl = WLAN_INVALID_MGMT_SEQ;
  	sta->flags &= ~(WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK);
-@@ -6423,6 +6600,7 @@ static void handle_disassoc(struct hosta
+@@ -5529,6 +5708,7 @@ static void handle_disassoc(struct hosta
  	if (sta->ipaddr)
  		hostapd_drv_br_delete_ip_neigh(hapd, 4, (u8 *) &sta->ipaddr);
  	ap_sta_ip6addr_del(hapd, sta);
@@ -582,7 +581,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	hostapd_drv_sta_remove(hapd, sta->addr);
  	sta->added_unassoc = 0;
  
-@@ -6476,6 +6654,15 @@ static void handle_deauth(struct hostapd
+@@ -5582,6 +5762,15 @@ static void handle_deauth(struct hostapd
  		return;
  	}
  
@@ -598,7 +597,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	ap_sta_set_authorized(hapd, sta, 0);
  	sta->last_seq_ctrl = WLAN_INVALID_MGMT_SEQ;
  	sta->flags &= ~(WLAN_STA_AUTH | WLAN_STA_ASSOC |
-@@ -6955,6 +7142,44 @@ static void hostapd_set_wds_encryption(s
+@@ -6061,6 +6250,44 @@ static void hostapd_set_wds_encryption(s
  #endif /* CONFIG_WEP */
  }
  
@@ -643,7 +642,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  static void handle_assoc_cb(struct hostapd_data *hapd,
  			    const struct ieee80211_mgmt *mgmt,
-@@ -6976,6 +7201,7 @@ static void handle_assoc_cb(struct hosta
+@@ -6082,6 +6309,7 @@ static void handle_assoc_cb(struct hosta
  		wpa_printf(MSG_INFO,
  			   "handle_assoc_cb(reassoc=%d) - too short payload (len=%lu)",
  			   reassoc, (unsigned long) len);
@@ -651,7 +650,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		hostapd_drv_sta_remove(hapd, sta->addr);
  		return;
  	}
-@@ -7108,6 +7334,9 @@ static void handle_assoc_cb(struct hosta
+@@ -6214,6 +6442,9 @@ static void handle_assoc_cb(struct hosta
  		os_free(sta->pending_eapol_rx);
  		sta->pending_eapol_rx = NULL;
  	}
@@ -661,7 +660,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  }
  
  
-@@ -8823,6 +9052,9 @@ static void hostapd_parse_basic_mle(stru
+@@ -7960,6 +8191,9 @@ static void hostapd_parse_basic_mle(stru
  		len -= 2;
  	}
  
@@ -671,7 +670,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (!len)
  		return;
  
-@@ -8880,6 +9112,7 @@ static void hostapd_parse_basic_mle(stru
+@@ -8017,6 +8251,7 @@ static void hostapd_parse_basic_mle(stru
  			}
  			ml_data->u.basic.link_info[link_id].sta_profile = sub_elem;
  			ml_data->u.basic.link_info[link_id].sta_profile_len = sub_elem_len - (sub_elem - mle_pos);
@@ -833,7 +832,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return 0;
  }
  
-@@ -1572,6 +1668,18 @@ int ap_sta_pending_delayed_1x_auth_fail_
+@@ -1595,6 +1691,18 @@ int ap_sta_pending_delayed_1x_auth_fail_
  
  int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta)
  {
@@ -852,7 +851,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	/*
  	 * If a station that is already associated to the AP, is trying to
  	 * authenticate again, remove the STA entry, in order to make sure the
-@@ -1583,11 +1691,11 @@ int ap_sta_re_add(struct hostapd_data *h
+@@ -1606,11 +1714,11 @@ int ap_sta_re_add(struct hostapd_data *h
  	hostapd_drv_sta_remove(hapd, sta->addr);
  	sta->flags &= ~(WLAN_STA_ASSOC | WLAN_STA_AUTH | WLAN_STA_AUTHORIZED);
  
@@ -868,8 +867,8 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			       HOSTAPD_LEVEL_NOTICE,
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -108,11 +108,20 @@ struct pasn_data {
- #endif /* CONFIG_FILS */
+@@ -71,11 +71,20 @@ struct pending_eapol_rx {
+ 	enum frame_encryption encrypted;
  };
  
 +enum ml_sta_state {
@@ -889,7 +888,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  };
  
  struct sta_info {
-@@ -125,6 +134,7 @@ struct sta_info {
+@@ -88,6 +97,7 @@ struct sta_info {
  	  * link_addr and addr have same value
  	  */
  	u8 link_addr[6];
@@ -897,7 +896,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	be32 ipaddr;
  	struct dl_list ip6addr; /* list head for struct ip6addr */
  	u16 aid; /* STA's unique AID (1 .. 2007) or 0 if not yet assigned */
-@@ -181,6 +191,7 @@ struct sta_info {
+@@ -145,6 +155,7 @@ struct sta_info {
  	unsigned int ft_over_ds:1;
  	unsigned int external_dh_updated:1;
  	unsigned int post_csa_sa_query:1;
@@ -905,7 +904,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	u16 auth_alg;
  
-@@ -431,4 +442,6 @@ void ap_free_sta_pasn(struct hostapd_dat
+@@ -397,4 +408,6 @@ void ap_free_sta_pasn(struct hostapd_dat
  
  void ap_ml_sta_add(struct hostapd_data *hapd, struct sta_info *sta,
  		   const u8 *addr);
@@ -914,7 +913,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  #endif /* STA_INFO_H */
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -115,6 +115,8 @@ struct multi_link_data {
+@@ -99,6 +99,8 @@ struct multi_link_data {
  		struct multi_link_preq_info preq;
  	}u;
  
