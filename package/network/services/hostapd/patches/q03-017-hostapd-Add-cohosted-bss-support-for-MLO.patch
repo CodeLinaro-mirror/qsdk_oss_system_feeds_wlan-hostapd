@@ -171,7 +171,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		struct hostapd_data *link_bss;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -3851,12 +3851,18 @@ struct wpa_driver_ops {
+@@ -3844,12 +3844,18 @@ struct wpa_driver_ops {
  	 * @bridge: Bridge interface to use or %NULL if no bridge configured
  	 * @use_existing: Whether to allow existing interface to be used
  	 * @setup_ap: Whether to setup AP for %WPA_IF_AP_BSS interfaces
@@ -191,7 +191,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  
  	/**
-@@ -5153,15 +5159,6 @@ struct wpa_driver_ops {
+@@ -5146,15 +5152,6 @@ struct wpa_driver_ops {
  			      const u8 *match, size_t match_len,
  			      bool multicast);
  #endif /* CONFIG_TESTING_OPTIONS */
@@ -635,7 +635,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	int ifindex = if_nametoindex(ifname);
 +	bool last_link_bss = true;
 +
-+	if (is_ap_interface(drv->nlmode))
++	if (is_ap_interface(drv->nlmode) && type != WPA_IF_AP_VLAN)
 +		last_link_bss = i802_unchain_link_bss(bss);
  
  	wpa_printf(MSG_DEBUG, "nl80211: %s(type=%d ifname=%s) ifindex=%d added_if=%d",
