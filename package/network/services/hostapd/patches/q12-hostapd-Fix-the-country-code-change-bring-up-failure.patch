@@ -18,7 +18,7 @@ Signed-off-by: Sivashankari Madhavan <quic_sivamadh@quicinc.com>
 
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -3839,6 +3839,10 @@ static void do_process_drv_event(struct
+@@ -3847,6 +3847,10 @@ static void do_process_drv_event(struct
  		break;
  	case NL80211_CMD_REG_CHANGE:
  	case NL80211_CMD_WIPHY_REG_CHANGE:
@@ -36,8 +36,8 @@ Signed-off-by: Sivashankari Madhavan <quic_sivamadh@quicinc.com>
  	struct hostapd_data *tx_bss;
  	size_t len;
 -	int rnr_elem_len, rnr_elem_count;
-+	size_t rnr_elem_len;
-+	int rnr_elem_count;
++	size_t rnr_elem_len = 0;
++	int rnr_elem_count = 0;
  	u8 elem_count = 0, *elem = NULL, **elem_offset = NULL, *end;
  	u8 *rnr_elem = NULL, **rnr_elem_offset;
  
