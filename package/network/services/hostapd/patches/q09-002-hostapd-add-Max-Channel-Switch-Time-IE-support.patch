@@ -80,27 +80,17 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	pos = hostapd_eid_supported_op_classes(hapd, pos);
  	pos = hostapd_eid_ht_capabilities(hapd, pos);
  	pos = hostapd_eid_ht_operation(hapd, pos);
-@@ -2136,10 +2170,17 @@ int ieee802_11_build_ap_params(struct ho
- 	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
- 		tail_len += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
- 		tail_len += 3 + sizeof(struct ieee80211_eht_operation);
--		tail_len += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_BEACON,
--						      NULL);
- 		if (hapd->iconf->ru_punct_bitmap)
- 			tail_len +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
-+                tail_len += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_BEACON,
-+                                                      NULL);
-+                if (is_5ghz_freq(hapd->iface->freq))
-+                        tail_len += (6 + 2 + 4 +
-+                                     sizeof(struct ieee80211_240mhz_vendor_oper));
+@@ -2144,6 +2178,9 @@ int ieee802_11_build_ap_params(struct ho
+ 		if (is_5ghz_freq(hapd->iface->freq))
+ 			tail_len += (6 + 2 + 4 +
+ 				     sizeof(struct ieee80211_240mhz_vendor_oper));
 +
-+                /* inclusion on MCST IE is mandatory */
-+                tail_len += 6;
-+
++		/* inclusion on MCST IE is mandatory */
++		tail_len += 6;
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -2228,6 +2269,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2232,6 +2269,9 @@ int ieee802_11_build_ap_params(struct ho
  		hapd->cs_c_off_ecsa_beacon = csa_pos - tail - 1;
  	tailpos = csa_pos;
  
