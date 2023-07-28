@@ -16,16 +16,17 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1771,6 +1771,8 @@ int ieee802_11_build_ap_params(struct ho
- 	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
- 		tail_len += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
+@@ -1773,6 +1773,9 @@ int ieee802_11_build_ap_params(struct ho
  		tail_len += 3 + sizeof(struct ieee80211_eht_operation);
-+		tail_len += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_BEACON,
-+						      0);
  		if (hapd->iconf->ru_punct_bitmap)
  			tail_len +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
++
++		tail_len += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_BEACON,
++						      0);
  	}
-@@ -1949,6 +1951,9 @@ int ieee802_11_build_ap_params(struct ho
+ #endif /* CONFIG_IEEE80211BE */
+ 
+@@ -1949,6 +1952,9 @@ int ieee802_11_build_ap_params(struct ho
  		tailpos = hostapd_eid_eht_capab(hapd, tailpos,
  						IEEE80211_MODE_AP);
  		tailpos = hostapd_eid_eht_operation(hapd, tailpos, IEEE80211_MODE_AP);
@@ -37,7 +38,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6719,7 +6719,6 @@ static size_t hostapd_eid_rnr_mlo_len(st
+@@ -6734,7 +6734,6 @@ static size_t hostapd_eid_rnr_mlo_len(st
  						 ema_not_applicable,
  						 true);
  	}
@@ -45,7 +46,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return len;
  }
  
-@@ -7062,7 +7061,6 @@ static u8 * hostapd_eid_rnr_mlo(struct h
+@@ -7092,7 +7091,6 @@ static u8 * hostapd_eid_rnr_mlo(struct h
  					     ema_not_applicable,
  					     true);
  	}
@@ -53,7 +54,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return eid;
  }
  
-@@ -7124,6 +7122,92 @@ static bool mbssid_known_bss(unsigned in
+@@ -7154,6 +7152,92 @@ static bool mbssid_known_bss(unsigned in
  }
  
  

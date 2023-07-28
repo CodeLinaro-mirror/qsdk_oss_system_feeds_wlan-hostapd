@@ -98,16 +98,16 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  }
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -1772,7 +1786,7 @@ int ieee802_11_build_ap_params(struct ho
- 		tail_len += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
- 		tail_len += 3 + sizeof(struct ieee80211_eht_operation);
+@@ -1775,7 +1789,7 @@ int ieee802_11_build_ap_params(struct ho
+ 			tail_len +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
+ 
  		tail_len += hostapd_eid_basic_mle_len(hapd, WLAN_FC_STYPE_BEACON,
 -						      0);
 +						      NULL);
- 		if (hapd->iconf->ru_punct_bitmap)
- 			tail_len +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
  	}
-@@ -1953,7 +1967,7 @@ int ieee802_11_build_ap_params(struct ho
+ #endif /* CONFIG_IEEE80211BE */
+ 
+@@ -1954,7 +1968,7 @@ int ieee802_11_build_ap_params(struct ho
  		tailpos = hostapd_eid_eht_operation(hapd, tailpos, IEEE80211_MODE_AP);
  		tailpos = hostapd_eid_basic_mle(hapd, tailpos,
  						WLAN_FC_STYPE_BEACON,
@@ -118,7 +118,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7122,7 +7122,8 @@ static bool mbssid_known_bss(unsigned in
+@@ -7152,7 +7152,8 @@ static bool mbssid_known_bss(unsigned in
  }
  
  
@@ -128,7 +128,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  {
  	size_t total_len = 0;
  
-@@ -7135,7 +7136,7 @@ size_t hostapd_eid_basic_mle_len(struct
+@@ -7165,7 +7166,7 @@ size_t hostapd_eid_basic_mle_len(struct
  
  	/* TODO EML caps and Medium Synchronization Delay Info fields */
  
@@ -137,7 +137,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		return total_len;
  
  	if (type != WLAN_FC_STYPE_PROBE_RESP && type != WLAN_FC_STYPE_ASSOC_RESP) {
-@@ -7150,7 +7151,7 @@ size_t hostapd_eid_basic_mle_len(struct
+@@ -7180,7 +7181,7 @@ size_t hostapd_eid_basic_mle_len(struct
  
  
  u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid, u32 type,
@@ -146,7 +146,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  {
  	u8 *eid_len, *eid_cmn_info_len;
  	u16 presence_bmap = 0;
-@@ -7193,7 +7194,7 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -7223,7 +7224,7 @@ u8 * hostapd_eid_basic_mle(struct hostap
  
  	*eid_len = eid - eid_len - 1;
  
@@ -155,7 +155,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		return eid;
  
  	if (type != WLAN_FC_STYPE_PROBE_RESP && type != WLAN_FC_STYPE_ASSOC_RESP) {
-@@ -7208,6 +7209,24 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -7238,6 +7239,24 @@ u8 * hostapd_eid_basic_mle(struct hostap
  	return eid;
  }
  
