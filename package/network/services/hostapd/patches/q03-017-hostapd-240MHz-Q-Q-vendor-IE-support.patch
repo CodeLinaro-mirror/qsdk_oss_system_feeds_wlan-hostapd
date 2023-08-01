@@ -88,7 +88,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4007,6 +4007,9 @@ static int check_assoc_ies(struct hostap
+@@ -4009,6 +4009,9 @@ static int check_assoc_ies(struct hostap
  					  elems.he_capabilities_len,
  					  elems.eht_capabilities,
  					  elems.eht_capabilities_len);
@@ -98,7 +98,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  		if (resp != WLAN_STATUS_SUCCESS)
  			return resp;
  
-@@ -4390,6 +4393,7 @@ static int add_associated_sta(struct hos
+@@ -4392,6 +4395,7 @@ static int add_associated_sta(struct hos
  	struct ieee80211_vht_capabilities vht_cap;
  	struct ieee80211_he_capabilities he_cap;
  	struct ieee80211_eht_capabilities eht_cap;
@@ -106,7 +106,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	int set = 1;
  	u8 *mld_addr = NULL;
  	int link_id = -1;
-@@ -4463,9 +4467,13 @@ static int add_associated_sta(struct hos
+@@ -4465,9 +4469,13 @@ static int add_associated_sta(struct hos
  	}
  #endif /* CONFIG_IEEE80211AX */
  #ifdef CONFIG_IEEE80211BE
@@ -121,7 +121,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  #endif /* CONFIG_IEEE80211BE */
  
  	/*
-@@ -4485,7 +4493,9 @@ static int add_associated_sta(struct hos
+@@ -4487,7 +4495,9 @@ static int add_associated_sta(struct hos
  			    sta->he_6ghz_capab,
  			    sta->flags | WLAN_STA_ASSOC, sta->qosinfo,
  			    sta->vht_opmode, sta->p2p_ie ? 1 : 0,
@@ -132,7 +132,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  		hostapd_logger(hapd, link_addr,
  			       HOSTAPD_MODULE_IEEE80211, HOSTAPD_LEVEL_NOTICE,
  			       "Could not %s %s STA to kernel ",
-@@ -4540,6 +4550,10 @@ u8 * hostapd_gen_assoc_resp(struct hosta
+@@ -4542,6 +4552,10 @@ u8 * hostapd_gen_assoc_resp(struct hosta
  			buflen += hostapd_eid_basic_mle_len(hapd,
  							    WLAN_FC_STYPE_ASSOC_RESP,
  							    ml_data);
@@ -143,7 +143,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  		if (hapd->iconf->ru_punct_bitmap)
  			buflen +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
  	}
-@@ -4695,6 +4709,7 @@ rsnxe_done:
+@@ -4697,6 +4711,7 @@ rsnxe_done:
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		p = hostapd_eid_eht_capab(hapd, p, IEEE80211_MODE_AP);
  		p = hostapd_eid_eht_operation(hapd, p, IEEE80211_MODE_AP);
@@ -151,7 +151,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -5038,7 +5053,7 @@ static u16 prepare_link_sta_assoc_resp(s
+@@ -5040,7 +5055,7 @@ static u16 prepare_link_sta_assoc_resp(s
  				    0, NULL, NULL, NULL, 0, NULL, 0, NULL,
  				    sta->flags, 0, 0, 0, 0, false,
  				    hapd->iface->mlo_link_id,
@@ -410,7 +410,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	default:
  		wpa_printf(MSG_EXCESSIVE, "unknown vendor specific "
  			   "information element ignored (vendor OUI "
-@@ -518,6 +549,7 @@ static ParseRes ieee802_11_parse_elems_h
+@@ -514,6 +545,7 @@ static ParseRes ieee802_11_parse_elems_h
  			elems->ext_supp_rates_len = elen;
  			break;
  		case WLAN_EID_VENDOR_SPECIFIC:
@@ -420,19 +420,12 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  							     show_errors))
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -184,6 +184,7 @@ struct ieee802_11_elems {
- 	const u8 *prior_access_mle;
- 	const u8 *mbssid_known_bss;
- 	const u8* mle;
-+	const u8 *eht_240mhz_capab;
- 
- 	u8 ssid_len;
- 	u8 supp_rates_len;
-@@ -247,7 +248,7 @@ struct ieee802_11_elems {
+@@ -245,7 +245,9 @@ struct ieee802_11_elems {
+ 	size_t tdls_mle_len;
  	size_t prior_access_mle_len;
  	u8 mbssid_known_bss_len;
- 	u8 mle_len;
--
++	const u8 *eht_240mhz_capab;
+ 
 +	u8 eht_240mhz_len;
  	struct mb_ies_info mb_ies;
  
