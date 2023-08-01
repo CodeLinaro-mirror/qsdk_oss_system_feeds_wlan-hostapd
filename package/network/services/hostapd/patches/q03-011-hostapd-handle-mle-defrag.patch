@@ -16,8 +16,20 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1598,6 +1598,10 @@ void handle_probe_req(struct hostapd_dat
- 				      elems.mbssid_known_bss,
+@@ -1595,9 +1595,8 @@ void handle_probe_req(struct hostapd_dat
+ 	if (hapd != hostapd_mbssid_get_tx_bss(hapd) && res != EXACT_SSID_MATCH)
+ 		return;
+ 
+-	if (elems.mle)
+-		hostapd_parse_mle(hapd, WLAN_FC_STYPE_PROBE_REQ,
+-				  &elems, &ml_data);
++	hostapd_parse_mle(hapd, WLAN_FC_STYPE_PROBE_REQ,
++			  &elems, &ml_data);
+ 
+ 	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
+ 		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
+@@ -1606,6 +1605,10 @@ void handle_probe_req(struct hostapd_dat
+ 				      &resp_len, elems.mbssid_known_bss,
  				      elems.mbssid_known_bss_len,
  				      &ml_data, true);
 +
@@ -29,7 +41,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3684,6 +3684,7 @@ static void handle_auth(struct hostapd_d
+@@ -2794,6 +2794,7 @@ static void handle_auth(struct hostapd_d
  		if (ml_data.present) {
  			os_memcpy(link_addr, mgmt->sa, ETH_ALEN);
  			os_memcpy(mgmt->sa, ml_data.u.basic.mld_addr, ETH_ALEN);
@@ -37,7 +49,40 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		}
  	}
  
-@@ -6317,6 +6318,8 @@ static void handle_assoc(struct hostapd_
+@@ -3714,21 +3715,23 @@ static u16 check_mle(struct hostapd_data
+ 		     struct ieee802_11_elems *elems,
+ 		     struct multi_link_data *ml_data)
+ {
+-	if (!elems->mle)
+-		return WLAN_STATUS_SUCCESS;
+-
+-	if (!hapd->mld || !sta->ml_sta)
+-		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 
+ 	hostapd_parse_mle(hapd, WLAN_FC_STYPE_ASSOC_REQ, elems, ml_data);
+ 
+ 	/* This is the status accepting for overall request, per link
+ 	 * status is filled in the per sta profile status
+ 	 */
+-	if (ml_data->present)
+-		return WLAN_STATUS_SUCCESS;
+-	else
+-		return WLAN_STATUS_UNSPECIFIED_FAILURE;
++	if (ml_data->present) {
++		if (sta->ml_sta)
++			return WLAN_STATUS_SUCCESS;
++		else
++			return WLAN_STATUS_UNSPECIFIED_FAILURE;
++	} else {
++		if (!sta->ml_sta)
++			return WLAN_STATUS_SUCCESS;
++		else
++			return WLAN_STATUS_UNSPECIFIED_FAILURE;
++	}
+ }
+ 
+ static int mark_elems(u8 *mark_array, const u8 **ie_ptr, u8 *ie_len)
+@@ -5432,6 +5435,8 @@ static void handle_assoc(struct hostapd_
  			   "FILS: Continue waiting for HLP processing before sending (Re)Association Response frame to "
  			   MACSTR, MAC2STR(sta->addr));
  		os_free(tmp);
@@ -46,7 +91,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		return;
  	}
  	if (sta) {
-@@ -6338,6 +6341,8 @@ static void handle_assoc(struct hostapd_
+@@ -5453,6 +5458,8 @@ static void handle_assoc(struct hostapd_
  		eloop_cancel_timeout(fils_hlp_timeout, hapd, sta);
  		eloop_register_timeout(0, hapd->conf->fils_hlp_wait_time * 1024,
  				       fils_hlp_timeout, hapd, sta);
@@ -55,7 +100,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		return;
  	}
  #endif /* CONFIG_FILS */
-@@ -6346,6 +6351,9 @@ static void handle_assoc(struct hostapd_
+@@ -5461,6 +5468,9 @@ static void handle_assoc(struct hostapd_
  		reply_res = send_assoc_resp(hapd, sta, mgmt->sa, resp, reassoc,
  					    pos, left, rssi, omit_rsnxe, &ml_data);
  
@@ -65,7 +110,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	os_free(tmp);
  
  	if (hostapd_ubus_handle_event(hapd, &req)) {
-@@ -8624,8 +8632,10 @@ static void hostapd_parse_probe_req_mle(
+@@ -7764,8 +7774,10 @@ static void hostapd_parse_probe_req_mle(
  	u8 *mle_pos = (u8 *)mle;
  	u8 *sta_profile_start, sta_profile_len, link_id;
  
@@ -77,7 +122,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	cmn_info_len = *mle_pos;
  
-@@ -8683,7 +8693,7 @@ static void hostapd_parse_probe_req_mle(
+@@ -7823,7 +7835,7 @@ static void hostapd_parse_probe_req_mle(
  }
  
  static void hostapd_parse_basic_mle(struct hostapd_data *hapd,
@@ -86,45 +131,59 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  				    struct multi_link_data *ml_data)
  {
  	u8 *mle_pos = (u8 *)mle;
-@@ -8786,19 +8796,33 @@ void hostapd_parse_mle(struct hostapd_da
+@@ -7926,19 +7938,45 @@ void hostapd_parse_mle(struct hostapd_da
  		       struct multi_link_data *ml_data)
  {
  	const u8 *mle;
 -	u8 len;
 +	struct wpabuf *mle_buf = NULL;
-+
-+	u16 len;
  
- 	if (!elems->mle || !hapd->mld)
+-	if (!elems->mle || !hapd->mld)
++	u16 len;
++
++	if (!hapd->mld)
  		return;
  
 -	len = elems->mle_len;
--
- 	if (elems->mle_len < sizeof(struct multi_link_control))
- 		return;
++	ml_data->present = false;
  
- 	ml_data->present = true;
- 
--	mle = elems->mle;
+-	if (elems->mle_len < sizeof(struct multi_link_control))
 +	/* Note: The buf cannot be dealloc in this func, since the caller
 +	 * uses some part of it for per sta profile info.
 +	 */
-+	mle_buf = ieee802_11_defrag(elems, WLAN_EID_EXTENSION,
-+				    WLAN_EID_EXT_MULTI_LINK);
-+
++	switch(type) {
++	case WLAN_FC_STYPE_AUTH:
++	case WLAN_FC_STYPE_ASSOC_REQ:
++		mle_buf = ieee802_11_defrag_mle(elems, MULTI_LINK_CONTROL_TYPE_BASIC);
++		break;
++	case WLAN_FC_STYPE_PROBE_REQ:
++		mle_buf = ieee802_11_defrag_mle(elems, MULTI_LINK_CONTROL_TYPE_PROBE_REQ);
++		break;
++	default:
++		wpa_printf(MSG_ERROR,"Unexpected MLE type\n");
+ 		return;
++	}
+ 
+-	ml_data->present = true;
 +	if (!mle_buf) {
 +		wpa_printf(MSG_ERROR, "MLE buf allocation failed on defragmentation");
-+		ml_data->present = false;
 +		return;
 +	}
 + 
 +	mle = wpabuf_head(mle_buf);
 +	len = wpabuf_len(mle_buf);
-+ 
+ 
+-	mle = elems->mle;
++	if (len < sizeof(struct multi_link_control)){
++		wpabuf_free(mle_buf);
++		return;
++	}
++	
++	ml_data->present = true; 
  
  	os_memcpy(&ml_data->control, mle, sizeof(struct multi_link_control));
  
-@@ -8808,6 +8832,10 @@ void hostapd_parse_mle(struct hostapd_da
+@@ -7948,6 +7986,10 @@ void hostapd_parse_mle(struct hostapd_da
  	if (ml_data->control.type == MULTI_LINK_PROBE_REQ &&
  	    type == WLAN_FC_STYPE_PROBE_REQ) {
  		hostapd_parse_probe_req_mle(hapd, mle, len, ml_data);
@@ -135,7 +194,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		return;
  	}
  
-@@ -8816,6 +8844,7 @@ void hostapd_parse_mle(struct hostapd_da
+@@ -7956,6 +7998,7 @@ void hostapd_parse_mle(struct hostapd_da
  		if (*mle++ != ETH_ALEN + 1 || ml_data->control.presence) {
  			wpa_printf(MSG_ERROR, "Unexpected info present in AUTH basic MLE");
  			ml_data->present = false;
@@ -143,7 +202,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			return;
  		}
  		memcpy(ml_data->u.basic.mld_addr, mle, ETH_ALEN);
-@@ -8825,6 +8854,7 @@ void hostapd_parse_mle(struct hostapd_da
+@@ -7965,6 +8008,7 @@ void hostapd_parse_mle(struct hostapd_da
  	if (type != WLAN_FC_STYPE_ASSOC_REQ &&
  	    type != WLAN_FC_STYPE_REASSOC_REQ) {
  		ml_data->present = false;
@@ -151,7 +210,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		return;
  	}
  
-@@ -8832,10 +8862,12 @@ void hostapd_parse_mle(struct hostapd_da
+@@ -7972,10 +8016,12 @@ void hostapd_parse_mle(struct hostapd_da
  	    MLE_MEDIUM_SYNC_DELAY_PRESENT)) {
  		wpa_printf(MSG_ERROR, "Unexpected info present in (Re)Assoc Req MLE");
  		ml_data->present = false;
@@ -166,20 +225,31 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -2854,6 +2854,10 @@ struct wpabuf * ieee802_11_defrag(struct
- 			data = elems->wrapped_data;
- 			len = elems->wrapped_data_len;
+@@ -416,16 +416,14 @@ static int ieee802_11_parse_extension(co
+                  * IEs to the clone STA). ML-IE from the parent should not be
+                  * part of the cloned STA.
+                  */
+-                if ((non_inherit == NULL) && !is_ml_sta_profile_ie) {
+-                        elems->mle = pos;
+-                        elems->mle_len = elen;
+-                }
+ 
+ 		if (elen < 2)
  			break;
-+		case WLAN_EID_EXT_MULTI_LINK:
-+			data = elems->mle;
-+			len = elems->mle_len;
-+			break;
- 		default:
- 			wpa_printf(MSG_DEBUG,
- 				   "Defragmentation not supported. eid_ext=%u",
+-		if (ieee802_11_parse_mle(pos, elen, &total_len, elems,
+-					 show_errors))
+-			return -1;
++		if ((non_inherit == NULL) && !is_ml_sta_profile_ie) {
++			if (ieee802_11_parse_mle(pos, elen, &total_len, elems,
++						 show_errors))
++				return -1;
++		}
+ 		break;
+ 	case WLAN_EID_EXT_KNOWN_BSSID:
+ 		elems->mbssid_known_bss = pos;
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -107,7 +107,7 @@ struct multi_link_data {
+@@ -91,7 +91,7 @@ struct multi_link_data {
  	u8 mgmt_type;
  	/* MLE present in the mgmt frame */
  	bool present;
@@ -188,3 +258,19 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	struct multi_link_control control;
  
  	union {
+@@ -181,7 +181,6 @@ struct ieee802_11_elems {
+ 	const u8 *tdls_mle;
+ 	const u8 *prior_access_mle;
+ 	const u8 *mbssid_known_bss;
+-	const u8* mle;
+ 
+ 	u8 ssid_len;
+ 	u8 supp_rates_len;
+@@ -244,7 +243,6 @@ struct ieee802_11_elems {
+ 	size_t tdls_mle_len;
+ 	size_t prior_access_mle_len;
+ 	u8 mbssid_known_bss_len;
+-	u8 mle_len;
+ 
+ 	struct mb_ies_info mb_ies;
+ 
