@@ -135,7 +135,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #endif /* CONFIG_IEEE80211BE */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8111,14 +8111,19 @@ size_t hostapd_eid_basic_mle_len(struct
+@@ -8112,14 +8112,19 @@ size_t hostapd_eid_basic_mle_len(struct
  {
  	size_t total_len = 0;
  	u8 frag_count;
@@ -156,7 +156,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	else
  		total_len += MLE_COMMON_INFO_AUTH;
  
-@@ -8151,6 +8156,7 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -8152,6 +8157,7 @@ u8 * hostapd_eid_basic_mle(struct hostap
  {
  	u8 *eid_len, *eid_cmn_info_len;
  	u16 presence_bmap = 0;
@@ -164,7 +164,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (!hapd->mld || !hapd->mld->num_links)
  		return eid;
-@@ -8167,6 +8173,9 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -8168,6 +8174,9 @@ u8 * hostapd_eid_basic_mle(struct hostap
  
  	*eid++ = MLE_TYPE_BASIC | ((presence_bmap & 0x0f) << MLE_PRESENCE_BMAP_SHIFT);
  
@@ -174,7 +174,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	*eid++ = presence_bmap >> MLE_PRESENCE_BMAP_SHIFT;
  
  	eid_cmn_info_len = eid++;
-@@ -8214,6 +8223,10 @@ u8 * hostapd_eid_basic_mle(struct hostap
+@@ -8215,6 +8224,10 @@ u8 * hostapd_eid_basic_mle(struct hostap
  		eid += 2;
  	}
  
@@ -185,7 +185,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	*eid_cmn_info_len = eid - eid_cmn_info_len ;
  
  	*eid_len = eid - eid_len - 1;
-@@ -8266,7 +8279,7 @@ static void hostapd_parse_probe_req_mle(
+@@ -8267,7 +8280,7 @@ static void hostapd_parse_probe_req_mle(
  		 * TODO MBSS case
  		 */
  		if (mld_id != 0) {
@@ -194,7 +194,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			ml_data->present = false;
  			return;
  		}
-@@ -8491,10 +8504,12 @@ void hostapd_parse_mle(struct hostapd_da
+@@ -8504,10 +8517,12 @@ void hostapd_parse_mle(struct hostapd_da
  static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
  					  u32 frame_type, size_t *bss_index,
  					  const u8 *known_bss,
@@ -208,7 +208,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	hostapd_eid_ext_supp_rates(tx_bss, NULL, &tx_xrate_len);
  	for (i = *bss_index; i < hapd->iface->num_bss; i++) {
-@@ -8544,6 +8559,11 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -8557,6 +8572,11 @@ static size_t hostapd_eid_mbssid_elem_le
  			nontx_profile_len += xrate_len;
  		else if (tx_xrate_len)
  			ie_count++;
@@ -217,10 +217,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +		    !ml_present_in_probe)
 +			nontx_profile_len += hostapd_eid_basic_mle_len(bss, frame_type, NULL);
 +
- 		if (ie_count)
+ 		if (ie_count) {
  			nontx_profile_len += 4 + ie_count;
- 
-@@ -8562,7 +8582,8 @@ static size_t hostapd_eid_mbssid_elem_le
+ 			nontx_profile_len += 1; /*Extension element ID length */
+@@ -8575,7 +8595,8 @@ static size_t hostapd_eid_mbssid_elem_le
  
  size_t hostapd_eid_mbssid_len(struct hostapd_data *hapd, u32 frame_type,
  			      u8 *elem_count, const u8 *known_bss,
@@ -230,7 +230,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  {
  	size_t len = 0, bss_index = 1, rnr_cur_len = 0, rnr_count;
  
-@@ -8584,7 +8605,7 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -8597,7 +8618,7 @@ size_t hostapd_eid_mbssid_len(struct hos
  		rnr_count = bss_index;
  		len += hostapd_eid_mbssid_elem_len(hapd, frame_type,
  						   &bss_index, known_bss,
@@ -239,7 +239,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  		if (frame_type == WLAN_FC_STYPE_BEACON)
  			*elem_count += 1;
-@@ -8609,11 +8630,13 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -8622,11 +8643,13 @@ size_t hostapd_eid_mbssid_len(struct hos
  static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
  				    u32 frame_type, u8 max_bssid_indicator,
  				    size_t *bss_index, u8 elem_count,
@@ -254,7 +254,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	hostapd_eid_ext_supp_rates(tx_bss, NULL, &tx_xrate_len);
  	*eid++ = WLAN_EID_MULTIPLE_BSSID;
-@@ -8694,6 +8717,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -8707,6 +8730,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
  			non_inherit_ie[ie_count++] = WLAN_EID_RSNX;
  		if (tx_xrate_len && !xrate_len)
  			non_inherit_ie[ie_count++] = WLAN_EID_EXT_SUPP_RATES;
@@ -266,7 +266,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (ie_count) {
  			*eid++ = WLAN_EID_EXTENSION;
  			*eid++ = 3 + ie_count;
-@@ -8730,7 +8758,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -8743,7 +8771,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			u8 **elem_offset,
  			const u8 *known_bss, size_t known_bss_len,
  			u8 *rnr_eid, u8 **rnr_offsets, int *rnr_count,
@@ -275,7 +275,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  {
  
  	size_t bss_index = 1, cur_len = 0;
-@@ -8768,7 +8796,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -8781,7 +8809,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  		eid = hostapd_eid_mbssid_elem(hapd, eid, end, frame_stype,
  					      hostapd_max_bssid_indicator(hapd),
  					      &bss_index, elem_count,
@@ -315,7 +315,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #define MLE_MLD_CAP_MAX_SIMULTANEOUS_LINK_MASK ((u8) (BIT(0) | BIT(1) | BIT(2) | BIT(3)))
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1775,6 +1775,11 @@ struct wpa_driver_ap_params {
+@@ -1768,6 +1768,11 @@ struct wpa_driver_ap_params {
  	 * mbssid_tx_iface - Transmitting interface of the MBSSID set
  	 */
  	const char *mbssid_tx_iface;

@@ -15,16 +15,19 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7000,6 +7000,8 @@ static size_t hostapd_eid_mbssid_elem_le
- 		if (ie_count)
+@@ -7045,8 +7045,10 @@ static size_t hostapd_eid_mbssid_elem_le
+ 			nontx_profile_len += xrate_len;
+ 		else if (tx_xrate_len)
+ 			ie_count++;
+-		if (ie_count)
++		if (ie_count) {
  			nontx_profile_len += 4 + ie_count;
++			nontx_profile_len += 1; /*Extension element ID length */
++		}
  
-+		nontx_profile_len += 1; /*Extension element ID length */
-+
  		if (len + nontx_profile_len > 255)
  			break;
- 
-@@ -7123,11 +7125,16 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -7194,11 +7196,16 @@ static u8 * hostapd_eid_mbssid_elem(stru
  			non_inherit_ie[ie_count++] = WLAN_EID_EXT_SUPP_RATES;
  		if (ie_count) {
  			*eid++ = WLAN_EID_EXTENSION;
