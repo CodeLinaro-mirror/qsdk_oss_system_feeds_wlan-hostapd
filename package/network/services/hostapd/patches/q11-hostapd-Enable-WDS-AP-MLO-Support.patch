@@ -22,7 +22,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -509,6 +509,7 @@ struct hostapd_mld {
+@@ -513,6 +513,7 @@ struct hostapd_mld {
  	u8 num_links;
  	bool if_setup_done;
  	bool mld_start_blocked;
@@ -32,7 +32,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4238,6 +4238,47 @@ static void hostapd_clone_ml_aid(struct
+@@ -3344,6 +3344,47 @@ static void hostapd_clone_ml_aid(struct
  	}
  }
  
@@ -80,7 +80,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
  {
-@@ -7508,6 +7549,12 @@ static void handle_assoc_cb(struct hosta
+@@ -6624,6 +6665,12 @@ static void handle_assoc_cb(struct hosta
  			   MAC2STR(sta->addr));
  		sta->pending_wds_enable = 0;
  		sta->flags |= WLAN_STA_WDS;
@@ -93,7 +93,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	}
  
  	/* WPS not supported on backhaul BSS & disable 4addr mode on FH */
-@@ -7516,12 +7563,18 @@ static void handle_assoc_cb(struct hosta
+@@ -6632,12 +6679,18 @@ static void handle_assoc_cb(struct hosta
  		!(sta->flags & WLAN_STA_WPS))) {
  		int ret;
  		char ifname_wds[IFNAMSIZ + 1];
@@ -114,7 +114,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		if (!ret)
  			hostapd_set_wds_encryption(hapd, sta, ifname_wds);
  	}
-@@ -7858,6 +7911,7 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6987,6 +7040,7 @@ void ieee802_11_rx_from_unknown(struct h
  				int wds)
  {
  	struct sta_info *sta;
@@ -122,7 +122,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	sta = ap_get_sta(hapd, src);
  
-@@ -7867,6 +7921,19 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6996,6 +7050,19 @@ void ieee802_11_rx_from_unknown(struct h
  		if (!hapd->conf->wds_sta)
  			return;
  
@@ -142,7 +142,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		if ((sta->flags & (WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK)) ==
  		    WLAN_STA_ASSOC_REQ_OK) {
  			wpa_printf(MSG_DEBUG,
-@@ -7883,10 +7950,10 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7012,10 +7079,10 @@ void ieee802_11_rx_from_unknown(struct h
  
  			wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for "
  				   "STA " MACSTR " (aid %u)",
@@ -157,7 +157,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  							   ifname_wds);
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -100,6 +100,7 @@ void hostapd_get_eht_240mhz_capab(struct
+@@ -101,6 +101,7 @@ void hostapd_get_eht_240mhz_capab(struct
  				  struct ieee80211_240mhz_vendor_oper *dest,
  				  size_t len);
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta);
@@ -167,7 +167,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  u16 copy_sta_vendor_vht(struct hostapd_data *hapd, struct sta_info *sta,
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -140,6 +140,7 @@ struct sta_info {
+@@ -103,6 +103,7 @@ struct sta_info {
  	be32 ipaddr;
  	struct dl_list ip6addr; /* list head for struct ip6addr */
  	u16 aid; /* STA's unique AID (1 .. 2007) or 0 if not yet assigned */
@@ -177,7 +177,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	u16 capability;
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2113,6 +2113,7 @@ static void nl80211_spurious_frame(struc
+@@ -2328,6 +2328,7 @@ static void nl80211_spurious_frame(struc
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
  	union wpa_event_data event;
@@ -185,7 +185,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	if (!tb[NL80211_ATTR_MAC])
  		return;
-@@ -2122,6 +2123,13 @@ static void nl80211_spurious_frame(struc
+@@ -2337,6 +2338,13 @@ static void nl80211_spurious_frame(struc
  	event.rx_from_unknown.addr = nla_data(tb[NL80211_ATTR_MAC]);
  	event.rx_from_unknown.wds = wds;
  
@@ -231,3 +231,55 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	hapd->num_sta--;
  	if (sta->nonerp_set) {
  		sta->nonerp_set = 0;
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -8589,6 +8589,8 @@ static int i802_set_wds_sta(void *priv,
+ 	char name[IFNAMSIZ + 1];
+ 	union wpa_event_data event;
+ 	int ret;
++	int link_id;
++	u8 *if_addr;
+ 
+ 	ret = os_snprintf(name, sizeof(name), "%s.sta%d", bss->ifname, aid);
+ 	if (ret >= (int) sizeof(name))
+@@ -8602,11 +8604,21 @@ static int i802_set_wds_sta(void *priv,
+ 
+ 	wpa_printf(MSG_DEBUG, "nl80211: Set WDS STA addr=" MACSTR
+ 		   " aid=%d val=%d name=%s", MAC2STR(addr), aid, val, name);
++	if (bss->mlo) {
++		wpa_printf(MSG_DEBUG, "bss->addr=" MACSTR "mld_addr=" MACSTR "link_id=%d \n",
++			   MAC2STR(bss->addr), MAC2STR(bss->mld_addr), drv->mlo_link_id);
++		if_addr = bss->mld_addr;
++		link_id = drv->mlo_link_id;
++	} else {
++		if_addr = bss->addr;
++		link_id = -1;
++	}
++
+ 	if (val) {
+ 		if (!if_nametoindex(name)) {
+ 			if (nl80211_create_iface(drv, name,
+ 						 NL80211_IFTYPE_AP_VLAN,
+-						 bss->addr, 1, NULL, NULL, 0) <
++						 if_addr, 1, NULL, NULL, 0) <
+ 			    0)
+ 				return -1;
+ 			if (bridge_ifname &&
+@@ -8626,7 +8638,7 @@ static int i802_set_wds_sta(void *priv,
+ 			wpa_printf(MSG_ERROR, "nl80211: Failed to set WDS STA "
+ 				   "interface %s up", name);
+ 		}
+-		return i802_set_sta_vlan(priv, addr, name, 0, -1);
++		return i802_set_sta_vlan(priv, addr, name, 0, link_id);
+ 	} else {
+ 		if (bridge_ifname &&
+ 		    linux_br_del_if(drv->global->ioctl_sock, bridge_ifname,
+@@ -8635,7 +8647,7 @@ static int i802_set_wds_sta(void *priv,
+ 				   "nl80211: Failed to remove interface %s from bridge %s: %s",
+ 				   name, bridge_ifname, strerror(errno));
+ 
+-		i802_set_sta_vlan(priv, addr, bss->ifname, 0, -1);
++		i802_set_sta_vlan(priv, addr, bss->ifname, 0, link_id);
+ 		nl80211_remove_iface(drv, if_nametoindex(name));
+ 		os_memset(&event, 0, sizeof(event));
+ 		event.wds_sta_interface.sta_addr = addr;
