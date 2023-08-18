@@ -76,18 +76,71 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		wpa_printf(MSG_DEBUG, "nl80211: switch_channel failed err=%d (%s)",
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -1010,8 +1010,8 @@ static void mlme_event_ch_switch(struct
+@@ -1009,9 +1009,29 @@ static void mlme_event_ch_switch(struct
+ 	int ht_enabled = 1;
  	int chan_offset = 0;
  	int ifidx;
++	u8 link_id = 0;
  
 -	wpa_printf(MSG_DEBUG, "nl80211: Channel switch%s event",
 -		   finished ? "" : " started");
++	if (link) {
++		link_id = nla_get_u8(link);
++
++		if (link_id > MAX_NUM_MLD_LINKS) {
++			wpa_printf(MSG_DEBUG,
++				   "nl80211: Ignoring Channel switch%s event on invalid link id (%d)",
++				   finished ? "" : " started", link_id);
++			return;
++		}
++
++		/* not part of MLD still link_id was provided, not accepted */
++		if (!(drv->mlo_link_id >= 0)) {
++			wpa_printf(MSG_DEBUG,
++				   "nl80211: Ignoring Channel switch%s event since MLO is not there still link_id %d was provided",
++				   finished ? "" : " started", link_id);
++			return;
++		}
++	}
++
 +	wpa_printf(MSG_DEBUG, "nl80211: Channel switch%s event on link %d",
 +		   finished ? "" : " started", link ? nla_get_u8(link) : 0);
  
  	if (!freq)
  		return;
-@@ -3606,6 +3606,12 @@ static bool check_route_global_event(int
+@@ -1024,6 +1044,10 @@ static void mlme_event_ch_switch(struct
+ 		return;
+ 	}
+ 
++	/* possible that bss is not from the drv we passed. Hence, safe
++	 * to update it now*/
++	drv = bss->drv;
++
+ 	if (type) {
+ 		enum nl80211_channel_type ch_type = nla_get_u32(type);
+ 
+@@ -1073,10 +1097,8 @@ static void mlme_event_ch_switch(struct
+ 		bss->freq = data.ch_switch.freq;
+ 
+ 	if (link) {
+-		u8 link_id = nla_get_u8(link);
+ 
+-		if (link_id < MAX_NUM_MLD_LINKS &&
+-		    drv->sta_mlo_info.valid_links & BIT(link_id)) {
++		if (drv->sta_mlo_info.valid_links & BIT(link_id)) {
+ 			data.ch_switch.link_id = link_id;
+ 			drv->sta_mlo_info.links[link_id].freq =
+ 				data.ch_switch.freq;
+@@ -1086,7 +1108,7 @@ static void mlme_event_ch_switch(struct
+ 				EVENT_LINK_CH_SWITCH_STARTED, &data);
+ 		}
+ 
+-		if (link_id != drv->sta_mlo_info.assoc_link_id)
++		if (drv->associated && (link_id != drv->sta_mlo_info.assoc_link_id))
+ 			return;
+ 	}
+ 
+@@ -3606,6 +3628,12 @@ static bool check_route_global_event(int
  	case NL80211_CMD_WIPHY_REG_CHANGE:
  		/* These commands are passed to each bss of the MLD */
  		return true;
