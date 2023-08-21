@@ -1,6 +1,6 @@
-From 6396777c9b3255ea2f27392ba107d2e309e40f43 Mon Sep 17 00:00:00 2001
+From 4132ce137e4f74eee347621e8af9a7e4d9243991 Mon Sep 17 00:00:00 2001
 From: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
-Date: Tue, 8 Aug 2023 15:11:01 +0530
+Date: Mon, 21 Aug 2023 12:37:24 +0530
 Subject: [PATCH] hostapd: update critical bit and bpcc on probe/assoc response
  frame
 
@@ -21,18 +21,18 @@ BMLE.
 Change-Id: I7bb7d7f683a025959ca4edb7ce95ebeba6cdadc4
 Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
 ---
- hostapd/ctrl_iface.c         |  9 +++++
+ hostapd/ctrl_iface.c         |  9 ++++
  src/ap/beacon.c              |  5 ++-
  src/ap/beacon.h              |  1 +
- src/ap/drv_callbacks.c       | 14 +++++++
+ src/ap/drv_callbacks.c       | 14 ++++++
  src/ap/hostapd.c             | 19 +++++++++
  src/ap/hostapd.h             |  6 +++
- src/ap/ieee802_11.c          | 78 ++++++++++++++++++++++++++++++++----
+ src/ap/ieee802_11.c          | 82 ++++++++++++++++++++++++++++++++----
  src/ap/ieee802_11.h          |  1 +
  src/common/ieee802_11_defs.h |  4 +-
  src/drivers/driver.h         | 19 +++++++++
  src/drivers/driver_common.c  |  1 +
- 11 files changed, 147 insertions(+), 10 deletions(-)
+ 11 files changed, 149 insertions(+), 12 deletions(-)
 
 diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
 index f01b501..f882598 100644
@@ -62,7 +62,7 @@ index f01b501..f882598 100644
  
          return 0;
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 19dd2bb..90c43e4 100644
+index b557f04..0c590cd 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
 @@ -872,7 +872,7 @@ u8 * hostapd_gen_sta_profile(struct ieee80211_mgmt *own_data,
@@ -134,10 +134,10 @@ index 55e5530..7a7e441 100644
  		wpa_printf(MSG_DEBUG, "Unknown event %d", event);
  		break;
 diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 6b4006e..89a9674 100644
+index 49a6f07..f32d3f4 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4561,6 +4561,7 @@ int hostapd_switch_channel(struct hostapd_data *hapd,
+@@ -4562,6 +4562,7 @@ int hostapd_switch_channel(struct hostapd_data *hapd,
  	int ret;
  	int oper_centr_freq0_idx;
  	int cur_bandwidth;
@@ -145,7 +145,7 @@ index 6b4006e..89a9674 100644
  
  	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_AP_CSA)) {
  		wpa_printf(MSG_INFO, "CSA is not supported");
-@@ -4595,6 +4596,14 @@ int hostapd_switch_channel(struct hostapd_data *hapd,
+@@ -4596,6 +4597,14 @@ int hostapd_switch_channel(struct hostapd_data *hapd,
  	}
  
  	hapd->csa_in_progress = 1;
@@ -160,7 +160,7 @@ index 6b4006e..89a9674 100644
  	return 0;
  }
  
-@@ -4728,6 +4737,7 @@ static void hostapd_switch_color_timeout_handler(void *eloop_data,
+@@ -4729,6 +4738,7 @@ static void hostapd_switch_color_timeout_handler(void *eloop_data,
  	unsigned int b;
  	int i, r;
  	u64 neighbor_color;
@@ -168,7 +168,7 @@ index 6b4006e..89a9674 100644
  
  	 /* CCA can be triggered once the handler constantly receives
  	  * color collision events to for at least
-@@ -4794,6 +4804,15 @@ static void hostapd_switch_color_timeout_handler(void *eloop_data,
+@@ -4795,6 +4805,15 @@ static void hostapd_switch_color_timeout_handler(void *eloop_data,
  
  		free_beacon_data(&settings.beacon_cca);
  		free_beacon_data(&settings.beacon_after);
@@ -185,7 +185,7 @@ index 6b4006e..89a9674 100644
  }
  
 diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index 0c5f1a3..fa76e6a 100644
+index b771b6c..2df76fc 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -177,6 +177,11 @@ struct hostapd_per_sta_profile {
@@ -209,10 +209,10 @@ index 0c5f1a3..fa76e6a 100644
  
  
 diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index bc5e0d3..88b0e30 100644
+index 736ab70..37cbaa2 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -319,6 +319,25 @@ u16 hostapd_own_capab_info(struct hostapd_data *hapd)
+@@ -318,6 +318,25 @@ u16 hostapd_own_capab_info(struct hostapd_data *hapd)
  	return capab;
  }
  
@@ -238,7 +238,7 @@ index bc5e0d3..88b0e30 100644
  
  #ifdef CONFIG_WEP
  #ifndef CONFIG_NO_RC4
-@@ -7146,7 +7165,41 @@ static void notify_mgmt_frame(struct hostapd_data *hapd, const u8 *buf,
+@@ -7257,7 +7276,41 @@ static void notify_mgmt_frame(struct hostapd_data *hapd, const u8 *buf,
  		os_free(hex);
  	}
  }
@@ -280,7 +280,7 @@ index bc5e0d3..88b0e30 100644
  
  /**
   * ieee802_11_mgmt - process incoming IEEE 802.11 management frames
-@@ -7222,6 +7275,7 @@ int ieee802_11_mgmt(struct hostapd_data *hapd, const u8 *buf, size_t len,
+@@ -7333,6 +7386,7 @@ int ieee802_11_mgmt(struct hostapd_data *hapd, const u8 *buf, size_t len,
  
  	if (stype == WLAN_FC_STYPE_PROBE_REQ) {
  		handle_probe_req(hapd, mgmt, len, ssi_signal, fi);
@@ -288,7 +288,7 @@ index bc5e0d3..88b0e30 100644
  		return 1;
  	}
  
-@@ -7250,11 +7304,13 @@ int ieee802_11_mgmt(struct hostapd_data *hapd, const u8 *buf, size_t len,
+@@ -7361,11 +7415,13 @@ int ieee802_11_mgmt(struct hostapd_data *hapd, const u8 *buf, size_t len,
  	case WLAN_FC_STYPE_ASSOC_REQ:
  		wpa_printf(MSG_DEBUG, "mgmt::assoc_req");
  		handle_assoc(hapd, mgmt, len, 0, ssi_signal, fi);
@@ -302,20 +302,23 @@ index bc5e0d3..88b0e30 100644
  		ret = 1;
  		break;
  	case WLAN_FC_STYPE_DISASSOC:
-@@ -8821,10 +8877,11 @@ co_location_rnr:
+@@ -9042,11 +9098,12 @@ co_location_rnr:
  
  			/* TODO colocated bss match + MBSSID + MLO case */
  
+-			*eid++ = (bss->iface->mlo_link_id) |
 +			/* bss param update info */
 +			bss_param_change_count = bss->rx_cu_param.bpcc;
- 			*eid++ = (bss->iface->mlo_link_id) |
++			*eid++ = (bss->iface->mlo_link_id & 0xf) |
  				 (bss_param_change_count & 0xf) << 4;
  
 -			/* TODO bss param update info */
- 			*eid++ = bss_param_change_count << 4 & 0xf0;
+-			*eid++ = bss_param_change_count << 4 & 0xf0;
++			*eid++ = (bss_param_change_count & 0xf0) >> 4;
  			len += tbtt_info_len;
  			tbtt_count += 1;
-@@ -9105,10 +9162,12 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
+ 		}
+@@ -9326,10 +9383,12 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
  				  	         MLE_STA_CONTROL_BEACON_INT_PRESENT |
  				 	         MLE_STA_CONTROL_TSF_OFFSET_PRESENT) << 4,
  						&per_sta_profile_len, WLAN_SUBEID_FRAGMENT);
@@ -332,7 +335,7 @@ index bc5e0d3..88b0e30 100644
  		sta_profile = hostapd_add_mle_u8(sta_profile, &per_sta_curr_len,
  					       MLE_STA_INFO_LENGTH,
  					       &per_sta_profile_len, WLAN_SUBEID_FRAGMENT);
-@@ -9130,6 +9189,9 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
+@@ -9351,6 +9410,9 @@ static u8 * hostapd_eid_basic_resp_mle(struct hostapd_data *hapd,
  		sta_profile = hostapd_add_mle_u8(sta_profile, &per_sta_curr_len, link_bss->conf->dtim_period,
  					       &per_sta_profile_len, WLAN_SUBEID_FRAGMENT);
  
@@ -342,7 +345,7 @@ index bc5e0d3..88b0e30 100644
  		sta_profile = hostapd_add_mle_data(sta_profile, &per_sta_curr_len, profile, profile_len,
  						 &per_sta_profile_len, WLAN_SUBEID_FRAGMENT);
  
-@@ -9285,8 +9347,7 @@ u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid, u32 type,
+@@ -9506,8 +9568,7 @@ u8 * hostapd_eid_basic_mle(struct hostapd_data *hapd, u8 *eid, u32 type,
  		*eid++ = hapd->iface->mlo_link_id;
  
  	if (presence_bmap & MLE_BSS_PARAM_CHANGE_PRESENT)
@@ -352,7 +355,7 @@ index bc5e0d3..88b0e30 100644
  	/* TODO Medium Synchronization Delay Info fields */
  
  	if (presence_bmap & MLE_EML_CAP_PRESENT) {
-@@ -9779,6 +9840,9 @@ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
+@@ -10015,6 +10076,9 @@ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
  		*eid++ = WLAN_EID_NONTRANSMITTED_BSSID_CAPA;
  		*eid++ = sizeof(capab_info);
  		capab_info = host_to_le16(hostapd_own_capab_info(bss));
@@ -363,20 +366,20 @@ index bc5e0d3..88b0e30 100644
  		eid += sizeof(capab_info);
  
 diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 8aa7b04..d39dc18 100644
+index 4f05a41..36a1cb4 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -263,4 +263,5 @@ u8 * hostapd_gen_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -269,4 +269,5 @@ u8 * hostapd_gen_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
  			   const u8 *ies, size_t ies_len, int rssi,
  			   int omit_rsnxe, struct multi_link_data *ml_data,
  			   int *send_len, u16 *res);
 +u16 hostapd_critical_update_capab(struct hostapd_data *hapd);
  #endif /* IEEE802_11_H */
 diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 58d172d..fcb6008 100644
+index 813aca6..6fc7940 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2492,8 +2492,8 @@ struct ieee80211_he_mu_edca_parameter_set {
+@@ -2493,8 +2493,8 @@ struct ieee80211_he_mu_edca_parameter_set {
  #define MLE_STA_CONTROL_NSTR_BITMAP			BIT(6)
  #define MLE_STA_CONTROL_BSS_PARAM_CHANGE_CNT_PRESENT	BIT(7)
  
@@ -388,7 +391,7 @@ index 58d172d..fcb6008 100644
  
  /* IEEE P802.11be/D2.0, 9.4.2.311 - EHT Operation element */
 diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 9275c83..fa24bae 100644
+index b64fec0..c2616f4 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
 @@ -5744,6 +5744,15 @@ enum wpa_event_type {
