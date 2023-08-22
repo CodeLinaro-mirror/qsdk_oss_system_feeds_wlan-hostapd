@@ -10,11 +10,9 @@ Signed-off-by: Bhagavathi Perumal S <quic_bperumal@quicinc.com>
  wpa_supplicant/bss.c | 5 +++--
  1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/wpa_supplicant/bss.c b/wpa_supplicant/bss.c
-index a3da86c..a0ec7d6 100644
 --- a/wpa_supplicant/bss.c
 +++ b/wpa_supplicant/bss.c
-@@ -725,8 +725,8 @@ wpa_bss_update(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
+@@ -726,8 +726,8 @@ wpa_bss_update(struct wpa_supplicant *wp
  		struct wpa_bss *nbss;
  		struct dl_list *prev = bss->list_id.prev;
  		dl_list_del(&bss->list_id);
@@ -25,14 +23,12 @@ index a3da86c..a0ec7d6 100644
  		if (nbss) {
  			unsigned int i;
  			for (i = 0; i < wpa_s->last_scan_res_used; i++) {
-@@ -738,6 +738,7 @@ wpa_bss_update(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
+@@ -739,6 +739,8 @@ wpa_bss_update(struct wpa_supplicant *wp
  			if (wpa_s->current_bss == bss)
  				wpa_s->current_bss = nbss;
  			wpa_bss_update_pending_connect(wpa_s, bss, nbss);
++			os_memcpy(nbss, bss, sizeof(*bss));
 +			os_free(bss);
  			bss = nbss;
  			os_memcpy(bss->ies, res + 1,
  				  res->ie_len + res->beacon_ie_len);
--- 
-2.17.1
-
