@@ -360,7 +360,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  static void *i802_init(struct hostapd_data *hapd,
  		       struct wpa_init_params *params)
-@@ -8336,15 +8457,36 @@ static void *i802_init(struct hostapd_da
+@@ -8336,15 +8457,34 @@ static void *i802_init(struct hostapd_da
  	char master_ifname[IFNAMSIZ];
  	int ifindex, br_ifindex = 0;
  	int br_added = 0;
@@ -392,8 +392,6 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +
 +	if (params->mld_addr)
 +		os_memcpy(bss->mld_addr, params->mld_addr, ETH_ALEN);
-+	else
-+		os_memcpy(bss->mld_addr, params->bssid, ETH_ALEN);
 +
  	if (linux_br_get(master_ifname, params->ifname) == 0) {
  		wpa_printf(MSG_DEBUG, "nl80211: Interface %s is in bridge %s",
