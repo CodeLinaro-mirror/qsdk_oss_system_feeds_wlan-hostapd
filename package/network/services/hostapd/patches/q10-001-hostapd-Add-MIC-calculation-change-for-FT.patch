@@ -64,7 +64,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #include "pmksa_cache_auth.h"
  #include "wmm.h"
  #include "ap_list.h"
-@@ -4199,7 +4200,9 @@ static int check_assoc_ies(struct hostap
+@@ -4205,7 +4206,9 @@ static int check_assoc_ies(struct hostap
  			sta->flags &= ~WLAN_STA_MFP;
  
  #ifdef CONFIG_IEEE80211R_AP
@@ -75,7 +75,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			if (!reassoc) {
  				wpa_printf(MSG_DEBUG, "FT: " MACSTR " tried "
  					   "to use association (not "
-@@ -4208,8 +4211,43 @@ static int check_assoc_ies(struct hostap
+@@ -4214,8 +4217,43 @@ static int check_assoc_ies(struct hostap
  				return WLAN_STATUS_UNSPECIFIED_FAILURE;
  			}
  
@@ -121,7 +121,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			if (resp != WLAN_STATUS_SUCCESS)
  				return resp;
  		}
-@@ -4608,6 +4646,13 @@ static int add_associated_sta(struct hos
+@@ -4614,6 +4652,13 @@ static int add_associated_sta(struct hos
  	return 0;
  }
  
@@ -135,7 +135,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  u8 * hostapd_gen_assoc_resp(struct hostapd_data *hapd, struct sta_info *sta,
  			   const u8 *addr, u16 status_code, int reassoc,
-@@ -4697,10 +4742,72 @@ u8 * hostapd_gen_assoc_resp(struct hosta
+@@ -4703,10 +4748,72 @@ u8 * hostapd_gen_assoc_resp(struct hosta
  	if (sta && status_code == WLAN_STATUS_SUCCESS) {
  		/* IEEE 802.11r: Mobility Domain Information, Fast BSS
  		 * Transition Information, RSN, [RIC Response] */
@@ -210,17 +210,15 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (!p) {
  			wpa_printf(MSG_DEBUG,
  				   "FT: Failed to write AssocResp IEs");
-@@ -5010,7 +5117,8 @@ static void ap_link_sta_add(struct hosta
+@@ -5016,6 +5123,7 @@ static void ap_link_sta_add(struct hosta
  		sta->sae = psta->sae;
  		sta->wpa_sm = psta->wpa_sm;
  		sta->auth_alg = psta->auth_alg;
--		
 +		wpa_mlo_partner_sta_iter(sta->wpa_sm, wpa_init_partner_link_group, NULL);
-+
+ 
  		link_sta_ies = ml_data->u.basic.link_info[link_id].sta_profile;
  		link_sta_ies_len = ml_data->u.basic.link_info[link_id].sta_profile_len;
- 
-@@ -5038,6 +5146,7 @@ static void ap_link_sta_add(struct hosta
+@@ -5044,6 +5152,7 @@ static void ap_link_sta_add(struct hosta
  
  		/* prepare per sta assoc resp template */
  		/* TODO might need to send link_sta_ies + inherited ies for some FILS use case */
@@ -228,23 +226,23 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		buf = hostapd_gen_assoc_resp(link_hapd, sta,
  					     sta->addr,
  					     WLAN_STATUS_SUCCESS, reassoc,
-@@ -5046,6 +5155,7 @@ static void ap_link_sta_add(struct hosta
+@@ -5052,6 +5161,7 @@ static void ap_link_sta_add(struct hosta
  
  		/* If success buf and send_len is expected to be valid */
  		if (res != WLAN_STATUS_SUCCESS || !buf) {
 +			sta->ml_sta = NULL;
+ 			sta->wpa_sm = NULL;
+ 			sta->sae = NULL;
  			ap_free_sta(link_hapd, sta);
- 			continue;
- 		}
-@@ -5059,6 +5169,7 @@ static void ap_link_sta_add(struct hosta
+@@ -5067,6 +5177,7 @@ static void ap_link_sta_add(struct hosta
  						      WLAN_FC_STYPE_ASSOC_RESP);
  
  		if (sta_profile == NULL) {
 +			sta->ml_sta = NULL;
+ 			sta->wpa_sm = NULL;
+ 			sta->sae = NULL;
  			ap_free_sta(link_hapd, sta);
- 			os_free(buf);
- 			continue;
-@@ -5068,7 +5179,6 @@ static void ap_link_sta_add(struct hosta
+@@ -5078,7 +5189,6 @@ static void ap_link_sta_add(struct hosta
  		ml_data->u.basic.link_info[link_id].resp_sta_profile_len = sta_profile_len;
  
  		tail_sta->lnext = sta;
@@ -289,7 +287,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  };
  
  typedef enum {
-@@ -526,7 +527,7 @@ void wpa_auth_eapol_key_tx_status(struct
+@@ -528,7 +529,7 @@ void wpa_auth_eapol_key_tx_status(struct
  u8 * wpa_sm_write_assoc_resp_ies(struct wpa_state_machine *sm, u8 *pos,
  				 size_t max_len, int auth_alg,
  				 const u8 *req_ies, size_t req_ies_len,
@@ -298,7 +296,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  void wpa_ft_process_auth(struct wpa_state_machine *sm, const u8 *bssid,
  			 u16 auth_transaction, const u8 *ies, size_t ies_len,
  			 void (*cb)(void *ctx, const u8 *dst, const u8 *bssid,
-@@ -534,7 +535,7 @@ void wpa_ft_process_auth(struct wpa_stat
+@@ -536,7 +537,7 @@ void wpa_ft_process_auth(struct wpa_stat
  				    const u8 *ies, size_t ies_len),
  			 void *ctx);
  int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
@@ -478,7 +476,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	 */
  	if (auth_alg == WLAN_AUTH_FT &&
  	    wpa_ft_mic(sm->wpa_key_mgmt, kck, kck_len,
- 		       sm->addr, sm->wpa_auth->addr, 6,
+ 		       sm->encr_key_mac_addr, sm->wpa_auth->addr, 6,
 @@ -2887,7 +2942,7 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
  		       rsnie, rsnie_len,
  		       ric_start, ric_start ? pos - ric_start : 0,
@@ -515,7 +513,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #include "wpa_auth_glue.h"
  
  
-@@ -1640,6 +1641,7 @@ static int hostapd_set_ltf_keyseed(void
+@@ -1686,6 +1687,7 @@ static int hostapd_set_ltf_keyseed(void
  int hostapd_setup_wpa(struct hostapd_data *hapd)
  {
  	struct wpa_auth_config _conf;
@@ -523,7 +521,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	static const struct wpa_auth_callbacks cb = {
  		.logger = hostapd_wpa_auth_logger,
  		.disconnect = hostapd_wpa_auth_disconnect,
-@@ -1733,13 +1735,31 @@ int hostapd_setup_wpa(struct hostapd_dat
+@@ -1781,13 +1783,31 @@ int hostapd_setup_wpa(struct hostapd_dat
  	_conf.prot_range_neg =
  		!!(hapd->iface->drv_flags2 &
  		   WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_AP);
