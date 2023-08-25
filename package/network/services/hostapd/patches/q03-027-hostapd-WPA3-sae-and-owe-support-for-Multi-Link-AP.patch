@@ -26,7 +26,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -586,16 +586,26 @@ static struct wpabuf * auth_build_sae_co
+@@ -590,16 +590,26 @@ static struct wpabuf * auth_build_sae_co
  	const char *password = NULL;
  	struct sae_password_entry *pw;
  	const char *rx_id = NULL;
@@ -56,7 +56,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #endif /* CONFIG_SAE_PK */
  	}
  
-@@ -613,13 +623,19 @@ static struct wpabuf * auth_build_sae_co
+@@ -617,13 +627,19 @@ static struct wpabuf * auth_build_sae_co
  		return NULL;
  	}
  
@@ -81,7 +81,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			       (u8 *) password, os_strlen(password),
  			       sta->sae) < 0) {
  		wpa_printf(MSG_DEBUG, "SAE: Could not pick PWE");
-@@ -1223,7 +1239,7 @@ static int check_sae_rejected_groups(str
+@@ -1227,7 +1243,7 @@ static int check_sae_rejected_groups(str
  
  
  static void handle_auth_sae(struct hostapd_data *hapd, struct sta_info *sta,
@@ -90,7 +90,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			    u16 auth_transaction, u16 status_code)
  {
  	int resp = WLAN_STATUS_SUCCESS;
-@@ -1233,6 +1249,7 @@ static void handle_auth_sae(struct hosta
+@@ -1237,6 +1253,7 @@ static void handle_auth_sae(struct hosta
  	const u8 *pos, *end;
  	int sta_removed = 0;
  	bool success_status;
@@ -98,7 +98,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (!groups)
  		groups = default_groups;
-@@ -1272,6 +1289,7 @@ static void handle_auth_sae(struct hosta
+@@ -1276,6 +1293,7 @@ static void handle_auth_sae(struct hosta
  			resp = -1;
  			goto remove_sta;
  		}
@@ -106,7 +106,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		sae_set_state(sta, SAE_NOTHING, "Init");
  		sta->sae->sync = 0;
  	}
-@@ -1390,7 +1408,7 @@ static void handle_auth_sae(struct hosta
+@@ -1394,7 +1412,7 @@ static void handle_auth_sae(struct hosta
  					&token_len, groups, status_code ==
  					WLAN_STATUS_SAE_HASH_TO_ELEMENT ||
  					status_code == WLAN_STATUS_SAE_PK,
@@ -115,7 +115,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (resp == SAE_SILENTLY_DISCARD) {
  			wpa_printf(MSG_DEBUG,
  				   "SAE: Drop commit message from " MACSTR " due to reflection attack",
-@@ -2774,6 +2792,12 @@ static void handle_auth(struct hostapd_d
+@@ -2778,6 +2796,12 @@ static void handle_auth(struct hostapd_d
  	};
  	u8 link_addr[6];
  	struct multi_link_data ml_data = {0};
@@ -128,7 +128,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth)) {
  		wpa_printf(MSG_INFO, "handle_auth - too short payload (len=%lu)",
-@@ -2781,11 +2805,45 @@ static void handle_auth(struct hostapd_d
+@@ -2785,11 +2809,45 @@ static void handle_auth(struct hostapd_d
  		return;
  	}
  
@@ -177,7 +177,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  					   &elems, 0) == ParseFailed) {
  			wpa_printf(MSG_DEBUG,
  				   "MLO: Failed to parse auth ies to check mle");
-@@ -2797,10 +2855,13 @@ static void handle_auth(struct hostapd_d
+@@ -2801,10 +2859,13 @@ static void handle_auth(struct hostapd_d
  		if (ml_data.present) {
  			os_memcpy(link_addr, mgmt->sa, ETH_ALEN);
  			os_memcpy(mgmt->sa, ml_data.u.basic.mld_addr, ETH_ALEN);
@@ -191,7 +191,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #ifdef CONFIG_TESTING_OPTIONS
  	if (hapd->iconf->ignore_auth_probability > 0.0 &&
  	    drand48() < hapd->iconf->ignore_auth_probability) {
-@@ -2811,12 +2872,6 @@ static void handle_auth(struct hostapd_d
+@@ -2815,12 +2876,6 @@ static void handle_auth(struct hostapd_d
  	}
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -204,7 +204,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (len >= IEEE80211_HDRLEN + sizeof(mgmt->u.auth) +
  	    2 + WLAN_AUTH_CHALLENGE_LEN &&
  	    mgmt->u.auth.variable[0] == WLAN_EID_CHALLENGE &&
-@@ -3046,17 +3101,16 @@ static void handle_auth(struct hostapd_d
+@@ -3050,17 +3105,16 @@ static void handle_auth(struct hostapd_d
  			resp = WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA;
  			goto fail;
  		}
@@ -228,18 +228,40 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #ifdef CONFIG_MBO
  	sta->auth_rssi = rssi;
  #endif /* CONFIG_MBO */
-@@ -4944,8 +4998,10 @@ static void ap_link_sta_add(struct hosta
+@@ -4950,7 +5004,9 @@ static void ap_link_sta_add(struct hosta
  		}
  
  		sta->listen_interval = psta->listen_interval;
 +		sta->sae = psta->sae;
  		sta->wpa_sm = psta->wpa_sm;
--
 +		sta->auth_alg = psta->auth_alg;
-+		
+ 
  		link_sta_ies = ml_data->u.basic.link_info[link_id].sta_profile;
  		link_sta_ies_len = ml_data->u.basic.link_info[link_id].sta_profile_len;
+@@ -4988,6 +5044,7 @@ static void ap_link_sta_add(struct hosta
+ 		/* If success buf and send_len is expected to be valid */
+ 		if (res != WLAN_STATUS_SUCCESS || !buf) {
+ 			sta->wpa_sm = NULL;
++			sta->sae = NULL;
+ 			ap_free_sta(link_hapd, sta);
+ 			continue;
+ 		}
+@@ -5002,6 +5059,7 @@ static void ap_link_sta_add(struct hosta
  
+ 		if (sta_profile == NULL) {
+ 			sta->wpa_sm = NULL;
++			sta->sae = NULL;
+ 			ap_free_sta(link_hapd, sta);
+ 			os_free(buf);
+ 			continue;
+@@ -5028,6 +5086,7 @@ static void ap_link_sta_add(struct hosta
+ 			/* clear this, so that we dont remove all link stations */
+ 			sta->ml_sta = NULL;
+ 			sta->wpa_sm = NULL;
++			sta->sae = NULL;
+ 			tail_sta->lnext = NULL;
+ 			ap_free_sta(link_hapd, sta);
+ 			os_free(ml_data->u.basic.link_info[link_id].resp_sta_profile);
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
 @@ -448,8 +448,12 @@ void ap_free_sta(struct hostapd_data *ha
