@@ -50,7 +50,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2448,6 +2448,11 @@ static int __ieee802_11_set_beacon(struc
+@@ -2480,6 +2480,11 @@ static int __ieee802_11_set_beacon(struc
  		return -1;
  	}
  
@@ -156,7 +156,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -1828,9 +1828,11 @@ void handle_auth_fils(struct hostapd_dat
+@@ -1832,9 +1832,11 @@ void handle_auth_fils(struct hostapd_dat
  		goto fail;
  	}
  
@@ -170,7 +170,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (!sta->wpa_sm) {
  		wpa_printf(MSG_DEBUG,
  			   "FILS: Failed to initialize RSN state machine");
-@@ -3133,9 +3135,12 @@ static void handle_auth(struct hostapd_d
+@@ -3137,9 +3139,12 @@ static void handle_auth(struct hostapd_d
  #ifdef CONFIG_IEEE80211R_AP
  	case WLAN_AUTH_FT:
  		sta->auth_alg = WLAN_AUTH_FT;
@@ -185,7 +185,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_DEBUG, "FT: Failed to initialize WPA "
  				   "state machine");
-@@ -3155,10 +3160,13 @@ static void handle_auth(struct hostapd_d
+@@ -3159,10 +3164,13 @@ static void handle_auth(struct hostapd_d
  #ifdef CONFIG_MESH
  		if (status_code == WLAN_STATUS_SUCCESS &&
  		    hapd->conf->mesh & MESH_ENABLED) {
@@ -201,7 +201,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			if (sta->wpa_sm == NULL) {
  				wpa_printf(MSG_DEBUG,
  					   "SAE: Failed to initialize WPA state machine");
-@@ -3691,9 +3699,11 @@ u16 owe_process_rsn_ie(struct hostapd_da
+@@ -3696,9 +3704,11 @@ u16 owe_process_rsn_ie(struct hostapd_da
  		goto end;
  	}
  
@@ -215,7 +215,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (!sta->wpa_sm) {
  		wpa_printf(MSG_WARNING,
  			   "OWE: Failed to initialize WPA state machine");
-@@ -4085,10 +4095,13 @@ static int check_assoc_ies(struct hostap
+@@ -4092,10 +4102,13 @@ static int check_assoc_ies(struct hostap
  
  		wpa_ie -= 2;
  		wpa_ie_len += 2;
@@ -231,7 +231,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_WARNING, "Failed to initialize WPA "
  				   "state machine");
-@@ -4230,9 +4243,12 @@ static int check_assoc_ies(struct hostap
+@@ -4237,9 +4250,12 @@ static int check_assoc_ies(struct hostap
  		}
  
  		wpa_printf(MSG_DEBUG, "HS 2.0: OSEN association");
@@ -246,7 +246,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		if (sta->wpa_sm == NULL) {
  			wpa_printf(MSG_WARNING, "Failed to initialize WPA "
  				   "state machine");
-@@ -4905,6 +4921,7 @@ static void ap_link_sta_add(struct hosta
+@@ -4915,6 +4931,7 @@ static void ap_link_sta_add(struct hosta
  		}
  
  		sta->listen_interval = psta->listen_interval;
@@ -254,7 +254,23 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  		link_sta_ies = ml_data->u.basic.link_info[link_id].sta_profile;
  		link_sta_ies_len = ml_data->u.basic.link_info[link_id].sta_profile_len;
-@@ -6696,6 +6713,11 @@ void hostapd_eapol_tx_status(struct host
+@@ -4951,6 +4968,7 @@ static void ap_link_sta_add(struct hosta
+ 
+ 		/* If success buf and send_len is expected to be valid */
+ 		if (res != WLAN_STATUS_SUCCESS || !buf) {
++			sta->wpa_sm = NULL;
+ 			ap_free_sta(link_hapd, sta);
+ 			continue;
+ 		}
+@@ -4964,6 +4982,7 @@ static void ap_link_sta_add(struct hosta
+ 						      WLAN_FC_STYPE_ASSOC_RESP);
+ 
+ 		if (sta_profile == NULL) {
++			sta->wpa_sm = NULL;
+ 			ap_free_sta(link_hapd, sta);
+ 			os_free(buf);
+ 			continue;
+@@ -6707,6 +6726,11 @@ void hostapd_eapol_tx_status(struct host
  	struct hostapd_iface *iface = hapd->iface;
  
  	sta = ap_get_sta(hapd, dst);
@@ -266,7 +282,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (sta == NULL && iface->num_bss > 1) {
  		size_t j;
  		for (j = 0; j < iface->num_bss; j++) {
-@@ -6750,6 +6772,11 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6761,6 +6785,11 @@ void ieee802_11_rx_from_unknown(struct h
  	struct sta_info *sta;
  
  	sta = ap_get_sta(hapd, src);
@@ -1019,7 +1035,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -6316,7 +6316,9 @@ static int nl80211_tx_control_port(void
+@@ -6255,7 +6255,9 @@ static int nl80211_tx_control_port(void
  	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, dest) ||
  	    nla_put(msg, NL80211_ATTR_FRAME, len, buf) ||
  	    (no_encrypt &&
