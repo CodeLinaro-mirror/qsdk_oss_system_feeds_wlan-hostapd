@@ -406,6 +406,13 @@ hostapd_set_bss_options() {
 			[ -n "$sae_pwe" ] && append bss_conf "sae_pwe=$sae_pwe" "$N"
 			[ -n "$sae_groups" ] && append bss_conf "sae_groups=$sae_groups" "$N"
 		;;
+		ft-sae-ext-key)
+			append bss_conf "ieee80211w=2" "$N"
+			wpa_key_mgmt="FT-SAE-EXT-KEY"
+			json_get_var sae_pwe sae_pwe
+			[ -n "$sae_pwe" ] && append bss_conf "sae_pwe=$sae_pwe" "$N"
+			[ -n "$sae_groups" ] && append bss_conf "sae_groups=$sae_groups" "$N"
+		;;
 		owe)
 			append wpa_key_mgmt "OWE"
 			json_get_var ieee80211w ieee80211w
