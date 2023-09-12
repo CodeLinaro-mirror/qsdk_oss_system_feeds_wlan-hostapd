@@ -18,11 +18,9 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  src/ap/ieee802_11_he.c | 14 +++++++-------
  1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/src/ap/ieee802_11_he.c b/src/ap/ieee802_11_he.c
-index 06c8cd3..c11050d 100644
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -227,24 +227,24 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
+@@ -227,24 +227,23 @@ u8 * hostapd_eid_he_operation(struct hos
  	pos += 6; /* skip the fixed part */
  
  	if (is_6ghz_op_class(hapd->iconf->op_class)) {
@@ -34,8 +32,8 @@ index 06c8cd3..c11050d 100644
  
  		if (hapd->iconf->ru_punct_bitmap) {
 -			hapd->iconf->he_oper_chwidth =
-+			he_oper_chwidth =
- 				hostapd_get_oper_chwidth(hapd->iconf);
+-				hostapd_get_oper_chwidth(hapd->iconf);
++			he_oper_chwidth = hapd->iface->conf->he_oper_chwidth;
  			hapd->iconf->he_oper_centr_freq_seg0_idx = seg0;
  			hapd->iconf->he_oper_centr_freq_seg1_idx = seg1;
  
@@ -53,7 +51,7 @@ index 06c8cd3..c11050d 100644
  		}
  
  		if (!seg0)
-@@ -286,7 +286,7 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
+@@ -286,7 +285,7 @@ u8 * hostapd_eid_he_operation(struct hos
  		*pos++ = control;
  
  		/* Channel Center Freq Seg0/Seg1 */
@@ -62,6 +60,3 @@ index 06c8cd3..c11050d 100644
  			/*
  			 * Seg 0 indicates the channel center frequency index of
  			 * the 160 MHz channel.
--- 
-2.7.4
-
