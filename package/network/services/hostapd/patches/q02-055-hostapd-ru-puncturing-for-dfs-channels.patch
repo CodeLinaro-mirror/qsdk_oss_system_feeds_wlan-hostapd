@@ -219,7 +219,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			   settings->freq_params.vht_enabled,
  			   settings->freq_params.he_enabled,
  			   settings->freq_params.eht_enabled);
-@@ -4089,6 +4115,37 @@ static int hostapd_fill_csa_settings(str
+@@ -4089,6 +4115,39 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -234,6 +234,8 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 +									    oper_centr_freq1_idx);
 +		if (settings->freq_params.center_freq2 == -1)
 +			settings->freq_params.center_freq2 = 0;
++
++		settings->freq_params.sec_channel_offset = sec_channel_offset;
 +
 +		if (bandwidth == CONF_OPER_CHWIDTH_80MHZ)
 +			settings->freq_params.bandwidth = 80;
