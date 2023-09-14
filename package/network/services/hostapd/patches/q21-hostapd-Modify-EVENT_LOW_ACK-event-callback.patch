@@ -1,0 +1,148 @@
+From fcdaa3213949e22352148b636393f3426cbb6aa8 Mon Sep 17 00:00:00 2001
+From: Manish Dharanenthiran <quic_mdharane@quicinc.com>
+Date: Thu, 28 Sep 2023 16:05:17 +0530
+Subject: [PATCH] hostapd: Modify EVENT_LOW_ACK event callback
+
+nl80211 event callback sends driver_data struct to
+hostapd event handler but for MLD stations, we might
+need to loop all the partner bss to find the link
+to which the station is connected to. For this, we
+need i802_bss struct context to be passed instead
+driver_data context.
+
+Modify this by sending the required struct context
+to the event callback.
+
+Also, to support sending disassoc to the station
+overriding the hostapd configured value for certain
+driver related handlings, make change to add the reason
+based on the number of packets is set to '0xFFFF' when
+EVENT_LOW_ACK is sent from driver.
+
+Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
+---
+ src/ap/drv_callbacks.c             | 23 ++++++++++++++++++-----
+ src/ap/hostapd.h                   |  3 ++-
+ src/drivers/driver_nl80211_event.c |  7 ++++---
+ wpa_supplicant/events.c            |  3 ++-
+ 4 files changed, 26 insertions(+), 10 deletions(-)
+
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index 2b10cc6..dd4b786 100644
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -794,18 +794,30 @@ void hostapd_notif_disassoc(struct hostapd_data *hapd, const u8 *addr)
+ }
+ 
+ 
+-void hostapd_event_sta_low_ack(struct hostapd_data *hapd, const u8 *addr)
++void hostapd_event_sta_low_ack(struct hostapd_data *hapd, const u8 *addr, u32 num_packets)
+ {
+ 	struct sta_info *sta = ap_get_sta(hapd, addr);
++	u32 reason = WLAN_REASON_DISASSOC_LOW_ACK;
+ 
+-	if (!sta || !hapd->conf->disassoc_low_ack || sta->agreed_to_steer)
++	if (!sta && hapd->mld) {
++		/* Check in link BSSes for MLD */
++		sta = hapd_get_sta_from_partner_links(hapd, addr);
++		if (sta)
++			hapd = sta->hapd;
++	}
++
++	if (!sta || (!hapd->conf->disassoc_low_ack && num_packets != 0xFFFF) ||
++	    sta->agreed_to_steer)
+ 		return;
+ 
++	if (num_packets == 0xFFFF)
++		reason = WLAN_REASON_UNSPECIFIED;
++
+ 	hostapd_logger(hapd, addr, HOSTAPD_MODULE_IEEE80211,
+ 		       HOSTAPD_LEVEL_INFO,
+ 		       "disconnected due to excessive missing ACKs");
+-	hostapd_drv_sta_disassoc(hapd, addr, WLAN_REASON_DISASSOC_LOW_ACK);
+-	ap_sta_disassociate(hapd, sta, WLAN_REASON_DISASSOC_LOW_ACK);
++	hostapd_drv_sta_disassoc(hapd, addr, reason);
++	ap_sta_disassociate(hapd, sta, reason);
+ }
+ 
+ 
+@@ -2271,7 +2283,8 @@ void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
+ 	case EVENT_STATION_LOW_ACK:
+ 		if (!data)
+ 			break;
+-		hostapd_event_sta_low_ack(hapd, data->low_ack.addr);
++		hostapd_event_sta_low_ack(hapd, data->low_ack.addr,
++					  data->low_ack.num_packets);
+ 		break;
+ 	case EVENT_AUTH:
+ 		hostapd_notif_auth(hapd, &data->auth);
+diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
+index a13a331..50ff843 100644
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -784,7 +784,8 @@ void hostapd_notify_assoc_fils_finish(struct hostapd_data *hapd,
+ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
+ 			const u8 *ie, size_t ielen, int reassoc);
+ void hostapd_notif_disassoc(struct hostapd_data *hapd, const u8 *addr);
+-void hostapd_event_sta_low_ack(struct hostapd_data *hapd, const u8 *addr);
++void hostapd_event_sta_low_ack(struct hostapd_data *hapd, const u8 *addr,
++			       const u32 num_packets);
+ void hostapd_event_connect_failed_reason(struct hostapd_data *hapd,
+ 					 const u8 *addr, int reason_code);
+ int hostapd_probe_req_rx(struct hostapd_data *hapd, const u8 *sa, const u8 *da,
+diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
+index 93c4689..7c967cc 100644
+--- a/src/drivers/driver_nl80211_event.c
++++ b/src/drivers/driver_nl80211_event.c
+@@ -1861,7 +1861,7 @@ static void send_scan_event(struct wpa_driver_nl80211_data *drv, int aborted,
+ }
+ 
+ 
+-static void nl80211_cqm_event(struct wpa_driver_nl80211_data *drv,
++static void nl80211_cqm_event(struct i802_bss *bss,
+ 			      struct nlattr *tb[])
+ {
+ 	static struct nla_policy cqm_policy[NL80211_ATTR_CQM_MAX + 1] = {
+@@ -1877,6 +1877,7 @@ static void nl80211_cqm_event(struct wpa_driver_nl80211_data *drv,
+ 	struct nlattr *cqm[NL80211_ATTR_CQM_MAX + 1];
+ 	enum nl80211_cqm_rssi_threshold_event event;
+ 	union wpa_event_data ed;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
+ 	int res;
+ 
+ 	if (tb[NL80211_ATTR_CQM] == NULL ||
+@@ -1898,7 +1899,7 @@ static void nl80211_cqm_event(struct wpa_driver_nl80211_data *drv,
+ 		wpa_printf(MSG_DEBUG, "nl80211: Packet loss event for " MACSTR
+ 			   " (num_packets %u)",
+ 			   MAC2STR(ed.low_ack.addr), ed.low_ack.num_packets);
+-		wpa_supplicant_event(drv->ctx, EVENT_STATION_LOW_ACK, &ed);
++		wpa_supplicant_event(bss->ctx, EVENT_STATION_LOW_ACK, &ed);
+ 		return;
+ 	}
+ 
+@@ -3865,7 +3866,7 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
+ 		mlme_event_remain_on_channel(drv, 1, tb);
+ 		break;
+ 	case NL80211_CMD_NOTIFY_CQM:
+-		nl80211_cqm_event(drv, tb);
++		nl80211_cqm_event(bss, tb);
+ 		break;
+ 	case NL80211_CMD_REG_CHANGE:
+ 	case NL80211_CMD_WIPHY_REG_CHANGE:
+diff --git a/wpa_supplicant/events.c b/wpa_supplicant/events.c
+index a85c6dd..d893cf5 100644
+--- a/wpa_supplicant/events.c
++++ b/wpa_supplicant/events.c
+@@ -6001,7 +6001,8 @@ void supplicant_event(void *ctx, enum wpa_event_type event,
+ #ifdef CONFIG_AP
+ 		if (wpa_s->ap_iface && data)
+ 			hostapd_event_sta_low_ack(wpa_s->ap_iface->bss[0],
+-						  data->low_ack.addr);
++						  data->low_ack.addr,
++						  data->low_ack.num_packets);
+ #endif /* CONFIG_AP */
+ #ifdef CONFIG_TDLS
+ 		if (data)
+-- 
+2.17.1
+
