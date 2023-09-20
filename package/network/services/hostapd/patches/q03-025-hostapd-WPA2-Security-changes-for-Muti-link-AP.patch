@@ -109,7 +109,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  				   "FT: Failed to initialize WPA state machine");
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -130,6 +130,34 @@ void hostapd_reconfig_encryption(struct
+@@ -130,6 +130,35 @@ void hostapd_reconfig_encryption(struct
  #endif /* CONFIG_WEP */
  }
  
@@ -130,7 +130,8 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +		if (hapd == iter)
 +			continue;
 +
-+		if (wpa_ml_pmksa_ref_copy(hapd->wpa_auth, iter->wpa_auth) != NULL) {
++		if (iter->wpa_auth &&
++		    wpa_ml_pmksa_ref_copy(hapd->wpa_auth, iter->wpa_auth) != NULL) {
 +			break;
 +		}
 +	}
@@ -270,7 +271,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			ap_free_sta(link_hapd, sta);
  			os_free(buf);
  			continue;
-@@ -6707,6 +6726,11 @@ void hostapd_eapol_tx_status(struct host
+@@ -6709,6 +6728,11 @@ void hostapd_eapol_tx_status(struct host
  	struct hostapd_iface *iface = hapd->iface;
  
  	sta = ap_get_sta(hapd, dst);
@@ -282,7 +283,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (sta == NULL && iface->num_bss > 1) {
  		size_t j;
  		for (j = 0; j < iface->num_bss; j++) {
-@@ -6761,6 +6785,11 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6763,6 +6787,11 @@ void ieee802_11_rx_from_unknown(struct h
  	struct sta_info *sta;
  
  	sta = ap_get_sta(hapd, src);
