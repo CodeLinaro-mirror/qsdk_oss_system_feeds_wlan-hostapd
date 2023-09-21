@@ -16,11 +16,9 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  src/common/ieee802_11_common.h |  2 ++
  5 files changed, 79 insertions(+), 6 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 776427d..67469ef 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1714,7 +1714,7 @@ void handle_probe_req(struct hostapd_data *hapd,
+@@ -1717,7 +1717,7 @@ void handle_probe_req(struct hostapd_dat
  				      &ml_data, true);
  
  	if (ml_data.present)
@@ -29,11 +27,9 @@ index 776427d..67469ef 100644
  
  	if (resp == NULL)
  		return;
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index f31cc4b..bd6a72b 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6723,7 +6723,7 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -6743,7 +6743,7 @@ static void handle_assoc(struct hostapd_
  			   MACSTR, MAC2STR(sta->addr));
  		os_free(tmp);
  		if (ml_data.present)
@@ -42,7 +38,7 @@ index f31cc4b..bd6a72b 100644
  		return;
  	}
  	if (sta) {
-@@ -6746,7 +6746,7 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -6766,7 +6766,7 @@ static void handle_assoc(struct hostapd_
  		eloop_register_timeout(0, hapd->conf->fils_hlp_wait_time * 1024,
  				       fils_hlp_timeout, hapd, sta);
  		if (ml_data.present)
@@ -51,7 +47,7 @@ index f31cc4b..bd6a72b 100644
  		return;
  	}
  #endif /* CONFIG_FILS */
-@@ -6756,8 +6756,7 @@ static void handle_assoc(struct hostapd_data *hapd,
+@@ -6776,8 +6776,7 @@ static void handle_assoc(struct hostapd_
  					    pos, left, rssi, omit_rsnxe, &ml_data);
  
  	if (ml_data.present)
@@ -61,7 +57,7 @@ index f31cc4b..bd6a72b 100644
  	os_free(tmp);
  
  	if (hostapd_ubus_handle_event(hapd, &req)) {
-@@ -9421,8 +9420,10 @@ static void hostapd_parse_basic_mle(struct hostapd_data *hapd,
+@@ -9593,8 +9592,10 @@ static void hostapd_parse_basic_mle(stru
  {
  	u8 *mle_pos = (u8 *)mle;
  	u8 link_id;
@@ -73,7 +69,7 @@ index f31cc4b..bd6a72b 100644
  
  	if (!len)
  		return;
-@@ -9463,10 +9464,20 @@ static void hostapd_parse_basic_mle(struct hostapd_data *hapd,
+@@ -9635,10 +9636,20 @@ static void hostapd_parse_basic_mle(stru
  		sub_elem_len = *mle_pos++;
  		sub_elem = mle_pos;
  
@@ -94,7 +90,7 @@ index f31cc4b..bd6a72b 100644
  			break;
  		}
  
-@@ -9478,6 +9489,7 @@ static void hostapd_parse_basic_mle(struct hostapd_data *hapd,
+@@ -9650,6 +9661,7 @@ static void hostapd_parse_basic_mle(stru
  			wpa_printf(MSG_ERROR, "Unexpected info present in (Re)Assoc Req MLE Control");
  			mle_pos += sub_elem_len;
  			len -= sub_elem_len;
@@ -102,7 +98,7 @@ index f31cc4b..bd6a72b 100644
  			continue;
  		}
  
-@@ -9485,6 +9497,7 @@ static void hostapd_parse_basic_mle(struct hostapd_data *hapd,
+@@ -9657,6 +9669,7 @@ static void hostapd_parse_basic_mle(stru
  			wpa_printf(MSG_ERROR, "Need STA complete profile in Re/assoc req");
  			mle_pos += sub_elem_len;
  			len -= sub_elem_len;
@@ -110,15 +106,17 @@ index f31cc4b..bd6a72b 100644
  			continue;
  		}
  
-@@ -9510,6 +9523,7 @@ static void hostapd_parse_basic_mle(struct hostapd_data *hapd,
+@@ -9682,7 +9695,8 @@ static void hostapd_parse_basic_mle(stru
  					sub_elem += 1;
  			}
  			ml_data->u.basic.link_info[link_id].sta_profile = sub_elem;
+-			ml_data->u.basic.link_info[link_id].sta_profile_len = sub_elem_len - (sub_elem - mle_pos);
 +			ml_data->u.basic.link_info[link_id].buf = link_info_buf;
- 			ml_data->u.basic.link_info[link_id].sta_profile_len = sub_elem_len - (sub_elem - mle_pos);
++			ml_data->u.basic.link_info[link_id].sta_profile_len = sub_elem_len - (sub_elem - link_info_buf->buf);
  			ml_data->num_links++;
  		}
-@@ -10050,3 +10064,16 @@ void ru_punct_update_bw(u16 bitmap, u8 pri_chan, enum oper_chan_width *width, u8
+ 
+@@ -10225,3 +10239,16 @@ void ru_punct_update_bw(u16 bitmap, u8 p
  }
  
  #endif /* CONFIG_NATIVE_WINDOWS */
@@ -135,11 +133,9 @@ index f31cc4b..bd6a72b 100644
 +			wpabuf_free(ml_data->u.basic.link_info[link_id].buf);
 +	}
 +}
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 8aa7b04..40b20e0 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -38,6 +38,7 @@ void hostapd_2040_coex_action(struct hostapd_data *hapd,
+@@ -38,6 +38,7 @@ void hostapd_2040_coex_action(struct hos
  
  int hostapd_config_read_maclist(const char *fname,
  			       struct mac_acl_entry **acl, int *num);
@@ -147,11 +143,9 @@ index 8aa7b04..40b20e0 100644
  #ifdef NEED_AP_MLME
  int ieee802_11_get_mib(struct hostapd_data *hapd, char *buf, size_t buflen);
  int ieee802_11_get_mib_sta(struct hostapd_data *hapd, struct sta_info *sta,
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index 200a638..b991dad 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -2915,6 +2915,49 @@ enum oper_chan_width op_class_to_ch_width(u8 op_class)
+@@ -2915,6 +2915,49 @@ enum oper_chan_width op_class_to_ch_widt
  }
  
  
@@ -201,8 +195,6 @@ index 200a638..b991dad 100644
  struct wpabuf * ieee802_11_defrag_data(struct ieee802_11_elems *elems,
  				       u8 eid, u8 eid_ext,
  				       const u8 *data, u8 len)
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index 235cff6..eb1d16e 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
 @@ -90,6 +90,7 @@ struct multi_link_basic_info {
@@ -213,7 +205,7 @@ index 235cff6..eb1d16e 100644
  	} link_info[MAX_SUPPORTED_LINKS];
  };
  
-@@ -442,6 +443,7 @@ struct wpabuf * ieee802_11_defrag_data(struct ieee802_11_elems *elems,
+@@ -442,6 +443,7 @@ struct wpabuf * ieee802_11_defrag_data(s
  				       const u8 *data, u8 len);
  struct wpabuf * ieee802_11_defrag(struct ieee802_11_elems *elems,
  				  u8 eid, u8 eid_ext);
@@ -221,6 +213,3 @@ index 235cff6..eb1d16e 100644
  const u8 * get_ml_ie(const u8 *ies, size_t len, u8 type);
  const u8 * get_basic_mle_mld_addr(const u8 *buf, size_t len);
  
--- 
-2.17.1
-
