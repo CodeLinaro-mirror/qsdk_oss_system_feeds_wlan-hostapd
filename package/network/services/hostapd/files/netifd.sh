@@ -176,6 +176,7 @@ hostapd_common_add_bss_config() {
 	config_add_boolean default_disabled
 
 	config_add_array 'sae_groups:list(saelist)'
+	config_add_array 'owe_groups:list(owelist)'
 
 	config_add_boolean wps_pushbutton wps_label ext_registrar wps_pbc_in_m1
 	config_add_string wps_device_type wps_device_name wps_manufacturer wps_pin
@@ -236,6 +237,7 @@ hostapd_set_bss_options() {
 	json_get_vars airtime_bss_weight airtime_bss_limit
 	json_get_values airtime_sta_weight_list airtime_sta_weight
 	json_get_values sae_groups sae_groups
+	json_get_values owe_groups owe_groups
 
 	set_default isolate 0
 	set_default maxassoc 256
@@ -418,6 +420,7 @@ hostapd_set_bss_options() {
 			json_get_var ieee80211w ieee80211w
 			[ -n "$ieee80211w" ] && append bss_conf "ieee80211w=$ieee80211w" "$N"
 			[ -n "$sae_groups" ] && append bss_conf "sae_groups=$sae_groups" "$N"
+			[ -n "$owe_groups" ] && append bss_conf "owe_groups=$owe_groups" "$N"
 		;;
 	esac
 
