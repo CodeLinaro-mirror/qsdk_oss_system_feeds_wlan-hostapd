@@ -288,19 +288,22 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  		ret = 1;
  		break;
  	case WLAN_FC_STYPE_DISASSOC:
-@@ -8157,10 +8213,11 @@ co_location_rnr:
+@@ -8157,11 +8213,12 @@ co_location_rnr:
  
  			/* TODO colocated bss match + MBSSID + MLO case */
  
+-			*eid++ = (bss->iface->mlo_link_id) |
 +			/* bss param update info */
 +			bss_param_change_count = bss->rx_cu_param.bpcc;
- 			*eid++ = (bss->iface->mlo_link_id) |
++			*eid++ = (bss->iface->mlo_link_id & 0xf) |
  				 (bss_param_change_count & 0xf) << 4;
  
 -			/* TODO bss param update info */
- 			*eid++ = bss_param_change_count << 4 & 0xf0;
+-			*eid++ = bss_param_change_count << 4 & 0xf0;
++			*eid++ = (bss_param_change_count & 0xf0) >> 4;
  			len += tbtt_info_len;
  			tbtt_count += 1;
+ 		}
 @@ -8451,10 +8508,12 @@ static u8 * hostapd_eid_basic_resp_mle(s
  				  	         MLE_STA_CONTROL_BEACON_INT_PRESENT |
  				 	         MLE_STA_CONTROL_TSF_OFFSET_PRESENT) << 4,
