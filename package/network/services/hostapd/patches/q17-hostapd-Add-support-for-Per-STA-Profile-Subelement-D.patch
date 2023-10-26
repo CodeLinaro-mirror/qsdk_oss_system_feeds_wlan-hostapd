@@ -18,7 +18,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1681,7 +1681,7 @@ void handle_probe_req(struct hostapd_dat
+@@ -1684,7 +1684,7 @@ void handle_probe_req(struct hostapd_dat
  				      &ml_data, true);
  
  	if (ml_data.present)
@@ -29,7 +29,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		return;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5888,7 +5888,7 @@ static void handle_assoc(struct hostapd_
+@@ -5907,7 +5907,7 @@ static void handle_assoc(struct hostapd_
  			   MACSTR, MAC2STR(sta->addr));
  		os_free(tmp);
  		if (ml_data.present)
@@ -38,7 +38,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		return;
  	}
  	if (sta) {
-@@ -5911,7 +5911,7 @@ static void handle_assoc(struct hostapd_
+@@ -5930,7 +5930,7 @@ static void handle_assoc(struct hostapd_
  		eloop_register_timeout(0, hapd->conf->fils_hlp_wait_time * 1024,
  				       fils_hlp_timeout, hapd, sta);
  		if (ml_data.present)
@@ -47,7 +47,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		return;
  	}
  #endif /* CONFIG_FILS */
-@@ -5921,8 +5921,7 @@ static void handle_assoc(struct hostapd_
+@@ -5940,8 +5940,7 @@ static void handle_assoc(struct hostapd_
  					    pos, left, rssi, omit_rsnxe, &ml_data);
  
  	if (ml_data.present)
@@ -57,7 +57,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	os_free(tmp);
  
  	if (hostapd_ubus_handle_event(hapd, &req)) {
-@@ -8768,8 +8767,10 @@ static void hostapd_parse_basic_mle(stru
+@@ -8829,8 +8828,10 @@ static void hostapd_parse_basic_mle(stru
  {
  	u8 *mle_pos = (u8 *)mle;
  	u8 link_id;
@@ -69,7 +69,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  	if (!len)
  		return;
-@@ -8810,10 +8811,20 @@ static void hostapd_parse_basic_mle(stru
+@@ -8871,10 +8872,20 @@ static void hostapd_parse_basic_mle(stru
  		sub_elem_len = *mle_pos++;
  		sub_elem = mle_pos;
  
@@ -90,7 +90,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			break;
  		}
  
-@@ -8825,6 +8836,7 @@ static void hostapd_parse_basic_mle(stru
+@@ -8886,6 +8897,7 @@ static void hostapd_parse_basic_mle(stru
  			wpa_printf(MSG_ERROR, "Unexpected info present in (Re)Assoc Req MLE Control");
  			mle_pos += sub_elem_len;
  			len -= sub_elem_len;
@@ -98,7 +98,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			continue;
  		}
  
-@@ -8832,6 +8844,7 @@ static void hostapd_parse_basic_mle(stru
+@@ -8893,6 +8905,7 @@ static void hostapd_parse_basic_mle(stru
  			wpa_printf(MSG_ERROR, "Need STA complete profile in Re/assoc req");
  			mle_pos += sub_elem_len;
  			len -= sub_elem_len;
@@ -106,15 +106,17 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			continue;
  		}
  
-@@ -8857,6 +8870,7 @@ static void hostapd_parse_basic_mle(stru
+@@ -8918,7 +8931,8 @@ static void hostapd_parse_basic_mle(stru
  					sub_elem += 1;
  			}
  			ml_data->u.basic.link_info[link_id].sta_profile = sub_elem;
+-			ml_data->u.basic.link_info[link_id].sta_profile_len = sub_elem_len - (sub_elem - mle_pos);
 +			ml_data->u.basic.link_info[link_id].buf = link_info_buf;
- 			ml_data->u.basic.link_info[link_id].sta_profile_len = sub_elem_len - (sub_elem - mle_pos);
++			ml_data->u.basic.link_info[link_id].sta_profile_len = sub_elem_len - (sub_elem - link_info_buf->buf);
  			ml_data->num_links++;
  		}
-@@ -9395,3 +9409,16 @@ void ru_punct_update_bw(u16 bitmap, u8 p
+ 
+@@ -9459,3 +9473,16 @@ void ru_punct_update_bw(u16 bitmap, u8 p
  }
  
  #endif /* CONFIG_NATIVE_WINDOWS */
