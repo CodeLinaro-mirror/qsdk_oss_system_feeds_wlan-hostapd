@@ -17,10 +17,10 @@ Signed-off-by: Pradeep Kumar Chitrapu <quic_pradeepc@quicinc.com>
  1 file changed, 4 insertions(+)
 
 diff --git a/wpa_supplicant/events.c b/wpa_supplicant/events.c
-index 625ed6474545..60c7171ddca9 100644
+index 1a506e3..5c1e91c 100644
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -5811,6 +5811,10 @@ void supplicant_event(void *ctx, enum wpa_event_type event,
+@@ -6036,6 +6036,10 @@ void supplicant_event(void *ctx, enum wpa_event_type event,
  			wpa_tdls_disable_unreachable_link(wpa_s->wpa,
  							  data->low_ack.addr);
  #endif /* CONFIG_TDLS */
@@ -31,7 +31,3 @@ index 625ed6474545..60c7171ddca9 100644
  		break;
  	case EVENT_IBSS_PEER_LOST:
  #ifdef CONFIG_IBSS_RSN
-
--- 
-2.17.1
-

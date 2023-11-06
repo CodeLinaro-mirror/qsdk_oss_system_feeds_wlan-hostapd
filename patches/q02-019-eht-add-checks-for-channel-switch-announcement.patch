@@ -14,9 +14,11 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/ap/ieee802_11.c |  3 ++-
  2 files changed, 10 insertions(+), 3 deletions(-)
 
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index e973472..4d254f0 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -771,7 +771,10 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -748,7 +748,10 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
  		pos = hostapd_eid_txpower_envelope(hapd, pos);
  #endif /* CONFIG_IEEE80211AX */
  
@@ -28,7 +30,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	pos = hostapd_eid_rnr(hapd, pos, WLAN_FC_STYPE_PROBE_RESP);
  	pos = hostapd_eid_fils_indic(hapd, pos, 0);
-@@ -1897,7 +1900,10 @@ int ieee802_11_build_ap_params(struct ho
+@@ -1900,7 +1903,10 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  		tailpos = hostapd_eid_txpower_envelope(hapd, tailpos);
  #endif /* CONFIG_IEEE80211AX */
  

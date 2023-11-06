@@ -15,10 +15,10 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  4 files changed, 17 insertions(+), 3 deletions(-)
 
 diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index dada06c365b2..a5c1efb20b2d 100644
+index 00af762..c00c24f 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3334,6 +3334,16 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -3259,6 +3259,16 @@ static int hostapd_config_fill(struct hostapd_config *conf,
  			}
  			conf->rate_type = BEACON_RATE_HE;
  			conf->beacon_rate = val;
@@ -36,23 +36,23 @@ index dada06c365b2..a5c1efb20b2d 100644
  			val = atoi(pos);
  			if (val < 10 || val > 10000) {
 diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index b84d3d9fa677..e03bea2b3541 100644
+index a3a7dab..2893a4a 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -285,6 +285,8 @@ fragm_threshold=-1
+@@ -298,6 +298,8 @@ beacon_tx_mode=1
  #    beacon_rate=vht:<VHT MCS>
  # HE:
  #    beacon_rate=he:<HE MCS>
-+# EHT:
++## EHT:
 +#    beacon_rate=eht:<EHT MCS>
  #
  # For example, beacon_rate=10 for 1 Mbps or beacon_rate=60 for 6 Mbps (OFDM).
  #beacon_rate=10
 diff --git a/src/common/defs.h b/src/common/defs.h
-index f43bdb5d1b15..ad66eb244715 100644
+index c0c6dbe..981ce1e 100644
 --- a/src/common/defs.h
 +++ b/src/common/defs.h
-@@ -406,7 +406,8 @@ enum beacon_rate_type {
+@@ -427,7 +427,8 @@ enum beacon_rate_type {
  	BEACON_RATE_LEGACY,
  	BEACON_RATE_HT,
  	BEACON_RATE_VHT,
@@ -63,10 +63,10 @@ index f43bdb5d1b15..ad66eb244715 100644
  
  enum eap_proxy_sim_state {
 diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index cc09eddfd168..076f290b28a4 100644
+index 9549683..a9c8e9c 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1290,8 +1290,9 @@ struct wpa_driver_ap_params {
+@@ -1428,8 +1428,9 @@ struct wpa_driver_ap_params {
  	 * This parameter can be used to set a specific Beacon frame data rate
  	 * for the BSS. The interpretation of this value depends on the
  	 * rate_type (legacy: in 100 kbps units, HT: HT-MCS, VHT: VHT-MCS,
@@ -78,6 +78,3 @@ index cc09eddfd168..076f290b28a4 100644
  	 */
  	unsigned int beacon_rate;
  
--- 
-2.31.1
-

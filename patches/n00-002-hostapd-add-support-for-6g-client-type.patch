@@ -23,9 +23,11 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  wpa_supplicant/wpa_supplicant.c |  9 +++++++++
  6 files changed, 64 insertions(+)
 
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 81b9637..297b3a7 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -4840,6 +4840,14 @@ struct wpa_driver_ops {
+@@ -5076,6 +5076,14 @@ struct wpa_driver_ops {
  	int (*dpp_listen)(void *priv, bool enable);
  
  	/**
@@ -40,9 +42,11 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	 * set_secure_ranging_ctx - Add or delete secure ranging parameters of
  	 * the specified peer to the driver.
  	 * @priv: Private driver interface data
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index c6da9c1..9dc0ed9 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -12871,6 +12871,31 @@ static int testing_nl80211_radio_disable
+@@ -13695,6 +13695,31 @@ static int testing_nl80211_radio_disable(void *priv, int disabled)
  
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -74,26 +78,30 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
-@@ -13023,4 +13048,5 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -13849,4 +13874,5 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.register_frame = testing_nl80211_register_frame,
  	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */
 +	.set_6gclient_type = nl80211_set_6gclient_type,
  };
+diff --git a/wpa_supplicant/config.c b/wpa_supplicant/config.c
+index c806b2e..4c669d1 100644
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -5527,6 +5527,8 @@ static const struct global_parse_data gl
+@@ -5671,6 +5671,8 @@ static const struct global_parse_data global_fields[] = {
  	{ INT_RANGE(pasn_corrupt_mic, 0, 1), 0 },
  #endif /* CONFIG_TESTING_OPTIONS */
  #endif /* CONFIG_PASN */
-+	{ INT_RANGE(he_6ghz_reg_client_type, 1, 2),
-+	  CFG_CHANGED_HE_6GHZ_CLIENT_TYPE},
++	 { INT_RANGE(he_6ghz_reg_client_type, 1, 2),
++	   CFG_CHANGED_HE_6GHZ_CLIENT_TYPE},
  };
  
  #undef FUNC
+diff --git a/wpa_supplicant/config.h b/wpa_supplicant/config.h
+index 4886fe6..b3089ba 100644
 --- a/wpa_supplicant/config.h
 +++ b/wpa_supplicant/config.h
-@@ -424,6 +424,7 @@ struct wpa_cred {
+@@ -438,6 +438,7 @@ struct wpa_cred {
  #define CFG_CHANGED_WOWLAN_TRIGGERS BIT(18)
  #define CFG_CHANGED_DISABLE_BTM BIT(19)
  #define CFG_CHANGED_BGSCAN BIT(20)
@@ -101,7 +109,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  /**
   * struct wpa_config - wpa_supplicant configuration data
-@@ -1738,6 +1739,16 @@ struct wpa_config {
+@@ -1771,6 +1772,16 @@ struct wpa_config {
  
  #endif /* CONFIG_TESTING_OPTIONS */
  #endif /* CONFIG_PASN*/
@@ -118,9 +126,11 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  };
  
  
+diff --git a/wpa_supplicant/driver_i.h b/wpa_supplicant/driver_i.h
+index 0e987f4..8a0c1a7 100644
 --- a/wpa_supplicant/driver_i.h
 +++ b/wpa_supplicant/driver_i.h
-@@ -1170,4 +1170,12 @@ wpas_drv_get_sta_mlo_info(struct wpa_sup
+@@ -1179,4 +1179,12 @@ wpas_drv_get_sta_mlo_info(struct wpa_supplicant *wpa_s,
  	return wpa_s->driver->get_sta_mlo_info(wpa_s->drv_priv, mlo_info);
  }
  
@@ -133,9 +143,11 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +						he_6ghz_reg_client_type);
 +}
  #endif /* DRIVER_I_H */
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index 0fe7fa1..62568ff 100644
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -5562,6 +5562,15 @@ int wpa_supplicant_driver_init(struct wp
+@@ -5824,6 +5824,15 @@ int wpa_supplicant_driver_init(struct wpa_supplicant *wpa_s)
  	wpa_dbg(wpa_s, MSG_DEBUG, "RSN: flushing PMKID list in the driver");
  	wpa_drv_flush_pmkid(wpa_s);
  
@@ -151,9 +163,11 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	wpa_s->prev_scan_ssid = WILDCARD_SSID_SCAN;
  	wpa_s->prev_scan_wildcard = 0;
  
+diff --git a/wpa_supplicant/wpa_supplicant.conf b/wpa_supplicant/wpa_supplicant.conf
+index 41eb114..696f7c8 100644
 --- a/wpa_supplicant/wpa_supplicant.conf
 +++ b/wpa_supplicant/wpa_supplicant.conf
-@@ -592,6 +592,15 @@ fast_reauth=1
+@@ -620,6 +620,15 @@ fast_reauth=1
  # 1 = Publish
  #ftm_initiator=0
  

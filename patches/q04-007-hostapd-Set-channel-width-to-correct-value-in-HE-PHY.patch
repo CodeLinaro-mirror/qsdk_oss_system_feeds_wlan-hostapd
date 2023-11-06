@@ -20,20 +20,13 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
 
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -227,24 +227,23 @@ u8 * hostapd_eid_he_operation(struct hos
- 	pos += 6; /* skip the fixed part */
- 
- 	if (is_6ghz_op_class(hapd->iconf->op_class)) {
-+		enum oper_chan_width he_oper_chwidth =
-+			hapd->iface->conf->he_oper_chwidth;
- 		u8 seg0 = hapd->iconf->he_oper_centr_freq_seg0_idx;
- 		u8 seg1 = hapd->iconf->he_oper_centr_freq_seg1_idx;
- 		u8 control;
- 
+@@ -242,19 +242,16 @@ u8 * hostapd_eid_he_operation(struct hos
+ #endif /* CONFIG_IEEE80211BE */
+ 	
  		if (hapd->iconf->ru_punct_bitmap) {
 -			hapd->iconf->he_oper_chwidth =
 -				hostapd_get_oper_chwidth(hapd->iconf);
-+			he_oper_chwidth = hapd->iface->conf->he_oper_chwidth;
++			oper_chwidth = hapd->iface->conf->he_oper_chwidth;
  			hapd->iconf->he_oper_centr_freq_seg0_idx = seg0;
  			hapd->iconf->he_oper_centr_freq_seg1_idx = seg1;
  
@@ -42,7 +35,7 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
 -					   &hapd->iconf->he_oper_chwidth,
 -					   &hapd->iconf->he_oper_centr_freq_seg0_idx,
 -					   &hapd->iconf->he_oper_centr_freq_seg1_idx);
-+					   &he_oper_chwidth,
++					   &oper_chwidth,
 +					   &seg0,
 +					   &seg1);
  
@@ -51,12 +44,3 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  		}
  
  		if (!seg0)
-@@ -286,7 +285,7 @@ u8 * hostapd_eid_he_operation(struct hos
- 		*pos++ = control;
- 
- 		/* Channel Center Freq Seg0/Seg1 */
--		if (hapd->iconf->he_oper_chwidth == 2) {
-+		if (he_oper_chwidth == 2) {
- 			/*
- 			 * Seg 0 indicates the channel center frequency index of
- 			 * the 160 MHz channel.

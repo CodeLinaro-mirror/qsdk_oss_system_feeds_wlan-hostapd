@@ -11,12 +11,15 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/drivers/driver_nl80211.c | 13 +++++++++++--
  1 file changed, 11 insertions(+), 2 deletions(-)
 
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index afbae6b..27bd4ab 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5125,6 +5125,14 @@ static int nl80211_put_freq_params(struc
+@@ -4957,6 +4957,16 @@ static int nl80211_put_freq_params(struct nl_msg *msg,
  		     nla_put_u32(msg, NL80211_ATTR_CENTER_FREQ2,
  				 freq->center_freq2)))
  			return -ENOBUFS;
++
 +		if (freq->ru_punct_bitmap) {
 +			if (freq->ru_punct_ofdma &&
 +			    nla_put_flag(msg, NL80211_ATTR_RU_PUNCT_SUPP_HE))
@@ -25,10 +28,11 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +					freq->ru_punct_bitmap))
 +			return -ENOBUFS;
 +		}
++
  	} else if (freq->ht_enabled || (freq->he_enabled && is_24ghz)) {
  		enum nl80211_channel_type ct;
  
-@@ -5177,10 +5185,11 @@ static int nl80211_set_channel(struct i8
+@@ -5452,10 +5462,11 @@ static int nl80211_set_channel(struct i802_bss *bss,
  	int ret;
  
  	wpa_printf(MSG_DEBUG,

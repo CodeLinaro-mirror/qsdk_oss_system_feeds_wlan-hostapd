@@ -15,9 +15,11 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/ap/ap_config.h    |  2 ++
  3 files changed, 17 insertions(+)
 
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index c00c24f..0aa4e80 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4724,6 +4724,10 @@ static int hostapd_config_fill(struct ho
+@@ -4762,6 +4762,10 @@ static int hostapd_config_fill(struct hostapd_config *conf,
  		conf->eht_phy_capab.su_beamformee = atoi(pos);
  	} else if (os_strcmp(buf, "eht_mu_beamformer") == 0) {
  		conf->eht_phy_capab.mu_beamformer = atoi(pos);
@@ -25,12 +27,14 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +		conf->ru_punct_bitmap = atoi(pos);
 +	} else if (os_strcmp(buf, "ru_punct_ofdma") == 0) {
 +		conf->ru_punct_ofdma = atoi(pos);
- #endif /* CONFIG_IEEE80211BE */
- 	} else {
- 		wpa_printf(MSG_ERROR,
+ 	} else if (os_strcmp(buf, "punct_bitmap") == 0) {
+ 		conf->punct_bitmap = atoi(pos);
+ 	} else if (os_strcmp(buf, "punct_acs_threshold") == 0) {
+diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
+index 2893a4a..cda9e35 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -1043,6 +1043,17 @@ wmm_ac_vo_acm=0
+@@ -1067,6 +1067,17 @@ wmm_ac_vo_acm=0
  # 1 = Enabled
  #ema=0
  
@@ -48,11 +52,13 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  ##### IEEE 802.1X-2004 related configuration ##################################
  
  # Require IEEE 802.1X authorization
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index 7f10cc7..40937c8 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1173,6 +1173,8 @@ struct hostapd_config {
+@@ -1196,6 +1196,8 @@ struct hostapd_config {
+ #define CH_SWITCH_EHT_DISABLED BIT(1)
  	unsigned int ch_switch_eht_config;
- 	u8 mbssid;
  	u8 ema;
 +	u16 ru_punct_bitmap;
 +	u8 ru_punct_ofdma;

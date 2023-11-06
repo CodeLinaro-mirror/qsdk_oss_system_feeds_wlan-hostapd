@@ -19,12 +19,12 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  3 files changed, 29 insertions(+)
 
 diff --git a/hostapd/main.c b/hostapd/main.c
-index 29cbe53..1dbe4dc 100644
+index bfd3039..b2cbf52 100644
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -992,6 +992,8 @@ int main(int argc, char *argv[])
- 
+@@ -913,6 +913,8 @@ int main(int argc, char *argv[])
   out:
+ 	hostapd_ubus_free(&interfaces);
  	hostapd_global_ctrl_iface_deinit(&interfaces);
 +	/* Sending deauth to all stations before deinit */
 +	hostapd_deauthenticate_stations(&interfaces);
@@ -32,10 +32,10 @@ index 29cbe53..1dbe4dc 100644
  	for (i = 0; i < interfaces.count; i++) {
  		if (!interfaces.iface[i])
 diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 7959938..fac02d1 100644
+index 2e0c89a..6770ea5 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3438,6 +3438,32 @@ void hostapd_interface_deinit_free(struct hostapd_iface *iface)
+@@ -2901,6 +2901,32 @@ void hostapd_interface_deinit_free(struct hostapd_iface *iface)
  	hostapd_interface_free(iface);
  }
  
@@ -69,17 +69,14 @@ index 7959938..fac02d1 100644
  static void hostapd_deinit_driver(const struct wpa_driver_ops *driver,
  				  void *drv_priv,
 diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index 0c5f1a3..2b25a65 100644
+index 1edb5de..0669f00 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -733,6 +733,7 @@ hostapd_interface_init_bss(struct hapd_interfaces *interfaces, const char *phy,
+@@ -705,6 +705,7 @@ hostapd_interface_init_bss(struct hapd_interfaces *interfaces, const char *phy,
  void hostapd_new_assoc_sta(struct hostapd_data *hapd, struct sta_info *sta,
  			   int reassoc);
  void hostapd_interface_deinit_free(struct hostapd_iface *iface);
 +void hostapd_deauthenticate_stations(struct hapd_interfaces *interfaces);
  int hostapd_enable_iface(struct hostapd_iface *hapd_iface);
  int hostapd_reload_iface(struct hostapd_iface *hapd_iface);
- int hostapd_disable_iface(struct hostapd_iface *hapd_iface);
--- 
-2.7.4
-
+ int hostapd_reload_bss_only(struct hostapd_data *bss);

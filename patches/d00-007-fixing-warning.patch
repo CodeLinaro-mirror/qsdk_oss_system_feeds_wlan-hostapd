@@ -9,7 +9,7 @@ Uninitialized and redefined macro warnings has been fixed
 
 ../src/crypto/sha1-internal.c:152:0: error: "R3" redefined [-Werror]
  #define R3(v,w,x,y,z,i) \
-	 ^
+         ^
 In file included from qsdk/staging_dir/toolchain-arm_cortex-a7_gcc-5.2.0_uClibc-1.0.14_eabi/include/signal.h:358:0,
 from qsdk/build_dir/target-arm_cortex-a7_uClibc-1.0.14_eabi/hostapd-supplicant-full/hostapd-2021-12-13/src/utils/includes.h:26,
 from ../src/crypto/sha1-internal.c:9:
@@ -24,28 +24,8 @@ Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
  src/rsn_supp/wpa.c  | 2 +-
  3 files changed, 6 insertions(+), 2 deletions(-)
 
---- a/src/drivers/driver_nl80211.c
-+++ b/src/drivers/driver_nl80211.c
-@@ -4859,7 +4859,7 @@ static int wpa_driver_nl80211_sta_add(vo
- 
- 		if (params->he_capab) {
- 			wpa_hexdump(MSG_DEBUG, "  * he_capab",
--				    params->he_capab, params->he_capab_len);
-+				    (u8 *) params->he_capab, params->he_capab_len);
- 			if (nla_put(msg, NL80211_ATTR_HE_CAPABILITY,
- 				    params->he_capab_len, params->he_capab))
- 				goto fail;
---- a/src/tls/tlsv1_client_ocsp.c
-+++ b/src/tls/tlsv1_client_ocsp.c
-@@ -322,7 +322,7 @@ tls_process_ocsp_responses(struct tlsv1_
- {
- 	struct asn1_hdr hdr;
- 	const u8 *pos, *end;
--	enum tls_ocsp_result res;
-+	enum tls_ocsp_result res = TLS_OCSP_NO_RESPONSE;
- 
- 	pos = resp;
- 	end = resp + len;
+diff --git a/src/crypto/sha1-internal.c b/src/crypto/sha1-internal.c
+index ffa04df..0b66286 100644
 --- a/src/crypto/sha1-internal.c
 +++ b/src/crypto/sha1-internal.c
 @@ -141,17 +141,32 @@ A million repetitions of "a"
@@ -81,3 +61,29 @@ Signed-off-by: Karthikeyan Kathirvel <kathirve@codeaurora.org>
  #define R4(v,w,x,y,z,i) \
  	z += (w ^ x ^ y) + blk(i) + 0xCA62C1D6 + rol(v, 5); \
  	w=rol(w, 30);
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 826c401..c5995a6 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -5564,7 +5564,7 @@ static int wpa_driver_nl80211_sta_add(void *priv,
+ 
+ 		if (params->he_capab) {
+ 			wpa_hexdump(MSG_DEBUG, "  * he_capab",
+-				    params->he_capab, params->he_capab_len);
++				    (u8 *) params->he_capab, params->he_capab_len);
+ 			if (nla_put(msg, NL80211_ATTR_HE_CAPABILITY,
+ 				    params->he_capab_len, params->he_capab))
+ 				goto fail;
+diff --git a/src/tls/tlsv1_client_ocsp.c b/src/tls/tlsv1_client_ocsp.c
+index 128f4b5..1dac33e 100644
+--- a/src/tls/tlsv1_client_ocsp.c
++++ b/src/tls/tlsv1_client_ocsp.c
+@@ -315,7 +315,7 @@ tls_process_ocsp_responses(struct tlsv1_client *conn,
+ {
+ 	struct asn1_hdr hdr;
+ 	const u8 *pos, *end;
+-	enum tls_ocsp_result res;
++	enum tls_ocsp_result res = TLS_OCSP_NO_RESPONSE;
+ 
+ 	pos = resp;
+ 	end = resp + len;

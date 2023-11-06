@@ -18,9 +18,11 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  src/ap/ieee802_11.c | 24 +++++++++++++++++++-----
  2 files changed, 38 insertions(+), 11 deletions(-)
 
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index 126beab..9e34563 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -538,6 +538,7 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -557,6 +557,7 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
  	struct ieee80211_mgmt *resp;
  	u8 *pos, *epos, *csa_pos;
  	size_t buflen;
@@ -28,7 +30,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  	hapd = hostapd_mbssid_get_tx_bss(hapd);
  
-@@ -626,9 +627,20 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -655,9 +656,20 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
  
  	pos = resp->u.probe_resp.variable;
  	*pos++ = WLAN_EID_SSID;
@@ -52,9 +54,11 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  	/* Supported rates */
  	pos = hostapd_eid_supp_rates(hapd, pos);
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 2ed44ba..f956e4b 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6964,11 +6964,16 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -7752,11 +7752,16 @@ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
  		 * Sublement ID: 1 octet
  		 * Length: 1 octet
  		 * Nontransmitted capabilities: 4 octets
@@ -73,7 +77,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  		if (frame_type == WLAN_FC_STYPE_BEACON)
  			nontx_profile_len += 2;
-@@ -7074,9 +7079,18 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -7878,9 +7883,18 @@ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
  		eid += sizeof(capab_info);
  
  		*eid++ = WLAN_EID_SSID;

@@ -24,9 +24,11 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/ap/beacon.c | 14 +++++++++++---
  1 file changed, 11 insertions(+), 3 deletions(-)
 
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index e3d2c5d..24abf52 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1898,6 +1898,15 @@ static u8 * hostapd_gen_fils_discovery(s
+@@ -1505,6 +1505,15 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
  		FD_FRAME_CTL_CAP_PRESENT;
  	total_len += 4 + 1 + 2;
  
@@ -42,7 +44,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	/* Check for optional subfields and calculate length */
  	if (wpa_auth_write_fd_rsn_info(hapd->wpa_auth, fd_rsn_info)) {
  		ctl |= FD_FRAME_CTL_RSN_INFO_PRESENT;
-@@ -1964,9 +1973,11 @@ static u8 * hostapd_gen_fils_discovery(s
+@@ -1571,9 +1580,11 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
  	WPA_PUT_LE16(pos, hostapd_fils_discovery_cap(hapd));
  	pos += 2;
  

@@ -11,10 +11,10 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/wpa_supplicant/defconfig b/wpa_supplicant/defconfig
-index a4f20d439..d7bca71c1 100644
+index 2adc776..57eed94 100644
 --- a/wpa_supplicant/defconfig
 +++ b/wpa_supplicant/defconfig
-@@ -620,7 +620,7 @@ CONFIG_BGSCAN_SIMPLE=y
+@@ -622,7 +622,7 @@ CONFIG_BGSCAN_SIMPLE=y
  
  # Opportunistic Wireless Encryption (OWE)
  # Experimental implementation of draft-harkins-owe-07.txt
@@ -23,6 +23,3 @@ index a4f20d439..d7bca71c1 100644
  
  # Device Provisioning Protocol (DPP) (also known as Wi-Fi Easy Connect)
  CONFIG_DPP=y
--- 
-2.25.1
-

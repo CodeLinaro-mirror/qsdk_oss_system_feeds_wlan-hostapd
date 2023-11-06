@@ -18,9 +18,11 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  src/drivers/driver_nl80211.c |  30 ++++++---
  5 files changed, 166 insertions(+), 18 deletions(-)
 
+diff --git a/src/ap/acs.c b/src/ap/acs.c
+index da13d48..61d0c4f 100644
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -435,22 +435,6 @@ static bool acs_usable_bw_chan(const str
+@@ -436,22 +436,6 @@ static bool acs_usable_bw_chan(const struct hostapd_channel_data *chan,
  	return false;
  }
  
@@ -43,10 +45,11 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  static int acs_survey_is_sufficient(struct freq_survey *survey)
  {
  	if (!(survey->filled & SURVEY_HAS_NF)) {
-@@ -712,6 +696,112 @@ static int is_common_24ghz_chan(int chan
- #endif /* ACS_24GHZ_PREFER_1_6_11 */
+@@ -767,6 +751,112 @@ static void acs_update_puncturing_bitmap(struct hostapd_iface *iface,
+ #endif /* CONFIG_IEEE80211BE */
  
- static void
+ 
++static void
 +acs_find_6g_psc_chan_mode(struct hostapd_iface *iface,
 +			  struct hostapd_hw_modes *mode,
 +			  int n_chans, u32 bw,
@@ -142,7 +145,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
 +
 +		if (acs_usable_chan(chan) &&
 +		   (!*ideal_chan || factor < *ideal_factor)) {
-+		    *ideal_factor = factor;
++			*ideal_factor = factor;
 +			*ideal_chan = chan;
 +		}
 +
@@ -152,11 +155,10 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
 +	}
 +}
 +
-+static void
+ static void
  acs_find_ideal_chan_mode(struct hostapd_iface *iface,
  			 struct hostapd_hw_modes *mode,
- 			 int n_chans, u32 bw,
-@@ -982,10 +1072,17 @@ bw_selected:
+@@ -1056,10 +1146,18 @@ bw_selected:
  
  	for (i = 0; i < iface->num_hw_features; i++) {
  		mode = &iface->hw_features[i];
@@ -164,6 +166,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
 -			acs_find_ideal_chan_mode(iface, mode, n_chans, bw,
 -						 &rand_chan, &ideal_chan,
 -						 &ideal_factor);
++
 +		if (!hostapd_hw_skip_mode(iface, mode)) {
 +			if (iface->conf->acs_exclude_6ghz_non_psc) {
 +				acs_find_6g_psc_chan_mode(iface, mode, n_chans, bw,
@@ -178,7 +181,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	}
  
  	if (ideal_chan) {
-@@ -1022,27 +1119,43 @@ static void acs_adjust_secondary(struct
+@@ -1109,27 +1207,43 @@ static void acs_adjust_secondary(struct hostapd_iface *iface)
  
  static void acs_adjust_center_freq(struct hostapd_iface *iface)
  {
@@ -194,13 +197,13 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
 -	switch (hostapd_get_oper_chwidth(iface->conf)) {
 +	if (acs_exclude_6ghz_non_psc && (bw == CONF_OPER_CHWIDTH_160MHZ)) {
-+                for (i = 0; i < ARRAY_SIZE(psc_chan); i++) {
-+                        if (psc_chan[i] == iface->conf->channel) {
-+                                is_sec_psc_chan = (i%2) ? true : false;
-+                                break;
-+                        }
-+                }
-+        }
++		 for (i = 0; i < ARRAY_SIZE(psc_chan); i++) {
++			 if (psc_chan[i] == iface->conf->channel) {
++				 is_sec_psc_chan = (i%2) ? true : false;
++				 break;
++			 }
++		 }
++	 }
 +
 +	switch (bw) {
  	case CONF_OPER_CHWIDTH_USE_HT:
@@ -218,25 +221,25 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
 -		center = acs_get_bw_center_chan(iface->freq, ACS_BW80);
 -		break;
 +		if (acs_exclude_6ghz_non_psc)
-+                        offset = 2;
-+                else
-+                        offset = 6;
-+                break;
++			offset = 2;
++		else
++			offset = 6;
++		break;
  	case CONF_OPER_CHWIDTH_160MHZ:
 -		center = acs_get_bw_center_chan(iface->freq, ACS_BW160);
 -		break;
 +		/* In 160MHz, if primary 20MHz present in secondary 80MHz, then
-+                 * subtract with -6 to find the center frequency of the 160MHz
-+                 */
-+                if (acs_exclude_6ghz_non_psc)
-+                        offset = is_sec_psc_chan ? -6 : 10;
-+                else
-+                        offset = 14;
-+                break;
++		  * subtract with -6 to find the center frequency of the 160MHz
++		  */
++		if (acs_exclude_6ghz_non_psc)
++			offset = is_sec_psc_chan ? -6 : 10;
++		else
++			offset = 14;
++		break;
  	default:
  		/* TODO: How can this be calculated? Adjust
  		 * acs_find_ideal_chan() */
-@@ -1051,7 +1164,8 @@ static void acs_adjust_center_freq(struc
+@@ -1138,7 +1252,8 @@ static void acs_adjust_center_freq(struct hostapd_iface *iface)
  		return;
  	}
  
@@ -246,7 +249,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  }
  
  
-@@ -1148,7 +1262,8 @@ static void acs_scan_complete(struct hos
+@@ -1238,7 +1353,8 @@ static void acs_scan_complete(struct hostapd_iface *iface)
  	wpa_printf(MSG_DEBUG, "ACS: Using survey based algorithm (acs_num_scans=%d)",
  		   iface->conf->acs_num_scans);
  
@@ -256,21 +259,23 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	if (err) {
  		wpa_printf(MSG_ERROR, "ACS: Failed to get survey data");
  		goto fail;
-@@ -1199,6 +1314,11 @@ static int * acs_request_scan_add_freqs(
+@@ -1288,6 +1404,11 @@ static int * acs_request_scan_add_freqs(struct hostapd_iface *iface,
+ 		if ((chan->flag & HOSTAPD_CHAN_INDOOR_ONLY) &&
  		    iface->conf->country[2] == 0x4f)
  			continue;
- 
-+		if (is_6ghz_freq(chan->freq) &&
-+		    iface->conf->acs_exclude_6ghz_non_psc &&
-+		    !is_6ghz_psc_frequency(chan->freq))
++  
++  		if (is_6ghz_freq(chan->freq) &&
++		     iface->conf->acs_exclude_6ghz_non_psc &&
++		     !is_6ghz_psc_frequency(chan->freq))
 +			continue;
-+
+ 
  		*freq++ = chan->freq;
  	}
- 
+diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
+index 331b0ea..19633f9 100644
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -273,13 +273,15 @@ static inline void hostapd_drv_poll_clie
+@@ -280,13 +280,15 @@ static inline void hostapd_drv_poll_client(struct hostapd_data *hapd,
  }
  
  static inline int hostapd_drv_get_survey(struct hostapd_data *hapd,
@@ -288,9 +293,11 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  }
  
  static inline int hostapd_get_country(struct hostapd_data *hapd, char *alpha2)
+diff --git a/src/ap/bss_load.c b/src/ap/bss_load.c
+index 725d3cd..f91493a 100644
 --- a/src/ap/bss_load.c
 +++ b/src/ap/bss_load.c
-@@ -49,7 +49,8 @@ static void update_channel_utilization(v
+@@ -49,7 +49,8 @@ static void update_channel_utilization(void *eloop_data, void *user_data)
  	if (!(hapd->beacon_set_done && hapd->started))
  		return;
  
@@ -300,9 +307,11 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	if (err) {
  		wpa_printf(MSG_ERROR, "BSS Load: Failed to get survey data");
  		return;
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 70dab06..6e43add 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -4451,6 +4451,8 @@ struct wpa_driver_ops {
+@@ -4543,6 +4543,8 @@ struct wpa_driver_ops {
  	 * @priv: Private driver interface data
  	 * @freq: If set, survey data for the specified frequency is only
  	 *	being requested. If not set, all survey data is requested.
@@ -311,7 +320,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	 * Returns: 0 on success, -1 on failure
  	 *
  	 * Use this to retrieve:
-@@ -4469,7 +4471,7 @@ struct wpa_driver_ops {
+@@ -4561,7 +4563,7 @@ struct wpa_driver_ops {
  	 * for each survey. The min_nf of the channel is updated for each
  	 * survey.
  	 */
@@ -320,9 +329,11 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
  	/**
  	 * status - Get driver interface status information
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 9dc0ed9..06b396d 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -9637,6 +9637,10 @@ static int check_survey_ok(struct nlattr
+@@ -10029,6 +10029,10 @@ static int check_survey_ok(struct nlattr **sinfo, u32 surveyed_freq,
  	return freq_filter == surveyed_freq;
  }
  
@@ -333,7 +344,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
  static int survey_handler(struct nl_msg *msg, void *arg)
  {
-@@ -9644,15 +9648,19 @@ static int survey_handler(struct nl_msg
+@@ -10036,15 +10040,19 @@ static int survey_handler(struct nl_msg *msg, void *arg)
  	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
  	struct nlattr *sinfo[NL80211_SURVEY_INFO_MAX + 1];
  	struct survey_results *survey_results;
@@ -354,7 +365,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
  	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
  		  genlmsg_attrlen(gnlh, 0), NULL);
-@@ -9681,6 +9689,11 @@ static int survey_handler(struct nl_msg
+@@ -10073,6 +10081,11 @@ static int survey_handler(struct nl_msg *msg, void *arg)
  			     survey_results->freq_filter))
  		return NL_SKIP;
  
@@ -366,10 +377,11 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	if (survey_results->freq_filter &&
  	    survey_results->freq_filter != surveyed_freq) {
  		wpa_printf(MSG_EXCESSIVE, "nl80211: Ignoring survey data for freq %d MHz",
-@@ -9694,19 +9707,22 @@ static int survey_handler(struct nl_msg
+@@ -10085,21 +10098,22 @@ static int survey_handler(struct nl_msg *msg, void *arg)
+ 	return NL_SKIP;
  }
  
- 
+-
 -static int wpa_driver_nl80211_get_survey(void *priv, unsigned int freq)
 +static int wpa_driver_nl80211_get_survey(void *priv, unsigned int freq,
 +					 bool acs_exclude_6ghz_non_psc)
@@ -384,16 +396,17 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
  	os_memset(&data, 0, sizeof(data));
 -	survey_results = &data.survey_results;
+-
+-	dl_list_init(&survey_results->survey_list);
 +	os_memset(&arg, 0, sizeof(arg));
 +	arg.survey_results = &data.survey_results;
 +	arg.acs_exclude_6ghz_non_psc = acs_exclude_6ghz_non_psc;
  
--	dl_list_init(&survey_results->survey_list);
 +	dl_list_init(&arg.survey_results->survey_list);
- 
  	msg = nl80211_drv_msg(drv, NLM_F_DUMP, NL80211_CMD_GET_SURVEY);
  	if (!msg)
-@@ -9718,7 +9734,7 @@ static int wpa_driver_nl80211_get_survey
+ 		return -ENOBUFS;
+@@ -10110,7 +10124,7 @@ static int wpa_driver_nl80211_get_survey(void *priv, unsigned int freq)
  	do {
  		wpa_printf(MSG_DEBUG, "nl80211: Fetch survey data");
  		err = send_and_recv_msgs(drv, msg, survey_handler,
@@ -402,7 +415,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	} while (err > 0);
  
  	if (err)
-@@ -9726,7 +9742,7 @@ static int wpa_driver_nl80211_get_survey
+@@ -10118,7 +10132,7 @@ static int wpa_driver_nl80211_get_survey(void *priv, unsigned int freq)
  	else
  		wpa_supplicant_event(drv->ctx, EVENT_SURVEY, &data);
  

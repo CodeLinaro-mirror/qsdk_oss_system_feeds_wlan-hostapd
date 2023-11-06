@@ -15,12 +15,14 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/ap/ap_config.h    | 1 +
  4 files changed, 9 insertions(+)
 
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index ce0f574..339cb7f 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4738,6 +4738,14 @@ static int hostapd_config_fill(struct ho
- 		conf->ru_punct_bitmap = atoi(pos);
- 	} else if (os_strcmp(buf, "ru_punct_ofdma") == 0) {
- 		conf->ru_punct_ofdma = atoi(pos);
+@@ -4792,6 +4792,15 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 		bss->mld_ap = !!atoi(pos);
+ 	} else if (os_strcmp(buf, "mld_id") == 0) {
+ 		bss->mld_id = atoi(pos);
 +	} else if (os_strcmp(buf, "ru_punct_acs_threshold") == 0) {
 +		conf->ru_punct_acs_threshold = atoi(pos);
 +		if (conf->ru_punct_acs_threshold > 100) {
@@ -29,12 +31,15 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +				   line);
 +			return 1;
 +		}
++
  #endif /* CONFIG_IEEE80211BE */
  	} else {
  		wpa_printf(MSG_ERROR,
+diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
+index 595212d..a1ebfb3 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -1059,6 +1059,12 @@ wmm_ac_vo_acm=0
+@@ -1083,6 +1083,12 @@ wmm_ac_vo_acm=0
  # RU puncturing bitmap. Default value is 0.
  #ru_punct_ofdma=1
  
@@ -47,12 +52,14 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  ##### IEEE 802.1X-2004 related configuration ##################################
  
  # Require IEEE 802.1X authorization
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index 5ca4704..45245f1 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1180,6 +1180,7 @@ struct hostapd_config {
+@@ -1203,6 +1203,7 @@ struct hostapd_config {
  	u8 ema;
- 	u16 ru_punct_bitmap;
- 	u8 ru_punct_ofdma;
+	u16 ru_punct_bitmap;
+	u8 ru_punct_ofdma;
 +	u8 ru_punct_acs_threshold;
  
  	enum mbssid {

@@ -1,8 +1,10 @@
+diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
+index 55711ab..b744c92 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3112,6 +3112,92 @@ set:
- 	return ret;
+@@ -3221,6 +3221,93 @@ fail:
  }
+ 
  
 +static int hostapd_2ghz_ht40_allow_map(struct hostapd_hw_modes *mode,
 +				       char *buf, size_t buflen)
@@ -90,41 +92,43 @@
 +
 +	return len;
 +}
- 
++
  static int hostapd_ctrl_iface_remove_neighbor(struct hostapd_data *hapd,
  					      char *buf)
-@@ -3790,6 +3876,10 @@ static int hostapd_ctrl_iface_receive_pr
+ {
+@@ -3891,6 +3978,10 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  		if (radius_server_dac_request(hapd->radius_srv, buf + 12) < 0)
  			reply_len = -1;
  #endif /* RADIUS_SERVER */
-+	} else if (os_strcmp(buf, "HT40_ALLOW_MAP") == 0) {
-+		reply_len = hostapd_ctrl_iface_ht40_allow_map(hapd->iface,
-+							      reply,
-+							      reply_size);
++	 } else if (os_strcmp(buf, "HT40_ALLOW_MAP") == 0) {
++		 reply_len = hostapd_ctrl_iface_ht40_allow_map(hapd->iface,
++							       reply,
++							       reply_size);
  	} else if (os_strncmp(buf, "GET_CAPABILITY ", 15) == 0) {
  		reply_len = hostapd_ctrl_iface_get_capability(
  			hapd, buf + 15, reply, reply_size);
+diff --git a/hostapd/hostapd_cli.c b/hostapd/hostapd_cli.c
+index 61f8cba..ef33968 100644
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1362,6 +1362,12 @@ static int hostapd_cli_cmd_driver_flags(
+@@ -1381,6 +1381,11 @@ static int hostapd_cli_cmd_driver_flags(struct wpa_ctrl *ctrl, int argc,
  	return wpa_ctrl_command(ctrl, "DRIVER_FLAGS");
  }
  
 +static int hostapd_cli_cmd_ht40_allow_map(struct wpa_ctrl *ctrl,
-+					  int argc, char *argv[])
++					   int argc, char *argv[])
 +{
-+	return wpa_ctrl_command(ctrl, "HT40_ALLOW_MAP");
++	 return wpa_ctrl_command(ctrl, "HT40_ALLOW_MAP");
 +}
-+
  
  #ifdef CONFIG_DPP
  
-@@ -1705,6 +1711,8 @@ static const struct hostapd_cli_cmd host
+@@ -1765,6 +1770,8 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
  	  "=Add/Delete/Show/Clear deny MAC ACL" },
  	{ "poll_sta", hostapd_cli_cmd_poll_sta, hostapd_complete_stations,
  	  "<addr> = poll a STA to check connectivity with a QoS null frame" },
-+	{ "ht40_allow_map", hostapd_cli_cmd_ht40_allow_map, NULL,
-+	  "= show ht40 allow map status" },
++	 { "ht40_allow_map", hostapd_cli_cmd_ht40_allow_map, NULL,
++	   "= show ht40 allow map status" },
  	{ "req_beacon", hostapd_cli_cmd_req_beacon, NULL,
  	  "<addr> [req_mode=] <measurement request hexdump>  = send a Beacon report request to a station" },
  	{ "reload_wpa_psk", hostapd_cli_cmd_reload_wpa_psk, NULL,

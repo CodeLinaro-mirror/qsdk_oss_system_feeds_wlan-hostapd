@@ -12,14 +12,18 @@ Signed-off-by: John Crispin <john@phrozen.org>
  hostapd/hostapd.conf  | 5 ++++-
  2 files changed, 9 insertions(+), 3 deletions(-)
 
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index 1f38d93..f427e5f 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3367,8 +3367,11 @@ static int hostapd_config_fill(struct ho
- 	} else if (os_strcmp(buf, "he_ul_mumimo") == 0) {
- 		conf->he_phy_capab.he_ul_mumimo = atoi(pos);
+@@ -3449,10 +3449,11 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 	} else if (os_strcmp(buf, "he_mu_beamformer") == 0) {
+ 		conf->he_phy_capab.he_mu_beamformer = atoi(pos);
  	} else if (os_strcmp(buf, "he_bss_color") == 0) {
 -		conf->he_op.he_bss_color = atoi(pos) & 0x3f;
 -		conf->he_op.he_bss_color_disabled = 0;
+-		if (atoi(pos) > 63)
+-			conf->he_op.he_bss_color = os_random() % 63 + 1;
 +		conf->he_op.he_bss_color = atoi(pos);
 +		if (conf->he_op.he_bss_color > 63)
 +			conf->he_op.he_bss_color = (os_random() % 63) + 1;
@@ -28,9 +32,11 @@ Signed-off-by: John Crispin <john@phrozen.org>
  	} else if (os_strcmp(buf, "he_bss_color_partial") == 0) {
  		conf->he_op.he_bss_color_partial = atoi(pos);
  	} else if (os_strcmp(buf, "he_default_pe_duration") == 0) {
+diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
+index 30fb06d..8cb35fb 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -810,7 +810,10 @@ wmm_ac_vo_acm=0
+@@ -833,7 +833,10 @@ wmm_ac_vo_acm=0
  # 1 = supported
  #he_mu_beamformer=1
  

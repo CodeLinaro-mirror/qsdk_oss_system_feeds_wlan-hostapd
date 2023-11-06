@@ -23,18 +23,15 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/ap/ieee802_11.c | 14 +++++++++++++-
  1 file changed, 13 insertions(+), 1 deletion(-)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 748d34fb1032..5e0e26ad1be2 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8816,9 +8816,19 @@ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
- 					  struct multi_link_data *ml_data)
+@@ -7774,7 +7774,17 @@ static size_t hostapd_eid_mbssid_elem_le
+ 					  size_t known_bss_len)
  {
  	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
 -	size_t len = 3, i, tx_xrate_len;
 +	size_t len, i, tx_xrate_len;
- 	bool ml_present_in_probe = (ml_data && ml_data->present);
- 
++
 +	/* Element ID: 1 octet
 +	 * Length: 1 octet
 +	 * Max BSSID Indicator: 1 octet
@@ -44,11 +41,10 @@ index 748d34fb1032..5e0e26ad1be2 100644
 +	 * len, we will add the 2 bytes for Element ID and Length.
 +	 */
 +	len = 1;
-+
+ 
  	hostapd_eid_ext_supp_rates(tx_bss, NULL, &tx_xrate_len);
  	for (i = *bss_index; i < hapd->iface->num_bss; i++) {
- 		struct hostapd_data *bss = hapd->iface->bss[i];
-@@ -8884,6 +8894,8 @@ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
+@@ -7834,6 +7844,8 @@ static size_t hostapd_eid_mbssid_elem_le
  	}
  
  	*bss_index = i;
@@ -57,6 +53,3 @@ index 748d34fb1032..5e0e26ad1be2 100644
  	return len;
  }
  
--- 
-2.17.1
-

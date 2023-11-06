@@ -25,19 +25,19 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
  8 files changed, 77 insertions(+), 2 deletions(-)
 
 diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index 47780e9..229480a 100644
+index 0aa4e80..ce0f574 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3432,6 +3432,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -3462,6 +3462,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
  		conf->he_phy_capab.he_su_beamformee = atoi(pos);
  	} else if (os_strcmp(buf, "he_mu_beamformer") == 0) {
  		conf->he_phy_capab.he_mu_beamformer = atoi(pos);
 +	} else if (os_strcmp(buf, "he_ul_mumimo") == 0) {
-+		conf->he_phy_capab.he_ul_mumimo = atoi(pos);
++		 conf->he_phy_capab.he_ul_mumimo = atoi(pos);
  	} else if (os_strcmp(buf, "he_bss_color") == 0) {
- 		conf->he_op.he_bss_color = atoi(pos);
- 		if (conf->he_op.he_bss_color > 63)
-@@ -4709,6 +4711,14 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+		conf->he_op.he_bss_color = atoi(pos);
+		if (conf->he_op.he_bss_color > 63)
+@@ -4762,6 +4764,14 @@ static int hostapd_config_fill(struct hostapd_config *conf,
  		conf->eht_phy_capab.su_beamformee = atoi(pos);
  	} else if (os_strcmp(buf, "eht_mu_beamformer") == 0) {
  		conf->eht_phy_capab.mu_beamformer = atoi(pos);
@@ -50,13 +50,13 @@ index 47780e9..229480a 100644
 +	} else if (os_strcmp(buf, "eht_ulmumimo_320mhz") == 0) {
 +		conf->eht_phy_capab.non_ofdma_ulmumimo_320mhz = atoi(pos);
  	} else if (os_strcmp(buf, "ru_punct_bitmap") == 0) {
- 		conf->ru_punct_bitmap = atoi(pos);
- 	} else if (os_strcmp(buf, "ru_punct_ofdma") == 0) {
+		conf->ru_punct_bitmap = atoi(pos);
+	} else if (os_strcmp(buf, "ru_punct_ofdma") == 0) {
 diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index d904234..2e43e68 100644
+index cda9e35..595212d 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -835,6 +835,11 @@ wmm_ac_vo_acm=0
+@@ -838,6 +838,11 @@ wmm_ac_vo_acm=0
  # 1 = supported
  #he_mu_beamformer=1
  
@@ -69,10 +69,10 @@ index d904234..2e43e68 100644
  # 0 = disable
  # 1-63 = pre-defined color
 diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
-index 411bee2..7c9d017 100644
+index afc1dd7..3edcddb 100644
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -273,6 +273,8 @@ struct hostapd_config * hostapd_config_defaults(void)
+@@ -274,6 +274,8 @@ struct hostapd_config * hostapd_config_defaults(void)
  		HE_OPERATION_RTS_THRESHOLD_OFFSET;
  	/* Set default basic MCS/NSS set to single stream MCS 0-7 */
  	conf->he_op.he_basic_mcs_nss_set = 0xfffc;
@@ -82,10 +82,10 @@ index 411bee2..7c9d017 100644
  	conf->he_op.he_bss_color_partial = 0;
  	conf->he_op.he_bss_color = os_random() % 63 + 1;
 diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index e07181a..5518345 100644
+index 40937c8..5ca4704 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -932,6 +932,7 @@ struct he_phy_capabilities_info {
+@@ -963,6 +963,7 @@ struct he_phy_capabilities_info {
  	bool he_su_beamformer;
  	bool he_su_beamformee;
  	bool he_mu_beamformer;
@@ -93,7 +93,7 @@ index e07181a..5518345 100644
  };
  
  /**
-@@ -968,6 +969,10 @@ struct eht_phy_capabilities_info {
+@@ -999,6 +1000,10 @@ struct eht_phy_capabilities_info {
  	bool su_beamformer;
  	bool su_beamformee;
  	bool mu_beamformer;
@@ -105,10 +105,10 @@ index e07181a..5518345 100644
  
  /**
 diff --git a/src/ap/hw_features.c b/src/ap/hw_features.c
-index b39b759..d402ab5 100644
+index 4f78b50..90ae35f 100644
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -677,8 +677,36 @@ static int ieee80211ac_supported_vht_capab(struct hostapd_iface *iface)
+@@ -678,8 +678,36 @@ static int ieee80211ac_supported_vht_capab(struct hostapd_iface *iface)
  
  
  #ifdef CONFIG_IEEE80211AX
@@ -146,10 +146,10 @@ index b39b759..d402ab5 100644
  }
  #endif /* CONFIG_IEEE80211AX */
 diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index eda3821..9549392 100644
+index 06de837..83e96e8 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -145,9 +145,21 @@ u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
+@@ -164,9 +164,21 @@ u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
  			~EHT_PHYCAP_SU_BEAMFORMEE;
  
  	if (!hapd->iface->conf->eht_phy_capab.mu_beamformer)
@@ -173,7 +173,7 @@ index eda3821..9549392 100644
  
  	mcs_nss_len = ieee80211_eht_mcs_set_size(mode->mode,
 diff --git a/src/ap/ieee802_11_he.c b/src/ap/ieee802_11_he.c
-index bd3d86d..1d845df 100644
+index 098711f..c3af932 100644
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
 @@ -160,6 +160,13 @@ u8 * hostapd_eid_he_capab(struct hostapd_data *hapd, u8 *eid,
@@ -191,10 +191,10 @@ index bd3d86d..1d845df 100644
  		he_oper_chwidth;
  
 diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index e77d42a..cd7950d 100644
+index c47c0a0..2b3705b 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2330,6 +2330,9 @@ struct ieee80211_spatial_reuse {
+@@ -2374,6 +2374,9 @@ struct ieee80211_spatial_reuse {
  #define HE_PHYCAP_MU_BEAMFORMER_CAPAB_IDX	4
  #define HE_PHYCAP_MU_BEAMFORMER_CAPAB		((u8) BIT(1))
  
@@ -204,7 +204,7 @@ index e77d42a..cd7950d 100644
  #define HE_PHYCAP_PPE_THRESHOLD_PRESENT_IDX	6
  #define HE_PHYCAP_PPE_THRESHOLD_PRESENT		((u8) BIT(7))
  
-@@ -2494,7 +2497,10 @@ struct ieee80211_eht_operation {
+@@ -2544,7 +2547,10 @@ struct ieee80211_eht_operation {
  #define EHT_PHYCAP_PPE_THRESHOLD_PRESENT_IDX	5
  #define EHT_PHYCAP_PPE_THRESHOLD_PRESENT	((u8) BIT(3))
  
@@ -216,6 +216,3 @@ index e77d42a..cd7950d 100644
  #define EHT_PHYCAP_MU_BEAMFORMER_80MHZ		((u8) BIT(4))
  #define EHT_PHYCAP_MU_BEAMFORMER_160MHZ		((u8) BIT(5))
  #define EHT_PHYCAP_MU_BEAMFORMER_320MHZ		((u8) BIT(6))
--- 
-2.17.1
-

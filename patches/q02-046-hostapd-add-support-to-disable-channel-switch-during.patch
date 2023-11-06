@@ -40,20 +40,24 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  wpa_supplicant/wpa_supplicant.conf |  4 ++++
  12 files changed, 75 insertions(+), 5 deletions(-)
 
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index 166ce67..36ecf1a 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4762,6 +4762,8 @@ static int hostapd_config_fill(struct ho
- 			return 1;
- 		}
+@@ -4804,6 +4804,8 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+                }
+ 
  #endif /* CONFIG_IEEE80211BE */
 +	} else if (os_strcmp(buf, "disable_csa_dfs") == 0) {
 +		conf->disable_csa_dfs = atoi(pos);
  	} else {
  		wpa_printf(MSG_ERROR,
  			   "Line %d: unknown configuration item '%s'",
+diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
+index eb9cbfe..9e32d12 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -1291,6 +1291,13 @@ static int hostapd_ctrl_iface_set(struct
+@@ -1348,6 +1348,13 @@ static int hostapd_ctrl_iface_set(struct hostapd_data *hapd, char *cmd)
  	} else if (os_strcasecmp(cmd, "setband") == 0) {
  		ret = hostapd_ctrl_iface_set_band(hapd, value);
  	} else {
@@ -67,7 +71,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  		ret = hostapd_set_iface(hapd->iconf, hapd->conf, cmd, value);
  		if (ret)
  			return ret;
-@@ -2706,6 +2713,13 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2804,6 +2811,13 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
  	int bandwidth;
  	u8 chan;
  
@@ -81,6 +85,8 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	ret = hostapd_parse_csa_settings(pos, &settings);
  	if (ret)
  		return ret;
+diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
+index a1ebfb3..c392e0b 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
 @@ -239,6 +239,10 @@ channel=1
@@ -94,20 +100,24 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  # Beacon interval in kus (1.024 ms) (default: 100; range 15..65535)
  beacon_int=100
  
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index bfc08fa..a65db47 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1185,6 +1185,7 @@ struct hostapd_config {
- 	u8 ru_punct_ofdma;
+@@ -1205,6 +1205,7 @@ struct hostapd_config {
+         u8 ru_punct_ofdma;
  	u8 ru_punct_acs_threshold;
  	int enable_320mhz_bw;
 +	int disable_csa_dfs;
  
  	enum mbssid {
  		MBSSID_DISABLED = 0,
+diff --git a/src/ap/dfs.c b/src/ap/dfs.c
+index 7d02d33..1cd306a 100644
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1455,6 +1455,17 @@ void hostapd_dfs_test_mode_csa_timeout(v
- 	ieee802_11_set_beacon(hapd);
+@@ -1207,6 +1207,17 @@ void hostapd_dfs_test_mode_csa_timeout(void *eloop_data, void *user_data)
+        ieee802_11_set_beacon(hapd);
  }
  
 +void hostapd_dfs_radar_handling_timeout(void *eloop_data, void *user_data)
@@ -123,8 +133,8 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 +
  static int hostapd_dfs_testmode_set_beacon_csa(struct hostapd_iface *iface)
  {
- 	struct hostapd_data *hapd = iface->bss[0];
-@@ -1639,8 +1650,15 @@ int hostapd_dfs_radar_detected(struct ho
+        struct hostapd_data *hapd = iface->bss[0];
+@@ -1635,8 +1646,15 @@ int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
  	}
  
  	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
@@ -142,6 +152,8 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	}
  
  	return 0;
+diff --git a/src/ap/dfs.h b/src/ap/dfs.h
+index 3a7c3e4..0cd0ced 100644
 --- a/src/ap/dfs.h
 +++ b/src/ap/dfs.h
 @@ -11,6 +11,8 @@
@@ -153,16 +165,18 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  void hostapd_dfs_test_mode_csa_timeout(void *eloop_data, void *user_data);
  
-@@ -37,5 +39,5 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -37,5 +39,5 @@ int hostapd_dfs_start_cac(struct hostapd_iface *iface, int freq,
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
  int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
  			   int center_freq);
 -
 +void hostapd_dfs_radar_handling_timeout(void *eloop_data, void *user_data);
  #endif /* DFS_H */
+diff --git a/wpa_supplicant/ap.c b/wpa_supplicant/ap.c
+index 83476dd..a855af8 100644
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -1830,7 +1830,17 @@ int ap_switch_channel(struct wpa_supplic
+@@ -1853,7 +1853,17 @@ static int __ap_ctrl_iface_chanswitch(struct hostapd_iface *iface,
  int ap_ctrl_iface_chanswitch(struct wpa_supplicant *wpa_s, const char *pos)
  {
  	struct csa_settings settings;
@@ -179,29 +193,34 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 +
 +	ret = hostapd_parse_csa_settings(pos, &settings);
  
- 	if (ret)
- 		return ret;
+ 	if (!(wpa_s->ap_iface && wpa_s->ap_iface->bss[0]) &&
+ 	    !(wpa_s->ifmsh && wpa_s->ifmsh->bss[0]))
+diff --git a/wpa_supplicant/config.c b/wpa_supplicant/config.c
+index 6d4273c..abf3f9f 100644
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -5677,6 +5677,8 @@ static const struct global_parse_data gl
+@@ -5679,6 +5679,7 @@ static const struct global_parse_data global_fields[] = {
  #endif /* CONFIG_PASN */
- 	{ INT_RANGE(he_6ghz_reg_client_type, 1, 2),
- 	  CFG_CHANGED_HE_6GHZ_CLIENT_TYPE},
+	 { INT_RANGE(he_6ghz_reg_client_type, 1, 2),
+	   CFG_CHANGED_HE_6GHZ_CLIENT_TYPE},
 +	{ INT_RANGE(disable_csa_dfs, 0, 1), 0 },
-+
  };
  
  #undef FUNC
+diff --git a/wpa_supplicant/config.h b/wpa_supplicant/config.h
+index b3089ba..05fe0cb 100644
 --- a/wpa_supplicant/config.h
 +++ b/wpa_supplicant/config.h
 @@ -1782,6 +1782,7 @@ struct wpa_config {
- 	 * 2 = SUBORDINATE CLIENT
- 	 */
- 	u8 he_6ghz_reg_client_type;
+	 * 2 = SUBORDINATE CLIENT
+	 */
+	u8 he_6ghz_reg_client_type;
 +	int disable_csa_dfs;
  };
  
  
+diff --git a/wpa_supplicant/ctrl_iface.c b/wpa_supplicant/ctrl_iface.c
+index 304ff85..e4a65e5 100644
 --- a/wpa_supplicant/ctrl_iface.c
 +++ b/wpa_supplicant/ctrl_iface.c
 @@ -58,6 +58,7 @@
@@ -212,7 +231,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  #ifdef __NetBSD__
  #include <net/if_ether.h>
-@@ -3657,7 +3658,16 @@ static int wpa_supplicant_ctrl_iface_set
+@@ -3657,7 +3658,16 @@ static int wpa_supplicant_ctrl_iface_set_network(
  		   id, name);
  	wpa_hexdump_ascii_key(MSG_DEBUG, "CTRL_IFACE: value",
  			      (u8 *) value, os_strlen(value));
@@ -230,9 +249,11 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	ssid = wpa_config_get_network(wpa_s->conf, id);
  	if (ssid == NULL) {
  		wpa_printf(MSG_DEBUG, "CTRL_IFACE: Could not find network "
+diff --git a/wpa_supplicant/mesh.c b/wpa_supplicant/mesh.c
+index 499b157..6ed4ea1 100644
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
-@@ -554,6 +554,8 @@ static int wpa_supplicant_mesh_init(stru
+@@ -556,6 +556,8 @@ static int wpa_supplicant_mesh_init(struct wpa_supplicant *wpa_s,
  		conf->basic_rates[rate_len] = -1;
  	}
  
@@ -241,9 +262,11 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	/* While it can enhance performance to switch the primary channel, which
  	 * is also the secondary channel of another network at the same time),
  	 * to the other primary channel, problems exist with this in mesh
+diff --git a/wpa_supplicant/wpa_supplicant.conf b/wpa_supplicant/wpa_supplicant.conf
+index 69f5c90..b8bbdef 100644
 --- a/wpa_supplicant/wpa_supplicant.conf
 +++ b/wpa_supplicant/wpa_supplicant.conf
-@@ -1768,6 +1768,10 @@ fast_reauth=1
+@@ -1761,6 +1761,10 @@ fast_reauth=1
  #Set 1 to enable 160MHz in Mesh mode
  #enable_160mhz_bw=1
  
@@ -251,6 +274,6 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
 +# during radar detection
 +#disable_csa_dfs=1
 +
- # Example blocks:
- 
- # Simple case: WPA-PSK, PSK as an ASCII passphrase, allow all valid ciphers
+ # This value is used to configure the channel bonding feature.
+ # Default value is 0.
+ # Relevant only if enable_edmg is true

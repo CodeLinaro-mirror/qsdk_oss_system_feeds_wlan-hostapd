@@ -16,10 +16,10 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  2 files changed, 60 insertions(+), 27 deletions(-)
 
 diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 72b80f768d93..0a62ef7a1687 100644
+index 17c06b4..e973472 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1196,6 +1196,45 @@ void sta_track_del(struct hostapd_sta_info *info)
+@@ -1400,6 +1400,44 @@ void sta_track_del(struct hostapd_sta_info *info)
  
  #ifdef CONFIG_FILS
  
@@ -61,11 +61,10 @@ index 72b80f768d93..0a62ef7a1687 100644
 +	return nss;
 +}
 +
-+
  static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
  {
  	u16 cap_info, phy_index = 0;
-@@ -1207,9 +1246,19 @@ static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
+@@ -1411,7 +1449,15 @@ static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
  		cap_info |= FD_CAP_PRIVACY;
  
  	if (is_6ghz_op_class(hapd->iconf->op_class)) {
@@ -81,12 +80,8 @@ index 72b80f768d93..0a62ef7a1687 100644
 +#endif /* CONFIG_IEEE80211AX */
  
  		switch (hapd->iconf->op_class) {
-+		case 137:
-+			chwidth = FD_CAP_BSS_CHWIDTH_320;
- 		case 135:
- 			mcs_nss_size += 4;
- 			/* fallthrough */
-@@ -1244,8 +1293,13 @@ static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
+ 		case 137:
+@@ -1453,8 +1499,13 @@ static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
  			break;
  		}
  
@@ -101,17 +96,40 @@ index 72b80f768d93..0a62ef7a1687 100644
  			phy_index = FD_CAP_PHY_INDEX_HE;
  #endif /* CONFIG_IEEE80211AX */
  #ifdef CONFIG_IEEE80211AC
-@@ -1262,31 +1316,8 @@ static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
+@@ -1471,54 +1522,9 @@ static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
  	cap_info |= chwidth << FD_CAP_BSS_CHWIDTH_SHIFT;
  
- 	if (mode) {
--		u16 *mcs = (u16 *) mode->he_capab[IEEE80211_MODE_AP].mcs;
+ 	if (mode && phy_index == FD_CAP_PHY_INDEX_HE) {
+-		const u8 *he_mcs = mode->he_capab[IEEE80211_MODE_AP].mcs;
 -		int i;
--		u16 nss = 0;
+-		u16 nss = 0, mcs[6];
+-
+-		os_memset(mcs, 0xffff, 6 * sizeof(u16));
+-
+-		if (mcs_nss_size == 4) {
+-			mcs[0] = WPA_GET_LE16(&he_mcs[0]);
+-			mcs[1] = WPA_GET_LE16(&he_mcs[2]);
+-		}
+-
+-		if (mcs_nss_size == 8) {
+-			mcs[2] = WPA_GET_LE16(&he_mcs[4]);
+-			mcs[3] = WPA_GET_LE16(&he_mcs[6]);
+-		}
+-
+-		if (mcs_nss_size == 12) {
+-			mcs[4] = WPA_GET_LE16(&he_mcs[8]);
+-			mcs[5] = WPA_GET_LE16(&he_mcs[10]);
+-		}
 -
 -		for (i = 0; i < HE_NSS_MAX_STREAMS; i++) {
 -			u16 nss_mask = 0x3 << (i * 2);
 -
+-			/*
+-			 * If NSS values supported by RX and TX are different
+-			 * then choose the smaller of the two as the maximum
+-			 * supported NSS as that is the value supported by
+-			 * both RX and TX.
+-			 */
 -			if (mcs_nss_size == 4 &&
 -			    (((mcs[0] & nss_mask) == nss_mask) ||
 -			     ((mcs[1] & nss_mask) == nss_mask)))
@@ -129,32 +147,29 @@ index 72b80f768d93..0a62ef7a1687 100644
 -
 -			nss++;
 -		}
--
+ 
 +		u16 nss = hostapd_fils_discovery_cap_nss(mode, phy_index,
 +							 mcs_nss_size);
  		if (nss > 4)
  			cap_info |= FD_CAP_NSS_5_8 << FD_CAP_NSS_SHIFT;
  		else if (nss)
 diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 79e14cc90403..b5cb680737d6 100644
+index 19819d7..c47c0a0 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2538,6 +2538,7 @@ enum mscs_description_subelem {
- #define FD_CAP_BSS_CHWIDTH_40				1
+@@ -2815,6 +2815,7 @@ enum mscs_description_subelem {
  #define FD_CAP_BSS_CHWIDTH_80				2
  #define FD_CAP_BSS_CHWIDTH_160_80_80			3
-+#define FD_CAP_BSS_CHWIDTH_320				4
+ #define FD_CAP_BSS_CHWIDTH_320				4
++#define FD_CAP_BSS_CHWIDTH_320                          4
  #define FD_CAP_BSS_CHWIDTH_SHIFT			2
  
  #define FD_CAP_NSS_1					0
-@@ -2552,6 +2553,7 @@ enum mscs_description_subelem {
+@@ -2829,6 +2830,7 @@ enum mscs_description_subelem {
  #define FD_CAP_PHY_INDEX_HT				2
  #define FD_CAP_PHY_INDEX_VHT				3
  #define FD_CAP_PHY_INDEX_HE				4 /* P802.11ax */
-+#define FD_CAP_PHY_INDEX_EHT				5 /* P802.11be */
++#define FD_CAP_PHY_INDEX_EHT                            5 /* P802.11be */
  #define FD_CAP_PHY_INDEX_SHIFT				10
  
  /*
--- 
-2.31.1
-

@@ -24,11 +24,9 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  src/common/ieee802_11_defs.h |  17 ++++++
  5 files changed, 152 insertions(+), 1 deletion(-)
 
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index 8feadae..e834d17 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2869,6 +2869,117 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
+@@ -2915,6 +2915,117 @@ static int hostapd_ctrl_iface_chan_switc
  }
  
  
@@ -146,21 +144,19 @@ index 8feadae..e834d17 100644
  static int hostapd_ctrl_iface_mib(struct hostapd_data *hapd, char *reply,
  				  int reply_size, const char *param)
  {
-@@ -4217,6 +4328,9 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
- 	} else if (os_strncmp(buf, "CHAN_SWITCH ", 12) == 0) {
- 		if (hostapd_ctrl_iface_chan_switch(hapd->iface, buf + 12))
+@@ -4261,6 +4372,9 @@ static int hostapd_ctrl_iface_receive_pr
+ 		if (hostapd_ctrl_register_frame(hapd, buf + 16) < 0)
  			reply_len = -1;
+ #endif /* CONFIG_TESTING_OPTIONS */
 +	} else if (os_strncmp(buf, "NOTIFY_CW_CHANGE ", 17) == 0) {
 +		if (hostapd_ctrl_iface_notify_cw_change(hapd, buf + 17))
 +			reply_len = -1;
- 	} else if (os_strncmp(buf, "COLOR_CHANGE ", 12) == 0) {
- 		if (hostapd_ctrl_iface_color_change(hapd->iface, buf + 12))
+ 	} else if (os_strncmp(buf, "CHAN_SWITCH ", 12) == 0) {
+ 		if (hostapd_ctrl_iface_chan_switch(hapd->iface, buf + 12))
  			reply_len = -1;
-diff --git a/hostapd/hostapd_cli.c b/hostapd/hostapd_cli.c
-index 111add0..05b6244 100644
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1223,6 +1223,23 @@ static int hostapd_cli_cmd_chan_switch(struct wpa_ctrl *ctrl,
+@@ -1223,6 +1223,23 @@ static int hostapd_cli_cmd_chan_switch(s
  	return wpa_ctrl_command(ctrl, cmd);
  }
  
@@ -184,43 +180,37 @@ index 111add0..05b6244 100644
  
  static int hostapd_cli_cmd_enable(struct wpa_ctrl *ctrl, int argc,
  				      char *argv[])
-@@ -1705,6 +1722,8 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
- 	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"
- 	  "  [center_freq2=] [bandwidth=] [blocktx] [ht|vht]\n"
- 	  "  = initiate channel switch announcement" },
+@@ -1700,6 +1717,8 @@ static const struct hostapd_cli_cmd host
+ 	{ "send_qos_map_conf", hostapd_cli_cmd_send_qos_map_conf,
+ 	  hostapd_complete_stations,
+ 	  "<addr> = send QoS Map Configure frame" },
 +	{ "notify_cw_change", hostapd_cli_cmd_notify_cw_change, NULL,
 +	  "<channel_width> = 0 - 20 MHz, 1 - 40 MHz, 2 - 80 MHz, 3 - 160 MHz" },
- 	{ "color_change", hostapd_cli_cmd_color_change, NULL,
- 	  "<color> = initiate bss color change to set user color if value between 1-63\n"
- 	  "Value 0 will disable the color\n"},
-diff --git a/src/ap/ctrl_iface_ap.c b/src/ap/ctrl_iface_ap.c
-index 0d93fe1..0668bd3 100644
+ 	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
+ 	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"
+ 	  "  [center_freq2=] [bandwidth=] [blocktx] [ht|vht]\n"
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -91,7 +91,7 @@ static int hostapd_get_sta_conn_time(struct sta_info *sta,
+@@ -109,7 +109,7 @@ static int hostapd_get_sta_conn_time(str
+ 	return ret;
  }
- 
  
 -static u8 hostapd_maxnss(struct hostapd_data *hapd, struct sta_info *sta)
 +u8 hostapd_maxnss(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	u8 *mcs_set = NULL;
  	u16 mcs_map;
-diff --git a/src/ap/ctrl_iface_ap.h b/src/ap/ctrl_iface_ap.h
-index 614f042..a8c491b 100644
 --- a/src/ap/ctrl_iface_ap.h
 +++ b/src/ap/ctrl_iface_ap.h
-@@ -54,4 +54,5 @@ int hostapd_ctrl_iface_acl_show_mac(struct mac_acl_entry *acl, int num,
+@@ -54,4 +54,5 @@ int hostapd_ctrl_iface_acl_show_mac(stru
  int hostapd_disassoc_accept_mac(struct hostapd_data *hapd);
  int hostapd_disassoc_deny_mac(struct hostapd_data *hapd);
  
 +u8 hostapd_maxnss(struct hostapd_data *hapd, struct sta_info *sta);
  #endif /* CTRL_IFACE_AP_H */
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 19569ce..cafffbb 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -679,6 +679,19 @@
+@@ -677,6 +677,19 @@
  #define WLAN_PA_FILS_DISCOVERY 34
  #define WLAN_PA_LOCATION_MEASUREMENT_REPORT 47
  
@@ -240,7 +230,7 @@ index 19569ce..cafffbb 100644
  /* Protected Dual of Public Action frames (IEEE Std 802.11-2016, 9.6.11,
   * Table 9-332) */
  #define WLAN_PROT_DSE_ENABLEMENT 1
-@@ -1360,6 +1373,10 @@ struct ieee80211_ampe_ie {
+@@ -1358,6 +1371,10 @@ struct ieee80211_ampe_ie {
  
  #define VHT_RX_NSS_MAX_STREAMS			    8
  
@@ -251,6 +241,3 @@ index 19569ce..cafffbb 100644
  /* VHT operation information - channel widths */
  #define CHANWIDTH_USE_HT	0
  #define CHANWIDTH_80MHZ		1
--- 
-2.17.1
-

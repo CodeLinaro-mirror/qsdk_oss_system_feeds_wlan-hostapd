@@ -17,18 +17,18 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4284,6 +4284,8 @@ static int hostapd_config_fill(struct ho
+@@ -4305,6 +4305,8 @@ static int hostapd_config_fill(struct ho
  	} else if (os_strcmp(buf, "wowlan_triggers") == 0) {
  		os_free(bss->wowlan_triggers);
  		bss->wowlan_triggers = os_strdup(pos);
 +	} else if (os_strcmp(buf, "enable_160mhz_bw") == 0) {
-+		conf->enable_160mhz_bw = atoi(pos);
++		 conf->enable_160mhz_bw = atoi(pos);
  	} else if (os_strcmp(buf, "disable_40mhz_scan") == 0) {
- 		conf->disable_40mhz_scan = atoi(pos);
+ 		 conf->disable_40mhz_scan = atoi(pos);
  #ifdef CONFIG_FST
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1111,6 +1111,7 @@ struct hostapd_config {
+@@ -1131,6 +1131,7 @@ struct hostapd_config {
  	} *acs_chan_bias;
  	unsigned int num_acs_chan_bias;
  #endif /* CONFIG_ACS */
@@ -38,7 +38,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	struct wpabuf *lci;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1325,6 +1325,11 @@ struct wpa_driver_associate_params {
+@@ -1347,6 +1347,11 @@ struct wpa_driver_associate_params {
  	int beacon_tx_mode;
  
  	/**
@@ -52,7 +52,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	int disable_eht;
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2878,6 +2878,7 @@ static const struct parse_data ssid_fiel
+@@ -2880,6 +2880,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(sae_pk, 0, 2) },
  	{ INT_RANGE(disable_40mhz_scan, 0, 1)},
  	{ INT_RANGE(beacon_tx_mode, 1, 2)},
@@ -62,7 +62,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  };
 --- a/wpa_supplicant/config_file.c
 +++ b/wpa_supplicant/config_file.c
-@@ -899,6 +899,7 @@ static void wpa_config_write_network(FIL
+@@ -900,6 +900,7 @@ static void wpa_config_write_network(FIL
  	INT(disable_eht);
  	INT(disable_40mhz_scan);
  	INT(beacon_tx_mode);
@@ -72,10 +72,12 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  #undef STR
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1269,6 +1269,11 @@ struct wpa_ssid {
+@@ -1273,7 +1273,12 @@ struct wpa_ssid {
+ 	 */
  	int beacon_tx_mode;
  
- 	/**
+-	 /**
++	/**
 +	 * Enable 160MHz BW - set it 1 to enable mesh 160MHz 6G
 +	 */
 +	int enable_160mhz_bw;
@@ -86,7 +88,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	 * By default, use it if it is available, but this can be configured
 --- a/wpa_supplicant/wpa_cli.c
 +++ b/wpa_supplicant/wpa_cli.c
-@@ -1501,6 +1501,7 @@ static const char *network_fields[] = {
+@@ -1506,6 +1506,7 @@ static const char *network_fields[] = {
  	"mac_addr", "pbss", "wps_disabled",
  	"disable_40mhz_scan",
  	"beacon_tx_mode",
@@ -96,15 +98,15 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
 --- a/wpa_supplicant/wpa_supplicant.conf
 +++ b/wpa_supplicant/wpa_supplicant.conf
-@@ -1763,6 +1763,11 @@ fast_reauth=1
- # In STA mode it defines the EDMG channel for connection (if supported by AP).
- #edmg_channel=9
+@@ -1756,6 +1756,11 @@ fast_reauth=1
+ # Enable EDMG capability in STA/AP mode, default value is false
+ #enable_edmg=1
  
 +#To configure 80MHz and 160MHz in Mesh mode.
 +#Set 0 to enable 80MHz in Mesh mode
 +#Set 1 to enable 160MHz in Mesh mode
 +#enable_160mhz_bw=1
 +
- # Example blocks:
- 
- # Simple case: WPA-PSK, PSK as an ASCII passphrase, allow all valid ciphers
+ # This value is used to configure the channel bonding feature.
+ # Default value is 0.
+ # Relevant only if enable_edmg is true

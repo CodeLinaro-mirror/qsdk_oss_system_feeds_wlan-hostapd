@@ -28,7 +28,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4379,6 +4379,10 @@ static int hostapd_config_fill(struct ho
+@@ -4418,6 +4418,10 @@ static int hostapd_config_fill(struct ho
  				WLAN_RRM_CAPS_BEACON_REPORT_PASSIVE |
  				WLAN_RRM_CAPS_BEACON_REPORT_ACTIVE |
  				WLAN_RRM_CAPS_BEACON_REPORT_TABLE;
@@ -41,7 +41,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  	} else if (os_strcmp(buf, "stationary_ap") == 0) {
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3140,6 +3140,25 @@ static int hostapd_ctrl_iface_req_beacon
+@@ -3233,6 +3233,25 @@ static int hostapd_ctrl_iface_req_beacon
  }
  
  
@@ -67,7 +67,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  static int hostapd_ctrl_iface_show_neighbor(struct hostapd_data *hapd,
  					    char *buf, size_t buflen)
  {
-@@ -3930,6 +3949,10 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4031,6 +4050,10 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "REQ_BEACON ", 11) == 0) {
  		reply_len = hostapd_ctrl_iface_req_beacon(hapd, buf + 11,
  							  reply, reply_size);
@@ -80,7 +80,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  						      reply_size);
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1566,6 +1566,13 @@ static int hostapd_cli_cmd_req_beacon(st
+@@ -1585,6 +1585,13 @@ static int hostapd_cli_cmd_req_beacon(st
  }
  
  
@@ -94,7 +94,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  static int hostapd_cli_cmd_reload_wpa_psk(struct wpa_ctrl *ctrl, int argc,
  					  char *argv[])
  {
-@@ -1777,6 +1784,8 @@ static const struct hostapd_cli_cmd host
+@@ -1798,6 +1805,8 @@ static const struct hostapd_cli_cmd host
  	  "= show allowed bandwidth on each channel"},
  	{ "req_beacon", hostapd_cli_cmd_req_beacon, NULL,
  	  "<addr> [req_mode=] <measurement request hexdump>  = send a Beacon report request to a station" },
@@ -105,7 +105,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  #ifdef ANDROID
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -236,6 +236,7 @@ static int hostapd_driver_init(struct ho
+@@ -301,6 +301,7 @@ setup_mld:
  
  		iface->drv_flags = capa.flags;
  		iface->drv_flags2 = capa.flags2;
@@ -115,7 +115,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  		 * Use default extended capa values from per-radio information
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -410,8 +410,10 @@ struct hostapd_data {
+@@ -428,8 +428,10 @@ struct hostapd_data {
  	u8 beacon_req_token;
  	u8 lci_req_token;
  	u8 range_req_token;
@@ -126,7 +126,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  
  	int dhcp_sock; /* UDP socket used with the DHCP server */
  
-@@ -557,6 +559,7 @@ struct hostapd_iface {
+@@ -562,6 +564,7 @@ struct hostapd_iface {
  
  	u64 drv_flags;
  	u64 drv_flags2;
@@ -136,17 +136,15 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  	 * A bitmap of supported protocols for probe response offload. See
 --- a/src/ap/rrm.c
 +++ b/src/ap/rrm.c
-@@ -356,6 +356,9 @@ void hostapd_handle_radio_measurement(st
- 	case WLAN_RRM_NEIGHBOR_REPORT_REQUEST:
- 		hostapd_handle_nei_report_req(hapd, buf, len);
- 		break;
-+	case WLAN_RRM_LINK_MEASUREMENT_REPORT:
+@@ -357,6 +357,7 @@ void hostapd_handle_radio_measurement(st
+ 	switch (mgmt->u.action.u.rrm.action) {
+ 	case WLAN_RRM_LINK_MEASUREMENT_REPORT:
+ 		hostapd_ubus_handle_link_measurement(hapd, buf, len);
 +		hostapd_handle_link_mesr_report(hapd, buf, len);
-+		break;
- 	default:
- 		wpa_printf(MSG_DEBUG, "RRM action %u is not supported",
- 			   mgmt->u.action.u.rrm.action);
-@@ -672,3 +675,113 @@ void hostapd_rrm_beacon_req_tx_status(st
+ 		break;
+ 	case WLAN_RRM_RADIO_MEASUREMENT_REPORT:
+ 		hostapd_handle_radio_msmt_report(hapd, buf, len);
+@@ -680,3 +681,113 @@ void hostapd_rrm_beacon_req_tx_status(st
  		" %u ack=%d", MAC2STR(mgmt->da),
  		mgmt->u.action.u.rrm.dialog_token, ok);
  }
@@ -274,7 +272,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  #endif /* RRM_H */
 --- a/src/common/wpa_ctrl.h
 +++ b/src/common/wpa_ctrl.h
-@@ -399,6 +399,9 @@ extern "C" {
+@@ -404,6 +404,9 @@ extern "C" {
  /* parameters: <STA address> <dialog token> <report mode> <beacon report> */
  #define BEACON_RESP_RX "BEACON-RESP-RX "
  
@@ -286,7 +284,7 @@ Signed-off-by: Raj Kumar Bhagat <quic_rajkbhag@quicinc.com>
  /* PMKSA cache entry removed; parameters: <BSSID> <network_id> */
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -3027,6 +3027,9 @@ own_ip_addr=127.0.0.1
+@@ -3077,6 +3077,9 @@ own_ip_addr=127.0.0.1
  # Enable beacon report via radio measurements
  #rrm_beacon_report=1
  

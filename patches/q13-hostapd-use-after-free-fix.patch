@@ -10,9 +10,11 @@ Signed-off-by: Bhagavathi Perumal S <quic_bperumal@quicinc.com>
  wpa_supplicant/bss.c | 5 +++--
  1 file changed, 3 insertions(+), 2 deletions(-)
 
+diff --git a/wpa_supplicant/bss.c b/wpa_supplicant/bss.c
+index 3bfcf7e..884181f 100644
 --- a/wpa_supplicant/bss.c
 +++ b/wpa_supplicant/bss.c
-@@ -726,8 +726,8 @@ wpa_bss_update(struct wpa_supplicant *wp
+@@ -740,8 +740,8 @@ wpa_bss_update(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
  		struct wpa_bss *nbss;
  		struct dl_list *prev = bss->list_id.prev;
  		dl_list_del(&bss->list_id);
@@ -23,7 +25,7 @@ Signed-off-by: Bhagavathi Perumal S <quic_bperumal@quicinc.com>
  		if (nbss) {
  			unsigned int i;
  			for (i = 0; i < wpa_s->last_scan_res_used; i++) {
-@@ -739,6 +739,8 @@ wpa_bss_update(struct wpa_supplicant *wp
+@@ -753,6 +753,8 @@ wpa_bss_update(struct wpa_supplicant *wpa_s, struct wpa_bss *bss,
  			if (wpa_s->current_bss == bss)
  				wpa_s->current_bss = nbss;
  			wpa_bss_update_pending_connect(wpa_s, bss, nbss);

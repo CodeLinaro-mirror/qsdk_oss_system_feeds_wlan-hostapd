@@ -10,6 +10,8 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  src/utils/wpa_debug.c | 23 +++++++++++++++++++----
  1 file changed, 19 insertions(+), 4 deletions(-)
 
+diff --git a/src/utils/wpa_debug.c b/src/utils/wpa_debug.c
+index 65d5af0..c32e0dd 100644
 --- a/src/utils/wpa_debug.c
 +++ b/src/utils/wpa_debug.c
 @@ -9,6 +9,7 @@
@@ -20,12 +22,10 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  
  #ifdef CONFIG_DEBUG_SYSLOG
  #include <syslog.h>
-@@ -70,18 +71,32 @@ void wpa_debug_print_timestamp(void)
+@@ -70,18 +71,28 @@ void wpa_debug_print_timestamp(void)
  {
  #ifndef CONFIG_ANDROID_LOG
  	struct os_time tv;
-+	//time_t timep;
-+	//char str[26];
 +	time_t result = time(NULL);
 +	char* dt;
  
@@ -35,9 +35,6 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  	os_get_time(&tv);
 +	dt = ctime(&result);
 +	dt[strlen(dt)-1]=0;
-+	//time(&timep);
-+	//ctime_s(str,sizeof(str),&result);
-+	//printf("%s", ctime(&result));
 +
  #ifdef CONFIG_DEBUG_FILE
 -	if (out_file)
@@ -54,6 +51,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
 +		//printf("%s", ctime(&timep));
 +		printf("%s %ld.%06u: ", dt, (long) tv.sec, (unsigned int) tv.usec);
 +	}
++
  #endif /* CONFIG_ANDROID_LOG */
  }
  

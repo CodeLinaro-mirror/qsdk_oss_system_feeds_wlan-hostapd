@@ -14,9 +14,11 @@ Signed-off-by: Muna Sinada <msinada@codeaurora.org>
  src/ap/drv_callbacks.c | 14 ++------------
  1 file changed, 2 insertions(+), 12 deletions(-)
 
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index d4fb573..60f5926 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -874,7 +874,7 @@ void hostapd_event_ch_switch(struct host
+@@ -874,7 +874,7 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  {
  #ifdef NEED_AP_MLME
  	int channel, chwidth, is_dfs0, is_dfs;
@@ -25,7 +27,7 @@ Signed-off-by: Muna Sinada <msinada@codeaurora.org>
  	size_t i;
  
  	hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
-@@ -928,27 +928,8 @@ void hostapd_event_ch_switch(struct host
+@@ -928,27 +928,8 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  		break;
  	}
  
@@ -51,15 +53,15 @@ Signed-off-by: Muna Sinada <msinada@codeaurora.org>
 -		break;
 -	}
 +	ieee80211_freq_to_channel_ext(cf1, offset, chwidth, &op_class, &seg0_idx);
-+	ieee80211_freq_to_chan(cf2, &seg1_idx);
++	 ieee80211_freq_to_chan(cf2, &seg1_idx);
  
  	hapd->iconf->channel = channel;
  	hapd->iconf->ieee80211n = ht;
-@@ -998,6 +979,7 @@ void hostapd_event_ch_switch(struct host
+@@ -999,6 +980,7 @@ void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  	hostapd_set_oper_chwidth(hapd->iconf, chwidth);
  	hostapd_set_oper_centr_freq_seg0_idx(hapd->iconf, seg0_idx);
  	hostapd_set_oper_centr_freq_seg1_idx(hapd->iconf, seg1_idx);
 +	hapd->iconf->op_class = op_class;
- 	if (hapd->iconf->ieee80211ac) {
- 		hapd->iconf->vht_capab &= ~VHT_CAP_SUPP_CHAN_WIDTH_MASK;
- 		if (chwidth == CONF_OPER_CHWIDTH_160MHZ)
+ #ifdef CONFIG_IEEE80211BE
+ 	hapd->iconf->punct_bitmap = punct_bitmap;
+ #endif /* CONFIG_IEEE80211BE */

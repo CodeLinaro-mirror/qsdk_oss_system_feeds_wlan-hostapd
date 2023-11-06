@@ -42,11 +42,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -940,6 +940,12 @@ struct hostapd_bss_config {
- 	u8 rnr;
- 	int beacon_tx_mode;
- 	char *config_id;
-+
+@@ -954,6 +954,11 @@ struct hostapd_bss_config {
+ 	/* The MLD ID to which the AP MLD is affiliated with */
+ 	u8 mld_id;
+ #endif /* CONFIG_IEEE80211BE */
 +	enum {
 +		FILS_UBPR_USER_DISABLED,
 +		FILS_UBPR_FORCE_DISABLED,
@@ -57,7 +56,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  /**
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1368,16 +1368,28 @@ static u8 * hostapd_probe_resp_offloads(
+@@ -1382,16 +1382,28 @@ static u8 * hostapd_probe_resp_offloads(
  
  
  #ifdef CONFIG_IEEE80211AX
@@ -87,7 +86,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	return hostapd_gen_probe_resp(hapd, NULL, 0,
  				      &params->unsol_bcast_probe_resp_tmpl_len,
  				      NULL, 0);
-@@ -1662,6 +1674,17 @@ static u8 * hostapd_gen_fils_discovery(s
+@@ -1677,6 +1689,17 @@ static u8 * hostapd_gen_fils_discovery(s
  static u8 * hostapd_fils_discovery(struct hostapd_data *hapd,
  				   struct wpa_driver_ap_params *params)
  {
@@ -105,7 +104,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	params->fd_max_int = hapd->conf->fils_discovery_max_int;
  	if (is_6ghz_op_class(hapd->iconf->op_class) &&
  	    params->fd_max_int > FD_MAX_INTERVAL_6GHZ)
-@@ -1671,10 +1694,12 @@ static u8 * hostapd_fils_discovery(struc
+@@ -1686,10 +1709,12 @@ static u8 * hostapd_fils_discovery(struc
  	if (params->fd_min_int > params->fd_max_int)
  		params->fd_min_int = params->fd_max_int;
  
@@ -122,25 +121,16 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -71,6 +71,8 @@ static void hostapd_switch_color_timeout
+@@ -71,6 +71,8 @@ static void hostapd_interface_setup_fail
+ static void hostapd_switch_color_timeout_handler(void *eloop_data,
  						 void *user_ctx);
  #endif /* CONFIG_IEEE80211AX */
++static void hostapd_interface_update_fils_ubpr(struct hostapd_iface *iface,
++					       bool iface_enabled);
  
-+static void hostapd_interface_update_fils_ubpr(struct hostapd_iface *iface, bool iface_enabled);
-+
- #ifdef CONFIG_IEEE80211BE
- void hostapd_mld_unlink_bss(struct hostapd_data *tbss);
- #endif
-@@ -2433,6 +2435,8 @@ dfs_offload:
- 	for (j = 0; j < iface->num_bss; j++)
- 		hostapd_neighbor_set_own_report(iface->bss[j]);
  
-+	hostapd_interface_update_fils_ubpr(iface, true);
-+
- 	return 0;
- 
- fail:
-@@ -2670,7 +2674,7 @@ void hostapd_interface_deinit(struct hos
+ int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
+@@ -2828,7 +2830,7 @@ void hostapd_interface_deinit(struct hos
  			break;
  		hostapd_bss_deinit(iface->bss[j]);
  	}
@@ -149,9 +139,26 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #ifdef NEED_AP_MLME
  	hostapd_stop_setup_timers(iface);
  	eloop_cancel_timeout(ap_ht2040_timeout, iface, NULL);
-@@ -2968,6 +2972,68 @@ static int ifname_in_use(struct hapd_int
+@@ -3240,6 +3242,7 @@ int hostapd_disable_iface(struct hostapd
+ 	wpa_printf(MSG_DEBUG, "Interface %s disabled",
+ 		   hapd_iface->bss[0]->conf->iface);
+ 	hostapd_set_state(hapd_iface, HAPD_IFACE_DISABLED);
++	hostapd_interface_update_fils_ubpr(hapd_iface, false);
  	return 0;
  }
+ 
+@@ -4241,6 +4244,8 @@ int hostapd_fill_cca_settings(struct hos
+ 	settings->counter_offset_beacon = hapd->cca_c_off_beacon;
+ 	settings->counter_offset_presp = hapd->cca_c_off_proberesp;
+ 
++	hostapd_interface_update_fils_ubpr(iface, true);
++
+ 	return 0;
+ }
+ 
+@@ -4412,6 +4417,68 @@ void hostapd_ocv_check_csa_sa_query(void
+ }
+ #endif /* CONFIG_OCV */
  
 +/**
 + * hostapd_interface_update_fils_ubpr - Update 6GHz In-band discovery
@@ -216,19 +223,11 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	return;
 +}
  
- /**
-  * hostapd_interface_init_bss - Read configuration file and init BSS data
-@@ -3262,6 +3328,7 @@ int hostapd_disable_iface(struct hostapd
- 	wpa_printf(MSG_DEBUG, "Interface %s disabled",
- 		   hapd_iface->bss[0]->conf->iface);
- 	hostapd_set_state(hapd_iface, HAPD_IFACE_DISABLED);
-+	hostapd_interface_update_fils_ubpr(hapd_iface, false);
- 	return 0;
- }
- 
+ #ifdef CONFIG_IEEE80211BE
+ struct hostapd_data * hostapd_mld_get_link_bss(struct hostapd_data *hapd,
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6639,15 +6639,7 @@ static size_t hostapd_eid_rnr_iface_len(
+@@ -7371,15 +7371,7 @@ hostapd_eid_rnr_iface_len(struct hostapd
  	return total_len;
  }
  
@@ -245,7 +244,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  {
  	u8 i;
  	bool is_6ghz = is_6ghz_op_class(hapd->iconf->op_class);
-@@ -6666,6 +6658,9 @@ static enum colocation_mode get_colocati
+@@ -7398,6 +7390,9 @@ static enum colocation_mode get_colocati
  		if (iface == hapd->iface || !iface || !iface->conf)
  			continue;
  
@@ -257,9 +256,9 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			return COLOCATED_LOWER_BAND;
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -21,6 +21,13 @@ enum ieee80211_op_mode;
- struct mac_acl_entry;
+@@ -22,6 +22,13 @@ struct mac_acl_entry;
  enum oper_chan_width;
+ struct ieee802_11_elems;
  
 +enum colocation_mode {
 +        NO_COLOCATED_6GHZ,
@@ -273,7 +272,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  void ieee802_11_mgmt_cb(struct hostapd_data *hapd, const u8 *buf, size_t len,
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4594,10 +4594,13 @@ static int nl80211_fils_discovery(struct
+@@ -4694,10 +4694,13 @@ static int nl80211_fils_discovery(struct
  	struct nlattr *attr;
  
  	if (!bss->drv->fils_discovery) {
@@ -291,7 +290,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	}
  
  	attr = nla_nest_start(msg, NL80211_ATTR_FILS_DISCOVERY);
-@@ -4626,10 +4629,13 @@ static int nl80211_unsol_bcast_probe_res
+@@ -4726,10 +4729,13 @@ static int nl80211_unsol_bcast_probe_res
  	struct nlattr *attr;
  
  	if (!bss->drv->unsol_bcast_probe_resp) {

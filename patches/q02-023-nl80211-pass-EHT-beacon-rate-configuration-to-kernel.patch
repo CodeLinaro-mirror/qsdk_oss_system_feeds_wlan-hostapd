@@ -13,10 +13,10 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  1 file changed, 22 insertions(+)
 
 diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index b5e336be826b..088e58edf2a7 100644
+index 759c692..bfe3842 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4290,6 +4290,7 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, u64 flags, u64 flags2,
+@@ -4485,6 +4485,7 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, u64 flags, u64 flags2,
  	struct nlattr *bands, *band;
  	struct nl80211_txrate_vht vht_rate;
  	struct nl80211_txrate_he he_rate;
@@ -24,7 +24,7 @@ index b5e336be826b..088e58edf2a7 100644
  
  	if (!params->freq ||
  	    (params->beacon_rate == 0 &&
-@@ -4323,6 +4324,7 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, u64 flags, u64 flags2,
+@@ -4518,6 +4519,7 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, u64 flags, u64 flags2,
  
  	os_memset(&vht_rate, 0, sizeof(vht_rate));
  	os_memset(&he_rate, 0, sizeof(he_rate));
@@ -32,7 +32,7 @@ index b5e336be826b..088e58edf2a7 100644
  
  	switch (params->rate_type) {
  	case BEACON_RATE_LEGACY:
-@@ -4391,6 +4393,26 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, u64 flags, u64 flags2,
+@@ -4586,6 +4588,26 @@ static int nl80211_put_beacon_rate(struct nl_msg *msg, u64 flags, u64 flags2,
  		wpa_printf(MSG_DEBUG, " * beacon_rate = HE-MCS %u",
  			   params->beacon_rate);
  		break;
@@ -59,6 +59,3 @@ index b5e336be826b..088e58edf2a7 100644
  	}
  
  	nla_nest_end(msg, band);
--- 
-2.31.1
-
