@@ -1,8 +1,8 @@
-From bb994215b8e415cd5815dacf6bea95012ded60fb Mon Sep 17 00:00:00 2001
+From ade710c95f8c249b97e87e41b5cebb40c74ee63e Mon Sep 17 00:00:00 2001
 From: Aditya Kumar Singh <quic_adisi@quicinc.com>
-Date: Wed, 8 Mar 2023 10:09:10 +0530
-Subject: [PATCH 1/2] hostapd: add support to use underlying hw_idx for multi-
- hardware under single phy mode
+Date: Tue, 10 Oct 2023 15:24:10 +0530
+Subject: [PATCH 1/2] hostapd: add support to use underlying hw_idx for
+ multi-hardware under single phy mode
 
 During multi-hardware under singly phy scenario, single channel list is
 maintained for a given band which does not clearly tells how many different
@@ -25,22 +25,21 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/ap/ap_drv_ops.c               |   9 ++
  src/ap/ap_drv_ops.h               |   3 +
  src/ap/hostapd.c                  |   7 ++
- src/ap/hostapd.h                  |   3 +
+ src/ap/hostapd.h                  |   4 +
  src/ap/hw_features.c              |  77 ++++++++++++++++
  src/ap/hw_features.h              |  14 +++
- src/drivers/driver.h              |  32 +++++++
+ src/drivers/driver.h              |  31 +++++++
  src/drivers/driver_nl80211.c      |   1 +
  src/drivers/driver_nl80211.h      |   2 +
  src/drivers/driver_nl80211_capa.c | 144 ++++++++++++++++++++++++++++++
- src/drivers/nl80211_copy.h        |  41 +++++++++
  tests/fuzzing/ap-mgmt/ap-mgmt.c   |   2 +
- 12 files changed, 335 insertions(+)
+ 11 files changed, 294 insertions(+)
 
 diff --git a/src/ap/ap_drv_ops.c b/src/ap/ap_drv_ops.c
-index d4ad8ea..28acde8 100644
+index 5f97beac8d1f..37761a4d9995 100644
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1144,3 +1144,12 @@ int hostapd_drv_set_secure_ranging_ctx(struct hostapd_data *hapd,
+@@ -1161,3 +1161,12 @@ int hostapd_drv_set_secure_ranging_ctx(struct hostapd_data *hapd,
  	return hapd->driver->set_secure_ranging_ctx(hapd->drv_priv, &params);
  }
  #endif /* CONFIG_PASN */
@@ -54,10 +53,10 @@ index d4ad8ea..28acde8 100644
 +	return hapd->driver->get_multi_hw_info(hapd->drv_priv, num_multi_hws);
 +}
 diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
-index d29e523..eecb739 100644
+index db719cdbbb65..b6a765bfeaa6 100644
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -458,4 +458,7 @@ static inline int hostapd_drv_link_add(struct hostapd_data *hapd,
+@@ -469,4 +469,7 @@ static void hostapd_drv_reassign(struct hostapd_data *first_hapd,
  }
  #endif /* CONFIG_IEEE80211BE */
  
@@ -66,10 +65,10 @@ index d29e523..eecb739 100644
 +
  #endif /* AP_DRV_OPS */
 diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index ac5636c..331df83 100644
+index 91285934af6b..d0a06cf84d60 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -664,6 +664,9 @@ void hostapd_cleanup_iface_partial(struct hostapd_iface *iface)
+@@ -681,6 +681,9 @@ void hostapd_cleanup_iface_partial(struct hostapd_iface *iface)
  	ap_list_deinit(iface);
  	sta_track_deinit(iface);
  	airtime_policy_update_deinit(iface);
@@ -79,7 +78,7 @@ index ac5636c..331df83 100644
  }
  
  
-@@ -2370,6 +2373,11 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+@@ -2440,6 +2443,10 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
  			   hostapd_hw_mode_txt(iface->conf->hw_mode),
  			   iface->conf->channel, iface->freq);
  
@@ -87,15 +86,14 @@ index ac5636c..331df83 100644
 +			wpa_printf(MSG_ERROR, "Failed to get operating hw mac id");
 +			goto fail;
 +		}
-+
  #ifdef NEED_AP_MLME
  		/* Handle DFS only if it is not offloaded to the driver */
  		if (!(iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD)) {
 diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index 18258b6..7c76164 100644
+index b51d523f25dc..26e9ab86151d 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -691,6 +691,10 @@ struct hostapd_iface {
+@@ -697,6 +697,10 @@ struct hostapd_iface {
  
  	/* Configured freq of interface is NO_IR */
  	bool is_no_ir;
@@ -105,22 +103,21 @@ index 18258b6..7c76164 100644
 +	struct hostapd_multi_hw_info *current_hw_info;
  };
  
- /* hostapd.c */
+ #define for_each_partner_bss(partner, self) \
 diff --git a/src/ap/hw_features.c b/src/ap/hw_features.c
-index 94698e5..3160427 100644
+index 94698e5050d5..bc3e91775ada 100644
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -79,6 +79,9 @@ int hostapd_get_hw_features(struct hostapd_iface *iface)
+@@ -79,6 +79,8 @@ int hostapd_get_hw_features(struct hostapd_iface *iface)
  	u16 num_modes, flags;
  	struct hostapd_hw_modes *modes;
  	u8 dfs_domain;
 +	struct hostapd_multi_hw_info *multi_hw_info;
 +	u8 num_multi_hws;
-+
  
  	if (hostapd_drv_none(hapd))
  		return -1;
-@@ -141,9 +144,83 @@ int hostapd_get_hw_features(struct hostapd_iface *iface)
+@@ -141,6 +143,35 @@ int hostapd_get_hw_features(struct hostapd_iface *iface)
  		}
  	}
  
@@ -156,8 +153,13 @@ index 94698e5..3160427 100644
  	return 0;
  }
  
+@@ -1426,3 +1457,49 @@ int hostapd_hw_skip_mode(struct hostapd_iface *iface,
+ 	}
+ 	return 0;
+ }
++
 +void hostapd_free_multi_hw_info(struct hostapd_multi_hw_info *multi_hw_info,
-+				 size_t num_multi_hws)
++				size_t num_multi_hws)
 +{
 +	size_t i;
 +
@@ -201,11 +203,8 @@ index 94698e5..3160427 100644
 +		   iface->current_hw_info->hw_idx);
 +	return 0;
 +}
- 
- int hostapd_prepare_rates(struct hostapd_iface *iface,
- 			  struct hostapd_hw_modes *mode)
 diff --git a/src/ap/hw_features.h b/src/ap/hw_features.h
-index 092941f..ae0bc36 100644
+index 092941f77a2e..c7d39d9d6bc9 100644
 --- a/src/ap/hw_features.h
 +++ b/src/ap/hw_features.h
 @@ -29,6 +29,9 @@ void hostapd_stop_setup_timers(struct hostapd_iface *iface);
@@ -213,32 +212,31 @@ index 092941f..ae0bc36 100644
  			 struct hostapd_hw_modes *mode);
  void hostapd_determine_mode(struct hostapd_iface *iface);
 +void hostapd_free_multi_hw_info(struct hostapd_multi_hw_info *multi_macs,
-+				 size_t num_multi_hws);
++				size_t num_multi_hws);
 +int hostapd_set_current_hw_info(struct hostapd_iface *iface, u32 oper_freq);
  #else /* NEED_AP_MLME */
  static inline void
  hostapd_free_hw_features(struct hostapd_hw_modes *hw_features,
-@@ -96,6 +99,18 @@ static inline void hostapd_determine_mode(struct hostapd_iface *iface)
+@@ -96,6 +99,17 @@ static inline void hostapd_determine_mode(struct hostapd_iface *iface)
  {
  }
  
 +static inline
 +void hostapd_free_multi_hw_info(struct hostapd_multi_hw_info *multi_macs,
-+				 size_t num_multi_hws)
++				size_t num_multi_hws)
 +{
 +}
 +
 +static inline int hostapd_set_current_hw_info(struct hostapd_iface *iface,
-+					       u32 oper_freq)
++					      u32 oper_freq)
 +{
 +	return 0;
 +}
-+
  #endif /* NEED_AP_MLME */
  
  #endif /* HW_FEATURES_H */
 diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 3c63100..77012d4 100644
+index 99ff34cfc515..08c24995a9fe 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
 @@ -323,6 +323,25 @@ struct hostapd_hw_modes {
@@ -267,10 +265,10 @@ index 3c63100..77012d4 100644
  
  #define IEEE80211_CAP_ESS	0x0001
  #define IEEE80211_CAP_IBSS	0x0002
-@@ -5173,6 +5192,19 @@ struct wpa_driver_ops {
- 			      const u8 *match, size_t match_len,
- 			      bool multicast);
- #endif /* CONFIG_TESTING_OPTIONS */
+@@ -5211,6 +5230,18 @@ struct wpa_driver_ops {
+ 	 */
+ 	void (*reassign_ctx)(void *priv, void *first_priv);
+ #endif /* CONFIG_IEEE80211BE */
 +
 +	/**
 +	 * get_multi_hw_info - Get multi hardware data (hardware IDx and
@@ -283,25 +281,24 @@ index 3c63100..77012d4 100644
 +	 */
 +	struct hostapd_multi_hw_info * (*get_multi_hw_info)(void *priv,
 +							    u8 *num_multi_hws);
-+
  };
  
  /**
 diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 255c968..4db281e 100644
+index 5c3ef111b966..9ef14005e978 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -13960,4 +13960,5 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
- 	.radio_disable = testing_nl80211_radio_disable,
- #endif /* CONFIG_TESTING_OPTIONS */
- 	.set_6gclient_type = nl80211_set_6gclient_type,
+@@ -14161,4 +14161,5 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ 	.get_drv_shared_status = wpa_driver_get_shared_status,
+ 	.reassign_ctx = wpa_driver_reassign_ctx,
+ #endif /* CONFIG_IEEE80211BE */
 +	.get_multi_hw_info = nl80211_get_multi_hw_info,
  };
 diff --git a/src/drivers/driver_nl80211.h b/src/drivers/driver_nl80211.h
-index 45ca2d1..80720ee 100644
+index 7f5458b498a5..22bb6349179f 100644
 --- a/src/drivers/driver_nl80211.h
 +++ b/src/drivers/driver_nl80211.h
-@@ -364,5 +364,7 @@ int wpa_driver_nl80211_abort_scan(void *priv, u64 scan_cookie);
+@@ -365,5 +365,7 @@ int wpa_driver_nl80211_abort_scan(void *priv, u64 scan_cookie);
  int wpa_driver_nl80211_vendor_scan(struct i802_bss *bss,
  				   struct wpa_driver_scan_params *params);
  int nl80211_set_default_scan_ies(void *priv, const u8 *ies, size_t ies_len);
@@ -310,7 +307,7 @@ index 45ca2d1..80720ee 100644
  
  #endif /* DRIVER_NL80211_H */
 diff --git a/src/drivers/driver_nl80211_capa.c b/src/drivers/driver_nl80211_capa.c
-index 841e327..a8057b5 100644
+index 1991889751d5..b9f0447dccc4 100644
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
 @@ -1599,6 +1599,12 @@ struct phy_info_arg {
@@ -467,60 +464,9 @@ index 841e327..a8057b5 100644
 +	}
 +
 +	return NULL;
-+ }
-diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
-index 8d20642..a7784c9 100644
---- a/src/drivers/nl80211_copy.h
-+++ b/src/drivers/nl80211_copy.h
-@@ -7920,4 +7920,46 @@ enum nl80211_ru_punct_supp_bw {
-        NL80211_RU_PUNCT_SUPP_BW_320,
- };
- 
-+/**
-+ * nl80211_multi_hw_mac_attrs - multi-hw mac attributes
-+ *
-+ * @NL80211_MULTI_HW_MAC_ATTR_INVALID: invalid
-+ * @NL80211_MULTI_HW_MAC_ATTR_IDX: (u8) array index in wiphy @hw_chans to refer an
-+ *     underlying hw mac for which the supported channel list is advertised.
-+ * @NL80211_MULTI_HW_MAC_ATTR_CHAN_LIST: nested attribute specifying list of
-+ *     supported channels, see &enum nl80211_multi_hw_mac_chan_list_attrs
-+ * @__NL80211_MULTI_HW_MAC_ATTR_LAST: internal use
-+ * @NL80211_MULTI_HW_MAC_ATTR_MAX: maximum multi-hw mac attribute
-+ */
-+enum nl80211_multi_hw_mac_attrs {
-+	__NL80211_MULTI_HW_MAC_ATTR_INVALID,
-+
-+	NL80211_MULTI_HW_MAC_ATTR_IDX,
-+	NL80211_MULTI_HW_MAC_ATTR_CHAN_LIST,
-+
-+	/* keep last */
-+	__NL80211_MULTI_HW_MAC_ATTR_LAST,
-+	NL80211_MULTI_HW_MAC_ATTR_MAX =
-+				__NL80211_MULTI_HW_MAC_ATTR_LAST - 1,
-+};
-+
-+/**
-+ * nl80211_multi_hw_mac_chan_list_attrs - channel attributes for multi-hw
-+ *
-+ * @__NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_INVALID: invalid
-+ * @NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_FREQ: channel center frequency in MHz
-+ * @__NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_LAST: internal use
-+ * @NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_MAX: maximum channel attribute
-+ */
-+enum nl80211_multi_hw_mac_chan_list_attrs {
-+	__NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_INVALID,
-+
-+	NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_FREQ,
-+
-+	/* keep last */
-+	__NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_LAST,
-+	NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_MAX =
-+				__NL80211_MULTI_HW_MAC_CHAN_LIST_ATTR_LAST - 1,
-+};
-+
- #endif /* __LINUX_NL80211_H */
++}
 diff --git a/tests/fuzzing/ap-mgmt/ap-mgmt.c b/tests/fuzzing/ap-mgmt/ap-mgmt.c
-index d49ac5f..3be5ecc 100644
+index d49ac5f08aea..7935aa4594a3 100644
 --- a/tests/fuzzing/ap-mgmt/ap-mgmt.c
 +++ b/tests/fuzzing/ap-mgmt/ap-mgmt.c
 @@ -156,6 +156,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
@@ -532,3 +478,6 @@ index d49ac5f..3be5ecc 100644
  
  fail:
  	hostapd_config_free(ctx.hapd.iconf);
+-- 
+2.17.1
+

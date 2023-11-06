@@ -1,0 +1,169 @@
+From b4bd16074a9655c0b40e462325c6946c0c3f99c4 Mon Sep 17 00:00:00 2001
+From: Aditya Kumar Singh <quic_adisi@quicinc.com>
+Date: Fri, 20 Oct 2023 15:39:32 +0530
+Subject: [PATCH] hostapd: re-assign driver context if existing ML partner is
+ found
+
+Currently multiple driver contexts were maintained for a single interface
+in certain co-hosted situations. For instance - 5 GHz SLO and 5 GHz +
+6 GHz MLD. In this case, if 6 GHz config is passed first then driver would
+be created. And when 5 GHz config is parsed, since bss[0] is SLO, there
+won't be any partner and hence again driver would be created. This makes
+5 GHz interface to have two different drivers. During de-initialization,
+proper deinitialization will not happen and a few times seg fault could
+be seen.
+
+Hence to avoid this situation, try to maintain single driver if possible.
+
+Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
+---
+ src/ap/ap_drv_ops.h          |  9 +++++
+ src/ap/hostapd.c             |  1 +
+ src/drivers/driver.h         | 10 +++++
+ src/drivers/driver_nl80211.c | 71 ++++++++++++++++++++++++++++++++++++
+ 4 files changed, 91 insertions(+)
+
+diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
+index ee03c318b705..db719cdbbb65 100644
+--- a/src/ap/ap_drv_ops.h
++++ b/src/ap/ap_drv_ops.h
+@@ -458,6 +458,15 @@ static inline int hostapd_drv_link_add(struct hostapd_data *hapd,
+ 	return hapd->driver->link_add(hapd->drv_priv, link_id, addr, hapd);
+ 
+ }
++
++static void hostapd_drv_reassign(struct hostapd_data *first_hapd,
++				 struct hostapd_data *hapd)
++{
++	if (!hapd->driver || !hapd->drv_priv || !hapd->driver->reassign_ctx)
++		return;
++
++	return hapd->driver->reassign_ctx(hapd->drv_priv, first_hapd->drv_priv);
++}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ #endif /* AP_DRV_OPS */
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index 8778b86fa6f0..810847040b48 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1370,6 +1370,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first,
+ 				dl_list_add_tail(&h_hapd->links, &hapd->links);
+ 				os_memcpy(hapd->mld_addr, h_hapd->mld_addr, ETH_ALEN);
+ 				hapd->interface_added = h_hapd->interface_added;
++				hostapd_drv_reassign(hapd->iface->bss[0], hapd);
+ 				goto setup_mld;
+ 			}
+ 		}
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 8cd4c1f1f0da..99ff34cfc515 100644
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -5200,6 +5200,16 @@ struct wpa_driver_ops {
+ 	 * Returns: True if it is being used or else False.
+ 	 */
+ 	bool (*get_drv_shared_status)(void *priv, void *bss_ctx);
++
++
++	/**
++	 * reassign_ctx - Check if driver interface can be reused and if so then
++	 *		  re-assign the bss to exisiting driver
++	 * @priv: private driver interface data from init()
++	 * @first_priv: first private driver interface data from i802_init()
++	 *
++	 */
++	void (*reassign_ctx)(void *priv, void *first_priv);
+ #endif /* CONFIG_IEEE80211BE */
+ };
+ 
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 3587d5db8d59..5aa449aec637 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -13923,6 +13923,76 @@ bool wpa_driver_get_shared_status(void *priv, void *bss_ctx)
+ 	return false;
+ }
+ 
++void wpa_driver_reassign_ctx(void *priv, void *first_priv)
++{
++	struct i802_bss *bss = priv, *first_bss = first_priv, *bss_iter;
++	struct wpa_driver_nl80211_data *new_drv, *old_drv;
++	struct nl80211_wiphy_data *w;
++	unsigned int i;
++
++	wpa_printf(MSG_DEBUG, "nl80211: Driver reassign context bss=%p(drv=%p), first_bss=%p(drv=%p)",
++		   bss, bss->drv, first_bss, first_bss->drv);
++
++	if (bss->drv == first_bss->drv)
++		return;
++
++	/* bss and first_bss belongs to same iface yet the drvs are different.
++	 * There is at least one partner from other iface in the bss who had drv
++	 * initialised and the same is used here. In this case, let us use the
++	 * same drv and move all bss from first_bss->drv into this drv
++	 */
++	new_drv = bss->drv;
++	old_drv = first_bss->drv;
++
++	for (bss_iter = old_drv->first_bss; bss_iter; bss_iter = bss_iter->next) {
++		wpa_printf(MSG_DEBUG, "nl80211: Moving bss=%p from drv=%p to drv=%p",
++			   bss_iter, old_drv, new_drv);
++		bss_iter->drv = new_drv;
++		bss_iter->next = new_drv->first_bss->next;
++		new_drv->first_bss->next = bss_iter;
++
++		if (new_drv->global)
++			new_drv->global->if_add_ifindex = bss_iter->ifindex;
++
++		add_ifidx(new_drv, bss_iter->ifindex, IFIDX_ANY);
++
++		if (!bss_iter->wiphy_data)
++			continue;
++
++		dl_list_add(&bss_iter->wiphy_data->drvs, &new_drv->wiphy_list);
++	}
++
++	/* same as done in wpa_driver_nl80211_deinit() */
++	if (old_drv->rtnl_sk)
++		nl_socket_free(old_drv->rtnl_sk);
++
++	nl80211_remove_monitor_interface(old_drv);
++
++	if (old_drv->if_indices != old_drv->default_if_indices)
++		os_free(old_drv->if_indices);
++
++	rfkill_deinit(old_drv->rfkill);
++	os_free(old_drv->filter_ssids);
++
++	os_free(old_drv->auth_ie);
++	os_free(old_drv->auth_data);
++
++	if (old_drv->in_interface_list)
++		dl_list_del(&old_drv->list);
++
++	os_free(old_drv->extended_capa);
++	os_free(old_drv->extended_capa_mask);
++	for (i = 0; i < old_drv->num_iface_capa; i++) {
++		os_free(old_drv->iface_capa[i].ext_capa);
++		os_free(old_drv->iface_capa[i].ext_capa_mask);
++	}
++#ifdef CONFIG_DRIVER_NL80211_QCA
++	os_free(old_drv->pending_roam_data);
++#endif /* CONFIG_DRIVER_NL80211_QCA */
++	dl_list_del(&old_drv->wiphy_list);
++	os_free(old_drv);
++}
++
+ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ 	.name = "nl80211",
+ 	.desc = "Linux nl80211/cfg80211",
+@@ -14080,5 +14150,6 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ #ifdef CONFIG_IEEE80211BE
+ 	.if_link_remove = driver_nl80211_if_link_remove,
+ 	.get_drv_shared_status = wpa_driver_get_shared_status,
++	.reassign_ctx = wpa_driver_reassign_ctx,
+ #endif /* CONFIG_IEEE80211BE */
+ };
+-- 
+2.17.1
+
