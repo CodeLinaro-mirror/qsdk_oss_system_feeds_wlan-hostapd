@@ -1272,6 +1272,8 @@ wpa_supplicant_set_fixed_freq() {
 		HE80|VHT80) append network_data "max_oper_chwidth=1" "$N$T";;
 		HE160|VHT160) append network_data "max_oper_chwidth=2" "$N$T";;
 		HE20|HE40|VHT20|VHT40) append network_data "max_oper_chwidth=0" "$N$T";;
+		HE160|EHT160|VHT160) append network_data "enable_160mhz_bw=1" "$N$T";;
+		EHT320) append network_data "enable_320mhz_bw=1" "$N$T";;
 		*) append network_data "disable_vht=1" "$N$T";;
 	esac
 }
@@ -1281,6 +1283,7 @@ wpa_supplicant_add_network() {
 	local freq="$2"
 	local htmode="$3"
 	local noscan="$4"
+	local disable_40mhz_scan=0
 
 	_wpa_supplicant_common "$1"
 	wireless_vif_parse_encryption
@@ -1325,6 +1328,7 @@ wpa_supplicant_add_network() {
 	[ "$_w_mode" = "mesh" ] && {
 		json_get_vars mesh_id mesh_fwding mesh_rssi_threshold encryption
 		[ -n "$mesh_id" ] && ssid="${mesh_id}"
+		[ -n "$noscan" ] && disable_40mhz_scan=$noscan
 
 		append network_data "mode=5" "$N$T"
 		[ -n "$mesh_fwding" ] && append network_data "mesh_fwding=${mesh_fwding}" "$N$T"
@@ -1570,11 +1574,14 @@ wpa_supplicant_add_network() {
 		echo "wps_cred_processing=1" >> "$_config"
 	else
 		cat >> "$_config" <<EOF
+$mesh_ctrl_interface
+$user_mpm
 network={
 	$scan_ssid
 	ssid="$ssid"
 	key_mgmt=$key_mgmt
 	$network_data
+	disable_40mhz_scan=$disable_40mhz_scan
 }
 EOF
 	fi
