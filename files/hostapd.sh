@@ -604,9 +604,6 @@ hostapd_set_bss_options() {
 	[ "$airtime_bss_limit" -gt 0 ] && append bss_conf "airtime_bss_limit=$airtime_bss_limit" "$N"
 	json_for_each_item append_airtime_sta_weight airtime_sta_weight
 
-	append bss_conf "bss_load_update_period=$bss_load_update_period" "$N"
-	append bss_conf "chan_util_avg_period=$chan_util_avg_period" "$N"
-	append bss_conf "disassoc_low_ack=$disassoc_low_ack" "$N"
 	append bss_conf "skip_inactivity_poll=$skip_inactivity_poll" "$N"
 	append bss_conf "preamble=$short_preamble" "$N"
 	append bss_conf "wmm_enabled=$wmm" "$N"
