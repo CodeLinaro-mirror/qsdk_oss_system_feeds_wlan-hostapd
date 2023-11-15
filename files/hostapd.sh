@@ -842,7 +842,6 @@ hostapd_set_bss_options() {
 
 	append bss_conf "ssid=$ssid" "$N"
 	[ -n "$network_bridge" ] && append bss_conf "bridge=$network_bridge${N}wds_bridge=" "$N"
-	[ -n "$network_ifname" ] && append bss_conf "snoop_iface=$network_ifname" "$N"
 	[ -n "$iapp_interface" ] && {
 		local ifname
 		network_get_device ifname "$iapp_interface" || ifname="$iapp_interface"
@@ -1028,12 +1027,6 @@ hostapd_set_bss_options() {
 		[ -z "$vlan_file" ] && set_default vlan_file /var/run/hostapd-$ifname.vlan
 		append bss_conf "dynamic_vlan=$dynamic_vlan" "$N"
 		append bss_conf "vlan_naming=$vlan_naming" "$N"
-		if [ -n "$vlan_bridge" ]; then
-			append bss_conf "vlan_bridge=$vlan_bridge" "$N"
-		else
-			set_default vlan_no_bridge 1
-		fi
-		append bss_conf "vlan_no_bridge=$vlan_no_bridge" "$N"
 		[ -n "$vlan_tagged_interface" ] && \
 			append bss_conf "vlan_tagged_interface=$vlan_tagged_interface" "$N"
 		[ -n "$vlan_file" ] && {
