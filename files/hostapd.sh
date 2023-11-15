@@ -1325,6 +1325,12 @@ wpa_supplicant_add_network() {
 		[ "$_w_driver" = "nl80211" ] ||	append wpa_key_mgmt "WPA-NONE"
 	}
 
+	[[ "$_w_mode" = "sta" ]] && {
+		[ -n "$freq_list" ] && {
+			freq_list="freq_list=$freq_list"
+		}
+	}
+
 	[ "$_w_mode" = "mesh" ] && {
 		json_get_vars mesh_id mesh_fwding mesh_rssi_threshold encryption
 		[ -n "$mesh_id" ] && ssid="${mesh_id}"
@@ -1552,9 +1558,12 @@ wpa_supplicant_add_network() {
 	local bssid_blacklist bssid_whitelist
 	json_get_values bssid_blacklist bssid_blacklist
 	json_get_values bssid_whitelist bssid_whitelist
+	json_get_var sae_pwe sae_pwe
 
 	[ -n "$bssid_blacklist" ] && append network_data "bssid_blacklist=$bssid_blacklist" "$N$T"
 	[ -n "$bssid_whitelist" ] && append network_data "bssid_whitelist=$bssid_whitelist" "$N$T"
+
+	[ -n "$sae_pwe" ] && append saepwe "sae_pwe=$sae_pwe" "$N$T"
 
 	[ -n "$basic_rate" ] && {
 		local br rate_list=
@@ -1576,12 +1585,15 @@ wpa_supplicant_add_network() {
 		cat >> "$_config" <<EOF
 $mesh_ctrl_interface
 $user_mpm
+$saepwe
+$freq_list
 network={
 	$scan_ssid
 	ssid="$ssid"
 	key_mgmt=$key_mgmt
 	$network_data
 	disable_40mhz_scan=$disable_40mhz_scan
+	$freq_list
 }
 EOF
 	fi
