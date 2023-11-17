@@ -18,8 +18,6 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  src/common/ieee802_11_common.h |   1 +
  8 files changed, 390 insertions(+), 33 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index d6ed50e..7613b07 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
 @@ -36,6 +36,12 @@
@@ -35,7 +33,7 @@ index d6ed50e..7613b07 100644
  static u8 * hostapd_eid_bss_load(struct hostapd_data *hapd, u8 *eid, size_t len)
  {
  	if (len < 2 + 5)
-@@ -593,10 +599,304 @@ static u8 * hostapd_eid_mbssid_config(struct hostapd_data *hapd, u8 *eid,
+@@ -593,10 +599,305 @@ static u8 * hostapd_eid_mbssid_config(st
  }
  
  
@@ -323,6 +321,7 @@ index d6ed50e..7613b07 100644
 +
 +		memcpy(hapd->partner_links[link_id].resp_sta_profile, sta_profile, sta_profile_len);
 +		hapd->partner_links[link_id].resp_sta_profile_len = sta_profile_len;
++		memcpy(hapd->partner_links[link_id].local_addr, link_bss->own_addr, ETH_ALEN);
 +		hapd->partner_links[link_id].valid = true;
 +
 +		os_free(link_data);
@@ -341,7 +340,7 @@ index d6ed50e..7613b07 100644
  {
  	struct ieee80211_mgmt *resp;
  	u8 *pos, *epos, *csa_pos;
-@@ -656,12 +956,17 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -656,12 +957,17 @@ static u8 * hostapd_gen_probe_resp(struc
  		/*
  		 * TODO: Multi-Link element has variable length and can be
  		 * long based on the common info and number of per
@@ -361,9 +360,9 @@ index d6ed50e..7613b07 100644
 +				buflen += 6;
 +			}
  		}
- 	}
- 	if (hapd_probed != hapd && hapd_probed->conf->mld_ap)
-@@ -832,8 +1137,13 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+ 		/* QCN Vendor IE for 240MHz */
+ 		if (is_5ghz_freq(hapd->iface->freq))
+@@ -836,8 +1142,13 @@ static u8 * hostapd_gen_probe_resp(struc
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
@@ -378,8 +377,8 @@ index d6ed50e..7613b07 100644
 +		}
  		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
  		pos = hostapd_eid_eht_operation(hapd, pos, IEEE80211_MODE_AP);
- 	}
-@@ -1114,6 +1424,8 @@ void handle_probe_req(struct hostapd_data *hapd,
+ 		pos = hostapd_eid_vendor_240mhz(hapd, pos, IEEE80211_MODE_AP);
+@@ -1118,6 +1429,8 @@ void handle_probe_req(struct hostapd_dat
  		.ssi_signal = ssi_signal,
  		.elems = &elems,
  	};
@@ -388,7 +387,7 @@ index d6ed50e..7613b07 100644
  
  	if (hapd->iconf->rssi_ignore_probe_request && ssi_signal &&
  	    ssi_signal < hapd->iconf->rssi_ignore_probe_request)
-@@ -1351,9 +1663,16 @@ void handle_probe_req(struct hostapd_data *hapd,
+@@ -1355,9 +1668,16 @@ void handle_probe_req(struct hostapd_dat
  	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
  		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
  
@@ -406,7 +405,7 @@ index d6ed50e..7613b07 100644
  	if (resp == NULL)
  		return;
  
-@@ -1423,7 +1742,7 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
+@@ -1427,7 +1747,7 @@ static u8 * hostapd_probe_resp_offloads(
  			   "this");
  
  	/* Generate a Probe Response template for the non-P2P case */
@@ -415,7 +414,7 @@ index d6ed50e..7613b07 100644
  }
  
  #endif /* NEED_AP_MLME */
-@@ -1442,7 +1761,7 @@ static u8 * hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
+@@ -1458,7 +1778,7 @@ static u8 * hostapd_unsol_bcast_probe_re
  
  	return hostapd_gen_probe_resp(hapd, NULL, 0,
  				      &params->unsol_bcast_probe_resp_tmpl_len,
@@ -424,7 +423,7 @@ index d6ed50e..7613b07 100644
  }
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2362,6 +2681,9 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+@@ -2398,6 +2718,9 @@ int ieee802_11_set_beacon(struct hostapd
  		}
  	}
  
@@ -434,8 +433,6 @@ index d6ed50e..7613b07 100644
  	return 0;
  }
  
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index af198a7..48402a7 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -36,6 +36,7 @@ struct ieee80211_ht_capabilities;
@@ -446,7 +443,7 @@ index af198a7..48402a7 100644
  #ifdef CONFIG_MESH
  struct mesh_conf;
  #endif /* CONFIG_MESH */
-@@ -496,6 +497,9 @@ struct hostapd_data {
+@@ -498,6 +499,9 @@ struct hostapd_data {
  	struct dl_list links;
  #ifdef CONFIG_IEEE80211BE
  	char ctrl_sock_iface[IFNAMSIZ + 1];
@@ -456,11 +453,9 @@ index af198a7..48402a7 100644
  #endif /* CONFIG_IEEE80211BE */
  };
  
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index cca9b3a..27c97c4 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4445,10 +4445,10 @@ static void ieee80211_ml_process_link(struct hostapd_data *hapd,
+@@ -4446,10 +4446,10 @@ static void ieee80211_ml_process_link(st
  		goto out;
  
  	if (ieee802_11_parse_link_assoc_req(ies, ies_len, &elems, mlbuf,
@@ -474,7 +469,7 @@ index cca9b3a..27c97c4 100644
  		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
  		goto out;
  	}
-@@ -4932,7 +4932,7 @@ rsnxe_done:
+@@ -4943,7 +4943,7 @@ rsnxe_done:
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		if (hapd->conf->mld_ap)
@@ -482,12 +477,10 @@ index cca9b3a..27c97c4 100644
 +			p = hostapd_eid_eht_basic_ml(hapd, p, sta->mld_info.links, false);
  		p = hostapd_eid_eht_capab(hapd, p, IEEE80211_MODE_AP);
  		p = hostapd_eid_eht_operation(hapd, p, IEEE80211_MODE_AP);
- 	}
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 3f58ee0..c5fc383 100644
+ 		p = hostapd_eid_vendor_240mhz(hapd, p, IEEE80211_MODE_AP);
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -90,7 +90,7 @@ void hostapd_get_eht_capab(struct hostapd_data *hapd,
+@@ -97,7 +97,7 @@ void hostapd_get_eht_capab(struct hostap
  			   struct ieee80211_eht_capabilities *dest,
  			   size_t len);
  u8 * hostapd_eid_eht_basic_ml(struct hostapd_data *hapd, u8 *eid,
@@ -496,11 +489,9 @@ index 3f58ee0..c5fc383 100644
  size_t hostapd_eid_eht_basic_ml_len(struct hostapd_data *hapd,
  				    struct sta_info *info, bool include_mld_id);
  struct wpabuf * hostapd_ml_auth_resp(struct hostapd_data *hapd);
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index cdaba60..6de0809 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -484,7 +484,7 @@ void hostapd_get_eht_capab(struct hostapd_data *hapd,
+@@ -552,7 +552,7 @@ void hostapd_get_eht_capab(struct hostap
  */
  #define MLE_COMMON_INFO_LEN 13
  u8 * hostapd_eid_eht_basic_ml(struct hostapd_data *hapd, u8 *eid,
@@ -509,7 +500,7 @@ index cdaba60..6de0809 100644
  {
  	struct wpabuf *buf;
  	u16 control;
-@@ -549,7 +549,7 @@ u8 * hostapd_eid_eht_basic_ml(struct hostapd_data *hapd, u8 *eid,
+@@ -617,7 +617,7 @@ u8 * hostapd_eid_eht_basic_ml(struct hos
  
  	/* Add link info for the other links */
  	for (link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
@@ -518,8 +509,6 @@ index cdaba60..6de0809 100644
  		struct hostapd_data *link_bss;
  
  		/*
-diff --git a/src/ap/sta_info.h b/src/ap/sta_info.h
-index a51b48f..d3a22d4 100644
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
 @@ -54,6 +54,7 @@
@@ -576,11 +565,9 @@ index a51b48f..d3a22d4 100644
  };
  
  struct sta_info {
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index 0c82804..fbd8ff3 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -944,6 +944,35 @@ void ieee802_11_elems_clear_ext_ids(struct ieee802_11_elems *elems,
+@@ -976,6 +976,35 @@ void ieee802_11_elems_clear_ext_ids(stru
  }
  
  
@@ -616,11 +603,9 @@ index 0c82804..fbd8ff3 100644
  ParseRes ieee802_11_parse_link_assoc_req(const u8 *start, size_t len,
  					 struct ieee802_11_elems *elems,
  					 struct wpabuf *mlbuf,
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index 5e78bd6..567d0e4 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -191,6 +191,7 @@ void ieee802_11_elems_clear_ids(struct ieee802_11_elems *elems,
+@@ -193,6 +193,7 @@ void ieee802_11_elems_clear_ids(struct i
  				const u8 *ids, size_t num);
  void ieee802_11_elems_clear_ext_ids(struct ieee802_11_elems *elems,
  				    const u8 *ids, size_t num);
@@ -628,6 +613,3 @@ index 5e78bd6..567d0e4 100644
  ParseRes ieee802_11_parse_link_assoc_req(const u8 *start, size_t len,
  					 struct ieee802_11_elems *elems,
  					 struct wpabuf *mlbuf,
--- 
-2.17.1
-
