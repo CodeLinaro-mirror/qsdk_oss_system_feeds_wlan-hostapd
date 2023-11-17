@@ -37,16 +37,15 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		wpa_printf(MSG_DEBUG, "Setup of non first link BSS(link id %d) of MLD %s",
  			   hapd->mld_link_id, hapd->conf->iface);
  
-@@ -281,9 +275,6 @@ static int hostapd_driver_init(struct ho
- 			random_mac_addr_keep_oui(hapd->own_addr);
+@@ -282,8 +276,6 @@ static int hostapd_driver_init(struct ho
  		else
  			os_memcpy(hapd->own_addr, b, ETH_ALEN);
--
+ 
 -		hapd->mld_next_link_id = 0;
 -		hapd->mld_link_id = hapd->mld_next_link_id++;
+ 		dl_list_init(&hapd->links);
  	}
  
- setup_mld:
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
 @@ -74,6 +74,10 @@ static void hostapd_switch_color_timeout
@@ -75,10 +74,10 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  			os_memcpy(hapd->mld_addr, hapd->own_addr, ETH_ALEN);
 -			hapd->mld_next_link_id = 0;
 -			hapd->mld_link_id = hapd->mld_next_link_id++;
+ 			dl_list_init(&hapd->links);
  		}
  	}
- 
-@@ -2956,6 +2956,10 @@ struct hostapd_iface * hostapd_init(stru
+@@ -2954,6 +2954,10 @@ struct hostapd_iface * hostapd_init(stru
  		if (hapd == NULL)
  			goto fail;
  		hapd->msg_ctx = hapd;
@@ -89,7 +88,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	}
  
  	return hapd_iface;
-@@ -3078,6 +3082,10 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3076,6 +3080,10 @@ hostapd_interface_init_bss(struct hapd_i
  		iface->bss[iface->num_bss] = hapd;
  		hapd->msg_ctx = hapd;
  
@@ -100,7 +99,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		bss_idx = iface->num_bss++;
  		conf->num_bss--;
  		conf->bss[0] = NULL;
-@@ -3423,6 +3431,9 @@ static int hostapd_data_alloc(struct hos
+@@ -3421,6 +3429,9 @@ static int hostapd_data_alloc(struct hos
  			return -1;
  		}
  		hapd->msg_ctx = hapd;
@@ -110,7 +109,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	}
  
  	hapd_iface->conf = conf;
-@@ -4713,4 +4724,78 @@ struct hostapd_data* hostapd_get_first_m
+@@ -4711,4 +4722,78 @@ struct hostapd_data* hostapd_get_first_m
  	return NULL;
  }
  
