@@ -376,7 +376,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	    nl80211_link_valid(bss, params->mlo_link_id)) {
 +		wpa_dbg(bss->ctx, MSG_DEBUG, "nl80211: scan requested for link %d",
 +			params->mlo_link_id);
-+		bss->scan_link = &bss->links[params->mlo_link_id];
++		bss->scan_link = nl80211_get_link(bss, params->mlo_link_id);
 +	}
 +
  fail:

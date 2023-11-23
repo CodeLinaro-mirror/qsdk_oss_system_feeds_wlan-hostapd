@@ -119,10 +119,49 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		}
  	}
  
-@@ -615,6 +593,42 @@ void hostapd_free_hapd_data(struct hosta
+@@ -615,6 +593,104 @@ void hostapd_free_hapd_data(struct hosta
  #endif /* CONFIG_IEEE80211AX */
  }
  
++static void hostapd_update_first_link_bss(struct hostapd_data *hapd,
++					  struct hostapd_data *new_first_bss)
++{
++	struct hapd_interfaces *interfaces = hapd->iface->interfaces;
++	struct hostapd_iface *iface;
++	struct hostapd_data *bss;
++	struct hostapd_bss_config *conf;
++	size_t i, j;
++
++	for (i = 0; i < interfaces->count; i++) {
++		iface = interfaces->iface[i];
++		if (!iface || iface == hapd->iface)
++			continue;
++
++		for (j = 0; j < iface->num_bss; j++) {
++			bss = iface->bss[j];
++			if (!bss)
++				continue;
++
++			if (bss == new_first_bss)
++				continue;
++
++			conf = bss->conf;
++			if (!conf->mld_ap)
++				continue;
++
++			if (!hostapd_is_ml_partner(hapd, bss))
++				continue;
++
++			wpa_printf(MSG_DEBUG, "MLD %s: Link %d: Updated first_link BSS %d -> %d",
++				   conf->iface, bss->mld_link_id,
++				   hapd->mld_first_bss ? hapd->mld_first_bss->mld_link_id :
++				   			 hapd->mld_link_id,
++				   new_first_bss->mld_link_id);
++			bss->mld_first_bss = new_first_bss;
++		}
++	}
++}
++
 +/* hostapd_bss_link_deinit - Per-BSS ML cleanup (deinitialization)
 + * @hapd: Pointer to BSS data
 + *
@@ -137,20 +176,43 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	if (hapd->conf->mld_ap && hapd->drv_priv &&
 +	    !is_zero_ether_addr(hapd->mld_addr)) {
 +		if (!hapd->mld_first_bss) {
-+			struct hostapd_data *next;
++			struct hostapd_data *next, *link_bss;
 +
 +			/* Going to delete first BSS in MLD. Make the next entry as
-+			 * first BSS
++			 * first BSS and adjust first bss pointer of the rest all
++			 * link BSS
 +			 */
 +			if (dl_list_len(&hapd->links) >= 1) {
 +				next = dl_list_entry(hapd->links.next,
 +						     struct hostapd_data,
 +						     links);
++
++				/* adjust first BSS pointer for all partner links
++				 * Can't use for_each_partner_bss() since a few
++				 * partner links could be in DISABLED state hence
++				 * unlinked from the list temproarily
++				 */
++				hostapd_update_first_link_bss(hapd, next);
++
++				/* copy mld_next_link_id value from old first BSS
++				 * to this new first BSS
++				 */
 +				next->mld_next_link_id = hapd->mld_next_link_id;
++
++				/* make this as first BSS */
 +				next->mld_first_bss = NULL;
++
++				/* make the old first BSS to point to this new
++				 * first BSS
++				 */
 +				hapd->mld_first_bss = next;
-+				wpa_printf(MSG_DEBUG, "MLD: First link changed %d -> %d",
-+					   hapd->mld_link_id, next->mld_link_id);
++
++				wpa_printf(MSG_DEBUG, "MLD %s: Link %d: First link changed to %d",
++					   hapd->conf->iface, hapd->mld_link_id,
++					   next->mld_link_id);
++				wpa_printf(MSG_DEBUG, "MLD %s: First link changed %d -> %d",
++					   hapd->conf->iface, hapd->mld_link_id,
++					   next->mld_link_id);
 +			}
 +		}
 +		wpa_printf(MSG_DEBUG, "MLD: Link %d unlinked from MLD interface %s",
@@ -162,7 +224,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  /**
   * hostapd_cleanup - Per-BSS cleanup (deinitialization)
-@@ -1362,6 +1376,7 @@ static int hostapd_setup_bss(struct host
+@@ -1362,6 +1438,7 @@ static int hostapd_setup_bss(struct host
  					   hapd->mld_link_id, hapd->conf->iface);
  				dl_list_add_tail(&h_hapd->links, &hapd->links);
  				os_memcpy(hapd->mld_addr, h_hapd->mld_addr, ETH_ALEN);
@@ -170,7 +232,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  				goto setup_mld;
  			}
  		}
-@@ -1777,6 +1792,7 @@ static int start_ctrl_iface(struct hosta
+@@ -1777,6 +1854,7 @@ static int start_ctrl_iface(struct hosta
  static void hostapd_no_ir_cleanup(struct hostapd_data *bss)
  {
  	hostapd_bss_deinit_no_free(bss);
@@ -178,7 +240,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	hostapd_free_hapd_data(bss);
  	hostapd_cleanup_iface_partial(bss->iface);
  }
-@@ -2512,6 +2528,7 @@ static int hostapd_setup_interface_compl
+@@ -2512,6 +2590,7 @@ static int hostapd_setup_interface_compl
  			for (;;) {
  				hapd = iface->bss[j];
  				hostapd_bss_deinit_no_free(hapd);
@@ -186,7 +248,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  				hostapd_free_hapd_data(hapd);
  				if (j == 0)
  					break;
-@@ -2530,6 +2547,7 @@ static int hostapd_setup_interface_compl
+@@ -2530,6 +2609,7 @@ static int hostapd_setup_interface_compl
  				for (;;) {
  					hapd = iface->bss[j];
  					hostapd_bss_deinit_no_free(hapd);
@@ -194,7 +256,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  					hostapd_free_hapd_data(hapd);
  					if (j == 0)
  						break;
-@@ -2843,10 +2861,8 @@ static void hostapd_bss_deinit(struct ho
+@@ -2840,10 +2920,8 @@ static void hostapd_bss_deinit(struct ho
  		hapd->rad_attr_db = NULL;
  	}
  #endif /* CONFIG_SQLITE */
@@ -207,7 +269,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	hostapd_cleanup(hapd);
  }
  
-@@ -3118,6 +3134,40 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3115,6 +3193,40 @@ hostapd_interface_init_bss(struct hapd_i
  	return iface;
  }
  
@@ -248,7 +310,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  void hostapd_interface_deinit_free(struct hostapd_iface *iface)
  {
-@@ -3136,11 +3186,7 @@ void hostapd_interface_deinit_free(struc
+@@ -3133,11 +3245,7 @@ void hostapd_interface_deinit_free(struc
  	hostapd_interface_deinit(iface);
  	wpa_printf(MSG_DEBUG, "%s: driver=%p drv_priv=%p -> hapd_deinit",
  		   __func__, driver, drv_priv);
@@ -261,7 +323,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	hostapd_interface_free(iface);
  }
  
-@@ -3179,19 +3225,22 @@ static void hostapd_deinit_driver(const
+@@ -3176,19 +3284,22 @@ static void hostapd_deinit_driver(const
  
  	wpa_printf(MSG_DEBUG, "%s: driver=%p drv_priv=%p -> hapd_deinit",
  		   __func__, driver, drv_priv);
@@ -292,7 +354,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		}
  	}
  }
-@@ -3310,6 +3359,7 @@ int hostapd_disable_iface(struct hostapd
+@@ -3307,6 +3418,7 @@ int hostapd_disable_iface(struct hostapd
  	for (j = 0; j < hapd_iface->num_bss; j++) {
  		struct hostapd_data *hapd = hapd_iface->bss[j];
  		hostapd_bss_deinit_no_free(hapd);
@@ -300,7 +362,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		hostapd_free_hapd_data(hapd);
  	}
  
-@@ -3508,6 +3558,7 @@ int hostapd_add_iface(struct hapd_interf
+@@ -3505,6 +3617,7 @@ int hostapd_add_iface(struct hapd_interf
  			if (start_ctrl_iface_bss(hapd) < 0 ||
  			    (hapd_iface->state == HAPD_IFACE_ENABLED &&
  			     hostapd_setup_bss(hapd, -1, true))) {
@@ -310,7 +372,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  				hapd_iface->conf->num_bss--;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5186,6 +5186,33 @@ struct wpa_driver_ops {
+@@ -5184,6 +5184,33 @@ struct wpa_driver_ops {
  			      const u8 *match, size_t match_len,
  			      bool multicast);
  #endif /* CONFIG_TESTING_OPTIONS */
@@ -366,7 +428,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  struct i802_link * nl80211_get_link(struct i802_bss *bss, s8 link_id)
  {
-@@ -9010,6 +9023,37 @@ static int wpa_driver_nl80211_if_remove(
+@@ -8965,6 +8978,37 @@ static int wpa_driver_nl80211_if_remove(
  	return 0;
  }
  
@@ -404,7 +466,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  static int cookie_handler(struct nl_msg *msg, void *arg)
  {
-@@ -10653,6 +10697,22 @@ static int driver_nl80211_if_remove(void
+@@ -10608,6 +10652,22 @@ static int driver_nl80211_if_remove(void
  	return wpa_driver_nl80211_if_remove(bss, type, ifname);
  }
  
@@ -427,7 +489,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  static int driver_nl80211_send_mlme(void *priv, const u8 *data,
  				    size_t data_len, int noack,
-@@ -13845,6 +13905,29 @@ fail:
+@@ -13800,6 +13860,29 @@ fail:
  	return ret;
  }
  
@@ -457,7 +519,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -13999,4 +14082,8 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -13954,4 +14037,8 @@ const struct wpa_driver_ops wpa_driver_n
  	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */
  	.set_6gclient_type = nl80211_set_6gclient_type,
