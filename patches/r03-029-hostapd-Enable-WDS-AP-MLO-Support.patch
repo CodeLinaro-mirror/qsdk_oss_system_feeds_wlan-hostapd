@@ -25,7 +25,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -218,6 +218,7 @@ struct hostapd_data {
+@@ -219,6 +219,7 @@ struct hostapd_data {
  	 */
  #define AID_WORDS ((2008 + 31) / 32)
  	u32 sta_aid[AID_WORDS];
@@ -53,7 +53,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +	if (!hapd->conf->mld_ap)
 +		return -1;
 +
-+	link_bss = hostapd_get_first_mld_bss(hapd);
++	link_bss = hostapd_mld_get_first_bss(hapd);
 +	if (!link_bss)
 +		link_bss = hapd;
 +
@@ -90,7 +90,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	int i, j = 32, aid;
-@@ -6467,6 +6515,12 @@ static void handle_assoc_cb(struct hosta
+@@ -6468,6 +6516,12 @@ static void handle_assoc_cb(struct hosta
  			   MAC2STR(sta->addr));
  		sta->pending_wds_enable = 0;
  		sta->flags |= WLAN_STA_WDS;
@@ -103,7 +103,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	}
  
  	/* WPS not supported on backhaul BSS. Disable 4addr mode on fronthaul */
-@@ -6476,12 +6530,18 @@ static void handle_assoc_cb(struct hosta
+@@ -6477,12 +6531,18 @@ static void handle_assoc_cb(struct hosta
  	     !(sta->flags & WLAN_STA_WPS))) {
  		int ret;
  		char ifname_wds[IFNAMSIZ + 1];
@@ -124,7 +124,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if (!ret)
  			hostapd_set_wds_encryption(hapd, sta, ifname_wds);
  	}
-@@ -6792,6 +6852,7 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6793,6 +6853,7 @@ void ieee802_11_rx_from_unknown(struct h
  				int wds)
  {
  	struct sta_info *sta;
@@ -132,7 +132,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	sta = ap_get_sta(hapd, src);
  	if (sta &&
-@@ -6800,6 +6861,19 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6801,6 +6862,19 @@ void ieee802_11_rx_from_unknown(struct h
  		if (!hapd->conf->wds_sta)
  			return;
  
@@ -152,7 +152,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if ((sta->flags & (WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK)) ==
  		    WLAN_STA_ASSOC_REQ_OK) {
  			wpa_printf(MSG_DEBUG,
-@@ -6816,10 +6890,15 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6817,10 +6891,15 @@ void ieee802_11_rx_from_unknown(struct h
  
  			wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for "
  				   "STA " MACSTR " (aid %u)",
@@ -182,7 +182,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  u16 copy_sta_vendor_vht(struct hostapd_data *hapd, struct sta_info *sta,
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -200,8 +200,16 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -201,8 +201,16 @@ void ap_free_sta(struct hostapd_data *ha
  	if ((sta->flags & WLAN_STA_WDS) ||
  	    (sta->flags & WLAN_STA_MULTI_AP &&
  	     !(hapd->conf->multi_ap & FRONTHAUL_BSS) &&
@@ -201,7 +201,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	if (sta->ipaddr)
  		hostapd_drv_br_delete_ip_neigh(hapd, 4, (u8 *) &sta->ipaddr);
-@@ -220,6 +228,10 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -221,6 +229,10 @@ void ap_free_sta(struct hostapd_data *ha
  		hapd->sta_aid[(sta->aid - 1) / 32] &=
  			~BIT((sta->aid - 1) % 32);
  
@@ -224,7 +224,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	u16 capability;
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -8457,6 +8457,7 @@ static int i802_set_wds_sta(void *priv,
+@@ -8456,6 +8456,7 @@ static int i802_set_wds_sta(void *priv,
  
  	wpa_printf(MSG_DEBUG, "nl80211: Set WDS STA addr=" MACSTR
  		   " aid=%d val=%d name=%s", MAC2STR(addr), aid, val, name);
@@ -234,7 +234,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			if (nl80211_create_iface(drv, name,
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2593,7 +2593,10 @@ static void nl80211_spurious_frame(struc
+@@ -2675,7 +2675,10 @@ static void nl80211_spurious_frame(struc
  				   int wds)
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -245,7 +245,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	if (!tb[NL80211_ATTR_MAC])
  		return;
-@@ -2603,7 +2606,18 @@ static void nl80211_spurious_frame(struc
+@@ -2685,7 +2688,18 @@ static void nl80211_spurious_frame(struc
  	event.rx_from_unknown.addr = nla_data(tb[NL80211_ATTR_MAC]);
  	event.rx_from_unknown.wds = wds;
  

@@ -26,27 +26,19 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -978,9 +978,11 @@ int hostapd_ctrl_iface_poll_sta(struct h
- int hostapd_ctrl_iface_status(struct hostapd_data *hapd, char *buf,
- 			      size_t buflen)
- {
--	struct hostapd_iface *iface = hapd->iface;
-+	struct hostapd_iface *iface = hapd->iface, *tmp_iface;
- 	struct hostapd_hw_modes *mode = iface->current_mode;
- 	struct hostapd_config *iconf = hapd->iconf;
-+	struct hostapd_data *link_bss;
-+	struct hapd_interfaces *interfaces = iface->interfaces;
- 	int len = 0, ret, j;
- 	size_t i;
- 
-@@ -1096,6 +1098,54 @@ int hostapd_ctrl_iface_status(struct hos
+@@ -1096,6 +1096,41 @@ int hostapd_ctrl_iface_status(struct hos
  		if (os_snprintf_error(buflen - len, ret))
  			return len;
  		len += ret;
 +
 +		if (hapd->conf->mld_ap) {
-+			int num_link = 1;
 +			struct hostapd_data *link_bss;
++			ret = os_snprintf(buf +len, buflen - len,
++					  "num_links=%d\n",
++					  hapd->mld->num_links);
++			if (os_snprintf_error(buflen - len, ret))
++				return len;
++			len +=ret;
 +
 +			/* self bss */
 +			ret = os_snprintf(buf +len, buflen - len,
@@ -55,42 +47,24 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +					  hapd->mld_link_id,
 +					  MAC2STR(hapd->own_addr));
 +			if (os_snprintf_error(buflen - len, ret))
-+				return len;
++			        return len;
 +			len +=ret;
 +
 +			/* partner bss */
-+			if (iface->interfaces) {
-+				struct hapd_interfaces *interfaces = iface->interfaces;
-+				for (i = 0; i < interfaces->count; i++) {
-+					tmp_iface = interfaces->iface[i];
-+					if (!tmp_iface || iface == tmp_iface)
-+						continue;
++			for_each_partner_bss(link_bss, hapd) {
++				if (link_bss == hapd)
++					continue;
 +
-+					for (j = 0; j < tmp_iface->num_bss; j++) {
-+						link_bss = tmp_iface->bss[j];
-+
-+						if (!link_bss || !link_bss->conf->mld_ap ||
-+						    !hostapd_is_ml_partner(hapd, link_bss))
-+							continue;
-+
-+						num_link++;
-+						ret = os_snprintf(buf +len, buflen - len,
-+								  "link_id=%d\n"
-+								  "link_addr=" MACSTR "\n",
-+								  link_bss->mld_link_id,
-+								  MAC2STR(link_bss->own_addr));
-+						if (os_snprintf_error(buflen - len, ret))
-+							return len;
-+						len +=ret;
-+					}
-+				}
++				ret = os_snprintf(buf +len, buflen - len,
++						  "link_id=%d\n"
++						  "link_addr=" MACSTR "\n",
++						  link_bss->mld_link_id,
++						  MAC2STR(link_bss->own_addr));
++				if (os_snprintf_error(buflen - len, ret))
++					return len;
++				len +=ret;
 +			}
-+			ret = os_snprintf(buf +len, buflen - len,
-+					  "num_links=%d\n", num_link);
-+			if (os_snprintf_error(buflen - len, ret))
-+				return len;
-+			len +=ret;
-+		}
++               }
  	}
  #endif /* CONFIG_IEEE80211BE */
  

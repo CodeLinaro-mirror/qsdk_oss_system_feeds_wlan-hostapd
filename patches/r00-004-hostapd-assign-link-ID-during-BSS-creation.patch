@@ -24,167 +24,75 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -198,12 +198,6 @@ static int hostapd_driver_init(struct ho
+@@ -197,7 +197,6 @@ static int hostapd_driver_init(struct ho
  			os_memcpy(hapd->own_addr, b, ETH_ALEN);
  		}
  
--		/*
--		 * Mark the interface as a secondary interface, as this
--		 * is needed for the de-initialization flow
--		 */
--		hapd->mld_first_bss = h_hapd;
--		hapd->mld_link_id = hapd->mld_first_bss->mld_next_link_id++;
+-		hapd->mld_link_id = hapd->mld->next_link_id++;
+ 		hostapd_mld_add_link(hapd);
  		wpa_printf(MSG_DEBUG, "Setup of non first link BSS(link id %d) of MLD %s",
  			   hapd->mld_link_id, hapd->conf->iface);
- 
-@@ -282,8 +276,6 @@ static int hostapd_driver_init(struct ho
+@@ -274,7 +273,6 @@ static int hostapd_driver_init(struct ho
  		else
  			os_memcpy(hapd->own_addr, b, ETH_ALEN);
  
--		hapd->mld_next_link_id = 0;
--		hapd->mld_link_id = hapd->mld_next_link_id++;
- 		dl_list_init(&hapd->links);
- 	}
- 
+-		hapd->mld_link_id = hapd->mld->next_link_id++;
+ 		hostapd_mld_add_link(hapd);
+ 		wpa_printf(MSG_DEBUG, "Setup of first link (link %d) BSS of MLD %s",
+ 			   hapd->conf->iface, hapd->mld_link_id);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -74,6 +74,10 @@ static void hostapd_switch_color_timeout
+@@ -74,7 +74,6 @@ static void hostapd_switch_color_timeout
  static void hostapd_interface_update_fils_ubpr(struct hostapd_iface *iface,
  					       bool iface_enabled);
  
-+#ifdef CONFIG_IEEE80211BE
-+static void hostapd_bss_alloc_link_id(struct hostapd_data *hapd,
-+				      struct hapd_interfaces *interfaces);
-+#endif /* CONFIG_IEEE80211BE */
- 
+-
  int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
  			       int (*cb)(struct hostapd_iface *iface,
-@@ -1354,8 +1358,6 @@ static int hostapd_setup_bss(struct host
+ 					 void *ctx), void *ctx)
+@@ -1362,7 +1361,6 @@ static int hostapd_setup_bss(struct host
  
  			if (h_hapd) {
  				hapd->drv_priv = h_hapd->drv_priv;
--				hapd->mld_first_bss = h_hapd;
--				hapd->mld_link_id = hapd->mld_first_bss->mld_next_link_id++;
+-				hapd->mld_link_id = hapd->mld->next_link_id++;
+ 				hostapd_mld_add_link(hapd);
  				wpa_printf(MSG_DEBUG, "TSetup of non first link BSS(link id %d) of MLD %s",
  					   hapd->mld_link_id, hapd->conf->iface);
- 				dl_list_add_tail(&h_hapd->links, &hapd->links);
-@@ -1383,8 +1385,6 @@ static int hostapd_setup_bss(struct host
+@@ -1389,7 +1387,6 @@ static int hostapd_setup_bss(struct host
  			wpa_printf(MSG_DEBUG, "TSetup of first link BSS of MLD %s",
  				   hapd->conf->iface);
- 			os_memcpy(hapd->mld_addr, hapd->own_addr, ETH_ALEN);
--			hapd->mld_next_link_id = 0;
--			hapd->mld_link_id = hapd->mld_next_link_id++;
- 			dl_list_init(&hapd->links);
+ 			os_memcpy(hapd->mld->mld_addr, hapd->own_addr, ETH_ALEN);
+-			hapd->mld_link_id = hapd->mld->next_link_id++;
+ 			hostapd_mld_add_link(hapd);
  		}
  	}
-@@ -2954,6 +2954,10 @@ struct hostapd_iface * hostapd_init(stru
- 		if (hapd == NULL)
- 			goto fail;
- 		hapd->msg_ctx = hapd;
-+
-+#ifdef CONFIG_IEEE80211BE
-+		hostapd_bss_alloc_link_id(hapd, interfaces);
-+#endif /* CONFIG_IEEE80211BE */
- 	}
- 
- 	return hapd_iface;
-@@ -3076,6 +3080,10 @@ hostapd_interface_init_bss(struct hapd_i
- 		iface->bss[iface->num_bss] = hapd;
- 		hapd->msg_ctx = hapd;
- 
-+#ifdef CONFIG_IEEE80211BE
-+		hostapd_bss_alloc_link_id(hapd, interfaces);
-+#endif /* CONFIG_IEEE80211BE */
-+
- 		bss_idx = iface->num_bss++;
- 		conf->num_bss--;
- 		conf->bss[0] = NULL;
-@@ -3421,6 +3429,9 @@ static int hostapd_data_alloc(struct hos
- 			return -1;
- 		}
- 		hapd->msg_ctx = hapd;
-+#ifdef CONFIG_IEEE80211BE
-+		hostapd_bss_alloc_link_id(hapd, hapd_iface->interfaces);
-+#endif /* CONFIG_IEEE80211BE */
- 	}
- 
- 	hapd_iface->conf = conf;
-@@ -4711,4 +4722,78 @@ struct hostapd_data* hostapd_get_first_m
- 	return NULL;
+@@ -2921,6 +2918,13 @@ struct hostapd_iface * hostapd_alloc_ifa
  }
  
-+/* Should be only used internally when before driver_init(), partners needs to
-+ * be looked for. This is used to assign link ID early
-+ */
-+static struct hostapd_data *
-+hostapd_get_first_link_bss(struct hostapd_data *hapd,
-+			   struct hapd_interfaces *interfaces)
+ #ifdef CONFIG_IEEE80211BE
++static void hostapd_bss_alloc_link_id(struct hostapd_data *hapd)
 +{
-+	struct hostapd_data *bss;
-+	struct hostapd_iface *iface;
-+	struct hostapd_bss_config *conf;
-+	size_t i, j;
-+
-+	for (i = 0; i < interfaces->count; i++) {
-+		iface = interfaces->iface[i];
-+		if (!iface || iface == hapd->iface)
-+			continue;
-+
-+		for (j = 0; j < iface->num_bss; j++) {
-+			bss = iface->bss[j];
-+			if (!bss)
-+				continue;
-+
-+			conf = bss->conf;
-+			if (!conf->mld_ap)
-+				continue;
-+
-+			if (!hostapd_is_ml_partner(hapd, bss))
-+				continue;
-+
-+			if (bss->mld_first_bss)
-+				return bss->mld_first_bss;
-+			else
-+				return bss;
-+		}
-+	}
-+	return NULL;
++	hapd->mld_link_id = hapd->mld->next_link_id++;
++	wpa_printf(MSG_DEBUG, "MLD: %s: Link ID %d assigned.",
++		   hapd->mld->name, hapd->mld_link_id);
 +}
 +
-+static void hostapd_bss_alloc_link_id(struct hostapd_data *hapd,
-+				      struct hapd_interfaces *interfaces)
-+{
-+	struct hostapd_data *first_hapd;
-+	struct hostapd_bss_config *conf;
-+
-+	if (!hapd || !interfaces || interfaces->count == 1)
-+		return;
-+
-+	conf = hapd->conf;
-+
-+	if (!conf->mld_ap || conf->disable_11be)
-+		return;
-+
-+	wpa_printf(MSG_ERROR, "MLD: Link ID set up of interface %s",
-+		   conf->iface);
-+
-+	first_hapd = hostapd_get_first_link_bss(hapd, interfaces);
-+	if (!first_hapd) {
-+		/* First link in the MLD */
-+		hapd->mld_next_link_id = 0;
-+		hapd->mld_link_id = hapd->mld_next_link_id++;
-+	} else {
-+		/* Not the first link in MLD
-+		 * Mark the interface as a secondary interface, as this
-+		 * is needed for the de-initialization flow
-+		 */
-+		hapd->mld_first_bss = first_hapd;
-+		hapd->mld_link_id = first_hapd->mld_next_link_id++;
-+	}
-+
-+	wpa_printf(MSG_DEBUG, "MLD: %s: Link ID %d added to the MLD.",
-+		   conf->iface, hapd->mld_link_id);
-+
-+}
-+
- #endif /* CONFIG_IEEE80211BE */
+ static void hostapd_bss_setup_multi_link(struct hostapd_data *hapd,
+ 					 struct hapd_interfaces *interfaces)
+ {
+@@ -2944,6 +2948,7 @@ static void hostapd_bss_setup_multi_link
+ 			continue;
+ 
+ 		hapd->mld = mld;
++		hostapd_bss_alloc_link_id(hapd);
+ 		break;
+ 	}
+ 
+@@ -2964,6 +2969,7 @@ static void hostapd_bss_setup_multi_link
+ 		   mld->num_links);
+ 
+ 	hapd->mld = mld;
++	hostapd_bss_alloc_link_id(hapd);
+ 
+ 	all_mld = os_realloc_array(interfaces->mld, interfaces->mld_count + 1,
+ 				   sizeof(struct hostapd_mld *));

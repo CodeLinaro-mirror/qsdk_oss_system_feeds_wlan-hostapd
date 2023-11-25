@@ -33,7 +33,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  static u8 * hostapd_eid_bss_load(struct hostapd_data *hapd, u8 *eid, size_t len)
  {
  	if (len < 2 + 5)
-@@ -593,10 +599,305 @@ static u8 * hostapd_eid_mbssid_config(st
+@@ -593,10 +599,308 @@ static u8 * hostapd_eid_mbssid_config(st
  }
  
  
@@ -275,7 +275,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +	if (!hapd->conf->mld_ap)
 +		return;
 +
-+	if (dl_list_empty(&hapd->links))
++	if (dl_list_empty(&hapd->mld->links))
 +		return;
 +
 +	own_data = (struct ieee80211_mgmt *)hostapd_gen_probe_resp(hapd, NULL, false,
@@ -290,6 +290,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +	own_data_len -= offsetof(struct ieee80211_mgmt, u.probe_resp.variable);
 +
 +	for_each_partner_bss(link_bss, hapd) {
++		if (link_bss == hapd)
++			continue;
++
 +		link_id = link_bss->mld_link_id;
 +
 +		if (link_id > MAX_NUM_MLD_LINKS)
@@ -340,7 +343,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  {
  	struct ieee80211_mgmt *resp;
  	u8 *pos, *epos, *csa_pos;
-@@ -656,12 +957,17 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -656,12 +960,17 @@ static u8 * hostapd_gen_probe_resp(struc
  		/*
  		 * TODO: Multi-Link element has variable length and can be
  		 * long based on the common info and number of per
@@ -362,7 +365,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		}
  		/* QCN Vendor IE for 240MHz */
  		if (is_5ghz_freq(hapd->iface->freq))
-@@ -836,8 +1142,13 @@ static u8 * hostapd_gen_probe_resp(struc
+@@ -836,8 +1145,13 @@ static u8 * hostapd_gen_probe_resp(struc
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
@@ -378,7 +381,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
  		pos = hostapd_eid_eht_operation(hapd, pos, IEEE80211_MODE_AP);
  		pos = hostapd_eid_vendor_240mhz(hapd, pos, IEEE80211_MODE_AP);
-@@ -1118,6 +1429,8 @@ void handle_probe_req(struct hostapd_dat
+@@ -1118,6 +1432,8 @@ void handle_probe_req(struct hostapd_dat
  		.ssi_signal = ssi_signal,
  		.elems = &elems,
  	};
@@ -387,7 +390,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	if (hapd->iconf->rssi_ignore_probe_request && ssi_signal &&
  	    ssi_signal < hapd->iconf->rssi_ignore_probe_request)
-@@ -1355,9 +1668,16 @@ void handle_probe_req(struct hostapd_dat
+@@ -1355,9 +1671,16 @@ void handle_probe_req(struct hostapd_dat
  	wpa_msg_ctrl(hapd->msg_ctx, MSG_INFO, RX_PROBE_REQUEST "sa=" MACSTR
  		     " signal=%d", MAC2STR(mgmt->sa), ssi_signal);
  
@@ -405,7 +408,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (resp == NULL)
  		return;
  
-@@ -1427,7 +1747,7 @@ static u8 * hostapd_probe_resp_offloads(
+@@ -1427,7 +1750,7 @@ static u8 * hostapd_probe_resp_offloads(
  			   "this");
  
  	/* Generate a Probe Response template for the non-P2P case */
@@ -414,7 +417,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  }
  
  #endif /* NEED_AP_MLME */
-@@ -1458,7 +1778,7 @@ static u8 * hostapd_unsol_bcast_probe_re
+@@ -1458,7 +1781,7 @@ static u8 * hostapd_unsol_bcast_probe_re
  
  	return hostapd_gen_probe_resp(hapd, NULL, 0,
  				      &params->unsol_bcast_probe_resp_tmpl_len,
@@ -423,7 +426,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  }
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2398,6 +2718,9 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2398,6 +2721,9 @@ int ieee802_11_set_beacon(struct hostapd
  		}
  	}
  
@@ -443,9 +446,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  #ifdef CONFIG_MESH
  struct mesh_conf;
  #endif /* CONFIG_MESH */
-@@ -498,6 +499,9 @@ struct hostapd_data {
- 	struct dl_list links;
- #ifdef CONFIG_IEEE80211BE
+@@ -501,6 +502,9 @@ struct hostapd_data {
+ 	struct dl_list link;
+ 	u8 mld_link_id;
  	char ctrl_sock_iface[IFNAMSIZ + 1];
 +
 +	/* Store the partner info for ML probe response */
@@ -469,7 +472,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
  		goto out;
  	}
-@@ -4943,7 +4943,7 @@ rsnxe_done:
+@@ -4946,7 +4946,7 @@ rsnxe_done:
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		if (hapd->conf->mld_ap)

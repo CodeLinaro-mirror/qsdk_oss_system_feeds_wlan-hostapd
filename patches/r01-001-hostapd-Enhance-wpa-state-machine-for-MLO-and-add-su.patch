@@ -52,7 +52,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		switch (res) {
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1557,7 +1557,6 @@ setup_mld:
+@@ -1558,7 +1558,6 @@ setup_mld:
  	}
  	if (hostapd_init_wps(hapd, conf))
  		return -1;
@@ -60,7 +60,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #ifdef CONFIG_DPP
  	hapd->gas = gas_query_ap_init(hapd, hapd->msg_ctx);
  	if (!hapd->gas)
-@@ -1581,7 +1580,6 @@ setup_mld:
+@@ -1582,7 +1581,6 @@ setup_mld:
  		wpa_printf(MSG_ERROR, "Accounting initialization failed.");
  		return -1;
  	}
@@ -222,7 +222,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			continue;
  
  		for_each_partner_bss(bss, hapd) {
-@@ -5644,44 +5690,6 @@ static void hostapd_disassoc_sta(struct
+@@ -5647,44 +5693,6 @@ static void hostapd_disassoc_sta(struct
  }
  
  
@@ -287,11 +287,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #else
  	wpa_auth_sta_deinit(sta->wpa_sm);
  #endif /* CONFIG_IEEE80211BE */
-@@ -785,7 +793,28 @@ struct sta_info * ap_sta_add(struct host
+@@ -785,7 +793,31 @@ struct sta_info * ap_sta_add(struct host
  	return sta;
  }
  
--
 +int set_for_each_partner_link_sta(struct hostapd_data *hapd,
 +				  struct sta_info *psta,
 +				  void *data,
@@ -306,6 +305,9 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	if (!psta->mld_info.mld_sta)
 +		return 0;
 +	for_each_partner_bss(lhapd, hapd) {
++		if (lhapd == hapd)
++			continue;
+ 
 +		lsta = ap_get_sta(lhapd, psta->addr);
 +		if (lsta)
 +			ret = cb(lhapd, lsta, data);
@@ -317,7 +319,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  static int ap_sta_remove(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	ieee802_1x_notify_port_enabled(sta->eapol_sm, 0);
-@@ -879,8 +908,10 @@ void ap_sta_disassociate(struct hostapd_
+@@ -879,8 +911,10 @@ void ap_sta_disassociate(struct hostapd_
  	ieee802_1x_free_station(hapd, sta);
  #ifdef CONFIG_IEEE80211BE
  	if (!hapd->conf->mld_ap ||
@@ -1061,7 +1063,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		 u8 *data, size_t data_len);
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -1651,9 +1651,12 @@ int hostapd_setup_wpa(struct hostapd_dat
+@@ -1657,9 +1657,12 @@ int hostapd_setup_wpa(struct hostapd_dat
  	};
  	const u8 *wpa_ie;
  	size_t wpa_ie_len;
@@ -1069,18 +1071,21 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	hostapd_wpa_auth_conf(hapd->conf, hapd->iconf, &_conf);
  	_conf.msg_ctx = hapd->msg_ctx;
-+	_conf.mld_addr = hapd->conf->mld_ap ? hapd->mld_addr : NULL;
++	_conf.mld_addr = hapd->conf->mld_ap ? hapd->mld->mld_addr : NULL;
 +	_conf.link_id = hapd->conf->mld_ap ? hapd->mld_link_id : -1;
  	if (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_EAPOL_TX_STATUS)
  		_conf.tx_status = 1;
  	if (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_AP_MLME)
-@@ -1691,6 +1694,13 @@ int hostapd_setup_wpa(struct hostapd_dat
+@@ -1697,6 +1700,16 @@ int hostapd_setup_wpa(struct hostapd_dat
  		!!(hapd->iface->drv_flags2 &
  		   WPA_DRIVER_FLAGS2_PROT_RANGE_NEG_AP);
  
 +	_conf.first_link_auth = NULL;
 +	if (hapd->conf->mld_ap) {
 +		for_each_partner_bss(lhapd, hapd) {
++			if (lhapd == hapd)
++				continue;
++
 +			if (lhapd->wpa_auth)
 +				_conf.first_link_auth = lhapd->wpa_auth;
 +		}

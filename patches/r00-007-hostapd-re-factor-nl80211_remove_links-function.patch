@@ -20,11 +20,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/drivers/driver_nl80211.c | 108 +++++++++++++++++++++++------------
  1 file changed, 70 insertions(+), 38 deletions(-)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 64b533f7b910..f7038adbe0ba 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -9385,57 +9385,89 @@ fail:
+@@ -9338,57 +9338,90 @@ fail:
  	return -1;
  }
  
@@ -38,56 +36,51 @@ index 64b533f7b910..f7038adbe0ba 100644
 -	int ret;
 -	u8 link_id;
 +	int i, ret;
- 
--	while (bss->links[0].link_id != NL80211_DRV_LINK_ID_NA) {
--		struct i802_link *link = &bss->links[0];
++
 +	wpa_printf(MSG_DEBUG, "nl80211: Remove link (ifindex=%d)", bss->ifindex);
 +	wpa_printf(MSG_DEBUG, "nl80211: MLD: remove link_id=%u", link_id);
- 
--		wpa_printf(MSG_DEBUG, "nl80211: MLD: remove link_id=%u",
--			   link->link_id);
++
 +	for (i = 0; i < bss->n_links; i++) {
 +		if (bss->links[i].link_id != link_id)
 +			continue;
- 
--		wpa_driver_nl80211_del_beacon(bss, link);
++
 +		link = &bss->links[i];
 +		break;
 +	}
  
--		link_id = link->link_id;
+-	while (bss->links[0].link_id != NL80211_DRV_LINK_ID_NA) {
+-		struct i802_link *link = &bss->links[0];
 +	if (!link) {
 +		wpa_printf(MSG_DEBUG, "nl80211: MLD: remove link: Link not found");
 +		return -1;
 +	}
  
--		/* First remove the link locally */
--		if (bss->n_links == 1) {
--			bss->flink->link_id = NL80211_DRV_LINK_ID_NA;
--			os_memcpy(bss->flink->addr, bss->addr, ETH_ALEN);
--		} else {
--			struct i802_link *other = &bss->links[bss->n_links - 1];
+-		wpa_printf(MSG_DEBUG, "nl80211: MLD: remove link_id=%u",
+-			   link->link_id);
 +	/* Already removed */
 +	if (link->link_id == NL80211_DRV_LINK_ID_NA) {
 +		wpa_printf(MSG_DEBUG, "nl80211: MLD: remove link_id=%u, already removed", link_id);
 +		return 0;
 +	}
  
+-		wpa_driver_nl80211_del_beacon(bss, link);
+-
+-		link_id = link->link_id;
+-
+-		/* First remove the link locally */
+-		if (bss->n_links == 1) {
+-			bss->flink->link_id = NL80211_DRV_LINK_ID_NA;
+-			os_memcpy(bss->flink->addr, bss->addr, ETH_ALEN);
+-		} else {
+-			struct i802_link *other = &bss->links[bss->n_links - 1];
+-
 -			os_memcpy(link, other, sizeof(*link));
 -			other->link_id = NL80211_DRV_LINK_ID_NA;
 -			os_memset(other->addr, 0, ETH_ALEN);
-+	/* First remove the link locally. In order to remove a link[i] from links[],
-+	 * shift left next all links[j] where j >= i + 1 to max size
-+	 */
-+	for (; i < bss->n_links - 1; i++)
-+		os_memcpy(&bss->links[i], &bss->links[i + 1], sizeof(*link));
- 
+-
 -			bss->n_links--;
 -		}
-+	/* the last element can be memset back to initial values */
-+	os_memset(&bss->links[bss->n_links - 1], 0, sizeof(*link));
-+	bss->links[bss->n_links - 1].link_id = -1;
- 
+-
 -		/* Remove the link from the kernel */
 -		msg = nl80211_drv_msg(drv, 0, NL80211_CMD_REMOVE_LINK);
 -		if (!msg ||
@@ -98,8 +91,7 @@ index 64b533f7b910..f7038adbe0ba 100644
 -				   link_id);
 -			return;
 -		}
-+	bss->flink = &bss->links[0];
- 
+-
 -		ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
 -		if (ret) {
 -			wpa_printf(MSG_ERROR,
@@ -107,6 +99,18 @@ index 64b533f7b910..f7038adbe0ba 100644
 -				   link_id, ret, strerror(-ret));
 -			return;
 -		}
++	/* First remove the link locally. In order to remove a link[i] from links[],
++	 * shift left next all links[j] where j >= i + 1 to max size
++	 */
++	for (; i < bss->n_links - 1; i++)
++		os_memcpy(&bss->links[i], &bss->links[i + 1], sizeof(*link));
++
++	/* the last element can be memset back to initial values */
++	os_memset(&bss->links[bss->n_links - 1], 0, sizeof(*link));
++	bss->links[bss->n_links - 1].link_id = -1;
++
++	bss->flink = &bss->links[0];
++
 +	if (bss->n_links > 1)
 +		bss->n_links--;
 +
@@ -144,7 +148,8 @@ index 64b533f7b910..f7038adbe0ba 100644
 +			break;
 +	}
 +
-+	os_memcpy(bss->flink->addr, bss->addr, ETH_ALEN);
++	if (bss->flink)
++		os_memcpy(bss->flink->addr, bss->addr, ETH_ALEN);
 +
 +	if (i >= 0)
 +		wpa_printf(MSG_DEBUG, "nl80211: failed to remove links, ret=%d",
@@ -152,6 +157,3 @@ index 64b533f7b910..f7038adbe0ba 100644
  }
  
  
--- 
-2.17.1
-

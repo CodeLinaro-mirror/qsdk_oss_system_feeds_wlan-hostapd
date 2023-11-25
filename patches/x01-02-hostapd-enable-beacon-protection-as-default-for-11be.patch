@@ -17,11 +17,9 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  hostapd/config_file.c | 8 +++++++-
  1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index 54a02f8..68bf6a1 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4901,8 +4901,14 @@ struct hostapd_config * hostapd_config_read(const char *fname)
+@@ -4903,8 +4903,14 @@ struct hostapd_config * hostapd_config_r
  
  	fclose(f);
  
@@ -37,6 +35,3 @@ index 54a02f8..68bf6a1 100644
  
  	if (hostapd_config_check(conf, 1))
  		errors++;
--- 
-2.34.1
-

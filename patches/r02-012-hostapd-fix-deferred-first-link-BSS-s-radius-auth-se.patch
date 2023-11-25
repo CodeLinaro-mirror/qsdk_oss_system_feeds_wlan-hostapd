@@ -23,77 +23,39 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/ap/ieee802_1x.h |   2 +-
  5 files changed, 128 insertions(+), 41 deletions(-)
 
-diff --git a/src/ap/authsrv.c b/src/ap/authsrv.c
-index cc1d722dadd1..715c94a01797 100644
 --- a/src/ap/authsrv.c
 +++ b/src/ap/authsrv.c
-@@ -245,21 +245,43 @@ static struct eap_config * authsrv_eap_config(struct hostapd_data *hapd)
- }
- 
- 
--int authsrv_init(struct hostapd_data *hapd)
-+int authsrv_init(struct hostapd_data *hapd, int first)
+@@ -250,15 +250,24 @@ static struct eap_config * authsrv_eap_c
+ int authsrv_init(struct hostapd_data *hapd)
  {
--	if (hapd->mld_first_bss) {
-+	struct hostapd_data *h_hapd = hapd->mld_first_bss;
+ #ifdef CONFIG_IEEE80211BE
++	struct hostapd_data *h_hapd = hostapd_mld_get_first_bss(hapd);
 +
-+	if (h_hapd) {
-+		if (!h_hapd->eap_cfg && !first) {
-+			wpa_printf(MSG_DEBUG,
-+				   "MLD: First BSS auth_serv does not exist. Assuming this to be the first BSS");
-+			hapd->mld_first_bss = NULL;
-+			hapd->mld_next_link_id = h_hapd->mld_next_link_id;
-+			h_hapd->mld_first_bss = hapd;
-+			goto setup_auth_serv;
-+		} else if (!h_hapd->eap_cfg && first) {
+ 	if (!hostapd_mld_is_first_bss(hapd)) {
++		if (!h_hapd->eap_cfg) {
 +			wpa_printf(MSG_DEBUG,
 +				   "MLD: First BSS auth_serv does not exist. Init on its behalf");
-+			if (authsrv_init(h_hapd, h_hapd == h_hapd->iface->bss[0]) < 0)
++			if (authsrv_init(h_hapd))
 +				return -1;
 +		}
 +
  		wpa_printf(MSG_DEBUG, "MLD: Using auth_serv of the first BSS");
  
  #ifdef EAP_TLS_FUNCS
--		hapd->ssl_ctx = hapd->mld_first_bss->ssl_ctx;
+-		hapd->ssl_ctx = hostapd_mld_get_first_bss(hapd)->ssl_ctx;
 +		hapd->ssl_ctx = h_hapd->ssl_ctx;
  #endif /* EAP_TLS_FUNCS */
--		hapd->eap_cfg = hapd->mld_first_bss->eap_cfg;
+-		hapd->eap_cfg = hostapd_mld_get_first_bss(hapd)->eap_cfg;
 +		hapd->eap_cfg = h_hapd->eap_cfg;
  #ifdef EAP_SIM_DB
--		hapd->eap_sim_db_priv = hapd->mld_first_bss->eap_sim_db_priv;
+-		hapd->eap_sim_db_priv = hostapd_mld_get_first_bss(hapd)->eap_sim_db_priv;
 +		hapd->eap_sim_db_priv = h_hapd->eap_sim_db_priv;
  #endif /* EAP_SIM_DB */
  		return 0;
  	}
- 
-+setup_auth_serv:
-+	if (hapd->eap_cfg) {
-+		wpa_printf(MSG_DEBUG, "Skipping auth_serv init (already done)");
-+		return 0;
-+	}
-+
- #ifdef EAP_TLS_FUNCS
- 	if (hapd->conf->eap_server &&
- 	    (hapd->conf->ca_cert || hapd->conf->server_cert ||
-diff --git a/src/ap/authsrv.h b/src/ap/authsrv.h
-index 2f4ed3419c2d..29e8af63c364 100644
---- a/src/ap/authsrv.h
-+++ b/src/ap/authsrv.h
-@@ -9,7 +9,7 @@
- #ifndef AUTHSRV_H
- #define AUTHSRV_H
- 
--int authsrv_init(struct hostapd_data *hapd);
-+int authsrv_init(struct hostapd_data *hapd, int first);
- void authsrv_deinit(struct hostapd_data *hapd);
- 
- #endif /* AUTHSRV_H */
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 157478b8a90e..8297c48c7ffc 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1295,6 +1295,57 @@ static int hostapd_start_beacon(struct hostapd_data *hapd,
+@@ -1295,6 +1295,57 @@ static int hostapd_start_beacon(struct h
  	return 0;
  }
  
@@ -151,19 +113,10 @@ index 157478b8a90e..8297c48c7ffc 100644
  
  /**
   * hostapd_setup_bss - Per-BSS setup (initialization)
-@@ -1381,6 +1432,8 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first,
- 				hapd->interface_added = h_hapd->interface_added;
- 				hostapd_drv_reassign(hapd->iface->bss[0], hapd);
- 				goto setup_mld;
-+			} else if (hapd->mld_first_bss) {
-+				wpa_printf(MSG_DEBUG, "MLD: BSS is not yet created by the first link. Will create now");
- 			}
- 		}
- 
-@@ -1513,39 +1566,30 @@ setup_mld:
- #endif /* CONFIG_SQLITE */
- 
- 	if (!hapd->mld_first_bss) {
+@@ -1516,40 +1567,19 @@ setup_mld:
+ #ifdef CONFIG_IEEE80211BE
+ 	if (hostapd_mld_is_first_bss(hapd)) {
+ #endif /* CONFIG_IEEE80211BE */
 -		hapd->radius = radius_client_init(hapd, conf->radius);
 -		if (!hapd->radius) {
 -			wpa_printf(MSG_ERROR,
@@ -171,12 +124,13 @@ index 157478b8a90e..8297c48c7ffc 100644
 +		if (hostapd_bss_radius_init(hapd))
  			return -1;
 -		}
-+	} else if (!hapd->mld_first_bss->radius && !first) {
-+		h_hapd = hapd->mld_first_bss;
- 
+-
 -		if (conf->radius_das_port) {
 -			struct radius_das_conf das_conf;
--
++#ifdef CONFIG_IEEE80211BE
++	} else {
++		h_hapd = hostapd_mld_get_first_bss(hapd);
+ 
 -			os_memset(&das_conf, 0, sizeof(das_conf));
 -			das_conf.port = conf->radius_das_port;
 -			das_conf.nas_identifier = conf->nas_identifier;
@@ -196,112 +150,48 @@ index 157478b8a90e..8297c48c7ffc 100644
 -			if (!hapd->radius_das) {
 -				wpa_printf(MSG_ERROR,
 -					   "RADIUS DAS initialization failed.");
-+		wpa_printf(MSG_DEBUG,
-+			   "MLD: First BSS RADIUS client does not exist. Assuming this to be the first BSS");
-+
-+		hapd->mld_first_bss = NULL;
-+		hapd->mld_next_link_id = h_hapd->mld_next_link_id;
-+		h_hapd->mld_first_bss = hapd;
-+
-+		if (hostapd_bss_radius_init(hapd))
-+			return -1;
-+	} else {
-+		h_hapd = hapd->mld_first_bss;
-+
 +		if (!h_hapd->radius) {
 +			wpa_printf(MSG_DEBUG,
-+				   "MLD: First BSS RADIUS client does not exist. Init on its behalf");
++				   "MLD: First BSS RADIUS client does not exist. nit on its behalf");
 +			if (hostapd_bss_radius_init(h_hapd))
  				return -1;
 -			}
  		}
+-#ifdef CONFIG_IEEE80211BE
 -	} else {
 +
  		wpa_printf(MSG_DEBUG,
  			   "MLD: Using RADIUS client of the first BSS");
- 		hapd->radius = hapd->mld_first_bss->radius;
-@@ -1568,10 +1612,10 @@ setup_mld:
- 		return -1;
- #endif /* CONFIG_DPP */
- 
--	if (authsrv_init(hapd) < 0)
-+	if (authsrv_init(hapd, first) < 0)
- 		return -1;
- 
--	if (ieee802_1x_init(hapd)) {
-+	if (ieee802_1x_init(hapd, first)) {
- 		wpa_printf(MSG_ERROR, "IEEE 802.1X initialization failed.");
- 		return -1;
- 	}
-@@ -2009,7 +2053,7 @@ static int setup_interface(struct hostapd_iface *iface)
+ 		hapd->radius = hostapd_mld_get_first_bss(hapd)->radius;
+@@ -2009,7 +2039,6 @@ static int setup_interface(struct hostap
  	 */
  	for (i = 1; i < iface->num_bss; i++) {
  		iface->bss[i]->driver = hapd->driver;
 -		iface->bss[i]->drv_priv = hapd->drv_priv;
-+		//iface->bss[i]->drv_priv = hapd->drv_priv;
  	}
  
  	if (hostapd_validate_bssid_configuration(iface))
-diff --git a/src/ap/ieee802_1x.c b/src/ap/ieee802_1x.c
-index 9985a6ed8c1a..fabc6fcf4e60 100644
 --- a/src/ap/ieee802_1x.c
 +++ b/src/ap/ieee802_1x.c
-@@ -2535,12 +2535,27 @@ static int ieee802_1x_erp_add_key(void *ctx, struct eap_server_erp_key *erp)
- #endif /* CONFIG_ERP */
- 
- 
--int ieee802_1x_init(struct hostapd_data *hapd)
-+int ieee802_1x_init(struct hostapd_data *hapd, int first)
- {
- 	struct eapol_auth_config conf;
+@@ -2541,11 +2541,20 @@ int ieee802_1x_init(struct hostapd_data
  	struct eapol_auth_cb cb;
-+	struct hostapd_data *h_hapd = hapd->mld_first_bss;
+ 
+ #ifdef CONFIG_IEEE80211BE
++	struct hostapd_data *h_hapd = hostapd_mld_get_first_bss(hapd);
 +
-+	if (h_hapd) {
-+		if (!h_hapd->eapol_auth && !first) {
-+			wpa_printf(MSG_DEBUG,
-+				   "MLD: First BSS IEEE 802.1X state machine does not exist. Assuming this to be the first BSS");
-+			hapd->mld_first_bss = NULL;
-+			hapd->mld_next_link_id = h_hapd->mld_next_link_id;
-+			h_hapd->mld_first_bss = hapd;
-+			goto setup_ieee802_1x;
-+		} else if (!h_hapd->eapol_auth && first) {
+ 	if (!hostapd_mld_is_first_bss(hapd)) {
++		if (!h_hapd->eapol_auth) {
 +			wpa_printf(MSG_DEBUG,
 +				   "MLD: First BSS IEEE 802.1X state machine does not exist. Init on its behalf");
-+			if (ieee802_1x_init(h_hapd, h_hapd == h_hapd->iface->bss[0]) < 0)
++			if (ieee802_1x_init(h_hapd))
 +				return -1;
 +		}
- 
--	if (hapd->mld_first_bss) {
++
  		wpa_printf(MSG_DEBUG,
  			   "MLD: Using IEEE 802.1X state machine of the first BSS");
  
-@@ -2548,6 +2563,12 @@ int ieee802_1x_init(struct hostapd_data *hapd)
+-		hapd->eapol_auth = hostapd_mld_get_first_bss(hapd)->eapol_auth;
++		hapd->eapol_auth = h_hapd->eapol_auth;
  		return 0;
  	}
- 
-+setup_ieee802_1x:
-+	if (hapd->eapol_auth) {
-+		wpa_printf(MSG_DEBUG, "Skipping IEEE 802.1X state machine init (already done)");
-+		return 0;
-+	}
-+
- 	dl_list_init(&hapd->erp_keys);
- 
- 	os_memset(&conf, 0, sizeof(conf));
-diff --git a/src/ap/ieee802_1x.h b/src/ap/ieee802_1x.h
-index 1469351c1e55..bf57895a58c5 100644
---- a/src/ap/ieee802_1x.h
-+++ b/src/ap/ieee802_1x.h
-@@ -27,7 +27,7 @@ void ieee802_1x_abort_auth(struct hostapd_data *hapd, struct sta_info *sta);
- void ieee802_1x_set_sta_authorized(struct hostapd_data *hapd,
- 				   struct sta_info *sta, int authorized);
- void ieee802_1x_dump_state(FILE *f, const char *prefix, struct sta_info *sta);
--int ieee802_1x_init(struct hostapd_data *hapd);
-+int ieee802_1x_init(struct hostapd_data *hapd, int first);
- void ieee802_1x_erp_flush(struct hostapd_data *hapd);
- void ieee802_1x_deinit(struct hostapd_data *hapd);
- int ieee802_1x_tx_status(struct hostapd_data *hapd, struct sta_info *sta,
--- 
-2.17.1
-
+ #endif /* CONFIG_IEEE80211BE */

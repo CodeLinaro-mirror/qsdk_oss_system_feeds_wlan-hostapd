@@ -19,7 +19,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -215,7 +215,7 @@ static int hostapd_driver_init(struct ho
+@@ -209,7 +209,7 @@ static int hostapd_driver_init(struct ho
  	hapd->setup_complete_cb = hostapd_setup_complete_cb;
  
  	/* Initialize the driver interface */
@@ -28,10 +28,10 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		b = NULL;
  
  	os_memset(&params, 0, sizeof(params));
-@@ -276,7 +276,12 @@ static int hostapd_driver_init(struct ho
- 		wpa_printf(MSG_DEBUG, "Setup of first link BSS of MLD %s",
- 			   hapd->conf->iface);
- 		os_memcpy(hapd->mld_addr, hapd->own_addr, ETH_ALEN);
+@@ -268,7 +268,12 @@ static int hostapd_driver_init(struct ho
+ 	 */
+ 	if (hapd->conf->mld_ap) {
+ 		os_memcpy(hapd->mld->mld_addr, hapd->own_addr, ETH_ALEN);
 -		random_mac_addr_keep_oui(hapd->own_addr);
 +
 +		if (!b)
@@ -39,16 +39,16 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +		else
 +			os_memcpy(hapd->own_addr, b, ETH_ALEN);
 +
- 		hapd->mld_next_link_id = 0;
- 		hapd->mld_link_id = hapd->mld_next_link_id++;
- 	}
+ 		hapd->mld_link_id = hapd->mld->next_link_id++;
+ 		hostapd_mld_add_link(hapd);
+ 		wpa_printf(MSG_DEBUG, "Setup of first link (link %d) BSS of MLD %s",
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1383,7 +1383,6 @@ static int hostapd_setup_bss(struct host
+@@ -1389,7 +1389,6 @@ static int hostapd_setup_bss(struct host
  			wpa_printf(MSG_DEBUG, "TSetup of first link BSS of MLD %s",
  				   hapd->conf->iface);
- 			os_memcpy(hapd->mld_addr, hapd->own_addr, ETH_ALEN);
+ 			os_memcpy(hapd->mld->mld_addr, hapd->own_addr, ETH_ALEN);
 -			random_mac_addr_keep_oui(hapd->own_addr);
- 			hapd->mld_next_link_id = 0;
- 			hapd->mld_link_id = hapd->mld_next_link_id++;
+ 			hapd->mld_link_id = hapd->mld->next_link_id++;
+ 			hostapd_mld_add_link(hapd);
  		}

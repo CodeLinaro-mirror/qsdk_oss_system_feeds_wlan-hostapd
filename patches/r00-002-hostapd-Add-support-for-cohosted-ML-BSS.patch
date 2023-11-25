@@ -74,34 +74,27 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 -			continue;
 -		}
 +	if (conf->mld_ap)
-+		h_hapd = hostapd_get_first_mld_bss(hapd);
++		h_hapd = hostapd_mld_get_first_bss(hapd);
  
 +	if (h_hapd) {
  		hapd->drv_priv = h_hapd->drv_priv;
  
  		/*
-@@ -228,7 +204,10 @@ static int hostapd_driver_init(struct ho
- 		 */
- 		hapd->mld_first_bss = h_hapd;
- 		hapd->mld_link_id = hapd->mld_first_bss->mld_next_link_id++;
+@@ -223,6 +199,8 @@ static int hostapd_driver_init(struct ho
+ 
+ 		hapd->mld_link_id = hapd->mld->next_link_id++;
+ 		hostapd_mld_add_link(hapd);
 +		wpa_printf(MSG_DEBUG, "Setup of non first link BSS(link id %d) of MLD %s",
 +			   hapd->mld_link_id, hapd->conf->iface);
  
-+		dl_list_add_tail(&h_hapd->links, &hapd->links);
  		goto setup_mld;
  	}
- #endif /* CONFIG_IEEE80211BE */
-@@ -294,10 +273,13 @@ static int hostapd_driver_init(struct ho
- 	 * to this interface.
- 	 */
- 	if (hapd->conf->mld_ap) {
-+		wpa_printf(MSG_DEBUG, "Setup of first link BSS of MLD %s",
-+			   hapd->conf->iface);
- 		os_memcpy(hapd->mld_addr, hapd->own_addr, ETH_ALEN);
+@@ -293,6 +271,8 @@ static int hostapd_driver_init(struct ho
  		random_mac_addr_keep_oui(hapd->own_addr);
- 		hapd->mld_next_link_id = 0;
- 		hapd->mld_link_id = hapd->mld_next_link_id++;
-+		dl_list_init(&hapd->links);
+ 		hapd->mld_link_id = hapd->mld->next_link_id++;
+ 		hostapd_mld_add_link(hapd);
++		wpa_printf(MSG_DEBUG, "Setup of first link (link %d) BSS of MLD %s",
++			   hapd->mld_link_id, hapd->conf->iface);
  	}
  
  setup_mld:
@@ -179,7 +172,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	if (bssid == NULL)
  		return NULL;
-@@ -1459,8 +1459,20 @@ static struct hostapd_data * get_hapd_bs
+@@ -1459,8 +1459,26 @@ static struct hostapd_data * get_hapd_bs
  		return HAPD_BROADCAST;
  
  	for (i = 0; i < iface->num_bss; i++) {
@@ -188,13 +181,19 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +		hapd = iface->bss[i];
 +#ifdef CONFIG_IEEE80211BE
 +		if (os_memcmp(bssid, hapd->own_addr, ETH_ALEN) == 0 ||
-+		    (os_memcmp(bssid, hapd->mld_addr, ETH_ALEN) == 0 && link_id == hapd->mld_link_id))
++		    (hapd->conf->mld_ap &&
++		     os_memcmp(bssid, hapd->mld->mld_addr, ETH_ALEN) == 0 &&
++		     link_id == hapd->mld_link_id))
 +			return hapd;
 +		else if (hapd->conf->mld_ap)
-+			for_each_partner_bss(p_hapd, hapd)
++			for_each_partner_bss(p_hapd, hapd) {
++				if (p_hapd == hapd)
++					continue;
++
 +				if (os_memcmp(bssid, p_hapd->own_addr, ETH_ALEN) == 0 ||
-+				    (os_memcmp(bssid, p_hapd->mld_addr, ETH_ALEN) == 0 && link_id == p_hapd->mld_link_id))
++				    (os_memcmp(bssid, p_hapd->mld->mld_addr, ETH_ALEN) == 0 && link_id == p_hapd->mld_link_id))
 +				    	return p_hapd;
++			}
 +#else
 +		if (os_memcmp(bssid, hapd->own_addr, ETH_ALEN) == 0)
 +			return hapd;
@@ -202,7 +201,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	}
  
  	return NULL;
-@@ -1471,7 +1483,7 @@ static void hostapd_rx_from_unknown_sta(
+@@ -1471,7 +1489,7 @@ static void hostapd_rx_from_unknown_sta(
  					const u8 *bssid, const u8 *addr,
  					int wds)
  {
@@ -211,7 +210,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (hapd == NULL || hapd == HAPD_BROADCAST)
  		return;
  
-@@ -1486,8 +1498,8 @@ static int hostapd_mgmt_rx(struct hostap
+@@ -1486,8 +1504,8 @@ static int hostapd_mgmt_rx(struct hostap
  	const u8 *bssid;
  	struct hostapd_frame_info fi;
  	int ret;
@@ -221,13 +220,13 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	hapd = switch_link_hapd(hapd, rx_mgmt->link_id);
  	iface = hapd->iface;
  
-@@ -1511,14 +1523,7 @@ static int hostapd_mgmt_rx(struct hostap
+@@ -1511,14 +1529,7 @@ static int hostapd_mgmt_rx(struct hostap
  	if (bssid == NULL)
  		return 0;
  
 -#ifdef CONFIG_IEEE80211BE
 -	if (hapd->conf->mld_ap &&
--	    os_memcmp(hapd->mld_addr, bssid, ETH_ALEN) == 0)
+-	    os_memcmp(hapd->mld->mld_addr, bssid, ETH_ALEN) == 0)
 -		is_mld = true;
 -#endif /* CONFIG_IEEE80211BE */
 -
@@ -237,7 +236,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	if (!hapd) {
  		u16 fc = le_to_host16(hdr->frame_control);
-@@ -1570,34 +1575,21 @@ static void hostapd_mgmt_tx_cb(struct ho
+@@ -1570,34 +1581,21 @@ static void hostapd_mgmt_tx_cb(struct ho
  	struct ieee80211_hdr *hdr;
  	struct hostapd_data *orig_hapd, *tmp_hapd;
  
@@ -259,7 +258,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		hapd = tmp_hapd;
 -#ifdef CONFIG_IEEE80211BE
 -	} else if (hapd->conf->mld_ap &&
--		   os_memcmp(hapd->mld_addr, get_hdr_bssid(hdr, len),
+-		   os_memcmp(hapd->mld->mld_addr, get_hdr_bssid(hdr, len),
 -			     ETH_ALEN) == 0) {
 -		/* AP MLD address match - use hapd pointer as-is */
 -#endif /* CONFIG_IEEE80211BE */
@@ -277,7 +276,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		if (!hapd || hapd == HAPD_BROADCAST)
  			return;
  		/*
-@@ -1633,16 +1625,53 @@ static int hostapd_event_new_sta(struct
+@@ -1633,16 +1631,56 @@ static int hostapd_event_new_sta(struct
  }
  
  
@@ -323,6 +322,9 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +#ifdef CONFIG_IEEE80211BE
 +		else if (hapd->conf->mld_ap) {
 +			for_each_partner_bss(p_hapd, hapd) {
++				if (p_hapd == hapd)
++					continue;
++
 +				sta = ap_get_sta(p_hapd, src);
 +				if (sta && sta->flags & WLAN_STA_ASSOC && sta->wpa_sm) {
 +					if (sta_ret)
@@ -335,7 +337,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	}
  
  	return NULL;
-@@ -1656,42 +1685,8 @@ static void hostapd_event_eapol_rx(struc
+@@ -1656,42 +1694,8 @@ static void hostapd_event_eapol_rx(struc
  {
  	struct hostapd_data *orig_hapd = hapd;
  
@@ -380,7 +382,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	if (!hapd) {
  		/* WLAN cases need to have an existing association, but non-WLAN
-@@ -2067,6 +2062,26 @@ int hostapd_mld_update_bridge_conn(char
+@@ -2067,6 +2071,26 @@ int hostapd_mld_update_bridge_conn(char
  	return 0;
  }
  
@@ -407,7 +409,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
  		       union wpa_event_data *data)
  {
-@@ -2125,11 +2140,11 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2125,11 +2149,11 @@ void hostapd_wpa_event(void *ctx, enum w
  		}
  		break;
  	case EVENT_EAPOL_TX_STATUS:
@@ -423,10 +425,10 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		hostapd_client_poll_ok(hapd, data->client_poll.addr);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -476,17 +476,19 @@ static int hostapd_broadcast_wep_set(str
- 
+@@ -477,17 +477,19 @@ static int hostapd_broadcast_wep_set(str
  static void hostapd_clear_drv_priv(struct hostapd_data *hapd)
  {
+ #ifdef CONFIG_IEEE80211BE
 -	unsigned int i;
 +	unsigned int i, j;
  
@@ -439,39 +441,37 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			continue;
  
 -		if (iface->bss && iface->bss[0] &&
--		    iface->bss[0]->mld_first_bss == hapd)
+-		    hostapd_mld_get_first_bss(iface->bss[0]) == hapd)
 -			iface->bss[0]->drv_priv = NULL;
 +		for (j = 0; j < iface->num_bss; j++) {
 +			if (iface->bss && iface->bss[j] &&
-+			    iface->bss[j]->mld_first_bss == hapd)
++			    hostapd_mld_get_first_bss(iface->bss[j]) == hapd)
 +				iface->bss[j]->drv_priv = NULL;
 +		}
  	}
+ #endif /* CONFIG_IEEE80211BE */
  
- 	hapd->drv_priv = NULL;
-@@ -1300,6 +1302,7 @@ static int hostapd_setup_bss(struct host
+@@ -1306,6 +1308,7 @@ static int hostapd_setup_bss(struct host
  	char force_ifname[IFNAMSIZ];
  	u8 if_addr[ETH_ALEN];
  	int flush_old_stations = 1;
 +	struct hostapd_data *h_hapd = NULL;
  
- 	if (hapd->mld_first_bss)
- 		wpa_printf(MSG_DEBUG,
-@@ -1346,6 +1349,21 @@ static int hostapd_setup_bss(struct host
+ #ifdef CONFIG_IEEE80211BE
+ 	if (!hostapd_mld_is_first_bss(hapd))
+@@ -1354,6 +1357,19 @@ static int hostapd_setup_bss(struct host
  			} while (mac_in_conf(hapd->iconf, hapd->own_addr));
  		}
  
 +		if (conf->mld_ap) {
-+			h_hapd = hostapd_get_first_mld_bss(hapd);
++			h_hapd = hostapd_mld_get_first_bss(hapd);
 +
 +			if (h_hapd) {
 +				hapd->drv_priv = h_hapd->drv_priv;
-+				hapd->mld_first_bss = h_hapd;
-+				hapd->mld_link_id = hapd->mld_first_bss->mld_next_link_id++;
++				hapd->mld_link_id = hapd->mld->next_link_id++;
++				hostapd_mld_add_link(hapd);
 +				wpa_printf(MSG_DEBUG, "TSetup of non first link BSS(link id %d) of MLD %s",
 +					   hapd->mld_link_id, hapd->conf->iface);
-+				dl_list_add_tail(&h_hapd->links, &hapd->links);
-+				os_memcpy(hapd->mld_addr, h_hapd->mld_addr, ETH_ALEN);
 +				goto setup_mld;
 +			}
 +		}
@@ -479,7 +479,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		hapd->interface_added = 1;
  		if (hostapd_if_add(hapd->iface->bss[0], WPA_IF_AP_BSS,
  				   conf->iface, addr, hapd,
-@@ -1360,8 +1378,19 @@ static int hostapd_setup_bss(struct host
+@@ -1368,8 +1384,18 @@ static int hostapd_setup_bss(struct host
  
  		if (!addr)
  			os_memcpy(hapd->own_addr, if_addr, ETH_ALEN);
@@ -487,11 +487,10 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +		if (hapd->conf->mld_ap) {
 +			wpa_printf(MSG_DEBUG, "TSetup of first link BSS of MLD %s",
 +				   hapd->conf->iface);
-+			os_memcpy(hapd->mld_addr, hapd->own_addr, ETH_ALEN);
++			os_memcpy(hapd->mld->mld_addr, hapd->own_addr, ETH_ALEN);
 +			random_mac_addr_keep_oui(hapd->own_addr);
-+			hapd->mld_next_link_id = 0;
-+			hapd->mld_link_id = hapd->mld_next_link_id++;
-+			dl_list_init(&hapd->links);
++			hapd->mld_link_id = hapd->mld->next_link_id++;
++			hostapd_mld_add_link(hapd);
 +		}
  	}
  
@@ -499,7 +498,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	 if (is_zero_ether_addr(conf->bssid))
  		 os_memcpy(conf->bssid, hapd->own_addr, ETH_ALEN);
  
-@@ -1598,6 +1627,19 @@ static int hostapd_setup_bss(struct host
+@@ -1610,6 +1636,19 @@ static int hostapd_setup_bss(struct host
  		return -1;
  	}
  
@@ -508,7 +507,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +		wpa_printf(MSG_DEBUG,
 +			   "MLD: Set link_id=%u, mld_addr=" MACSTR
 +			   ", own_addr=" MACSTR,
-+			   hapd->mld_link_id, MAC2STR(hapd->mld_addr),
++			   hapd->mld_link_id, MAC2STR(hapd->mld->mld_addr),
 +			   MAC2STR(hapd->own_addr));
 +
 +		hostapd_drv_link_add(hapd, hapd->mld_link_id,
@@ -519,26 +518,18 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (start_beacon && hostapd_start_beacon(hapd, flush_old_stations) < 0)
  		return -1;
  
-@@ -2781,7 +2823,6 @@ hostapd_alloc_bss_data(struct hostapd_if
- #ifdef CONFIG_SAE
- 	dl_list_init(&hapd->sae_commit_queue);
- #endif /* CONFIG_SAE */
--
- 	return hapd;
- }
- 
-@@ -2800,6 +2841,10 @@ static void hostapd_bss_deinit(struct ho
+@@ -2812,6 +2851,10 @@ static void hostapd_bss_deinit(struct ho
  		hapd->rad_attr_db = NULL;
  	}
  #endif /* CONFIG_SQLITE */
 +#ifdef CONFIG_IEEE80211BE
 +	if (hapd->conf->mld_ap)
-+		dl_list_del(&hapd->links);
++		hostapd_mld_remove_link(hapd);
 +#endif
  	hostapd_cleanup(hapd);
  }
  
-@@ -4581,18 +4626,30 @@ hostapd_interface_update_fils_ubpr(struc
+@@ -4671,18 +4714,30 @@ hostapd_interface_update_fils_ubpr(struc
  struct hostapd_data * hostapd_mld_get_link_bss(struct hostapd_data *hapd,
  					       u8 link_id)
  {
@@ -576,82 +567,28 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	}
  
  	return NULL;
-@@ -4618,4 +4675,41 @@ u8 hostapd_get_mld_id(struct hostapd_dat
+@@ -4801,4 +4856,5 @@ struct hostapd_data * hostapd_mld_get_fi
  
- 	/* TODO MLD ID for MBSS cases */
+ 	return mld->fbss;
  }
-+
-+struct hostapd_data* hostapd_get_first_mld_bss(struct hostapd_data *hapd)
-+{
-+	struct hostapd_data *bss;
-+	struct hostapd_iface *iface;
-+	struct hostapd_bss_config *conf;
-+	int i, j;
-+
-+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
-+		iface = hapd->iface->interfaces->iface[i];
-+
-+		if (!iface || iface == hapd->iface)
-+			continue;
-+
-+		for (j = 0; j < iface->num_bss; j++) {
-+			bss = iface->bss[j];
-+			conf = bss->conf;
-+
-+			if (!conf->mld_ap)
-+				continue;
-+
-+			if (!hostapd_is_ml_partner(hapd, bss))
-+				continue;
-+
-+			if (!bss->drv_priv) {
-+				continue;
-+			} else {
-+				if (bss->mld_first_bss)
-+					return bss->mld_first_bss;
-+				else
-+					return bss;
-+			}
-+		}
-+	}
-+	return NULL;
-+}
 +
  #endif /* CONFIG_IEEE80211BE */
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -200,6 +200,7 @@ struct hostapd_data {
- 
- 	struct hostapd_data *mld_first_bss;
- 
-+
- 	/* OpenWrt specific statistics */
- 	struct hostapd_openwrt_stats openwrt_stats;
- 
-@@ -493,6 +494,8 @@ struct hostapd_data {
- #ifdef CONFIG_CTRL_IFACE_UDP
-        unsigned char ctrl_iface_cookie[CTRL_IFACE_COOKIE_LEN];
- #endif /* CONFIG_CTRL_IFACE_UDP */
-+	/* List of all the partners with self pointing in case of SLO */
-+	struct dl_list links;
- };
- 
- 
-@@ -697,6 +700,8 @@ struct hostapd_iface {
+@@ -720,6 +720,13 @@ struct hostapd_iface {
  	bool is_no_ir;
  };
  
++/* Iterate over all affiliated links in MLD to which @self belongs.
++ * Caller should ensure to have a check in order to ignore the link
++ * which called this.
++ */
 +#define for_each_partner_bss(partner, self) \
-+	dl_list_for_each(partner, &self->links, struct hostapd_data, links)
++	dl_list_for_each(partner, &self->mld->links, struct hostapd_data, link)
++
  /* hostapd.c */
  int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
  			       int (*cb)(struct hostapd_iface *iface,
-@@ -809,4 +814,5 @@ struct hostapd_data * hostapd_mld_get_li
- bool hostapd_is_ml_partner(struct hostapd_data *hapd1,
- 			   struct hostapd_data *hapd2);
- u8 hostapd_get_mld_id(struct hostapd_data *hapd);
-+struct hostapd_data* hostapd_get_first_mld_bss(struct hostapd_data *hapd);
- #endif /* HOSTAPD_H */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
 @@ -410,14 +410,7 @@ static int send_auth_reply(struct hostap
@@ -664,7 +601,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 -	 * the addresses.
 -	 */
  	if (hapd->conf->mld_ap && sta && sta->mld_info.mld_sta) {
--		sa = hapd->mld_addr;
+-		sa = hapd->mld->mld_addr;
 -
  		ml_resp = hostapd_ml_auth_resp(hapd);
  		if (!ml_resp)
@@ -689,12 +626,12 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 -	  */
  	if (hapd->conf->mld_ap && sta && sta->mld_info.mld_sta) {
  		dst = sta->addr;
--		bssid = hapd->mld_addr;
+-		bssid = hapd->mld->mld_addr;
 +		bssid = hapd->own_addr;
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -4527,24 +4515,24 @@ static void hostapd_process_assoc_ml_inf
+@@ -4527,24 +4515,27 @@ static void hostapd_process_assoc_ml_inf
  
  	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
  		struct hostapd_iface *iface = NULL;
@@ -707,9 +644,11 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 -		for (j = 0; j < hapd->iface->interfaces->count; j++) {
 -			iface = hapd->iface->interfaces->iface[j];
--
--			if (hapd->iface == iface)
 +		for_each_partner_bss(bss, hapd) {
++			if (bss == hapd)
++				continue;
+ 
+-			if (hapd->iface == iface)
 +			if (bss->mld_link_id != i)
  				continue;
  
@@ -728,7 +667,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			wpa_printf(MSG_DEBUG,
  				   "MLD: No link match for link_id=%u", i);
  
-@@ -4554,9 +4542,6 @@ static void hostapd_process_assoc_ml_inf
+@@ -4554,9 +4545,6 @@ static void hostapd_process_assoc_ml_inf
  					hapd, link->status,
  					link->resp_sta_profile,
  					sizeof(link->resp_sta_profile));
@@ -738,7 +677,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		}
  	}
  #endif /* CONFIG_IEEE80211BE */
-@@ -4773,15 +4758,6 @@ static u16 send_assoc_resp(struct hostap
+@@ -4773,15 +4761,6 @@ static u16 send_assoc_resp(struct hostap
  			     (reassoc ? WLAN_FC_STYPE_REASSOC_RESP :
  			      WLAN_FC_STYPE_ASSOC_RESP));
  
@@ -748,13 +687,13 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 -	 * MLD MAC address.
 -	 */
 -	if (hapd->conf->mld_ap && sta && sta->mld_info.mld_sta)
--		sa = hapd->mld_addr;
+-		sa = hapd->mld->mld_addr;
 -#endif /* CONFIG_IEEE80211BE */
 -
  	os_memcpy(reply->da, addr, ETH_ALEN);
  	os_memcpy(reply->sa, sa, ETH_ALEN);
  	os_memcpy(reply->bssid, sa, ETH_ALEN);
-@@ -5715,6 +5691,7 @@ static bool hostapd_ml_handle_disconnect
+@@ -5715,6 +5694,7 @@ static bool hostapd_ml_handle_disconnect
  	struct hostapd_data *assoc_hapd, *tmp_hapd;
  	struct sta_info *assoc_sta;
  	unsigned int i, link_id;
@@ -762,17 +701,19 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	if (!hostapd_is_mld_ap(hapd))
  		return false;
-@@ -5725,46 +5702,25 @@ static bool hostapd_ml_handle_disconnect
+@@ -5725,46 +5705,28 @@ static bool hostapd_ml_handle_disconnect
  	 */
  	assoc_sta = hostapd_ml_get_assoc_sta(hapd, sta, &assoc_hapd);
  
 -	for (link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
 -		for (i = 0; i < assoc_hapd->iface->interfaces->count; i++) {
 -			struct sta_info *tmp_sta;
--
++	for_each_partner_bss(tmp_hapd, assoc_hapd) {
++		if (tmp_hapd == assoc_hapd)
++			continue;
+ 
 -			if (!assoc_sta->mld_info.links[link_id].valid)
 -				continue;
-+	for_each_partner_bss(tmp_hapd, assoc_hapd) {
 +		if (!assoc_sta->mld_info.links[tmp_hapd->mld_link_id].valid)
 +			continue;
  
@@ -824,7 +765,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		}
  	}
  
-@@ -6359,37 +6315,28 @@ static void hostapd_ml_handle_assoc_cb(s
+@@ -6359,37 +6321,31 @@ static void hostapd_ml_handle_assoc_cb(s
  {
  #ifdef CONFIG_IEEE80211BE
  	unsigned int i, link_id;
@@ -839,14 +780,17 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +		struct mld_link_info *link = &sta->mld_info.links[tmp_hapd->mld_link_id];
 +		struct sta_info *tmp_sta;
  
- 		if (!link->valid)
+-		if (!link->valid)
++		if (tmp_hapd == hapd)
  			continue;
  
 -		for (i = 0; i < hapd->iface->interfaces->count; i++) {
 -			struct sta_info *tmp_sta;
 -			struct hostapd_data *tmp_hapd =
 -				hapd->iface->interfaces->iface[i]->bss[0];
--
++		if (!link->valid)
++			continue;
+ 
 -			if (!hostapd_is_ml_partner(tmp_hapd, hapd))
 +		for (tmp_sta = tmp_hapd->sta_list; tmp_sta;
 +		     tmp_sta = tmp_sta->next) {
@@ -874,7 +818,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		}
  	}
  #endif /* CONFIG_IEEE80211BE */
-@@ -6799,34 +6746,6 @@ void hostapd_tx_status(struct hostapd_da
+@@ -6799,34 +6755,6 @@ void hostapd_tx_status(struct hostapd_da
  	ieee802_1x_tx_status(hapd, sta, buf, len, ack);
  }
  
@@ -962,7 +906,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	return 0;
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -1511,25 +1511,30 @@ static int hostapd_wpa_auth_get_ml_rsn_i
+@@ -1511,25 +1511,33 @@ static int hostapd_wpa_auth_get_ml_rsn_i
  
  	for (i = 0; i < info->n_mld_links; i++) {
  		unsigned int link_id = info->links[i].link_id;
@@ -985,10 +929,13 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 -			if (!hostapd_is_ml_partner(hapd, iface->bss[0]) ||
 -			    link_id != iface->bss[0]->mld_link_id)
 +		for_each_partner_bss(bss, hapd) {
-+			if (bss->mld_link_id != link_id)
++			if (bss == hapd)
  				continue;
  
 -			wpa_auth_ml_get_rsn_info(iface->bss[0]->wpa_auth,
++			if (bss->mld_link_id != link_id)
++				continue;
++
 +			wpa_auth_ml_get_rsn_info(bss->wpa_auth,
  						 &info->links[i]);
 +			link_bss_found = true;
@@ -1000,7 +947,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			wpa_printf(MSG_DEBUG,
  				   "WPA_AUTH: MLD: link=%u not found", link_id);
  	}
-@@ -1552,27 +1557,34 @@ static int hostapd_wpa_auth_get_ml_key_i
+@@ -1552,27 +1560,37 @@ static int hostapd_wpa_auth_get_ml_key_i
  
  	for (i = 0; i < info->n_mld_links; i++) {
  		u8 link_id = info->links[i].link_id;
@@ -1021,10 +968,13 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +						 info->beacon_prot);
 +			continue;
 +		}
++
++		for_each_partner_bss(bss, hapd) {
++			if (bss == hapd)
++				continue;
  
 -			if (!hostapd_is_ml_partner(hapd, iface->bss[0]) ||
 -			    link_id != iface->bss[0]->mld_link_id)
-+		for_each_partner_bss(bss, hapd) {
 +			if (bss->mld_link_id != link_id)
  				continue;
  

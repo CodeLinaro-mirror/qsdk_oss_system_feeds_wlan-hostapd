@@ -21,11 +21,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/drivers/driver_nl80211_event.c | 33 ++++++++++++++++++++++++++----
  3 files changed, 31 insertions(+), 6 deletions(-)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 9966b43677a2..0a4ed452bd52 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -197,7 +197,6 @@ static int nl80211_put_mesh_config(struct nl_msg *msg,
+@@ -197,7 +197,6 @@ static int nl80211_put_mesh_config(struc
  static int i802_sta_disassoc(void *priv, const u8 *own_addr, const u8 *addr,
  			     u16 reason);
  
@@ -33,7 +31,7 @@ index 9966b43677a2..0a4ed452bd52 100644
  static void nl80211_remove_links(struct i802_bss *bss);
  
  /* Converts nl80211_chan_width to a common format */
-@@ -9452,7 +9451,7 @@ fail:
+@@ -9500,7 +9499,7 @@ fail:
  	return -1;
  }
  
@@ -42,22 +40,18 @@ index 9966b43677a2..0a4ed452bd52 100644
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
  	struct i802_link *link = NULL;
-diff --git a/src/drivers/driver_nl80211.h b/src/drivers/driver_nl80211.h
-index 08b2e74ebb13..daaa378e1b88 100644
 --- a/src/drivers/driver_nl80211.h
 +++ b/src/drivers/driver_nl80211.h
-@@ -369,5 +369,6 @@ int nl80211_set_default_scan_ies(void *priv, const u8 *ies, size_t ies_len);
+@@ -372,5 +372,6 @@ int wpa_driver_set_phyname(struct wpa_dr
  struct hostapd_multi_hw_info *
  nl80211_get_multi_hw_info(void *priv, u8 *num_multi_hws);
  bool nl80211_link_valid(struct i802_bss *bss, s8 link_id);
 +int nl80211_remove_link(struct i802_bss *bss, int link_id);
  
  #endif /* DRIVER_NL80211_H */
-diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index 6fff700d29d1..097d4ed14e49 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2378,10 +2378,35 @@ static void nl80211_tdls_oper_event(struct wpa_driver_nl80211_data *drv,
+@@ -2399,10 +2399,35 @@ static void nl80211_tdls_oper_event(stru
  }
  
  
@@ -96,7 +90,7 @@ index 6fff700d29d1..097d4ed14e49 100644
  }
  
  
-@@ -4207,7 +4232,7 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
+@@ -4250,7 +4275,7 @@ static void do_process_drv_event(struct
  		nl80211_radar_event(bss, tb);
  		break;
  	case NL80211_CMD_STOP_AP:
@@ -105,6 +99,3 @@ index 6fff700d29d1..097d4ed14e49 100644
  		break;
  	case NL80211_CMD_VENDOR:
  		nl80211_vendor_event(drv, tb);
--- 
-2.17.1
-
