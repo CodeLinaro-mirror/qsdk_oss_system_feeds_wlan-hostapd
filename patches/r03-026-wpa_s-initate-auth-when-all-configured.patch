@@ -112,7 +112,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (bss == NULL) {
  		wpa_msg(wpa_s, MSG_ERROR, "SME: No scan result available for "
-@@ -646,13 +672,24 @@ static void sme_send_authentication(stru
+@@ -646,11 +672,21 @@ static void sme_send_authentication(stru
  	params.ssid_len = bss->ssid_len;
  	params.p2p = ssid->p2p_group;
  
@@ -138,10 +138,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +		}
  	}
  
-+	wpa_s->ml_neigh_retries = 0;
  	if (wpa_s->sme.ssid_len != params.ssid_len ||
- 	    os_memcmp(wpa_s->sme.ssid, params.ssid, params.ssid_len) != 0)
- 		wpa_s->sme.prev_bssid_set = 0;
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
 @@ -1542,6 +1542,7 @@ struct wpa_supplicant {
@@ -152,3 +149,13 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  };
  
  
+--- a/wpa_supplicant/events.c
++++ b/wpa_supplicant/events.c
+@@ -3701,6 +3701,7 @@ static void wpa_supplicant_event_assoc(s
+ #endif /* CONFIG_SME */
+ 
+ 	wpa_msg(wpa_s, MSG_INFO, "Associated with " MACSTR, MAC2STR(bssid));
++	wpa_s->ml_neigh_retries = 0;
+ 	if (wpa_s->current_ssid) {
+ 		/* When using scanning (ap_scan=1), SIM PC/SC interface can be
+ 		 * initialized before association, but for other modes,
