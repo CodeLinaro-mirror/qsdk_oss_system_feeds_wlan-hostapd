@@ -13,6 +13,7 @@ This includes -
 Add changes for the same.
 
 Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
+Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 ---
  src/ap/ap_drv_ops.c                |  10 +++
  src/ap/dfs.c                       |  31 +++++++
@@ -20,11 +21,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/drivers/driver_nl80211_event.c | 137 +++++++++++++++++++++++------
  4 files changed, 165 insertions(+), 28 deletions(-)
 
-diff --git a/src/ap/ap_drv_ops.c b/src/ap/ap_drv_ops.c
-index 7d92dbd6acdd..e52763ed20a8 100644
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -939,6 +939,16 @@ int hostapd_start_dfs_cac(struct hostapd_iface *iface,
+@@ -939,6 +939,16 @@ int hostapd_start_dfs_cac(struct hostapd
  	}
  	data.radar_background = radar_background;
  
@@ -41,11 +40,9 @@ index 7d92dbd6acdd..e52763ed20a8 100644
  	res = hapd->driver->start_dfs_cac(hapd->drv_priv, &data);
  	if (!res) {
  		if (radar_background)
-diff --git a/src/ap/dfs.c b/src/ap/dfs.c
-index 06510af8dc09..8e33204a3b27 100644
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1362,6 +1362,13 @@ hostapd_dfs_start_channel_switch_background(struct hostapd_iface *iface)
+@@ -1362,6 +1362,13 @@ hostapd_dfs_start_channel_switch_backgro
  		hostapd_get_oper_centr_freq_seg1_idx(iface->conf));
  }
  
@@ -59,63 +56,61 @@ index 06510af8dc09..8e33204a3b27 100644
  
  int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
-@@ -1371,6 +1378,12 @@ int hostapd_dfs_complete_cac(struct hostapd_iface *iface, int success, int freq,
+@@ -1371,6 +1378,12 @@ int hostapd_dfs_complete_cac(struct host
  		"success=%d freq=%d ht_enabled=%d chan_offset=%d chan_width=%d cf1=%d cf2=%d",
  		success, freq, ht_enabled, chan_offset, chan_width, cf1, cf2);
  
 +	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
 +		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_COMPLETED
 +			"Ignoring since freq info is out of own range");
-+		return;
++		return 0;
 +	}
 +
  	if (success) {
  		/* Complete iface/ap configuration */
  		if (iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD) {
-@@ -1434,6 +1447,12 @@ int hostapd_dfs_pre_cac_expired(struct hostapd_iface *iface, int freq,
+@@ -1434,6 +1447,12 @@ int hostapd_dfs_pre_cac_expired(struct h
  		"freq=%d ht_enabled=%d chan_offset=%d chan_width=%d cf1=%d cf2=%d",
  		freq, ht_enabled, chan_offset, chan_width, cf1, cf2);
  
 +	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
 +		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_PRE_CAC_EXPIRED
 +			"Ignoring since freq info is out of own range");
-+		return;
++		return 0;
 +	}
 +
  	hostapd_ubus_notify_radar_detected(iface, freq, chan_width, cf1, cf2);
  
  	/* Proceed only if DFS is not offloaded to the driver */
-@@ -1804,6 +1823,12 @@ int hostapd_dfs_nop_finished(struct hostapd_iface *iface, int freq,
+@@ -1804,6 +1823,12 @@ int hostapd_dfs_nop_finished(struct host
  		"freq=%d ht_enabled=%d chan_offset=%d chan_width=%d cf1=%d cf2=%d",
  		freq, ht_enabled, chan_offset, chan_width, cf1, cf2);
  
 +	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
 +		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_NOP_FINISHED
 +			"Ignoring since freq info is out of own range");
-+		return;
++		return 0;
 +	}
 +
  	/* Proceed only if DFS is not offloaded to the driver */
  	if (iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD)
  		return 0;
-@@ -1864,6 +1889,12 @@ int hostapd_dfs_start_cac(struct hostapd_iface *iface, int freq,
+@@ -1864,6 +1889,12 @@ int hostapd_dfs_start_cac(struct hostapd
  	u8 channel_no, cf1_ch_no;
  	bool is_background_event = hostapd_dfs_is_background_event(iface, freq);
  
 +	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
 +		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
 +			"Ignoring since freq info is out of own range");
-+		return;
++		return 0;
 +	}
 +
  	if (is_background || is_background_event) {
  		iface->radar_background.cac_started = 1;
  	} else {
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 1641e2634b79..0ca944ce0451 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -10404,9 +10404,22 @@ static int nl80211_start_radar_detection(void *priv,
+@@ -10447,9 +10447,22 @@ static int nl80211_start_radar_detection
  		return -1;
  	}
  
@@ -139,11 +134,9 @@ index 1641e2634b79..0ca944ce0451 100644
  	wpa_printf(MSG_DEBUG, "nl80211: Failed to start radar detection: "
  		   "%d (%s)", ret, strerror(-ret));
  	return -1;
-diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index b0e7b8778442..ddd6fe15802e 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -1642,6 +1642,27 @@ nl80211_get_mld_link_by_freq(struct i802_bss *bss, unsigned int freq)
+@@ -1642,6 +1642,27 @@ nl80211_get_mld_link_by_freq(struct i802
  	return NULL;
  }
  
@@ -171,7 +164,7 @@ index b0e7b8778442..ddd6fe15802e 100644
  
  static void mlme_event(struct i802_bss *bss,
  		       enum nl80211_commands cmd, struct nlattr *frame,
-@@ -2390,12 +2411,54 @@ static void nl80211_connect_failed_event(struct wpa_driver_nl80211_data *drv,
+@@ -2390,12 +2411,54 @@ static void nl80211_connect_failed_event
  	wpa_supplicant_event(drv->ctx, EVENT_CONNECT_FAILED_REASON, &data);
  }
  
@@ -184,9 +177,7 @@ index b0e7b8778442..ddd6fe15802e 100644
 +			   mld_link->link_id);
 +		ctx = mld_link->ctx;
 +	}
- 
--static void nl80211_radar_event(struct wpa_driver_nl80211_data *drv,
--				struct nlattr **tb)
++
 +	switch (event_type) {
 +	case NL80211_RADAR_DETECTED:
 +		wpa_supplicant_event(ctx, EVENT_DFS_RADAR_DETECTED, data);
@@ -213,7 +204,9 @@ index b0e7b8778442..ddd6fe15802e 100644
 +		break;
 +	}
 +}
-+
+ 
+-static void nl80211_radar_event(struct wpa_driver_nl80211_data *drv,
+-				struct nlattr **tb)
 +static void nl80211_radar_event(struct i802_bss *bss, struct nlattr **tb)
  {
 +	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -228,7 +221,7 @@ index b0e7b8778442..ddd6fe15802e 100644
  
  	if (!tb[NL80211_ATTR_WIPHY_FREQ] || !tb[NL80211_ATTR_RADAR_EVENT])
  		return;
-@@ -2445,31 +2508,51 @@ static void nl80211_radar_event(struct wpa_driver_nl80211_data *drv,
+@@ -2445,31 +2508,52 @@ static void nl80211_radar_event(struct w
  		   data.dfs_event.chan_offset, data.dfs_event.chan_width,
  		   data.dfs_event.cf1, data.dfs_event.cf2, data.dfs_event.radar_bitmap);
  
@@ -261,7 +254,7 @@ index b0e7b8778442..ddd6fe15802e 100644
 +		if (ret == 2)
 +			ctx = bss->ctx;
 +		return nl80211_process_radar_event(ctx, &data, event_type, mld_link);
- 	}
++	}
 +
 +	wpa_printf(MSG_DEBUG, "nl80211: Checking suitable BSS for the DFS event");
 +
@@ -284,7 +277,8 @@ index b0e7b8778442..ddd6fe15802e 100644
 +		 * freq is 5 GHz, pass the event to its ctx.
 +		 */
 +		for (i = 0; i < bss_iter->n_links; i++) {
-+			if (!is_5ghz_freq(bss_iter->links[i].freq))
++			if (bss_iter->links[i].freq < 5180 &&
++			    bss_iter->links[i].freq > 5885)
 +				continue;
 +
 +			mld_link = &bss_iter->links[i];
@@ -294,7 +288,7 @@ index b0e7b8778442..ddd6fe15802e 100644
 +			if (!hit)
 +				hit = true;
 +		}
-+	}
+ 	}
 +
 +	if (hit)
 +		return;
@@ -304,7 +298,7 @@ index b0e7b8778442..ddd6fe15802e 100644
  }
  
  static void nl80211_awgn_event(struct wpa_driver_nl80211_data *drv,
-@@ -4003,7 +4086,7 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
+@@ -4003,7 +4087,7 @@ static void do_process_drv_event(struct
  		mlme_event_ft_event(drv, tb);
  		break;
  	case NL80211_CMD_RADAR_DETECT:
@@ -313,6 +307,3 @@ index b0e7b8778442..ddd6fe15802e 100644
  		break;
  	case NL80211_CMD_STOP_AP:
  		nl80211_stop_ap(drv, tb);
--- 
-2.17.1
-
