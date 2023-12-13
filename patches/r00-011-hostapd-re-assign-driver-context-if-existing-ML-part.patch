@@ -226,7 +226,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		} else {
  			wpa_printf(MSG_DEBUG, "nl80211: No second BSS to reassign context to");
  		}
-@@ -13884,6 +13911,115 @@ static bool wpa_driver_get_shared_status
+@@ -13884,6 +13911,120 @@ static bool wpa_driver_get_shared_status
  	return false;
  }
  
@@ -329,6 +329,11 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	new_bss->start_iface_up = bss->start_iface_up;
 +	new_bss->start_mode_sta = bss->start_mode_sta;
 +
++	/* This flag was set in wpa_driver_nl80211_if_add(), but it was already
++	 * present, hence reset it back. This would be useful during deinit flow
++	 */
++	new_bss->added_if = 0;
++
 +	ret = 0;
 +
 +free_all:
@@ -342,7 +347,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -14041,5 +14177,6 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -14041,5 +14182,6 @@ const struct wpa_driver_ops wpa_driver_n
  #ifdef CONFIG_IEEE80211BE
  	.if_link_remove = driver_nl80211_if_link_remove,
  	.get_drv_shared_status = wpa_driver_get_shared_status,
