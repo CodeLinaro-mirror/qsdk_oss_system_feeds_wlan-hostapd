@@ -112,7 +112,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  void hostapd_free_hapd_data(struct hostapd_data *hapd)
  {
  	os_free(hapd->probereq_cb);
-@@ -559,7 +535,7 @@ void hostapd_free_hapd_data(struct hosta
+@@ -559,10 +535,22 @@ void hostapd_free_hapd_data(struct hosta
  			 * driver wrapper may have removed its internal instance
  			 * and hapd->drv_priv is not valid anymore.
  			 */
@@ -121,7 +121,22 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		}
  	}
  
-@@ -616,6 +592,36 @@ void hostapd_free_hapd_data(struct hosta
++#ifdef CONFIG_IEEE80211BE
++	/* If interface was not added as well as it is not the first bss, then
++	 * at least link should be removed here since deinit will take care only
++	 * for the first bss.
++	 */
++	if (hapd->conf->mld_ap && !hapd->interface_added &&
++	    hapd->iface->bss[0] != hapd) {
++		hostapd_if_link_remove(hapd, WPA_IF_AP_BSS, hapd->conf->iface,
++				       hapd->mld_link_id);
++	}
++#endif /* CONFIG_IEEE80211BE */
++
+ 	wpabuf_free(hapd->time_adv);
+ 	hapd->time_adv = NULL;
+ 
+@@ -616,6 +604,36 @@ void hostapd_free_hapd_data(struct hosta
  #endif /* CONFIG_IEEE80211AX */
  }
  
@@ -158,7 +173,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  /**
   * hostapd_cleanup - Per-BSS cleanup (deinitialization)
-@@ -1361,6 +1367,7 @@ static int hostapd_setup_bss(struct host
+@@ -1361,6 +1379,7 @@ static int hostapd_setup_bss(struct host
  
  			if (h_hapd) {
  				hapd->drv_priv = h_hapd->drv_priv;
@@ -166,7 +181,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  				hostapd_mld_add_link(hapd);
  				wpa_printf(MSG_DEBUG, "TSetup of non first link BSS(link id %d) of MLD %s",
  					   hapd->mld_link_id, hapd->conf->iface);
-@@ -1783,6 +1790,7 @@ static int start_ctrl_iface(struct hosta
+@@ -1783,6 +1802,7 @@ static int start_ctrl_iface(struct hosta
  static void hostapd_no_ir_cleanup(struct hostapd_data *bss)
  {
  	hostapd_bss_deinit_no_free(bss);
@@ -174,7 +189,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	hostapd_free_hapd_data(bss);
  	hostapd_cleanup_iface_partial(bss->iface);
  }
-@@ -2518,6 +2526,7 @@ static int hostapd_setup_interface_compl
+@@ -2518,6 +2538,7 @@ static int hostapd_setup_interface_compl
  			for (;;) {
  				hapd = iface->bss[j];
  				hostapd_bss_deinit_no_free(hapd);
@@ -182,7 +197,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  				hostapd_free_hapd_data(hapd);
  				if (j == 0)
  					break;
-@@ -2536,6 +2545,7 @@ static int hostapd_setup_interface_compl
+@@ -2536,6 +2557,7 @@ static int hostapd_setup_interface_compl
  				for (;;) {
  					hapd = iface->bss[j];
  					hostapd_bss_deinit_no_free(hapd);
@@ -190,7 +205,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  					hostapd_free_hapd_data(hapd);
  					if (j == 0)
  						break;
-@@ -2847,10 +2857,8 @@ static void hostapd_bss_deinit(struct ho
+@@ -2847,10 +2869,8 @@ static void hostapd_bss_deinit(struct ho
  		hapd->rad_attr_db = NULL;
  	}
  #endif /* CONFIG_SQLITE */
@@ -203,7 +218,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	hostapd_cleanup(hapd);
  }
  
-@@ -3194,6 +3202,40 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3194,6 +3214,40 @@ hostapd_interface_init_bss(struct hapd_i
  	return iface;
  }
  
@@ -244,7 +259,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  void hostapd_interface_deinit_free(struct hostapd_iface *iface)
  {
-@@ -3212,13 +3254,7 @@ void hostapd_interface_deinit_free(struc
+@@ -3212,13 +3266,7 @@ void hostapd_interface_deinit_free(struc
  	hostapd_interface_deinit(iface);
  	wpa_printf(MSG_DEBUG, "%s: driver=%p drv_priv=%p -> hapd_deinit",
  		   __func__, driver, drv_priv);
@@ -259,7 +274,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	hostapd_interface_free(iface);
  }
  
-@@ -3257,21 +3293,22 @@ static void hostapd_deinit_driver(const
+@@ -3257,21 +3305,22 @@ static void hostapd_deinit_driver(const
  
  	wpa_printf(MSG_DEBUG, "%s: driver=%p drv_priv=%p -> hapd_deinit",
  		   __func__, driver, drv_priv);
@@ -292,7 +307,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		}
  	}
  }
-@@ -3390,6 +3427,7 @@ int hostapd_disable_iface(struct hostapd
+@@ -3390,6 +3439,7 @@ int hostapd_disable_iface(struct hostapd
  	for (j = 0; j < hapd_iface->num_bss; j++) {
  		struct hostapd_data *hapd = hapd_iface->bss[j];
  		hostapd_bss_deinit_no_free(hapd);
@@ -300,7 +315,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		hostapd_free_hapd_data(hapd);
  	}
  
-@@ -3588,6 +3626,7 @@ int hostapd_add_iface(struct hapd_interf
+@@ -3588,6 +3638,7 @@ int hostapd_add_iface(struct hapd_interf
  			if (start_ctrl_iface_bss(hapd) < 0 ||
  			    (hapd_iface->state == HAPD_IFACE_ENABLED &&
  			     hostapd_setup_bss(hapd, -1, true))) {
