@@ -85,7 +85,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 +		radar_bit_pattern = iface->radar_bit_pattern | iface->conf->ru_punct_bitmap;
 +
 +		/* Radar detected already punctured sub channel*/
-+		if (!radar_bitmap || (radar_bit_pattern & radar_bitmap))
++		if (radar_bit_pattern & radar_bitmap)
 +			return 0;
 +
 +		radar_bit_pattern |= radar_bitmap;
@@ -289,7 +289,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	free_beacon_data(&settings->beacon_after);
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -689,6 +689,9 @@ struct hostapd_iface {
+@@ -687,6 +687,9 @@ struct hostapd_iface {
  	/* Minimum bandwidth the driver supports RU puncturing */
  	u8 ru_punct_supp_bw;
  
@@ -299,7 +299,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
  
-@@ -799,6 +802,7 @@ void fst_hostapd_fill_iface_obj(struct h
+@@ -797,6 +800,7 @@ void fst_hostapd_fill_iface_obj(struct h
  #endif /* CONFIG_FST */
  
  int hostapd_set_acl(struct hostapd_data *hapd);
@@ -309,7 +309,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  struct hostapd_data * hostapd_mld_get_link_bss(struct hostapd_data *hapd,
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8168,6 +8168,27 @@ static void ru_punct_update_bw_160(u8 bi
+@@ -8163,6 +8163,27 @@ static void ru_punct_update_bw_160(u8 bi
  	}
  }
  
@@ -337,7 +337,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  void ru_punct_update_bw(u16 bitmap, u8 pri_chan, enum oper_chan_width *width, u8 *seg0, u8 *seg1)
  {
-@@ -8184,8 +8205,12 @@ void ru_punct_update_bw(u16 bitmap, u8 p
+@@ -8179,8 +8200,12 @@ void ru_punct_update_bw(u16 bitmap, u8 p
  		*seg1 = 0;
  		ru_punct_update_bw_160(bitmap & 0xFF, pri_chan, width, seg0);
  	}
@@ -406,7 +406,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4812,6 +4812,8 @@ static int hostapd_config_fill(struct ho
+@@ -4814,6 +4814,8 @@ static int hostapd_config_fill(struct ho
  #endif /* CONFIG_IEEE80211BE */
  	} else if (os_strcmp(buf, "disable_csa_dfs") == 0) {
  		conf->disable_csa_dfs = atoi(pos);
@@ -417,7 +417,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2886,6 +2886,7 @@ static const struct parse_data ssid_fiel
+@@ -2820,6 +2820,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(enable_160mhz_bw, 0, 1)},
  	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
  	{ INT(ru_punct_bitmap) },
@@ -437,7 +437,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			if (mode->vht_capab && ssid->vht) {
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1300,6 +1300,11 @@ struct wpa_ssid {
+@@ -1298,6 +1298,11 @@ struct wpa_ssid {
  	u16 ru_punct_bitmap;
  
  	/**
