@@ -16,12 +16,10 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/drivers/driver_nl80211.c | 26 ++++++++++++--------------
  1 file changed, 12 insertions(+), 14 deletions(-)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 310772d20395..8dbe6554bab0 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5081,20 +5081,6 @@ static int wpa_driver_nl80211_set_ap(void *priv,
-             nla_put_u32(msg, NL80211_ATTR_BEACON_TX_MODE, params->beacon_tx_mode)))
+@@ -5068,20 +5068,6 @@ static int wpa_driver_nl80211_set_ap(voi
+ 	     nla_put_u32(msg, NL80211_ATTR_BEACON_TX_MODE, params->beacon_tx_mode)))
  		goto fail;
  
 -	if (params->mld_ap) {
@@ -41,7 +39,7 @@ index 310772d20395..8dbe6554bab0 100644
  	if (params->proberesp && params->proberesp_len) {
  		wpa_hexdump(MSG_DEBUG, "nl80211: proberesp (offload)",
  			    params->proberesp, params->proberesp_len);
-@@ -5320,6 +5306,18 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+@@ -5307,6 +5293,19 @@ static int wpa_driver_nl80211_set_ap(voi
  	if (params->freq && nl80211_put_freq_params(msg, params->freq) < 0)
  		goto fail;
  
@@ -53,13 +51,11 @@ index 310772d20395..8dbe6554bab0 100644
 +			       params->mld_link_id))
 +			goto fail;
 +
-+		nl80211_link_set_freq(bss, params->mld_link_id,
-+				      params->freq->freq);
++		if (params->freq)
++			nl80211_link_set_freq(bss, params->mld_link_id,
++					      params->freq->freq);
 +	}
 +
  	if (params->freq && params->freq->he_enabled) {
  		struct nlattr *bss_color;
  
--- 
-2.17.1
-
