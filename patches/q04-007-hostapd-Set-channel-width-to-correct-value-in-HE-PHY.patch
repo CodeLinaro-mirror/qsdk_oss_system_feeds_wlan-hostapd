@@ -31,7 +31,7 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  		u8 control;
 @@ -242,19 +242,16 @@ u8 * hostapd_eid_he_operation(struct hos
  #endif /* CONFIG_IEEE80211BE */
- 	
+ 
  		if (hapd->iconf->ru_punct_bitmap) {
 -			hapd->iconf->he_oper_chwidth =
 -				hostapd_get_oper_chwidth(hapd->iconf);
@@ -39,7 +39,7 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  			hapd->iconf->he_oper_centr_freq_seg0_idx = seg0;
  			hapd->iconf->he_oper_centr_freq_seg1_idx = seg1;
  
- 			ru_punct_update_bw(hapd->iconf->ru_punct_bitmap,
+ 			punct_update_legacy_bw(hapd->iconf->ru_punct_bitmap,
  					   hapd->iconf->channel,
 -					   &hapd->iconf->he_oper_chwidth,
 -					   &hapd->iconf->he_oper_centr_freq_seg0_idx,

@@ -188,7 +188,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 +		ieee80211_freq_to_chan(settings->freq_params.center_freq2,
 +				       &oper_centr_freq1_idx);
 +
-+		ru_punct_update_bw(settings->freq_params.ru_punct_bitmap,
++		punct_update_legacy_bw(settings->freq_params.ru_punct_bitmap,
 +				   iface->conf->channel,
 +				   &chan_op_bw,
 +				   &oper_centr_freq0_idx,
@@ -307,50 +307,6 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  struct hostapd_data * hostapd_mbssid_get_tx_bss(struct hostapd_data *hapd);
  int hostapd_mbssid_get_bss_index(struct hostapd_data *hapd);
  struct hostapd_data * hostapd_mld_get_link_bss(struct hostapd_data *hapd,
---- a/src/ap/ieee802_11.c
-+++ b/src/ap/ieee802_11.c
-@@ -8163,6 +8163,27 @@ static void ru_punct_update_bw_160(u8 bi
- 	}
- }
- 
-+static void ru_punct_update_bw_320(u16 bitmap, u8 pri_chan,
-+				   enum oper_chan_width *width, u8 *seg0)
-+{
-+	if (pri_chan < *seg0) {
-+		*seg0 -= 16;
-+		if (bitmap & 0x00FF) {
-+			*width = 1;
-+			ru_punct_update_bw_160(bitmap & 0xFF,
-+					       pri_chan, width,
-+					       seg0);
-+		}
-+	} else {
-+		*seg0 += 16;
-+		if (bitmap & 0xFF00) {
-+			*width = 1;
-+			ru_punct_update_bw_160((bitmap & 0xFF00) >> 8,
-+					       pri_chan, width,
-+					       seg0);
-+		}
-+	}
-+}
- 
- void ru_punct_update_bw(u16 bitmap, u8 pri_chan, enum oper_chan_width *width, u8 *seg0, u8 *seg1)
- {
-@@ -8179,8 +8200,12 @@ void ru_punct_update_bw(u16 bitmap, u8 p
- 		*seg1 = 0;
- 		ru_punct_update_bw_160(bitmap & 0xFF, pri_chan, width, seg0);
- 	}
-+	/* 320 MHz */
-+	if ((*width) == 9 && (bitmap & 0xFFFF)) {
-+		*width = 2;
-+		ru_punct_update_bw_320(bitmap & 0xFFFF, pri_chan, width, seg0);
-+	}
- 
--	/* Add for 320 MHz */
- }
- 
- #endif /* CONFIG_NATIVE_WINDOWS */
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
 @@ -937,7 +937,7 @@ static int hostapd_is_usable_edmg(struct
@@ -417,7 +373,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2820,6 +2820,7 @@ static const struct parse_data ssid_fiel
+@@ -2817,6 +2817,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(enable_160mhz_bw, 0, 1)},
  	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
  	{ INT(ru_punct_bitmap) },
@@ -427,7 +383,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  };
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -431,6 +431,7 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+@@ -426,6 +426,7 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  			   ssid->eht) {
  				conf->ieee80211be = 1;
  				conf->ru_punct_bitmap = ssid->ru_punct_bitmap;
@@ -437,7 +393,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			if (mode->vht_capab && ssid->vht) {
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1298,6 +1298,11 @@ struct wpa_ssid {
+@@ -1288,6 +1288,11 @@ struct wpa_ssid {
  	u16 ru_punct_bitmap;
  
  	/**
@@ -449,3 +405,46 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
  	 *
  	 * By default, use it if it is available, but this can be configured
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -8093,6 +8093,27 @@ static void punct_update_legacy_bw_160(u
+ 	}
+ }
+ 
++static void punct_update_legacy_bw_320(u16 bitmap, u8 pri,
++                                   enum oper_chan_width *width, u8 *seg0)
++{
++        if (pri < *seg0) {
++                *seg0 -= 16;
++                if (bitmap & 0x00FF) {
++                        *width = 1;
++                        punct_update_legacy_bw_160(bitmap & 0xFF,
++                                               pri, width,
++                                               seg0);
++                }
++        } else {
++                *seg0 += 16;
++                if (bitmap & 0xFF00) {
++                        *width = 1;
++                        punct_update_legacy_bw_160((bitmap & 0xFF00) >> 8,
++                                               pri, width,
++                                               seg0);
++                }
++        }
++}
+ 
+ void punct_update_legacy_bw(u16 bitmap, u8 pri, enum oper_chan_width *width,
+ 			    u8 *seg0, u8 *seg1)
+@@ -8108,7 +8129,11 @@ void punct_update_legacy_bw(u16 bitmap,
+ 		punct_update_legacy_bw_160(bitmap & 0xFF, pri, width, seg0);
+ 	}
+ 
+-	/* TODO: 320 MHz */
++        /* 320 MHz */
++        if ((*width) == 9 && (bitmap & 0xFFFF)) {
++                *width = 2;
++                punct_update_legacy_bw_320(bitmap & 0xFFFF, pri, width, seg0);
++        }
+ }
+ 
+ #endif /* CONFIG_NATIVE_WINDOWS */
