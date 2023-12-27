@@ -1,0 +1,37 @@
+From 7aec2a4b6c88d0ee4eae0d62ff4d4157ee09ed64 Mon Sep 17 00:00:00 2001
+From: Dhanavandhana Kannan <quic_dhanavan@quicinc.com>
+Date: Thu, 21 Dec 2023 12:43:49 +0530
+Subject: [PATCH] hostapd: Set MLD_ID to false in beacon frame
+
+Currently AP MLD ID subfield is set to true in Basic
+Multi-Link element in beacon frame.
+
+The AP MLD ID subfield is not present in the Basic Multi-Link
+element when the element is carried in a Beacon frame,
+(Re)Association Response frame, Authentication frame, or Probe
+Response frame that is not a multi-link probe response.
+
+Hence set the value of MLD ID to be false when
+carried in a beacon frame.
+
+Signed-off-by: Dhanavandhana Kannan <quic_dhanavan@quicinc.com>
+---
+ src/ap/beacon.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index 73947ba..8ee5363 100644
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -2379,7 +2379,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+ 	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
+ 		if (hapd->conf->mld_ap)
+ 			tailpos = hostapd_eid_eht_basic_ml(hapd, tailpos, NULL,
+-							   true);
++							   false);
+ 		tailpos = hostapd_eid_eht_capab(hapd, tailpos,
+ 						IEEE80211_MODE_AP);
+ 		tailpos = hostapd_eid_eht_operation(hapd, tailpos, IEEE80211_MODE_AP);
+-- 
+2.17.1
+
