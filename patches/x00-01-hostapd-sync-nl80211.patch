@@ -74,7 +74,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 - *	staggered mode or burst mode in %NL80211_CMD_START_AP from
 - *	user-space.
   *
-  * @NL80211_ATTR_PUNCT_BITMAP: (u32) Preamble puncturing bitmap, lowest
+  *src/drivers/nl80211_copy.h @NL80211_ATTR_PUNCT_BITMAP: (u32) Preamble puncturing bitmap, lowest
   *	bit corresponds to the lowest 20 MHz channel. Each bit set to 1
 @@ -2830,11 +2837,44 @@ enum nl80211_commands {
   *
@@ -125,7 +125,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * @NL80211_ATTR_RADAR_BITMAP: (u16) RADAR bitmap where the lowest bit
   *     corresponds to the lowest 20MHZ channel. Each bit set to 1
   *     indicates that radar is detected in that sub-channel.
-@@ -3374,12 +3414,16 @@ enum nl80211_attrs {
+@@ -3377,12 +3417,16 @@ enum nl80211_attrs {
  	NL80211_ATTR_MAX_HW_TIMESTAMP_PEERS,
  	NL80211_ATTR_HW_TIMESTAMP_ENABLED,
  
@@ -144,18 +144,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	NL80211_ATTR_STA_MGMT_RTS_CTS_CONFIG,
  
  	NL80211_ATTR_AWGN_INTERFERENCE_BITMAP,
-@@ -3393,6 +3437,10 @@ enum nl80211_attrs {
- 	NL80211_ATTR_AP_PS,
- 	NL80211_ATTR_MULTI_HW_MACS,
- 	NL80211_ATTR_RADAR_BITMAP,
-+	NL80211_ATTR_EHT_240MHZ_CAPABILITY,
-+
-+	NL80211_ATTR_ADD_MULTI_CHAN,
-+	NL80211_ATTR_DEL_MULTI_CHAN,
- /* add attributes here, update the policy in nl80211.c */
- 
- 	__NL80211_ATTR_AFTER_LAST,
-@@ -3453,8 +3501,9 @@ enum nl80211_attrs {
+@@ -3461,8 +3505,9 @@ enum nl80211_attrs {
   * present in %NL80211_CMD_GET_WIPHY response.
   */
  #define NL80211_MAX_NR_AKM_SUITES		2
@@ -166,7 +155,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  #define NL80211_MIN_REMAIN_ON_CHANNEL_TIME	10
  
-@@ -3506,6 +3555,9 @@ enum nl80211_iftype {
+@@ -3514,6 +3559,9 @@ enum nl80211_iftype {
  	NL80211_IFTYPE_P2P_DEVICE,
  	NL80211_IFTYPE_OCB,
  	NL80211_IFTYPE_NAN,
@@ -176,7 +165,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	/* keep last */
  	NUM_NL80211_IFTYPES,
-@@ -3636,6 +3688,18 @@ enum nl80211_eht_gi {
+@@ -3644,6 +3692,18 @@ enum nl80211_eht_gi {
  };
  
  /**
@@ -195,7 +184,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * enum nl80211_eht_ru_alloc - EHT RU allocation values
   * @NL80211_RATE_INFO_EHT_RU_ALLOC_26: 26-tone RU allocation
   * @NL80211_RATE_INFO_EHT_RU_ALLOC_52: 52-tone RU allocation
-@@ -3719,6 +3783,13 @@ enum nl80211_eht_ru_alloc {
+@@ -3727,6 +3787,13 @@ enum nl80211_eht_ru_alloc {
   *	(u8, see &enum nl80211_eht_gi)
   * @NL80211_RATE_INFO_EHT_RU_ALLOC: EHT RU allocation, if not present then
   *	non-OFDMA was used (u8, see &enum nl80211_eht_ru_alloc)
@@ -209,7 +198,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * @__NL80211_RATE_INFO_AFTER_LAST: internal use
   */
  enum nl80211_rate_info {
-@@ -3745,6 +3816,13 @@ enum nl80211_rate_info {
+@@ -3753,6 +3820,13 @@ enum nl80211_rate_info {
  	NL80211_RATE_INFO_EHT_NSS,
  	NL80211_RATE_INFO_EHT_GI,
  	NL80211_RATE_INFO_EHT_RU_ALLOC,
@@ -223,7 +212,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	/* keep last */
  	__NL80211_RATE_INFO_AFTER_LAST,
-@@ -4149,6 +4227,10 @@ enum nl80211_band_attr {
+@@ -4157,6 +4231,10 @@ enum nl80211_band_attr {
  
  #define NL80211_BAND_ATTR_HT_CAPA NL80211_BAND_ATTR_HT_CAPA
  
@@ -234,7 +223,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  enum nl80211_regulatory_power_modes {
  	NL80211_REG_AP_LPI,
  	NL80211_REG_AP_SP,
-@@ -4255,6 +4337,8 @@ enum nl80211_wmm_rule {
+@@ -4263,6 +4341,8 @@ enum nl80211_wmm_rule {
   *	as the primary or any of the secondary channels isn't possible
   * @NL80211_FREQUENCY_ATTR_NO_EHT: EHT operation is not allowed on this channel
   *	in current regulatory domain.
@@ -243,7 +232,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * @NL80211_FREQUENCY_ATTR_MAX: highest frequency attribute number
   *	currently defined
   * @__NL80211_FREQUENCY_ATTR_AFTER_LAST: internal use
-@@ -4395,7 +4479,7 @@ enum nl80211_reg_type {
+@@ -4403,7 +4483,7 @@ enum nl80211_reg_type {
   * @NL80211_ATTR_DFS_CAC_TIME: DFS CAC time in milliseconds.
   *	If not present or 0 default CAC time will be used.
   * @NL80211_ATTR_POWER_RULE_PSD: power spectral density (in dBm).
@@ -252,7 +241,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * @NL80211_ATTR_REG_POWER_MODE: the regulatory power mode for 6G rules
   * @NL80211_REG_RULE_ATTR_MAX: highest regulatory rule attribute number
   *	currently defined
-@@ -4500,6 +4584,8 @@ enum nl80211_sched_scan_match_attr {
+@@ -4508,6 +4588,8 @@ enum nl80211_sched_scan_match_attr {
   * @NL80211_RRF_NO_160MHZ: 160MHz operation not allowed
   * @NL80211_RRF_NO_HE: HE operation not allowed
   * @NL80211_RRF_NO_320MHZ: 320MHz operation not allowed
@@ -261,7 +250,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   */
  enum nl80211_reg_rule_flags {
  	NL80211_RRF_NO_OFDM		= 1<<0,
-@@ -4519,6 +4605,8 @@ enum nl80211_reg_rule_flags {
+@@ -4527,6 +4609,8 @@ enum nl80211_reg_rule_flags {
  	NL80211_RRF_NO_160MHZ		= 1<<16,
  	NL80211_RRF_NO_HE		= 1<<17,
  	NL80211_RRF_NO_320MHZ		= 1<<18,
@@ -270,7 +259,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  };
  
  #define NL80211_RRF_PASSIVE_SCAN	NL80211_RRF_NO_IR
-@@ -4687,6 +4775,11 @@ enum nl80211_mesh_power_mode {
+@@ -4695,6 +4779,11 @@ enum nl80211_mesh_power_mode {
  	NL80211_MESH_POWER_MAX = __NL80211_MESH_POWER_AFTER_LAST - 1
  };
  
@@ -282,7 +271,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  /**
   * enum nl80211_meshconf_params - mesh configuration parameters
   *
-@@ -5301,9 +5394,11 @@ enum nl80211_key_attributes {
+@@ -5309,9 +5398,11 @@ enum nl80211_key_attributes {
   *	see &struct nl80211_txrate_he
   * @NL80211_TXRATE_HE_GI: configure HE GI, 0.8us, 1.6us and 3.2us.
   * @NL80211_TXRATE_HE_LTF: configure HE LTF, 1XLTF, 2XLTF and 4XLTF.
@@ -296,7 +285,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * @__NL80211_TXRATE_AFTER_LAST: internal
   * @NL80211_TXRATE_MAX: highest TX rate attribute
   */
-@@ -5316,7 +5411,10 @@ enum nl80211_tx_rate_attributes {
+@@ -5324,7 +5415,10 @@ enum nl80211_tx_rate_attributes {
  	NL80211_TXRATE_HE,
  	NL80211_TXRATE_HE_GI,
  	NL80211_TXRATE_HE_LTF,
@@ -307,7 +296,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	/* keep last */
  	__NL80211_TXRATE_AFTER_LAST,
-@@ -5335,6 +5433,7 @@ struct nl80211_txrate_vht {
+@@ -5343,6 +5437,7 @@ struct nl80211_txrate_vht {
  };
  
  #define NL80211_HE_NSS_MAX		8
@@ -315,7 +304,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  /**
   * struct nl80211_txrate_he - HE MCS/NSS txrate bitmap
   * @mcs: MCS bitmap table for each NSS (array index 0 for 1 stream, etc.)
-@@ -5389,6 +5488,11 @@ enum nl80211_ps_state {
+@@ -5397,6 +5492,11 @@ enum nl80211_ps_state {
  	NL80211_PS_ENABLED,
  };
  
@@ -327,7 +316,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  /**
   * enum nl80211_attr_cqm - connection quality monitor attributes
   * @__NL80211_ATTR_CQM_INVALID: invalid
-@@ -5433,6 +5537,7 @@ enum nl80211_attr_cqm {
+@@ -5441,6 +5541,7 @@ enum nl80211_attr_cqm {
  	NL80211_ATTR_CQM_TXE_INTVL,
  	NL80211_ATTR_CQM_BEACON_LOSS_EVENT,
  	NL80211_ATTR_CQM_RSSI_LEVEL,
@@ -335,7 +324,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	/* keep last */
  	__NL80211_ATTR_CQM_AFTER_LAST,
-@@ -5546,6 +5651,8 @@ enum nl80211_tid_config_attr {
+@@ -5554,6 +5655,8 @@ enum nl80211_tid_config_attr {
  	NL80211_TID_CONFIG_ATTR_AMSDU_CTRL,
  	NL80211_TID_CONFIG_ATTR_TX_RATE_TYPE,
  	NL80211_TID_CONFIG_ATTR_TX_RATE,
@@ -344,7 +333,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	/* keep last */
  	__NL80211_TID_CONFIG_ATTR_AFTER_LAST,
-@@ -5930,6 +6037,10 @@ enum nl80211_iface_limit_attrs {
+@@ -5938,6 +6041,10 @@ enum nl80211_iface_limit_attrs {
   * @NL80211_IFACE_COMB_BI_MIN_GCD: u32 attribute specifying the minimum GCD of
   *	different beacon intervals supported by all the interface combinations
   *	in this group (if not present, all beacon intervals be identical).
@@ -355,7 +344,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * @NUM_NL80211_IFACE_COMB: number of attributes
   * @MAX_NL80211_IFACE_COMB: highest attribute number
   *
-@@ -5946,7 +6057,18 @@ enum nl80211_iface_limit_attrs {
+@@ -5954,7 +6061,18 @@ enum nl80211_iface_limit_attrs {
   *	numbers = [ #{STA} <= 1, #{P2P-client,P2P-GO} <= 3 ], max = 4
   *	=> allows a STA plus three P2P interfaces
   *
@@ -375,7 +364,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * within the %NL80211_ATTR_INTERFACE_COMBINATIONS attribute to indicate
   * that any of these groups must match.
   *
-@@ -5972,7 +6094,6 @@ enum nl80211_if_combination_attrs {
+@@ -5980,7 +6098,6 @@ enum nl80211_if_combination_attrs {
  	MAX_NL80211_IFACE_COMB = NUM_NL80211_IFACE_COMB - 1
  };
  
@@ -383,7 +372,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  /**
   * enum nl80211_if_combination_per_hw_comb_attrs - per-hw iface combination
   * attributes with multi-hw radios
-@@ -6567,12 +6688,12 @@ enum nl80211_ext_feature_index {
+@@ -6575,12 +6692,12 @@ enum nl80211_ext_feature_index {
  	NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD,
  	NL80211_EXT_FEATURE_WIDE_BAND_SCAN,
  	NL80211_EXT_FEATURE_RADAR_BACKGROUND,
@@ -398,7 +387,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	/* add new features before the definition below */
  	NUM_NL80211_EXT_FEATURES,
-@@ -6697,6 +6818,8 @@ enum nl80211_timeout_reason {
+@@ -6705,6 +6822,8 @@ enum nl80211_timeout_reason {
   *	these channels would passively be scanned. Also note that when the flag
   *	is set, in addition to the colocated APs, PSC channels would also be
   *	scanned if the user space has asked for it.
@@ -407,7 +396,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   */
  enum nl80211_scan_flags {
  	NL80211_SCAN_FLAG_LOW_PRIORITY				= 1<<0,
-@@ -6714,6 +6837,7 @@ enum nl80211_scan_flags {
+@@ -6722,6 +6841,7 @@ enum nl80211_scan_flags {
  	NL80211_SCAN_FLAG_MIN_PREQ_CONTENT			= 1<<12,
  	NL80211_SCAN_FLAG_FREQ_KHZ				= 1<<13,
  	NL80211_SCAN_FLAG_COLOCATED_6GHZ			= 1<<14,
@@ -415,7 +404,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  };
  
  /**
-@@ -7912,6 +8036,11 @@ enum nl80211_sar_specs_attrs {
+@@ -7920,6 +8040,11 @@ enum nl80211_sar_specs_attrs {
   *	Setting this flag is permitted only if the driver advertises EMA support
   *	by setting wiphy->ema_max_profile_periodicity to non-zero.
   *
@@ -427,7 +416,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
   * @__NL80211_MBSSID_CONFIG_ATTR_LAST: Internal
   * @NL80211_MBSSID_CONFIG_ATTR_MAX: highest attribute
   */
-@@ -7983,8 +8112,8 @@ enum nl80211_multi_hw_mac_attrs {
+@@ -7991,8 +8116,8 @@ enum nl80211_multi_hw_mac_attrs {
         /* keep last */
         __NL80211_MULTI_HW_MAC_ATTR_LAST,
         NL80211_MULTI_HW_MAC_ATTR_MAX = __NL80211_MULTI_HW_MAC_ATTR_LAST - 1
