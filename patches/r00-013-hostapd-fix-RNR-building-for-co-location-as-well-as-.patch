@@ -278,7 +278,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +		if (!iface || iface == hapd->iface)
 +			continue;
 +
-+		if (hapd->iconf->channel == iface->conf->channel)
++		if (hapd->iface->freq == iface->freq)
 +			continue;
 +
 +		len += hostapd_eid_rnr_iface_len(iface->bss[0], hapd,
@@ -577,7 +577,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +		if (!iface || iface == hapd->iface)
 +			continue;
 +
-+		if (hapd->iconf->channel == iface->conf->channel)
++		if (hapd->iface->freq == iface->freq)
 +			continue;
 +
 +		eid = hostapd_eid_rnr_iface(iface->bss[0], hapd, eid,
