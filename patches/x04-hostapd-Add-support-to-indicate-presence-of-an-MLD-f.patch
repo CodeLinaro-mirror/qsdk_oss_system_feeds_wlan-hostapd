@@ -115,7 +115,7 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1388,6 +1388,7 @@ static int hostapd_setup_bss(struct host
+@@ -1396,6 +1396,7 @@ static int hostapd_setup_bss(struct host
  	u8 if_addr[ETH_ALEN];
  	int flush_old_stations = 1;
  	struct hostapd_data *h_hapd = NULL;
@@ -123,7 +123,7 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  
  #ifdef CONFIG_IEEE80211BE
  	if (!hostapd_mld_is_first_bss(hapd))
-@@ -1698,7 +1699,8 @@ setup_mld:
+@@ -1706,7 +1707,8 @@ setup_mld:
  			   ", own_addr=" MACSTR,
  			   hapd->mld_link_id, MAC2STR(hapd->mld->mld_addr),
  			   MAC2STR(hapd->own_addr));
@@ -133,7 +133,7 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  		hostapd_drv_link_add(hapd, hapd->mld_link_id,
  				     hapd->own_addr);
  	}
-@@ -3021,6 +3023,8 @@ static void hostapd_bss_alloc_link_id(st
+@@ -3060,6 +3062,8 @@ static void hostapd_bss_alloc_link_id(st
  	hapd->mld_link_id = hapd->mld->next_link_id++;
  	wpa_printf(MSG_DEBUG, "MLD: %s: Link ID %d assigned.",
  		   hapd->mld->name, hapd->mld_link_id);
@@ -144,10 +144,10 @@ Signed-off-by: Ramanathan Choodamani <quic_rchoodam@quicinc.com>
  static void hostapd_bss_setup_multi_link(struct hostapd_data *hapd,
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -572,6 +572,7 @@ struct hostapd_mld {
- 	u8 mld_addr[ETH_ALEN];
- 	u8 next_link_id;
- 	u8 num_links;
+@@ -578,6 +578,7 @@ struct hostapd_mld {
+ 	 * not be freed when it is 0.
+ 	 */
+ 	u8 refcount;
 +	bool is_ml_netdev;
  
  	struct hostapd_data *fbss;
