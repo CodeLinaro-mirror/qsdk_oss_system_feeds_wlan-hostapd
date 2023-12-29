@@ -26,7 +26,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -724,6 +724,27 @@ static int gen_uuid(const char *txt_addr
+@@ -724,6 +724,28 @@ static int gen_uuid(const char *txt_addr
  #define HOSTAPD_CLEANUP_INTERVAL 10
  #endif /* HOSTAPD_CLEANUP_INTERVAL */
  
@@ -47,6 +47,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	}
 +
 +	os_free(interfaces->mld);
++	interfaces->mld = NULL;
 +	interfaces->mld_count = 0;
 +}
 +#endif /* CONFIG_IEEE80211BE */
@@ -54,7 +55,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  static int hostapd_periodic_call(struct hostapd_iface *iface, void *ctx)
  {
  	hostapd_periodic_iface(iface);
-@@ -1029,6 +1050,10 @@ int main(int argc, char *argv[])
+@@ -1029,6 +1051,10 @@ int main(int argc, char *argv[])
  	interfaces.iface = NULL;
  	interfaces.count = 0;
  
@@ -67,7 +68,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  #endif /* CONFIG_DPP */
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2866,6 +2866,70 @@ struct hostapd_iface * hostapd_alloc_ifa
+@@ -2866,6 +2866,69 @@ struct hostapd_iface * hostapd_alloc_ifa
  	return hapd_iface;
  }
  
@@ -111,8 +112,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	mld->fbss = NULL;
 +	dl_list_init(&mld->links);
 +
-+	wpa_printf(MSG_DEBUG, "MLD %s created. num_links: %d", mld->name,
-+		   mld->num_links);
++	wpa_printf(MSG_DEBUG, "MLD %s created", mld->name);
 +
 +	hapd->mld = mld;
 +
@@ -138,7 +138,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  /**
   * hostapd_init - Allocate and initialize per-interface data
-@@ -2910,6 +2974,9 @@ struct hostapd_iface * hostapd_init(stru
+@@ -2910,6 +2973,9 @@ struct hostapd_iface * hostapd_init(stru
  		if (hapd == NULL)
  			goto fail;
  		hapd->msg_ctx = hapd;
@@ -148,7 +148,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	}
  
  	return hapd_iface;
-@@ -3031,6 +3098,10 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3031,6 +3097,10 @@ hostapd_interface_init_bss(struct hapd_i
  		iface->conf->last_bss = bss;
  		iface->bss[iface->num_bss] = hapd;
  		hapd->msg_ctx = hapd;
@@ -159,7 +159,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  		bss_idx = iface->num_bss++;
  		conf->num_bss--;
-@@ -3377,6 +3448,9 @@ static int hostapd_data_alloc(struct hos
+@@ -3377,6 +3447,9 @@ static int hostapd_data_alloc(struct hos
  			return -1;
  		}
  		hapd->msg_ctx = hapd;
@@ -169,7 +169,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	}
  
  	hapd_iface->conf = conf;
-@@ -4618,4 +4692,97 @@ u8 hostapd_get_mld_id(struct hostapd_dat
+@@ -4618,4 +4691,97 @@ u8 hostapd_get_mld_id(struct hostapd_dat
  
  	/* TODO MLD ID for MBSS cases */
  }
