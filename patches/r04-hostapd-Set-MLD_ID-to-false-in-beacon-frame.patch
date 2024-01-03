@@ -1,7 +1,7 @@
 From 7aec2a4b6c88d0ee4eae0d62ff4d4157ee09ed64 Mon Sep 17 00:00:00 2001
 From: Dhanavandhana Kannan <quic_dhanavan@quicinc.com>
 Date: Thu, 21 Dec 2023 12:43:49 +0530
-Subject: [PATCH] hostapd: Set MLD_ID to false in beacon frame
+Subject: [PATCH] hostapd: Set MLD_ID to false in bcn and non-ml prb resp frame
 
 Currently AP MLD ID subfield is set to true in Basic
 Multi-Link element in beacon frame.
@@ -14,16 +14,36 @@ Response frame that is not a multi-link probe response.
 Hence set the value of MLD ID to be false when
 carried in a beacon frame.
 
+As per spec ieee80211be Draft 4.0, MLD ID is required for ML probe
+response and it is not required for Non-ML probe response frames, hence
+removing the MLD ID IE from Non-ML probe response frames.
+
+
 Signed-off-by: Dhanavandhana Kannan <quic_dhanavan@quicinc.com>
 ---
  src/ap/beacon.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 73947ba..8ee5363 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2379,7 +2379,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -1160,14 +1160,14 @@ static u8 * hostapd_gen_probe_resp(struc
+ 				pos = hostapd_eid_eht_basic_ml(hapd, pos,
+ 							       hapd->partner_links, true);
+ 			else
+-				pos = hostapd_eid_eht_basic_ml(hapd, pos, NULL, true);
++				pos = hostapd_eid_eht_basic_ml(hapd, pos, NULL, false);
+ 		}
+ 		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
+ 		pos = hostapd_eid_eht_operation(hapd, pos, IEEE80211_MODE_AP);
+ 		pos = hostapd_eid_vendor_240mhz(hapd, pos, IEEE80211_MODE_AP);
+ 	}
+ 	if (hapd_probed != hapd && hapd_probed->conf->mld_ap)
+-		pos = hostapd_eid_eht_basic_ml(hapd_probed, pos, NULL, true);
++		pos = hostapd_eid_eht_basic_ml(hapd_probed, pos, NULL, false);
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ #ifdef CONFIG_IEEE80211AC
+@@ -2436,7 +2436,7 @@ int ieee802_11_build_ap_params(struct ho
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		if (hapd->conf->mld_ap)
  			tailpos = hostapd_eid_eht_basic_ml(hapd, tailpos, NULL,
@@ -31,7 +51,4 @@ index 73947ba..8ee5363 100644
 +							   false);
  		tailpos = hostapd_eid_eht_capab(hapd, tailpos,
  						IEEE80211_MODE_AP);
- 		tailpos = hostapd_eid_eht_operation(hapd, tailpos, IEEE80211_MODE_AP);
--- 
-2.17.1
-
+ 		startpos = tailpos;
