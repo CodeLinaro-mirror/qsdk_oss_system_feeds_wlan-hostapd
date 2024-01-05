@@ -89,7 +89,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_PRE_CAC_EXPIRED
-@@ -1713,25 +1733,73 @@ enum oper_chan_width convert_to_oper_cha
+@@ -1713,25 +1733,79 @@ enum oper_chan_width convert_to_oper_cha
  	return CHAN_WIDTH_UNKNOWN;
  }
  
@@ -101,21 +101,21 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 +	switch (chan_width_device) {
 +	case CHAN_WIDTH_40:
 +		if (cf1 < cf_device)
-+			radar_bitmap_oper = radar_bitmap & 0x01;
++			radar_bitmap_oper = radar_bitmap & 0x1;
 +		else
-+			radar_bitmap_oper = (radar_bitmap >> 1) | 0x1;
++			radar_bitmap_oper = (radar_bitmap >> 1) & 0x1;
 +		break;
 +	case CHAN_WIDTH_80:
 +		if (cf1 < cf_device)
-+			radar_bitmap_oper = radar_bitmap & 0x03;
++			radar_bitmap_oper = radar_bitmap & 0x3;
 +		else
 +			radar_bitmap_oper = (radar_bitmap >> 2) & 0x3;
 +		break;
 +	case CHAN_WIDTH_160:
 +		if (cf1 < cf_device)
-+			radar_bitmap_oper = radar_bitmap & 0x0F;
++			radar_bitmap_oper = radar_bitmap & 0xF;
 +		else
-+			radar_bitmap_oper = (radar_bitmap >> 4) | 0xF;
++			radar_bitmap_oper = (radar_bitmap >> 4) & 0xF;
 +		break;
 +	case CHAN_WIDTH_320:
 +		if (cf1 < cf_device)
@@ -124,7 +124,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 +			radar_bitmap_oper = (radar_bitmap >> 8) & 0xFF;
 +		break;
 +	default:
-+		break;
++		return 0;
 +	}
 +
 +	return radar_bitmap_oper;
@@ -140,6 +140,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 -	u16 radar_bit_pattern;
 +	u16 radar_bit_pattern, radar_bitmap_oper = 0;
  	u16 cur_punct_bits = iface->conf->ru_punct_bitmap;
++	bool device_params_present;
  
  	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_RADAR_DETECTED
 -		"freq=%d ht_enabled=%d chan_offset=%d chan_width=%d cf1=%d cf2=%d radar_bitmap:%d",
@@ -150,7 +151,12 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 +		chan_width_device, cf_device);
 +
 +	radar_bitmap_oper = radar_bitmap;
-+	if (chan_width_device != chan_width)
++	device_params_present = hostapd_is_device_params_present(chan_width,
++								 cf1,
++								 chan_width_device,
++								 cf_device);
++
++	if (device_params_present)
 +		radar_bitmap_oper = hostapd_radar_bitmap_oper(chan_width, cf1,
 +							      radar_bitmap,
 +							      chan_width_device,
@@ -170,15 +176,14 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  		iface->conf->ru_punct_bitmap = radar_bit_pattern;
  	}
  
-@@ -1743,9 +1811,17 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1743,9 +1817,16 @@ int hostapd_dfs_radar_detected(struct ho
  		return 0;
  
  	/* mark radar frequency as invalid */
 -	if (!set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
 -			   cf1, cf2, HOSTAPD_CHAN_DFS_UNAVAILABLE, radar_bitmap))
 -		return 0;
-+	if (hostapd_is_device_params_present(chan_width, cf1,
-+					     chan_width_device, cf_device)) {
++	if (device_params_present) {
 +		if (!set_dfs_state(iface, freq, ht_enabled, chan_offset,
 +				   chan_width_device, cf_device, cf2,
 +				   HOSTAPD_CHAN_DFS_UNAVAILABLE, radar_bitmap))
@@ -191,7 +196,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  	 if (iface->conf->dfs_test_mode) {
  		 set_dfs_state(iface, freq, ht_enabled, chan_offset,
-@@ -1763,7 +1839,7 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1763,7 +1844,7 @@ int hostapd_dfs_radar_detected(struct ho
  	}
  
  	if (iface->conf->use_ru_puncture_dfs && hostapd_is_usable_ru_punct_bitmap(iface)) {
@@ -200,7 +205,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  		iface->conf->ru_punct_bitmap = cur_punct_bits;
  		u8 oper_centr_freq_seg0_idx = iface->conf->vht_oper_centr_freq_seg0_idx;
  		u8 oper_centr_freq_seg1_idx = iface->conf->vht_oper_centr_freq_seg1_idx;
-@@ -1802,11 +1878,17 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1802,11 +1883,17 @@ int hostapd_dfs_radar_detected(struct ho
  			oper_centr_freq_seg0_idx, oper_centr_freq_seg1_idx);
  	}
  
@@ -219,7 +224,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  		if (!iface->conf->disable_csa_dfs) {
  			/* Radar detected while operating, switch the channel. */
  			return hostapd_dfs_start_channel_switch(iface);
-@@ -1824,11 +1906,11 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1824,11 +1911,11 @@ int hostapd_dfs_radar_detected(struct ho
  
  int hostapd_dfs_nop_finished(struct hostapd_iface *iface, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
@@ -234,7 +239,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  	if (!hostapd_is_freq_in_current_hw_info(iface, freq)) {
  		wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_NOP_FINISHED
-@@ -1841,8 +1923,13 @@ int hostapd_dfs_nop_finished(struct host
+@@ -1841,8 +1928,13 @@ int hostapd_dfs_nop_finished(struct host
  		return 0;
  
  	/* TODO add correct implementation here */
@@ -250,7 +255,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  	if (iface->state == HAPD_IFACE_DFS && !iface->cac_started) {
  		/* Handle cases where all channels were initially unavailable */
-@@ -1889,7 +1976,8 @@ int hostapd_is_dfs_required(struct hosta
+@@ -1889,7 +1981,8 @@ int hostapd_is_dfs_required(struct hosta
  
  int hostapd_dfs_start_cac(struct hostapd_iface *iface, int freq,
  			  int ht_enabled, int chan_offset, int chan_width,
@@ -260,7 +265,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  {
  	int n_chans, n_chans1, ch_idx, ch_idx_1, dfs_cac_ms;
  	int chwidth;
-@@ -1974,10 +2062,10 @@ int hostapd_dfs_start_cac(struct hostapd
+@@ -1974,10 +2067,10 @@ int hostapd_dfs_start_cac(struct hostapd
  
  	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_CAC_START
  		"freq=%d chan=%d chan_offset=%d width=%d seg0=%d "
@@ -373,7 +378,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  #endif /* NEED_AP_MLME */
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -6747,6 +6747,8 @@ union wpa_event_data {
+@@ -6749,6 +6749,8 @@ union wpa_event_data {
  		int cf2;
  		u16 radar_bitmap;
  		bool is_background;
