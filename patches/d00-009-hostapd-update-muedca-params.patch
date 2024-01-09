@@ -1,8 +1,6 @@
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index b744c92..0216821 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -1359,6 +1359,11 @@ static int hostapd_ctrl_iface_set(struct hostapd_data *hapd, char *cmd)
+@@ -1359,6 +1359,11 @@ static int hostapd_ctrl_iface_set(struct
  		} else if (os_strncmp(cmd, "wme_ac_", 7) == 0 ||
  			   os_strncmp(cmd, "wmm_ac_", 7) == 0) {
  			hapd->parameter_set_count++;
@@ -14,11 +12,9 @@ index b744c92..0216821 100644
  			if (ieee802_11_update_beacons(hapd->iface))
  				wpa_printf(MSG_DEBUG,
  					   "Failed to update beacons with WMM parameters");
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index c330864..d4fb573 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1937,6 +1937,39 @@ static void hostapd_event_wds_sta_interface_status(struct hostapd_data *hapd,
+@@ -1937,6 +1937,39 @@ static void hostapd_event_wds_sta_interf
  		ifname, MAC2STR(addr));
  }
  
@@ -58,7 +54,7 @@ index c330864..d4fb573 100644
  
  #ifdef CONFIG_OWE
  static int hostapd_notif_update_dh_ie(struct hostapd_data *hapd,
-@@ -2276,6 +2309,9 @@ void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
+@@ -2276,6 +2309,9 @@ void hostapd_wpa_event(void *ctx, enum w
  		hostapd_cleanup_cca_params(hapd);
  		break;
  #endif /* CONFIG_IEEE80211AX */
@@ -68,11 +64,19 @@ index c330864..d4fb573 100644
  	default:
  		wpa_printf(MSG_DEBUG, "Unknown event %d", event);
  		break;
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index ef3b730..7248140 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4018,6 +4018,10 @@ static int hostapd_fill_csa_settings(struct hostapd_data *hapd,
+@@ -2774,6 +2774,9 @@ hostapd_alloc_bss_data(struct hostapd_if
+ 	dl_list_init(&hapd->sae_commit_queue);
+ #endif /* CONFIG_SAE */
+ 
++	if (conf && conf->ieee80211ax && hapd->iface)
++		hapd->parameter_set_count = hapd->iface->conf->he_mu_edca.he_qos_info & 0xf;
++
+ 	return hapd;
+ }
+ 
+@@ -4026,6 +4029,10 @@ static int hostapd_fill_csa_settings(str
  	hapd->cs_count = settings->cs_count;
  	hapd->cs_block_tx = settings->block_tx;
  
@@ -83,8 +87,6 @@ index ef3b730..7248140 100644
  	ret = hostapd_build_beacon_data(hapd, &settings->beacon_csa);
  	if (ret) {
  		free_beacon_data(&settings->beacon_after);
-diff --git a/src/ap/ieee802_11_he.c b/src/ap/ieee802_11_he.c
-index 548a448..0ca79ae 100644
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
 @@ -18,6 +18,7 @@
@@ -95,7 +97,7 @@ index 548a448..0ca79ae 100644
  
  static u8 ieee80211_he_ppet_size(u8 ppe_thres_hdr, const u8 *phy_cap_info)
  {
-@@ -290,9 +291,16 @@ u8 * hostapd_eid_he_operation(struct hostapd_data *hapd, u8 *eid)
+@@ -290,9 +291,16 @@ u8 * hostapd_eid_he_operation(struct hos
  u8 * hostapd_eid_he_mu_edca_parameter_set(struct hostapd_data *hapd, u8 *eid)
  {
  	struct ieee80211_he_mu_edca_parameter_set *edca;
@@ -112,11 +114,9 @@ index 548a448..0ca79ae 100644
  	pos = (u8 *) &hapd->iface->conf->he_mu_edca;
  	for (i = 0; i < sizeof(*edca); i++) {
  		if (pos[i])
-diff --git a/src/ap/wmm.c b/src/ap/wmm.c
-index 9ebb01e..cb43e00 100644
 --- a/src/ap/wmm.c
 +++ b/src/ap/wmm.c
-@@ -68,8 +68,8 @@ wmm_set_regulatory_limit(const struct hostapd_wmm_ac_params *wmm_conf,
+@@ -68,8 +68,8 @@ wmm_set_regulatory_limit(const struct ho
  /*
   * Calculate WMM regulatory limit if any.
   */
@@ -127,7 +127,7 @@ index 9ebb01e..cb43e00 100644
  {
  	struct hostapd_hw_modes *mode = hapd->iface->current_mode;
  	int c;
-@@ -98,6 +98,10 @@ static void wmm_calc_regulatory_limit(struct hostapd_data *hapd,
+@@ -98,6 +98,10 @@ static void wmm_calc_regulatory_limit(st
  		os_memcpy(hapd->iface->prev_wmm, acp,
  			  sizeof(hapd->iconf->wmm_ac_params));
  		hapd->parameter_set_count++;
@@ -138,8 +138,6 @@ index 9ebb01e..cb43e00 100644
  	}
  }
  
-diff --git a/src/ap/wmm.h b/src/ap/wmm.h
-index b70b863..b08bf18 100644
 --- a/src/ap/wmm.h
 +++ b/src/ap/wmm.h
 @@ -13,6 +13,8 @@
@@ -151,15 +149,12 @@ index b70b863..b08bf18 100644
  u8 * hostapd_eid_wmm(struct hostapd_data *hapd, u8 *eid);
  int hostapd_eid_wmm_valid(struct hostapd_data *hapd, const u8 *eid,
  			  size_t len);
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index d76b927..d3cf414 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5695,6 +5695,16 @@ enum wpa_event_type {
- 	 */
+@@ -5694,6 +5694,16 @@ enum wpa_event_type {
  	EVENT_LINK_CH_SWITCH_STARTED,
  
-+	/**
+ 	/**
 +	 * EVENT_UPDATE_MUEDCA_PARAMS - Updated MU-EDCA parameters received
 +	 *
 +	 * this event is emitted when updated MU-EDCA parameters from driver
@@ -169,10 +164,11 @@ index d76b927..d3cf414 100644
 +	EVENT_UPDATE_MUEDCA_PARAMS,
 +
 +
- 	/**
++	/**
  	 * EVENT_TID_LINK_MAP - MLD event to set TID-to-link mapping
  	 *
-@@ -6633,6 +6643,16 @@ union wpa_event_data {
+ 	 * This event is used by the driver to indicate the received TID-to-link
+@@ -6631,6 +6641,16 @@ union wpa_event_data {
  	struct pasn_auth pasn_auth;
  
  	/**
@@ -189,11 +185,9 @@ index d76b927..d3cf414 100644
  	 * struct port_authorized - Data for EVENT_PORT_AUTHORIZED
  	 */
  	struct port_authorized {
-diff --git a/src/drivers/driver_common.c b/src/drivers/driver_common.c
-index f3625e8..19b5150 100644
 --- a/src/drivers/driver_common.c
 +++ b/src/drivers/driver_common.c
-@@ -98,6 +98,7 @@ const char * event_to_string(enum wpa_event_type event)
+@@ -98,6 +98,7 @@ const char * event_to_string(enum wpa_ev
  	E2S(PASN_AUTH);
  	E2S(LINK_CH_SWITCH);
  	E2S(LINK_CH_SWITCH_STARTED);
@@ -201,11 +195,9 @@ index f3625e8..19b5150 100644
  	E2S(TID_LINK_MAP);
  	E2S(LINK_RECONFIG);
  	}
-diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index 3e8ace0..4b6a6c1 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -184,6 +184,7 @@ static const char * nl80211_command_to_string(enum nl80211_commands cmd)
+@@ -184,6 +184,7 @@ static const char * nl80211_command_to_s
  	C2S(NL80211_CMD_ADD_LINK_STA)
  	C2S(NL80211_CMD_MODIFY_LINK_STA)
  	C2S(NL80211_CMD_REMOVE_LINK_STA)
@@ -213,7 +205,7 @@ index 3e8ace0..4b6a6c1 100644
  	C2S(NL80211_CMD_SET_HW_TIMESTAMP)
  	C2S(__NL80211_CMD_AFTER_LAST)
  	}
-@@ -3533,6 +3534,35 @@ static void nl80211_sta_opmode_change_event(struct wpa_driver_nl80211_data *drv,
+@@ -3533,6 +3534,35 @@ static void nl80211_sta_opmode_change_ev
  	wpa_supplicant_event(drv->ctx, EVENT_STATION_OPMODE_CHANGED, &ed);
  }
  
@@ -249,7 +241,7 @@ index 3e8ace0..4b6a6c1 100644
  
  static void nl80211_control_port_frame(struct wpa_driver_nl80211_data *drv,
  				       struct nlattr **tb)
-@@ -3974,6 +4004,9 @@ static void do_process_drv_event(struct i802_bss *bss, int cmd,
+@@ -3974,6 +4004,9 @@ static void do_process_drv_event(struct
  		nl80211_color_change_announcement_completed(drv);
  		break;
  #endif /* CONFIG_IEEE80211AX */
@@ -259,8 +251,6 @@ index 3e8ace0..4b6a6c1 100644
  	default:
  		wpa_dbg(drv->ctx, MSG_DEBUG, "nl80211: Ignored unknown event "
  			"(cmd=%d)", cmd);
-diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
-index c59fec4..d37ebcc 100644
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
 @@ -1309,6 +1309,11 @@
