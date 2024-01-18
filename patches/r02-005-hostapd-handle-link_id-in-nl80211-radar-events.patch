@@ -277,7 +277,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +		 * freq is 5 GHz, pass the event to its ctx.
 +		 */
 +		for (i = 0; i < bss_iter->n_links; i++) {
-+			if (bss_iter->links[i].freq < 5180 &&
++			if (bss_iter->links[i].freq < 5180 ||
 +			    bss_iter->links[i].freq > 5885)
 +				continue;
 +
