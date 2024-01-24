@@ -27,7 +27,47 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  #define IEEE80211_DFS_MIN_CAC_TIME_MS  60000
  
-@@ -1903,6 +1904,108 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1883,31 +1884,133 @@ int hostapd_dfs_radar_detected(struct ho
+ 			oper_centr_freq_seg0_idx, oper_centr_freq_seg1_idx);
+ 	}
+ 
+-	if (!radar_bitmap && iface->conf->disable_csa_dfs &&
+-	    (iface->drv_flags2 & WPA_DRIVER_DEVICE_PARAMS_SUPPORTED)) {
+-		/* Frequency Hoping RADAR detected while operating, switch the channel. */
+-		return hostapd_dfs_start_channel_switch(iface);
+-	}
+-
+ 	/* Switch channel with random channel selection for invalid puncturing pattern */
+ 	iface->radar_bit_pattern = 0;
+ 	iface->conf->ru_punct_bitmap = 0;
+ 
+-	if (hostapd_dfs_background_start_channel_switch(iface, freq) && radar_bitmap_oper) {
+-		if (!iface->conf->disable_csa_dfs) {
+-			/* Radar detected while operating, switch the channel. */
++	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
++		if (!radar_bitmap) {
++			/* Frequency hopping radar detected while operating, switch the channel.*/
+ 			return hostapd_dfs_start_channel_switch(iface);
+-		} else if (!eloop_is_timeout_registered(hostapd_dfs_radar_handling_timeout,
+-			   iface, NULL)) {
+-			eloop_register_timeout(0, HAPD_DFS_RADAR_CH_SWITCH_WAIT_DUR,
+-					       hostapd_dfs_radar_handling_timeout,
+-					       iface, NULL);
+ 		}
+-	}
+ 
++		if (radar_bitmap_oper) {
++			if (!iface->conf->disable_csa_dfs) {
++				/* Radar detected while operating, switch the channel. */
++				return hostapd_dfs_start_channel_switch(iface);
++			} else if (!eloop_is_timeout_registered(hostapd_dfs_radar_handling_timeout,
++				   iface, NULL)) {
++				eloop_register_timeout(0, HAPD_DFS_RADAR_CH_SWITCH_WAIT_DUR,
++						       hostapd_dfs_radar_handling_timeout, iface,
++						       NULL);
++			}
++		}
++	}
  	return 0;
  }
  
@@ -136,7 +176,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  int hostapd_dfs_nop_finished(struct hostapd_iface *iface, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
-@@ -1938,6 +2041,8 @@ int hostapd_dfs_nop_finished(struct host
+@@ -1943,6 +2046,8 @@ int hostapd_dfs_nop_finished(struct host
  		   iface->radar_background.channel == -1) {
  		/* Reset radar background chain if disabled */
  		hostpad_dfs_update_background_chain(iface);
