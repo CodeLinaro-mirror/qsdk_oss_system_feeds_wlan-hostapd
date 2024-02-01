@@ -9,20 +9,19 @@ EHT support before adding EHT Operation IE.
 
 Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
 ---
- src/ap/ieee802_11_eht.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ src/ap/ieee802_11_eht.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletions(-)
 
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -210,13 +210,18 @@ u8 * hostapd_eid_eht_capab(struct hostap
+@@ -212,12 +212,17 @@ u8 * hostapd_eid_eht_capab(struct hostap
  u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid,
- 			       enum ieee80211_op_mode opmode)
+ 				enum ieee80211_op_mode opmode)
  {
 +	struct hostapd_hw_modes *mode;
  	struct hostapd_config *conf = hapd->iconf;
  	struct ieee80211_eht_operation *oper;
  	u8 *pos = eid, seg0 = 0, seg1 = 0, *length_pos;
- 	struct eht_capabilities *eht_cap;
  	enum oper_chan_width chwidth;
  
 -	if (!hapd->iface->current_mode)
@@ -33,13 +32,4 @@ Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
 +	if (!mode->eht_capab[opmode].eht_supported)
  		return eid;
  
- 	*pos++ = WLAN_EID_EXTENSION;
-@@ -226,7 +231,7 @@ u8 * hostapd_eid_eht_operation(struct ho
- 	oper = (struct ieee80211_eht_operation *) pos;
- 	oper->oper_params = EHT_OPER_INFO_PRESENT;
- 
--	eht_cap = &hapd->iface->current_mode->eht_capab[opmode];
-+	eht_cap = &mode->eht_capab[opmode];
- 	memcpy(&oper->basic_mcs_nss, &eht_cap->mcs,
- 	       EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
- 
+ //	if (hapd->iconf->punct_bitmap)

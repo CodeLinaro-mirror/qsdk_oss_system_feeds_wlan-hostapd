@@ -25,16 +25,18 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
 
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -245,17 +245,44 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -244,7 +244,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  	*pos++ = WLAN_EID_EXT_EHT_OPERATION;
  
  	oper = (struct ieee80211_eht_operation *) pos;
 -	oper->oper_params = EHT_OPER_INFO_PRESENT;
 +	os_memset(oper, 0, sizeof(*oper));
  
- 	eht_cap = &mode->eht_capab[opmode];
- 	memcpy(&oper->basic_mcs_nss, &eht_cap->mcs,
- 	       EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY);
+ 	/* TODO: Fill in appropriate EHT-MCS max Nss information */
+ 	oper->basic_eht_mcs_nss_set[0] = 0x11;
+@@ -252,11 +252,38 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 	oper->basic_eht_mcs_nss_set[2] = 0x00;
+ 	oper->basic_eht_mcs_nss_set[3] = 0x00;
  
 +	pos += 5;
 +
