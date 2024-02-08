@@ -16,16 +16,17 @@ Signed-off-by: Pradeep Kumar Chitrapu <quic_pradeepc@quicinc.com>
  wpa_supplicant/events.c | 4 ++++
  1 file changed, 4 insertions(+)
 
-diff --git a/wpa_supplicant/events.c b/wpa_supplicant/events.c
-index 1a506e3..5c1e91c 100644
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -6036,6 +6036,10 @@ void supplicant_event(void *ctx, enum wpa_event_type event,
+@@ -6148,6 +6148,13 @@ void supplicant_event(void *ctx, enum wp
  			wpa_tdls_disable_unreachable_link(wpa_s->wpa,
  							  data->low_ack.addr);
  #endif /* CONFIG_TDLS */
 +#ifdef CONFIG_MESH
-+		if (!wpa_s->ifmsh)
++		if (wpa_s->ifmsh)
++			if (data->low_ack.num_packets == 0xFFFF)
++				wpas_mesh_peer_remove(wpa_s, data->low_ack.addr);
++		else
 +#endif
 +			wpa_supplicant_deauthenticate(wpa_s, WLAN_REASON_DISASSOC_LOW_ACK);
  		break;
