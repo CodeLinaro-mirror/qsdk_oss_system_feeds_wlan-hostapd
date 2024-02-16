@@ -31,7 +31,19 @@ Signed-off-by: Monika Korada <quic_koramoni@quicinc.com>
  
  	dl_list_add(&w->bsss, &bss->wiphy_list);
  	bss->wiphy_data = w;
-@@ -2264,6 +2266,7 @@ static void * wpa_driver_nl80211_drv_ini
+@@ -992,8 +994,10 @@ static void nl80211_put_wiphy_data_ap(st
+ 	/* if not remove it */
+ 	if (!found) {
+ 		list = &bss->drv->wiphy_list;
+-		if (list->next && list->prev)
++		if (list->next && list->prev) {
+ 			dl_list_del(list);
++			dl_list_init(list);
++		}
+ 	}
+ 	if (!dl_list_empty(&w->bsss))
+ 		return;
+@@ -2264,6 +2268,7 @@ static void * wpa_driver_nl80211_drv_ini
  	drv->ctx = ctx;
  	drv->hostapd = !!hostapd;
  	drv->eapol_sock = -1;
