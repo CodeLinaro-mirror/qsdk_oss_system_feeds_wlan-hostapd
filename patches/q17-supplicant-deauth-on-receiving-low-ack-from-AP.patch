@@ -23,10 +23,10 @@ Signed-off-by: Pradeep Kumar Chitrapu <quic_pradeepc@quicinc.com>
  							  data->low_ack.addr);
  #endif /* CONFIG_TDLS */
 +#ifdef CONFIG_MESH
-+		if (wpa_s->ifmsh)
++		if (wpa_s->ifmsh) {
 +			if (data->low_ack.num_packets == 0xFFFF)
 +				wpas_mesh_peer_remove(wpa_s, data->low_ack.addr);
-+		else
++		} else
 +#endif
 +			wpa_supplicant_deauthenticate(wpa_s, WLAN_REASON_DISASSOC_LOW_ACK);
  		break;
