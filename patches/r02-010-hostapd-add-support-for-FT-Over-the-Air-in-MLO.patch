@@ -33,17 +33,17 @@ Fragment FTIE if its length exceeds 255.
 
 Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 ---
- src/ap/wpa_auth.c       |  93 ++++----
+ src/ap/wpa_auth.c       | 111 +++++----
  src/ap/wpa_auth_ft.c    | 482 ++++++++++++++++++++++++++++++++++++----
  src/ap/wpa_auth_i.h     |  19 ++
  src/common/wpa_common.c |  57 ++++-
  src/common/wpa_common.h |  21 ++
  src/rsn_supp/wpa_ft.c   |   4 +-
  wlantest/rx_mgmt.c      |   4 +-
- 7 files changed, 588 insertions(+), 92 deletions(-)
+ 7 files changed, 605 insertions(+), 93 deletions(-)
 
 diff --git a/src/ap/wpa_auth.c b/src/ap/wpa_auth.c
-index 688dad3..5a1f567 100644
+index 688dad3..8d742f7 100644
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
 @@ -83,25 +83,6 @@ static const int dot11RSNAConfigPMKReauthThreshold = 70;
@@ -114,6 +114,15 @@ index 688dad3..5a1f567 100644
  		kde_len += 2 + RSN_SELECTOR_LEN + 1 + ETH_ALEN +
  			sm->mld_links[link_id].rsne_len +
  			sm->mld_links[link_id].rsnxe_len;
+@@ -4168,7 +4161,7 @@ static u8 * wpa_auth_ml_kdes(struct wpa_state_machine *sm, u8 *pos)
+ {
+ #ifdef CONFIG_IEEE80211BE
+ 	u8 link_id;
+-	u8 *start = pos;
++	u8 *start = pos, *len_pos;
+ 
+ 	if (sm->mld_assoc_link_id < 0)
+ 		return pos;
 @@ -4178,6 +4171,8 @@ static u8 * wpa_auth_ml_kdes(struct wpa_state_machine *sm, u8 *pos)
  			  sm->own_mld_addr, ETH_ALEN, NULL, 0);
  
@@ -123,7 +132,15 @@ index 688dad3..5a1f567 100644
  		if (!sm->mld_links[link_id].valid)
  			continue;
  
-@@ -4206,12 +4201,27 @@ static u8 * wpa_auth_ml_kdes(struct wpa_state_machine *sm, u8 *pos)
+@@ -4188,6 +4183,7 @@ static u8 * wpa_auth_ml_kdes(struct wpa_state_machine *sm, u8 *pos)
+ 			   sm->mld_links[link_id].rsnxe_len);
+ 
+ 		*pos++ = WLAN_EID_VENDOR_SPECIFIC;
++		len_pos = pos;
+ 		*pos++ = RSN_SELECTOR_LEN + 1 + ETH_ALEN +
+ 			sm->mld_links[link_id].rsne_len +
+ 			sm->mld_links[link_id].rsnxe_len;
+@@ -4206,12 +4202,32 @@ static u8 * wpa_auth_ml_kdes(struct wpa_state_machine *sm, u8 *pos)
  		os_memcpy(pos, sm->mld_links[link_id].own_addr, ETH_ALEN);
  		pos += ETH_ALEN;
  
@@ -144,6 +161,11 @@ index 688dad3..5a1f567 100644
 +				wpa_printf(MSG_ERROR,
 +					   "FT: Failed to insert PMKR1Name into RSN IE in EAPOL-Key data");
 +			}
++			/*
++			 * Add the additional length increased in pmkid insertion
++			 * to totol IE len.
++			 */
++			*len_pos = *len_pos - e_len - (pos - rsne_start);
 +			pos = rsne_start + e_len;
 +		}
 +#endif /* CONFIG_IEEE80211R_AP */
@@ -151,7 +173,7 @@ index 688dad3..5a1f567 100644
  		if (sm->mld_links[link_id].rsnxe_len) {
  			os_memcpy(pos, sm->mld_links[link_id].rsnxe,
  				  sm->mld_links[link_id].rsnxe_len);
-@@ -4230,7 +4240,7 @@ static u8 * wpa_auth_ml_kdes(struct wpa_state_machine *sm, u8 *pos)
+@@ -4230,7 +4246,7 @@ static u8 * wpa_auth_ml_kdes(struct wpa_state_machine *sm, u8 *pos)
  SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
  {
  	u8 rsc[WPA_KEY_RSC_LEN], *_rsc, *gtk, *kde = NULL, *pos, stub_gtk[32];
@@ -160,7 +182,7 @@ index 688dad3..5a1f567 100644
  	struct wpa_group *gsm = sm->group;
  	u8 *wpa_ie;
  	int secure, gtkidx, encr = 0;
-@@ -4263,17 +4273,19 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
+@@ -4263,17 +4279,19 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
  	os_memset(rsc, 0, WPA_KEY_RSC_LEN);
  	wpa_auth_get_seqnum(sm->wpa_auth, NULL, gsm->GN, rsc);
  	/* If FT is used, wpa_auth->wpa_ie includes both RSNIE and MDIE */
@@ -190,7 +212,7 @@ index 688dad3..5a1f567 100644
  	}
  #ifdef CONFIG_TESTING_OPTIONS
  	if (conf->rsne_override_eapol_set) {
-@@ -4374,7 +4386,8 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
+@@ -4374,7 +4392,8 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
  		kde_len += 2 + RSN_SELECTOR_LEN + 2 + gtk_len;
  #ifdef CONFIG_IEEE80211R_AP
  	if (wpa_key_mgmt_ft(sm->wpa_key_mgmt)) {
@@ -200,7 +222,7 @@ index 688dad3..5a1f567 100644
  		kde_len += 300; /* FTIE + 2 * TIE */
  	}
  #endif /* CONFIG_IEEE80211R_AP */
-@@ -4403,7 +4416,7 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
+@@ -4403,7 +4422,7 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
  		pos += wpa_ie_len;
  	}
  #ifdef CONFIG_IEEE80211R_AP
@@ -209,6 +231,23 @@ index 688dad3..5a1f567 100644
  		int res;
  		size_t elen;
  
+@@ -4437,6 +4456,16 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
+ #ifdef CONFIG_IEEE80211R_AP
+ 	if (wpa_key_mgmt_ft(sm->wpa_key_mgmt)) {
+ 		int res;
++		if (is_mld) {
++			res = wpa_write_mdie(conf,
++					     pos, kde + kde_len - pos);
++			if (res < 0) {
++				wpa_printf(MSG_ERROR,
++					   "Failed to add MDIE into EAPOL-key data");
++				goto done;
++			}
++			pos += res;
++		}
+ 
+ 		if (sm->assoc_resp_ftie &&
+ 		    kde + kde_len - pos >= 2 + sm->assoc_resp_ftie[1]) {
 diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
 index 2402ad9..c764812 100644
 --- a/src/ap/wpa_auth_ft.c
