@@ -1,0 +1,55 @@
+From fc7923210c99f0e455a8377dfee515859d044a9d Mon Sep 17 00:00:00 2001
+From: Muna Sinada <quic_msinada@quicinc.com>
+Date: Wed, 6 Mar 2024 12:17:25 -0800
+Subject: [PATCH] hostapd: allow AP_VLAN type interface to be removed
+
+For dynamic vlan, VLAN interface needs to be removed when there are
+no currently associate STA in vlan group. Currently VLAN interface
+removal is failing due to nl80211 remove link interface functionality
+not handling WPA_IF_AP_VLAN case.
+
+Add WPA_IF_AP_VLAN case when removing link interface. For
+WPA_IF_AP_VLAN, skip ctx handling between links since that is only
+for WPA_IF_AP_BSS type.
+
+Signed-off-by: Muna Sinada <quic_msinada@quicinc.com>
+---
+ src/drivers/driver_nl80211.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index ea7ab0e0ef15..3d0603605cce 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -9190,6 +9190,9 @@ static int wpa_driver_nl80211_if_link_remove(struct i802_bss *bss,
+ 	wpa_printf(MSG_DEBUG, "nl80211: %s(type=%d ifname=%s num_links=%d) link_id=%d",
+ 		   __func__, type, ifname, num_links, link_id);
+ 
++	if (type == WPA_IF_AP_VLAN)
++		goto remove_if;
++
+ 	link = nl80211_get_link(bss, link_id);
+ 
+ 	wpa_printf(MSG_DEBUG, "nl80211: Teardown AP(%s) link %d", bss->ifname,
+@@ -9202,7 +9205,8 @@ static int wpa_driver_nl80211_if_link_remove(struct i802_bss *bss,
+ 	if (drv->first_bss == bss && num_links > 1)
+ 		drv->ctx = bss->ctx;
+ 
+-	if (num_links == 1) {
++remove_if:
++	if (num_links == 1 || type == WPA_IF_AP_VLAN) {
+ 		wpa_printf(MSG_DEBUG, "nl80211: Only 1 link was there hence remove interface");
+ 		return wpa_driver_nl80211_if_remove(bss, type, ifname);
+ 	}
+@@ -10886,7 +10890,7 @@ static int driver_nl80211_if_link_remove(void *priv, enum wpa_driver_if_type typ
+ 	if (link_id < 0 || link_id >= MAX_NUM_MLD_LINKS)
+ 		return -1;
+ 
+-	if (type != WPA_IF_AP_BSS)
++	if (type != WPA_IF_AP_BSS && type != WPA_IF_AP_VLAN)
+ 		return -1;
+ 
+ 	if (!nl80211_valid_link(bss, link_id))
+-- 
+2.34.1
+
