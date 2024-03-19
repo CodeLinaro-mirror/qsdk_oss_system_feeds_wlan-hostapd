@@ -37,7 +37,53 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 
 --- a/src/ap/interference.c
 +++ b/src/ap/interference.c
-@@ -188,6 +188,19 @@ int get_centre_freq_6g(int chan_idx, int
+@@ -82,9 +82,7 @@ static int intf_awgn_chan_range_availabl
+ 	int allowed_320_6g[] = {1, 65, 129, 33, 97, 161};
+ 	int allowed_arr_size = 0;
+ 	int *allowed_arr = NULL;
+-	int chan_idx_match = 0;
+-	int chan_disabled = 0;
+-	int i, j;
++	int i;
+ 
+ 	first_chan = &mode->channels[first_chan_idx];
+ 
+@@ -119,25 +117,19 @@ static int intf_awgn_chan_range_availabl
+ 		break;
+ 	}
+ 
+-	/* check whether all the 20 MHz channels in the given operating range is enabled */
+ 	for (i = 0; i < allowed_arr_size; i++) {
+-		if (first_chan->chan == allowed_arr[i]) {
+-			for (j = 1; j <= num_chans - 1; j++) {
+-				if (is_chan_disabled(mode, first_chan->chan + j * 4)) {
+-					chan_disabled = 1;
+-					break;
+-				}
+-			}
+-			if (!chan_disabled)
+-				chan_idx_match = 1;
++		if (first_chan->chan == allowed_arr[i])
+ 			break;
+-		}
+ 	}
+ 
+-	if (chan_idx_match == 1)
+-		return 1;
+-
+-	return 0;
++	if (i == allowed_arr_size)
++		return 0;
++	/* check whether all the 20 MHz channels in the given operating range is enabled */
++	for (i = 1; i <= num_chans - 1; i++) {
++		if (is_chan_disabled(mode, first_chan->chan + i * 4))
++			return 0;
++	}
++	return 1;
+ }
+ 
+ static int is_in_chanlist(struct hostapd_iface *iface,
+@@ -188,30 +180,38 @@ int get_centre_freq_6g(int chan_idx, int
  	return 0;
  }
  
@@ -57,11 +103,18 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  /*
   * intf_awgn_find_channel_list - find the list of channels that can operate with
-@@ -201,17 +214,16 @@ int get_centre_freq_6g(int chan_idx, int
- static int intf_awgn_find_channel_list(struct hostapd_iface *iface,
- 				       int chan_width, int curr_centre_freq,
- 				       int curr_chan_width,
+    channel width chan_width and not present within the range of current operating range.
+    returns the total number of available chandefs that supports the provided bandwidth
+  * @chan_width - channel width to be checked
+- * @curr_centre_freq - current centre frequency
+- * @curr_chan_width - current channel width
+  * @chandef_list - pointer array to hold the list of valid available chandef
+  */
+-static int intf_awgn_find_channel_list(struct hostapd_iface *iface,
+-				       int chan_width, int curr_centre_freq,
+-				       int curr_chan_width,
 -				       struct hostapd_channel_data ***chandef_list)
++static int intf_awgn_find_channel_list(struct hostapd_iface *iface, int chan_width,
 +				       struct hostapd_channel_data ***chandef_list,
 +				       int *awgn_interference_freqs)
  {
@@ -78,7 +131,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  	switch (chan_width) {
  	case CHAN_WIDTH_20_NOHT:
-@@ -236,9 +248,6 @@ static int intf_awgn_find_channel_list(s
+@@ -236,9 +236,6 @@ static int intf_awgn_find_channel_list(s
  		break;
  	}
  
@@ -88,7 +141,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  	for (i = 0; i < mode->num_channels; i++) {
  		chan = &mode->channels[i];
  
-@@ -272,22 +281,15 @@ static int intf_awgn_find_channel_list(s
+@@ -272,22 +269,15 @@ static int intf_awgn_find_channel_list(s
  				   " chan_width : %d", chan->chan, chan_width);
  			return 0;
  		}
@@ -119,7 +172,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  			continue;
  		}
  
-@@ -368,8 +370,10 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -368,8 +358,10 @@ int hostapd_intf_awgn_detected(struct ho
  	u8 channel_switch = 0;
  	int new_chan_width;
  	int new_centre_freq;
@@ -130,7 +183,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  	wpa_printf(MSG_DEBUG,
  		   "input freq=%d, chan_width=%d, cf1=%d cf2=%d"
-@@ -391,14 +395,26 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -391,18 +383,27 @@ int hostapd_intf_awgn_detected(struct ho
  	available_chandef_list = os_zalloc(sizeof(struct hostapd_channel_data *) *
  					   mode->num_channels);
  	if (channel_switch) {
@@ -152,15 +205,19 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 -									     temp_width,
 -									     cf1, chan_width,
 -									     &available_chandef_list);
+-			if (num_available_chandefs == 0)
+-				temp_width = get_next_max_width(chan_width);
+-			else
 +			num_available_chandefs =
-+					intf_awgn_find_channel_list(iface,
-+								     temp_width,
-+								     cf1, chan_width,
-+								     &available_chandef_list,
-+								     awgn_interference_freqs);
- 			if (num_available_chandefs == 0)
- 				temp_width = get_next_max_width(chan_width);
- 			else
++			    intf_awgn_find_channel_list(iface, temp_width,
++							     &available_chandef_list,
++							     awgn_interference_freqs);
++			if (num_available_chandefs > 0)
+ 				break;
++			temp_width = get_next_max_width(temp_width);
+ 		}
+ 
+ 		if (num_available_chandefs == 0) {
 --- a/src/common/defs.h
 +++ b/src/common/defs.h
 @@ -535,4 +535,6 @@ enum sae_pwe {
