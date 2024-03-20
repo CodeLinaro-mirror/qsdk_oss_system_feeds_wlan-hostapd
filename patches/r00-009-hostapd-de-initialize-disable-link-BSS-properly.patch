@@ -167,7 +167,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	if (hapd->iface->bss[0] == hapd && !hapd->drv_priv)
 +		return;
 +
-+	if (!hapd->mld->num_links)
++	if (!hapd->mld->num_links || !hapd->interface_added)
 +		return;
 +
 +	hostapd_mld_remove_link(hapd);
