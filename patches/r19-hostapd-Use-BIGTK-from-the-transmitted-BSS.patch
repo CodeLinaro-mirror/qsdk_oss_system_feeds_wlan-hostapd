@@ -9,11 +9,9 @@ Use the BIGTK from the transmitted BSS to fix this.
 Signed-off-by: Jouni Malinen <quic_jouni@quicinc.com>
 Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
 
-diff --git a/src/ap/wpa_auth.c b/src/ap/wpa_auth.c
-index 14aedf7..0c9de27 100644
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -735,6 +735,15 @@ struct wpa_authenticator * wpa_init(const u8 *addr,
+@@ -735,6 +735,15 @@ struct wpa_authenticator * wpa_init(cons
  	}
  #endif /* CONFIG_P2P */
  
@@ -50,7 +48,7 @@ index 14aedf7..0c9de27 100644
  	}
  
  	return len;
-@@ -3737,7 +3750,8 @@ static u8 * ieee80211w_kde_add(struct wpa_state_machine *sm, u8 *pos)
+@@ -3737,7 +3750,8 @@ static u8 * ieee80211w_kde_add(struct wp
  	struct wpa_bigtk_kde bigtk;
  	struct wpa_group *gsm = sm->group;
  	u8 rsc[WPA_KEY_RSC_LEN];
@@ -60,7 +58,7 @@ index 14aedf7..0c9de27 100644
  	size_t len = wpa_cipher_key_len(conf->group_mgmt_cipher);
  
  	if (!sm->mgmt_frame_prot)
-@@ -3769,7 +3783,14 @@ static u8 * ieee80211w_kde_add(struct wpa_state_machine *sm, u8 *pos)
+@@ -3769,7 +3783,14 @@ static u8 * ieee80211w_kde_add(struct wp
  			  NULL, 0);
  	forced_memzero(&igtk, sizeof(igtk));
  
@@ -76,7 +74,7 @@ index 14aedf7..0c9de27 100644
  		return pos;
  
  	bigtk.keyid[0] = gsm->GN_bigtk;
-@@ -3927,6 +3948,11 @@ void wpa_auth_ml_get_key_info(struct wpa_authenticator *a,
+@@ -3927,6 +3948,11 @@ void wpa_auth_ml_get_key_info(struct wpa
  	if (!beacon_prot)
  		return;
  
@@ -88,20 +86,17 @@ index 14aedf7..0c9de27 100644
  	info->bigtkidx = gsm->GN_bigtk;
  	info->bigtk = gsm->BIGTK[gsm->GN_bigtk - 6];
  
-@@ -3978,10 +4004,11 @@ static size_t wpa_auth_ml_group_kdes_len(struct wpa_state_machine *sm)
+@@ -3978,6 +4004,9 @@ static size_t wpa_auth_ml_group_kdes_len
  			kde_len += (KDE_HDR_LEN + WPA_IGTK_KDE_PREFIX_LEN + 1);
  			kde_len += wpa_cipher_key_len(wpa_auth->conf.group_mgmt_cipher);
  
--			if (wpa_auth->conf.beacon_prot) {
-+			if (wpa_auth->conf.tx_bss_auth) {
++			if (wpa_auth->conf.tx_bss_auth)
++				wpa_auth = wpa_auth->conf.tx_bss_auth;
++
+ 			if (wpa_auth->conf.beacon_prot) {
  				/* MLO BIGTK KDE
  				 * Header + Key-idx & IPN + Link-id
- 				 */
-+				wpa_auth = wpa_auth->conf.tx_bss_auth;
- 				kde_len += (KDE_HDR_LEN + WPA_BIGTK_KDE_PREFIX_LEN + 1);
- 				kde_len += wpa_cipher_key_len(wpa_auth->conf.group_mgmt_cipher);
- 			}
-@@ -5100,19 +5127,30 @@ static int wpa_gtk_update(struct wpa_authenticator *wpa_auth,
+@@ -5100,19 +5129,30 @@ static int wpa_gtk_update(struct wpa_aut
  				group->IGTK[group->GN_igtk - 4], len);
  	}
  
@@ -143,7 +138,7 @@ index 14aedf7..0c9de27 100644
  	return ret;
  }
  
-@@ -5296,9 +5334,10 @@ int wpa_wnmsleep_igtk_subelem(struct wpa_state_machine *sm, u8 *pos)
+@@ -5296,9 +5336,10 @@ int wpa_wnmsleep_igtk_subelem(struct wpa
  
  int wpa_wnmsleep_bigtk_subelem(struct wpa_state_machine *sm, u8 *pos)
  {
@@ -156,7 +151,7 @@ index 14aedf7..0c9de27 100644
  
  	/*
  	 * BIGTK subelement:
-@@ -5308,7 +5347,7 @@ int wpa_wnmsleep_bigtk_subelem(struct wpa_state_machine *sm, u8 *pos)
+@@ -5308,7 +5349,7 @@ int wpa_wnmsleep_bigtk_subelem(struct wp
  	*pos++ = 2 + 6 + len;
  	WPA_PUT_LE16(pos, gsm->GN_bigtk);
  	pos += 2;
@@ -165,7 +160,7 @@ index 14aedf7..0c9de27 100644
  		return 0;
  	pos += 6;
  
-@@ -5404,12 +5443,21 @@ static int wpa_group_config_group_keys(struct wpa_authenticator *wpa_auth,
+@@ -5404,12 +5445,21 @@ static int wpa_group_config_group_keys(s
  				     KEY_FLAG_GROUP_TX_DEFAULT) < 0)
  			ret = -1;
  
@@ -189,7 +184,7 @@ index 14aedf7..0c9de27 100644
  	}
  
  	return ret;
-@@ -5592,9 +5640,11 @@ void wpa_gtk_rekey(struct wpa_authenticator *wpa_auth)
+@@ -5592,9 +5642,11 @@ void wpa_gtk_rekey(struct wpa_authentica
  		tmp = group->GM_igtk;
  		group->GM_igtk = group->GN_igtk;
  		group->GN_igtk = tmp;
@@ -204,8 +199,6 @@ index 14aedf7..0c9de27 100644
  		wpa_gtk_update(wpa_auth, group);
  		wpa_group_config_group_keys(wpa_auth, group);
  	}
-diff --git a/src/ap/wpa_auth.h b/src/ap/wpa_auth.h
-index b263963..557091c 100644
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
 @@ -280,6 +280,11 @@ struct wpa_auth_config {
@@ -220,11 +213,9 @@ index b263963..557091c 100644
  };
  
  typedef enum {
-diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
-index ec73618..4c082a9 100644
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
-@@ -2673,7 +2673,8 @@ static u8 * wpa_ft_igtk_subelem(struct wpa_state_machine *sm, size_t *len)
+@@ -2673,7 +2673,8 @@ static u8 * wpa_ft_igtk_subelem(struct w
  static u8 * wpa_ft_bigtk_subelem(struct wpa_state_machine *sm, size_t *len)
  {
  	u8 *subelem, *pos;
@@ -234,7 +225,7 @@ index ec73618..4c082a9 100644
  	size_t subelem_len;
  	const u8 *kek, *bigtk;
  	size_t kek_len;
-@@ -2688,7 +2689,7 @@ static u8 * wpa_ft_bigtk_subelem(struct wpa_state_machine *sm, size_t *len)
+@@ -2688,7 +2689,7 @@ static u8 * wpa_ft_bigtk_subelem(struct
  		kek_len = sm->PTK.kek_len;
  	}
  
@@ -243,7 +234,7 @@ index ec73618..4c082a9 100644
  
  	/* Sub-elem ID[1] | Length[1] | KeyID[2] | BIPN[6] | Key Length[1] |
  	 * Key[16+8] */
-@@ -2702,7 +2703,7 @@ static u8 * wpa_ft_bigtk_subelem(struct wpa_state_machine *sm, size_t *len)
+@@ -2702,7 +2703,7 @@ static u8 * wpa_ft_bigtk_subelem(struct
  	*pos++ = subelem_len - 2;
  	WPA_PUT_LE16(pos, gsm->GN_bigtk);
  	pos += 2;
@@ -252,11 +243,9 @@ index ec73618..4c082a9 100644
  	pos += 6;
  	*pos++ = bigtk_len;
  	bigtk = gsm->IGTK[gsm->GN_bigtk - 6];
-diff --git a/src/ap/wpa_auth_glue.c b/src/ap/wpa_auth_glue.c
-index 07639af..2ade514 100644
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -38,9 +38,14 @@ static int hostapd_wpa_auth_config_sanitize(struct hostapd_data *hapd,
+@@ -38,9 +38,14 @@ static int hostapd_wpa_auth_config_sanit
  					    struct wpa_auth_config *_conf)
  {
  	struct hostapd_data *lhapd = NULL;
@@ -271,8 +260,6 @@ index 07639af..2ade514 100644
  	if (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_EAPOL_TX_STATUS)
  		_conf->tx_status = 1;
  
-diff --git a/src/ap/wpa_auth_i.h b/src/ap/wpa_auth_i.h
-index d29ec2a..51dcb1d 100644
 --- a/src/ap/wpa_auth_i.h
 +++ b/src/ap/wpa_auth_i.h
 @@ -224,6 +224,8 @@ struct wpa_group {
