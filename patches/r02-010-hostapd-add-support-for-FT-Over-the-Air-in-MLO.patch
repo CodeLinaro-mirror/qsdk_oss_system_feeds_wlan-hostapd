@@ -215,7 +215,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #ifdef CONFIG_IEEE80211R_AP
  	if (wpa_key_mgmt_ft(sm->wpa_key_mgmt)) {
 -		kde_len += 2 + PMKID_LEN; /* PMKR1Name into RSN IE */
-+		if(!is_mld)
++		if (!is_mld)
 +			kde_len += 2 + PMKID_LEN; /* PMKR1Name into RSN IE */
  		kde_len += 300; /* FTIE + 2 * TIE */
  	}
@@ -391,10 +391,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
 +#ifdef CONFIG_IEEE80211BE
 +static int wpa_add_per_link_ft_mlo_gtk_subelem(struct wpa_authenticator *wpa_auth,
-+					       u8 *pos, u8 link_id,
++					       u8 **pos, u8 link_id,
 +					       struct wpa_state_machine *sm)
 +{
-+	u8 *subelem = pos;
++	u8 *subelem = *pos;
 +	struct wpa_group *gsm = wpa_auth->group;
 +	size_t subelem_len, gtk_len, kek_len;
 +	const u8 *gtk, *kek;
@@ -437,10 +437,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +}
 +
 +static int wpa_add_per_link_ft_mlo_igtk_subelem(struct wpa_authenticator *wpa_auth,
-+						u8 *pos, u8 link_id,
++						u8 **pos, u8 link_id,
 +						struct wpa_state_machine *sm)
 +{
-+	u8 *subelem = pos;
++	u8 *subelem = *pos;
 +	struct wpa_group *gsm = wpa_auth->group;
 +	size_t subelem_len, igtk_len, kek_len;
 +	const u8 *igtk, *kek;
@@ -466,7 +466,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	subelem_len = 12 + igtk_len + 8;
 +
 +	subelem[0] = FTIE_SUBELEM_MLO_IGTK;
-+	subelem [1] = subelem_len - 2;
++	subelem[1] = subelem_len - 2;
 +	WPA_PUT_LE16(&subelem[2], gsm->GN_igtk);
 +	wpa_auth_get_seqnum(wpa_auth, NULL, gsm->GN_igtk, subelem + 4);
 +	subelem[10] = link_id;
@@ -483,10 +483,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +}
 +
 +static int wpa_add_per_link_ft_mlo_bigtk_subelem(struct wpa_authenticator *wpa_auth,
-+						 u8 *pos, u8 link_id,
++						 u8 **pos, u8 link_id,
 +						 struct wpa_state_machine *sm)
 +{
-+	u8 *subelem = pos;
++	u8 *subelem = *pos;
 +	struct wpa_group *gsm = wpa_auth->group;
 +	size_t subelem_len, bigtk_len, kek_len;
 +	const u8 *bigtk, *kek;
@@ -512,7 +512,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	subelem_len = 12 + bigtk_len + 8;
 +
 +	subelem[0] = FTIE_SUBELEM_MLO_BIGTK;
-+	subelem [1] = subelem_len - 2;
++	subelem[1] = subelem_len - 2;
 +	WPA_PUT_LE16(&subelem[2], gsm->GN_bigtk);
 +	wpa_auth_get_seqnum(wpa_auth, NULL, gsm->GN_bigtk, subelem + 4);
 +	subelem[10] = link_id;
@@ -541,11 +541,11 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +		    sm->mld_links[link_id].wpa_auth) {
 +			struct wpa_authenticator *wpa_auth = sm->mld_links[link_id].wpa_auth;
 +
-+			ret = wpa_add_per_link_ft_mlo_gtk_subelem(wpa_auth, pos, link_id, sm);
++			ret = wpa_add_per_link_ft_mlo_gtk_subelem(wpa_auth, &pos, link_id, sm);
 +			if (!ret && sm->mgmt_frame_prot)
-+				ret = wpa_add_per_link_ft_mlo_igtk_subelem(wpa_auth, pos, link_id, sm);
++				ret = wpa_add_per_link_ft_mlo_igtk_subelem(wpa_auth, &pos, link_id, sm);
 +			if (!ret && sm->mgmt_frame_prot && wpa_auth->conf.beacon_prot)
-+				ret = wpa_add_per_link_ft_mlo_bigtk_subelem(wpa_auth, pos, link_id, sm);
++				ret = wpa_add_per_link_ft_mlo_bigtk_subelem(wpa_auth, &pos, link_id, sm);
 +		}
 +		if (ret)
 +			return ret;
@@ -682,7 +682,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			u8 *bigtk;
  			size_t bigtk_len;
  			u8 *nbuf;
-@@ -2739,6 +3029,31 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
+@@ -2739,6 +3029,30 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
  				return NULL;
  			}
  		}
@@ -707,14 +707,13 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +					   MAC2STR(wpa_auth_get_spa(sm)));
 +				return NULL;
 +			}
-+			subelem += ft_mlo_subelems_len;
 +			subelem_len += ft_mlo_subelems_len;
 +		}
 +#endif /* CONFIG_IEEE80211BE */
  #endif /* CONFIG_OCV */
  	} else {
  		r0kh_id = conf->r0_key_holder;
-@@ -2800,8 +3115,11 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
+@@ -2800,8 +3114,11 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
  		fte_mic = _ftie->mic;
  		elem_count = &_ftie->mic_control[1];
  	}
@@ -727,7 +726,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	ric_start = pos;
  	if (wpa_ft_parse_ies(req_ies, req_ies_len, &parse,
-@@ -2834,8 +3152,6 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
+@@ -2834,8 +3151,6 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
  		rsnxe_len = sm->wpa_auth->conf.rsnxe_override_ft_len;
  	}
  #endif /* CONFIG_TESTING_OPTIONS */
@@ -736,7 +735,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (wpa_key_mgmt_fils(sm->wpa_key_mgmt)) {
  		kck = sm->PTK.kck2;
-@@ -2844,19 +3160,60 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
+@@ -2844,19 +3159,68 @@ u8 * wpa_sm_write_assoc_resp_ies(struct
  		kck = sm->PTK.kck;
  		kck_len = sm->PTK.kck_len;
  	}
@@ -744,7 +743,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	struct link_data *assoc_link_data = NULL;
 +
 +	if (is_mld && auth_alg == WLAN_AUTH_FT) {
-+		int pos, link_id;
++		int pos, link_id, rsnie_pos;
 +
 +		assoc_link_data = os_zalloc((sm->n_mld_affiliated_links + 1) * sizeof(struct link_data));
 +		if (!assoc_link_data) {
@@ -762,8 +761,14 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +
 +			assoc_link_data[pos].link_id = link_id;
 +			os_memcpy(assoc_link_data[pos].link_addr, sm_link->own_addr, ETH_ALEN);
-+			assoc_link_data[pos].link_rsnie = sm_link->rsne;
-+			assoc_link_data[pos].link_rsnie_len = sm_link->rsne_len;
++			rsnie_pos = wpa_write_rsn_ie(&sm_link->wpa_auth->conf, assoc_link_data[pos].link_rsnie,
++						     sizeof(assoc_link_data[pos].link_rsnie), sm->pmk_r1_name);
++			if (rsnie_pos < 0) {
++				wpa_printf(MSG_DEBUG, "FT: Failed to write link RSN IE for link %d", link_id);
++				os_free(assoc_link_data);
++				return NULL;
++			}
++			assoc_link_data[pos].link_rsnie_len = rsnie_pos;
 +			assoc_link_data[pos].link_rsnxe = sm_link->rsnxe;
 +			assoc_link_data[pos].link_rsnxe_len = sm_link->rsnxe_len;
 +			pos++;
@@ -771,6 +776,8 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +		}
 +		ml_links_data.num_links = sm->n_mld_affiliated_links + 1;
 +		ml_links_data.link_data = assoc_link_data;
++		ml_links_data.has_rsn = true;
++		ml_links_data.has_rsnx = true;
 +	}
 +#endif
  	if (auth_alg == WLAN_AUTH_FT &&
@@ -800,7 +807,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	sm->assoc_resp_ftie = os_malloc(ftie_len);
  	if (!sm->assoc_resp_ftie)
  		return NULL;
-@@ -2983,17 +3340,17 @@ static int wpa_ft_psk_pmk_r1(struct wpa_
+@@ -2983,17 +3347,17 @@ static int wpa_ft_psk_pmk_r1(struct wpa_
  	pairwise = sm->pairwise;
  
  	for (;;) {
@@ -821,7 +828,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		    os_memcmp_const(pmk_r1_name, req_pmk_r1_name,
  				    WPA_PMK_NAME_LEN) != 0)
  			continue;
-@@ -3007,7 +3364,7 @@ static int wpa_ft_psk_pmk_r1(struct wpa_
+@@ -3007,7 +3371,7 @@ static int wpa_ft_psk_pmk_r1(struct wpa_
  		os_memcpy(sm->PMK, pmk, PMK_LEN);
  		sm->pmk_len = PMK_LEN;
  		if (out_vlan &&
@@ -830,7 +837,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			wpa_printf(MSG_DEBUG, "FT: vlan not available for STA "
  				   MACSTR, MAC2STR(sm->addr));
  			return -1;
-@@ -3015,17 +3372,17 @@ static int wpa_ft_psk_pmk_r1(struct wpa_
+@@ -3015,17 +3379,17 @@ static int wpa_ft_psk_pmk_r1(struct wpa_
  
  		if (out_identity && out_identity_len) {
  			*out_identity_len = wpa_ft_get_identity(
@@ -851,7 +858,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		}
  
  		return 0;
-@@ -3106,7 +3463,7 @@ static int wpa_ft_local_derive_pmk_r1(st
+@@ -3106,7 +3470,7 @@ static int wpa_ft_local_derive_pmk_r1(st
  		return -1; /* not our R0KH-ID */
  
  	wpa_printf(MSG_DEBUG, "FT: STA R0KH-ID matching local configuration");
@@ -860,7 +867,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	    0)
  		return -1; /* no matching PMKR0Name in local cache */
  
-@@ -3114,7 +3471,7 @@ static int wpa_ft_local_derive_pmk_r1(st
+@@ -3114,7 +3478,7 @@ static int wpa_ft_local_derive_pmk_r1(st
  
  	if (wpa_derive_pmk_r1(r0->pmk_r0, r0->pmk_r0_len, r0->pmk_r0_name,
  			      conf->r1_key_holder,
@@ -869,7 +876,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		return -1;
  
  	os_get_reltime(&now);
-@@ -3124,7 +3481,7 @@ static int wpa_ft_local_derive_pmk_r1(st
+@@ -3124,7 +3488,7 @@ static int wpa_ft_local_derive_pmk_r1(st
  	if (r0->session_timeout)
  		session_timeout = r0->session_timeout - now.sec;
  
@@ -878,7 +885,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			    out_pmk_r1_name,
  			    sm->pairwise, r0->vlan, expires_in, session_timeout,
  			    r0->identity, r0->identity_len,
-@@ -3227,7 +3584,7 @@ static int wpa_ft_process_auth_req(struc
+@@ -3227,7 +3591,7 @@ static int wpa_ft_process_auth_req(struc
  	    wpa_key_mgmt_ft_psk(sm->wpa_key_mgmt)) {
  		if (wpa_derive_pmk_r1_name(parse.rsn_pmkid,
  					   sm->wpa_auth->conf.r1_key_holder,
@@ -887,7 +894,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			return WLAN_STATUS_UNSPECIFIED_FAILURE;
  		if (wpa_ft_psk_pmk_r1(sm, pmk_r1_name, pmk_r1, &pairwise,
  				      &vlan, &identity, &identity_len,
-@@ -3252,10 +3609,10 @@ static int wpa_ft_process_auth_req(struc
+@@ -3252,10 +3616,10 @@ static int wpa_ft_process_auth_req(struc
  			continue;
  		if (wpa_derive_pmk_r1_name(parse.rsn_pmkid,
  					   sm->wpa_auth->conf.r1_key_holder,
@@ -900,7 +907,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  					pmk_r1, &pmk_r1_len, &pairwise, &vlan,
  					&identity, &identity_len, &radius_cui,
  					&radius_cui_len,
-@@ -3349,7 +3706,7 @@ pmk_r1_derived:
+@@ -3349,7 +3713,7 @@ pmk_r1_derived:
  		kdk_len = 0;
  
  	if (wpa_pmk_r1_to_ptk(pmk_r1, pmk_r1_len, sm->SNonce, sm->ANonce,
@@ -909,7 +916,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			      &sm->PTK, ptk_name, parse.key_mgmt,
  			      pairwise, kdk_len) < 0)
  		return WLAN_STATUS_UNSPECIFIED_FAILURE;
-@@ -3368,18 +3725,18 @@ pmk_r1_derived:
+@@ -3368,18 +3732,18 @@ pmk_r1_derived:
  	sm->tk_already_set = false;
  	wpa_ft_install_ptk(sm, 0);
  
@@ -932,7 +939,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	buflen = 2 + sizeof(struct rsn_mdie) + 2 + sizeof(struct rsn_ftie) +
  		2 + FT_R1KH_ID_LEN + 200;
-@@ -3473,6 +3830,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -3473,6 +3837,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
  	const u8 *kck;
  	size_t kck_len;
  	struct wpa_auth_config *conf;
@@ -941,13 +948,14 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (sm == NULL)
  		return WLAN_STATUS_UNSPECIFIED_FAILURE;
-@@ -3607,23 +3966,58 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -3607,23 +3973,59 @@ int wpa_ft_validate_reassoc(struct wpa_s
  		kck = sm->PTK.kck;
  		kck_len = sm->PTK.kck_len;
  	}
 +#ifdef CONFIG_IEEE80211BE
 +	struct link_data *assoc_link_data = NULL;
 +	is_mld = sm->mld_assoc_link_id >= 0 ? true : false;
++
 +	if (is_mld) {
 +		int pos, link_id;
 +
@@ -1016,7 +1024,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			  const u8 *pmk_r0_name);
  #endif /* CONFIG_IEEE80211R_AP */
  
-+static const u8 * wpa_auth_get_aa(const struct wpa_state_machine *sm)
++static const u8 *wpa_auth_get_aa(const struct wpa_state_machine *sm)
 +{
 +#ifdef CONFIG_IEEE80211BE
 +	if (sm->mld_assoc_link_id >= 0)
@@ -1025,7 +1033,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	return sm->wpa_auth->addr;
 +}
 +
-+static const u8 * wpa_auth_get_spa(const struct wpa_state_machine *sm)
++static const u8 *wpa_auth_get_spa(const struct wpa_state_machine *sm)
 +{
 +#ifdef CONFIG_IEEE80211BE
 +	if (sm->mld_assoc_link_id >= 0)
@@ -1059,10 +1067,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +#ifdef CONFIG_IEEE80211BE
 +	/* Add Link RSN IEs if this is an ML association
 +	 */
-+	if (assoc_links_data) {
++	if (assoc_links_data && assoc_links_data->has_rsn) {
 +		for (i = 0; i < assoc_links_data->num_links; i++) {
 +			if (assoc_links_data->link_data[i].link_rsnie_len) {
-+				wpa_printf(MSG_WARNING," FT MIC link %zu rsn ie len %d curr index %zu",
++				wpa_printf(MSG_WARNING, " FT MIC link %zu rsn ie len %d curr index %zu",
 +					   i, assoc_links_data->link_data[i].link_rsnie_len, num_elem);
 +				addr[num_elem] = assoc_links_data->link_data[i].link_rsnie;
 +				len[num_elem] = assoc_links_data->link_data[i].link_rsnie_len;
@@ -1090,7 +1098,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +#ifdef CONFIG_IEEE80211BE
 +	/* Add Link RSNXEs if this is an ML association.
 +	 */
-+	if (assoc_links_data) {
++	if (assoc_links_data && assoc_links_data->has_rsnx) {
 +		for (i = 0; i < assoc_links_data->num_links; i++) {
 +			if (assoc_links_data->link_data[i].link_rsnxe_len) {
 +				wpa_printf(MSG_DEBUG, " FT MIC link %zu rsnxe len %d curr index %zu",
@@ -1102,7 +1110,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +					*elem_count += 1;
 +			}
 +		}
-+        } else
++	} else
 +#endif /* CONFIG_IEEE80211BE */
  	if (rsnxe) {
  		addr[num_elem] = rsnxe;
@@ -1142,20 +1150,20 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	le16 status_code;
  } STRUCT_PACKED;
  
-+struct link_data
-+{
++struct link_data {
 +	u8 link_id;
 +	u8 link_addr[ETH_ALEN];
-+	const u8 *link_rsnie;
++	const u8 link_rsnie[255];
 +	int link_rsnie_len;
 +	const u8 *link_rsnxe;
 +	int link_rsnxe_len;
 +};
 +
-+struct ft_mld_links_data
-+{
++struct ft_mld_links_data {
 +	u8 num_links;
 +	struct link_data *link_data;
++	bool has_rsn;
++	bool has_rsnx;
 +};
 +
  /* WFA Transition Disable KDE (using OUI_WFA) */
