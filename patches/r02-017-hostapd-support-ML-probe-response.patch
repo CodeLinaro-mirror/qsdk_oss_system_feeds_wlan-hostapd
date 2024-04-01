@@ -290,7 +290,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +	own_data_len -= offsetof(struct ieee80211_mgmt, u.probe_resp.variable);
 +
 +	for_each_partner_bss(link_bss, hapd) {
-+		if (link_bss == hapd)
++		if (link_bss == hapd || !link_bss->started)
 +			continue;
 +
 +		link_id = link_bss->mld_link_id;
@@ -426,12 +426,24 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  }
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2398,6 +2721,9 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2353,6 +2676,7 @@ fail:
+ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+ {
+ 	struct hostapd_iface *iface = hapd->iface;
++	struct hostapd_data *bss;
+ 	int ret;
+ 	size_t i, j;
+ 	bool is_6g, hapd_mld = false;
+@@ -2398,6 +2722,13 @@ int ieee802_11_set_beacon(struct hostapd
  		}
  	}
  
++	if (!hapd->mld)
++		return 0;
++
 +	/* Generate per sta profiles for affiliated APs */
-+	hostapd_gen_per_sta_profiles(hapd);
++	for_each_partner_bss(bss, hapd)
++		hostapd_gen_per_sta_profiles(bss);
 +
  	return 0;
  }
@@ -458,7 +470,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4446,10 +4446,10 @@ static void ieee80211_ml_process_link(st
+@@ -4445,10 +4445,10 @@ static void ieee80211_ml_process_link(st
  		goto out;
  
  	if (ieee802_11_parse_link_assoc_req(ies, ies_len, &elems, mlbuf,
@@ -472,7 +484,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		status = WLAN_STATUS_UNSPECIFIED_FAILURE;
  		goto out;
  	}
-@@ -4946,7 +4946,7 @@ rsnxe_done:
+@@ -4945,7 +4945,7 @@ rsnxe_done:
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		if (hapd->conf->mld_ap)
@@ -494,7 +506,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  struct wpabuf * hostapd_ml_auth_resp(struct hostapd_data *hapd);
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -552,7 +552,7 @@ void hostapd_get_eht_capab(struct hostap
+@@ -553,7 +553,7 @@ void hostapd_get_eht_capab(struct hostap
  */
  #define MLE_COMMON_INFO_LEN 13
  u8 * hostapd_eid_eht_basic_ml(struct hostapd_data *hapd, u8 *eid,
@@ -503,7 +515,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  {
  	struct wpabuf *buf;
  	u16 control;
-@@ -617,7 +617,7 @@ u8 * hostapd_eid_eht_basic_ml(struct hos
+@@ -618,7 +618,7 @@ u8 * hostapd_eid_eht_basic_ml(struct hos
  
  	/* Add link info for the other links */
  	for (link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
