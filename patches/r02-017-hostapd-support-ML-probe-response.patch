@@ -290,7 +290,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +	own_data_len -= offsetof(struct ieee80211_mgmt, u.probe_resp.variable);
 +
 +	for_each_partner_bss(link_bss, hapd) {
-+		if (link_bss == hapd || !link_bss->started)
++		if (link_bss == hapd)
 +			continue;
 +
 +		link_id = link_bss->mld_link_id;
@@ -426,21 +426,12 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  }
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2353,6 +2676,7 @@ fail:
- int ieee802_11_set_beacon(struct hostapd_data *hapd)
- {
- 	struct hostapd_iface *iface = hapd->iface;
-+	struct hostapd_data *bss;
- 	int ret;
- 	size_t i, j;
- 	bool is_6g, hapd_mld = false;
-@@ -2398,6 +2722,10 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2398,6 +2721,9 @@ int ieee802_11_set_beacon(struct hostapd
  		}
  	}
  
 +	/* Generate per sta profiles for affiliated APs */
-+	for_each_partner_bss(bss, hapd)
-+		hostapd_gen_per_sta_profiles(bss);
++	hostapd_gen_per_sta_profiles(hapd);
 +
  	return 0;
  }
@@ -503,7 +494,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  struct wpabuf * hostapd_ml_auth_resp(struct hostapd_data *hapd);
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -553,7 +553,7 @@ void hostapd_get_eht_capab(struct hostap
+@@ -552,7 +552,7 @@ void hostapd_get_eht_capab(struct hostap
  */
  #define MLE_COMMON_INFO_LEN 13
  u8 * hostapd_eid_eht_basic_ml(struct hostapd_data *hapd, u8 *eid,
@@ -512,7 +503,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  {
  	struct wpabuf *buf;
  	u16 control;
-@@ -618,7 +618,7 @@ u8 * hostapd_eid_eht_basic_ml(struct hos
+@@ -617,7 +617,7 @@ u8 * hostapd_eid_eht_basic_ml(struct hos
  
  	/* Add link info for the other links */
  	for (link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
