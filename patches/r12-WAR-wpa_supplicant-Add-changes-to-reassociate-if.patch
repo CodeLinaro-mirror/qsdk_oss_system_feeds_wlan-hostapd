@@ -176,7 +176,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
 --- a/wpa_supplicant/scan.c
 +++ b/wpa_supplicant/scan.c
-@@ -3521,3 +3521,157 @@ void wpas_scan_restart_sched_scan(struct
+@@ -3521,3 +3521,168 @@ void wpas_scan_restart_sched_scan(struct
  	wpa_s->prev_sched_ssid = NULL;
  	wpa_supplicant_cancel_sched_scan(wpa_s);
  }
@@ -316,7 +316,18 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +	filter_scan_res(wpa_s, scan_res);
 +
 +	for (i = 0; i < scan_res->num; i++) {
-+		if (os_memcmp(wpa_s->current_bss->bssid, scan_res->res[i]->bssid, ETH_ALEN) != 0) {
++		const u8 *ml_ie, *mld_addr;
++
++		ml_ie = wpa_scan_get_ml_ie(scan_res->res[i],
++					   MULTI_LINK_CONTROL_TYPE_BASIC);
++		if (!ml_ie)
++			continue;
++
++		mld_addr = get_basic_mle_mld_addr(&ml_ie[3], ml_ie[1] - 1);
++		if (!mld_addr)
++			continue;
++
++		if (os_memcmp(wpa_s->current_bss->bssid, mld_addr, ETH_ALEN) != 0) {
 +			/* Need to check any scan entry for current assoc bssid */
 +			continue;
 +		}
