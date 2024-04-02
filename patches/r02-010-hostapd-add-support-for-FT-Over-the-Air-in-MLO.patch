@@ -163,7 +163,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +			 * Add the additional length increased in pmkid insertion
 +			 * to totol IE len.
 +			 */
-+			*len_pos = *len_pos - e_len - (pos - rsne_start);
++			*len_pos = *len_pos + e_len - (pos - rsne_start);
 +			pos = rsne_start + e_len;
 +		}
 +#endif /* CONFIG_IEEE80211R_AP */
@@ -1210,3 +1210,77 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			add_note(wt, MSG_INFO, "FT: Failed to calculate MIC");
  			return;
  		}
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -2876,12 +2876,12 @@ static void handle_auth(struct hostapd_d
+ 
+ 	wpa_printf(MSG_DEBUG, "authentication: STA=" MACSTR " auth_alg=%d "
+ 		   "auth_transaction=%d status_code=%d wep=%d%s "
+-		   "seq_ctrl=0x%x%s%s",
++		   "seq_ctrl=0x%x%s%s ml sta %d",
+ 		   MAC2STR(sa), auth_alg, auth_transaction,
+ 		   status_code, !!(fc & WLAN_FC_ISWEP),
+ 		   challenge ? " challenge" : "",
+ 		   seq_ctrl, (fc & WLAN_FC_RETRY) ? " retry" : "",
+-		   from_queue ? " (from queue)" : "");
++		   from_queue ? " (from queue)" : "", mld_sta);
+ 
+ #ifdef CONFIG_NO_RC4
+ 	if (auth_alg == WLAN_AUTH_SHARED_KEY) {
+@@ -4032,9 +4032,6 @@ static int __check_assoc_ies(struct host
+ 		wpa_ie_len += 2;
+ 
+ 		if (!sta->wpa_sm) {
+-#ifdef CONFIG_IEEE80211BE
+-			struct mld_info *info = &sta->mld_info;
+-#endif /* CONFIG_IEEE80211BE */
+ 			if (!link)
+ 				assoc_sta = hostapd_ml_get_assoc_sta(hapd, sta, &assoc_hapd);
+ 			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
+@@ -4046,18 +4043,19 @@ static int __check_assoc_ies(struct host
+ 					   "Failed to initialize RSN state machine");
+ 				return WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 			}
++		}
+ 
+ #ifdef CONFIG_IEEE80211BE
+-			if (info->mld_sta) {
+-				wpa_printf(MSG_DEBUG,
+-					   "MLD: Set ML info in RSN Authenticator");
+-				wpa_auth_set_ml_info(sta->wpa_sm,
+-						     hapd->mld->mld_addr,
+-						     sta->mld_assoc_link_id,
+-						     info);
+-			}
+-#endif /* CONFIG_IEEE80211BE */
++		struct mld_info *info = &sta->mld_info;
++		if (info->mld_sta) {
++			wpa_printf(MSG_DEBUG,
++				   "MLD: Set ML info in RSN Authenticator");
++			wpa_auth_set_ml_info(sta->wpa_sm,
++					     hapd->mld->mld_addr,
++					     sta->mld_assoc_link_id,
++					     info);
+ 		}
++#endif /* CONFIG_IEEE80211BE */
+ 
+ 		wpa_auth_set_auth_alg(sta->wpa_sm, sta->auth_alg);
+ 		res = wpa_validate_wpa_ie(hapd->wpa_auth, sta->wpa_sm,
+--- a/src/ap/ieee802_11_eht.c
++++ b/src/ap/ieee802_11_eht.c
+@@ -955,6 +955,7 @@ static const u8 * auth_skip_fixed_fields
+ 	 * (Presence of fields and elements in Authentications frames) */
+ 	switch (auth_alg) {
+ 	case WLAN_AUTH_OPEN:
++	case WLAN_AUTH_FT:
+ 		return pos;
+ 	case WLAN_AUTH_SAE:
+ 		if (auth_transaction == 1) {
+@@ -973,7 +974,6 @@ static const u8 * auth_skip_fixed_fields
+ 
+ 		return pos;
+ 	/* TODO: Support additional algorithms that can be used for MLO */
+-	case WLAN_AUTH_FT:
+ 	case WLAN_AUTH_FILS_SK:
+ 	case WLAN_AUTH_FILS_SK_PFS:
+ 	case WLAN_AUTH_FILS_PK:
