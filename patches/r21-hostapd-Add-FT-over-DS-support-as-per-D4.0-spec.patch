@@ -147,7 +147,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
 +		os_memcpy(sta->mld_info.links[link_id].local_addr, hapd->own_addr, ETH_ALEN);
 +	}
 +
-+ free_entry:
++free_entry:
 +	dl_list_del(&entry->list);
 +	os_free(entry);
  	//sta->ft_over_ds_saquery_status = sa_query_status;
@@ -416,17 +416,43 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  			goto pmk_r1_derived;
  		}
  	}
-@@ -3753,7 +3758,8 @@ pmk_r1_derived:
+@@ -3753,20 +3758,23 @@ pmk_r1_derived:
  	sm->pairwise = pairwise;
  	sm->PTK_valid = true;
  	sm->tk_already_set = false;
 -	wpa_auth_add_sta_ft(sm->wpa_auth, sm->addr);
-+	if (!sm->ft_over_ds_ml)
++	if (!sm->ft_over_ds_ml) {
++		/* TODO: Defer these actions to handle_assoc for FT over DS */
 +		wpa_auth_add_sta_ft(sm->wpa_auth, sm->addr);
  
- 	if (wpa_ft_set_vlan(sm->wpa_auth, wpa_auth_get_spa(sm), &vlan) < 0) {
- 		wpa_printf(MSG_DEBUG, "FT: Failed to configure VLAN");
-@@ -3789,7 +3795,7 @@ pmk_r1_derived:
+-	if (wpa_ft_set_vlan(sm->wpa_auth, wpa_auth_get_spa(sm), &vlan) < 0) {
+-		wpa_printf(MSG_DEBUG, "FT: Failed to configure VLAN");
+-		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+-	}
+-	if (wpa_ft_set_identity(sm->wpa_auth, wpa_auth_get_spa(sm),
+-				identity, identity_len) < 0 ||
+-	    wpa_ft_set_radius_cui(sm->wpa_auth, wpa_auth_get_spa(sm),
+-				  radius_cui, radius_cui_len) < 0) {
+-		wpa_printf(MSG_DEBUG, "FT: Failed to configure identity/CUI");
+-		return WLAN_STATUS_UNSPECIFIED_FAILURE;
++		if (wpa_ft_set_vlan(sm->wpa_auth, wpa_auth_get_spa(sm), &vlan) < 0) {
++			wpa_printf(MSG_DEBUG, "FT: Failed to configure VLAN");
++			return WLAN_STATUS_UNSPECIFIED_FAILURE;
++		}
++		if (wpa_ft_set_identity(sm->wpa_auth, wpa_auth_get_spa(sm),
++					identity, identity_len) < 0 ||
++		    wpa_ft_set_radius_cui(sm->wpa_auth, wpa_auth_get_spa(sm),
++					  radius_cui, radius_cui_len) < 0) {
++			wpa_printf(MSG_DEBUG, "FT: Failed to configure identity/CUI");
++			return WLAN_STATUS_UNSPECIFIED_FAILURE;
++		}
++		wpa_ft_set_session_timeout(sm->wpa_auth, wpa_auth_get_spa(sm), session_timeout);
+ 	}
+-	wpa_ft_set_session_timeout(sm->wpa_auth, wpa_auth_get_spa(sm), session_timeout);
+ 
+ 	bmle_len = wpa_ft_add_bmle_len(sm->wpa_auth, WLAN_FC_STYPE_AUTH, NULL);
+ 
+@@ -3789,7 +3797,7 @@ pmk_r1_derived:
  		goto fail;
  	pos += ret;
  
@@ -435,7 +461,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  			     parse.r0kh_id, parse.r0kh_id_len,
  			     sm->ANonce, sm->SNonce, pos, end - pos, NULL, 0,
  			     0);
-@@ -3827,6 +3833,7 @@ void wpa_ft_process_auth(struct wpa_stat
+@@ -3827,6 +3835,7 @@ void wpa_ft_process_auth(struct wpa_stat
  		return;
  	}
  
@@ -443,7 +469,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	wpa_printf(MSG_DEBUG, "FT: Received authentication frame: STA=" MACSTR
  		   " BSSID=" MACSTR " transaction=%d",
  		   MAC2STR(sm->addr), MAC2STR(bssid), auth_transaction);
-@@ -3962,14 +3969,14 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -3962,14 +3971,14 @@ int wpa_ft_validate_reassoc(struct wpa_s
  		return WLAN_STATUS_INVALID_FTIE;
  	}
  
@@ -460,7 +486,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  		return WLAN_STATUS_INVALID_FTIE;
  	}
  
-@@ -4025,6 +4032,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -4025,6 +4034,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
  			os_memcpy(assoc_link_data[pos].link_addr, sm_link->peer_addr, ETH_ALEN);
  			pos++;
  		}
@@ -469,7 +495,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  		ml_links_data.num_links = sm->n_mld_affiliated_links + 1;
  		ml_links_data.link_data = assoc_link_data;
  	}
-@@ -4119,7 +4128,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -4119,7 +4130,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
  }
  
  
@@ -479,7 +505,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  {
  	const u8 *sta_addr, *target_ap;
  	const u8 *ies;
-@@ -4147,14 +4157,16 @@ int wpa_ft_action_rx(struct wpa_state_ma
+@@ -4147,14 +4159,16 @@ int wpa_ft_action_rx(struct wpa_state_ma
  	ies = data + 14;
  	ies_len = len - 14;
  
@@ -498,7 +524,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  		return -1;
  	}
  
-@@ -4185,7 +4197,13 @@ int wpa_ft_action_rx(struct wpa_state_ma
+@@ -4185,7 +4199,13 @@ int wpa_ft_action_rx(struct wpa_state_ma
  	frame->packet_type = FT_PACKET_REQUEST;
  	frame->action_length = host_to_le16(len);
  	os_memcpy(frame->ap_address, sm->wpa_auth->addr, ETH_ALEN);
@@ -512,7 +538,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  
  	wpa_ft_rrb_send(sm->wpa_auth, target_ap, (u8 *) frame,
  			sizeof(*frame) + len);
-@@ -4203,13 +4221,13 @@ static void wpa_ft_rrb_rx_request_cb(voi
+@@ -4203,13 +4223,13 @@ static void wpa_ft_rrb_rx_request_cb(voi
  	wpa_printf(MSG_DEBUG, "FT: Over-the-DS RX request cb for " MACSTR,
  		   MAC2STR(sm->addr));
  	wpa_ft_send_rrb_auth_resp(sm, sm->ft_pending_current_ap, sm->addr,
@@ -528,7 +554,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  {
  	struct wpa_state_machine *sm;
  	u16 status;
-@@ -4269,22 +4287,27 @@ static int wpa_ft_rrb_rx_request(struct
+@@ -4269,22 +4289,27 @@ static int wpa_ft_rrb_rx_request(struct
  	}
  	status = res;
  
@@ -561,7 +587,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  
  	wpa_printf(MSG_DEBUG, "FT: RRB authentication response: STA=" MACSTR
  		   " CurrentAP=" MACSTR " status=%u (%s)",
-@@ -4297,7 +4320,18 @@ static int wpa_ft_send_rrb_auth_resp(str
+@@ -4297,7 +4322,18 @@ static int wpa_ft_send_rrb_auth_resp(str
  	/*
  	 * data: Category[1] Action[1] STA_Address[6] Target_AP_Address[6]
  	 * Status_Code[2] FT Request action frame body[variable]
@@ -580,7 +606,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	rlen = 2 + 2 * ETH_ALEN + 2 + resp_ies_len;
  
  	frame = os_malloc(sizeof(*frame) + rlen);
-@@ -4307,6 +4341,7 @@ static int wpa_ft_send_rrb_auth_resp(str
+@@ -4307,6 +4343,7 @@ static int wpa_ft_send_rrb_auth_resp(str
  	frame->packet_type = FT_PACKET_RESPONSE;
  	frame->action_length = host_to_le16(rlen);
  	os_memcpy(frame->ap_address, wpa_auth->addr, ETH_ALEN);
@@ -588,7 +614,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	pos = (u8 *) (frame + 1);
  	*pos++ = WLAN_ACTION_FT;
  	*pos++ = 2; /* Action: Response */
-@@ -4319,6 +4354,12 @@ static int wpa_ft_send_rrb_auth_resp(str
+@@ -4319,6 +4356,12 @@ static int wpa_ft_send_rrb_auth_resp(str
  	if (resp_ies)
  		os_memcpy(pos, resp_ies, resp_ies_len);
  
@@ -601,7 +627,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	wpa_ft_rrb_send(wpa_auth, current_ap, (u8 *) frame,
  			sizeof(*frame) + rlen);
  	os_free(frame);
-@@ -5158,6 +5199,7 @@ int wpa_ft_rrb_rx(struct wpa_authenticat
+@@ -5158,6 +5201,7 @@ int wpa_ft_rrb_rx(struct wpa_authenticat
  	wpa_printf(MSG_DEBUG, "FT: RRB received frame from remote AP " MACSTR,
  		   MAC2STR(src_addr));
  
@@ -609,7 +635,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	if (data_len < sizeof(*frame)) {
  		wpa_printf(MSG_DEBUG, "FT: Too short RRB frame (data_len=%lu)",
  			   (unsigned long) data_len);
-@@ -5223,15 +5265,20 @@ int wpa_ft_rrb_rx(struct wpa_authenticat
+@@ -5223,15 +5267,20 @@ int wpa_ft_rrb_rx(struct wpa_authenticat
  			return -1;
  		}
  
@@ -632,7 +658,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  			return -1;
  	} else if (frame->packet_type == FT_PACKET_RESPONSE) {
  		u16 status_code;
-@@ -5246,7 +5293,8 @@ int wpa_ft_rrb_rx(struct wpa_authenticat
+@@ -5246,7 +5295,8 @@ int wpa_ft_rrb_rx(struct wpa_authenticat
  		wpa_printf(MSG_DEBUG, "FT: FT Packet Type - Response "
  			   "(status_code=%d)", status_code);
  
