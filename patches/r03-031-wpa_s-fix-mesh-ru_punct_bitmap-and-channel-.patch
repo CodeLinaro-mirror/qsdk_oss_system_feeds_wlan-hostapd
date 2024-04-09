@@ -22,7 +22,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  1 file changed, 306 insertions(+), 265 deletions(-)
 
 diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
-index ea6a6eb..0c05c2b 100644
+index 51056ce..0c05c2b 100644
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
 @@ -2761,143 +2761,157 @@ static bool ibss_mesh_is_80mhz_avail(int channel, struct hostapd_hw_modes *mode,
@@ -649,7 +649,7 @@ index ea6a6eb..0c05c2b 100644
 -	int ieee80211_mode = wpas_mode_to_ieee80211_mode(ssid->mode);
 -	enum hostapd_hw_mode hw_mode;
 -	struct hostapd_hw_modes *mode = NULL;
--	int obss_scan = !(ssid->noscan);
+-	int i, obss_scan = !(ssid->noscan);
 -	u8 channel;
 -	bool is_6ghz, is_24ghz;
 -	bool dfs_enabled = wpa_s->conf->country[0] && (wpa_s->drv_flags & WPA_DRIVER_FLAGS_RADAR);
@@ -756,6 +756,3 @@ index ea6a6eb..0c05c2b 100644
  		return "NO-EAP";
  	}
  
--- 
-2.17.1
-
