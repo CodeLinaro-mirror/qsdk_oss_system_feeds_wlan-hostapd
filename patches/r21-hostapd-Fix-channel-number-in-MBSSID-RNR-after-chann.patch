@@ -71,7 +71,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	return 0;
  
-@@ -2363,7 +2363,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2372,7 +2372,7 @@ int ieee802_11_build_ap_params(struct ho
  		}
  		complete = hapd->iconf->mbssid == MBSSID_ENABLED ||
  			(hapd->iconf->mbssid == ENHANCED_MBSSID_ENABLED &&
@@ -80,7 +80,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	}
  
  	tailpos = hostapd_eid_ext_capab(hapd, tailpos, complete);
-@@ -2415,7 +2415,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2424,7 +2424,7 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_fils_indic(hapd, tailpos, 0);
  	tailpos = hostapd_get_rsnxe(hapd, tailpos, tailend - tailpos);
  	tailpos = hostapd_eid_mbssid_config(hapd, tailpos,
@@ -89,7 +89,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  #ifdef CONFIG_IEEE80211AX
  	if (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax) {
-@@ -2640,14 +2640,14 @@ void ieee802_11_free_ap_params(struct wp
+@@ -2649,14 +2649,14 @@ void ieee802_11_free_ap_params(struct wp
  	params->head = NULL;
  	os_free(params->proberesp);
  	params->proberesp = NULL;
@@ -114,7 +114,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	params->fd_frame_tmpl = NULL;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4239,6 +4239,14 @@ void free_beacon_data(struct beacon_data
+@@ -4240,6 +4240,14 @@ void free_beacon_data(struct beacon_data
  	beacon->proberesp_ies = NULL;
  	os_free(beacon->assocresp_ies);
  	beacon->assocresp_ies = NULL;
@@ -129,7 +129,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  }
  
  
-@@ -4246,8 +4254,11 @@ static int hostapd_build_beacon_data(str
+@@ -4247,8 +4255,11 @@ static int hostapd_build_beacon_data(str
  				     struct beacon_data *beacon)
  {
  	struct wpabuf *beacon_extra, *proberesp_extra, *assocresp_extra;
@@ -142,11 +142,16 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	os_memset(beacon, 0, sizeof(*beacon));
  	ret = ieee802_11_build_ap_params(hapd, &params);
-@@ -4313,6 +4324,63 @@ static int hostapd_build_beacon_data(str
+@@ -4314,6 +4325,72 @@ static int hostapd_build_beacon_data(str
  	beacon->elemid_added = params.elemid_added;
  	beacon->elemid_modified = params.elemid_modified;
  
 +	/* MBSSID elem */
++	if (!params.mbssid.mbssid_elem_len) {
++		ret = 0;
++		goto free_beacon;
++	}
++
 +	beacon->mbssid.mbssid_tx_iface_linkid = params.mbssid.mbssid_tx_iface_linkid;
 +	tx_bss = hostapd_mbssid_get_tx_bss(hapd);
 +	beacon->mbssid.mbssid_tx_iface = tx_bss->conf->iface;
@@ -167,18 +172,22 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 +							      sizeof(u8 *));
 +		if (!beacon->mbssid.mbssid_elem_offset)
 +			goto free_beacon;
-+	}
 +
-+	mbssid_start_eid = beacon->mbssid.mbssid_elem;
-+	beacon->mbssid.mbssid_elem_offset[0] = mbssid_start_eid;
-+	for (i = 0; i < beacon->mbssid.mbssid_elem_count - 1; i++) {
-+		size = params.mbssid.mbssid_elem_offset[i + 1] -
-+		       params.mbssid.mbssid_elem_offset[i];
-+		mbssid_start_eid = mbssid_start_eid + size;
-+		beacon->mbssid.mbssid_elem_offset[i + 1] = mbssid_start_eid;
++		mbssid_start_eid = beacon->mbssid.mbssid_elem;
++		beacon->mbssid.mbssid_elem_offset[0] = mbssid_start_eid;
++		for (i = 0; i < beacon->mbssid.mbssid_elem_count - 1; i++) {
++			size = params.mbssid.mbssid_elem_offset[i + 1] -
++			       params.mbssid.mbssid_elem_offset[i];
++			mbssid_start_eid = mbssid_start_eid + size;
++			beacon->mbssid.mbssid_elem_offset[i + 1] = mbssid_start_eid;
++		}
 +	}
-+
 +	/* RNR elem */
++	if (!params.mbssid.rnr_elem_len) {
++		ret = 0;
++		goto free_beacon;
++	}
++
 +	if (params.mbssid.rnr_elem) {
 +		beacon->mbssid.rnr_elem = os_memdup(params.mbssid.rnr_elem,
 +						    params.mbssid.rnr_elem_len);
@@ -193,14 +202,14 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 +							   sizeof(u8 *));
 +		if (!beacon->mbssid.rnr_elem_offset)
 +			goto free_beacon;
-+	}
 +
-+	rnr_start_eid = beacon->mbssid.rnr_elem;
-+	beacon->mbssid.rnr_elem_offset[0] = rnr_start_eid;
-+	for (i = 0; i < beacon->mbssid.rnr_elem_count - 1; i++) {
-+		size = params.mbssid.rnr_elem_offset[i + 1] - params.mbssid.rnr_elem_offset[i];
-+		rnr_start_eid = rnr_start_eid + size;
-+		beacon->mbssid.rnr_elem_offset[i + 1] = rnr_start_eid;
++		rnr_start_eid = beacon->mbssid.rnr_elem;
++		beacon->mbssid.rnr_elem_offset[0] = rnr_start_eid;
++		for (i = 0; i < beacon->mbssid.rnr_elem_count - 1; i++) {
++			size = params.mbssid.rnr_elem_offset[i + 1] - params.mbssid.rnr_elem_offset[i];
++			rnr_start_eid = rnr_start_eid + size;
++			beacon->mbssid.rnr_elem_offset[i + 1] = rnr_start_eid;
++		}
 +	}
 +
  	ret = 0;
@@ -360,7 +369,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4811,7 +4811,7 @@ static int nl80211_unsol_bcast_probe_res
+@@ -4814,7 +4814,7 @@ static int nl80211_unsol_bcast_probe_res
  
  
  static int nl80211_mbssid(struct nl_msg *msg,
@@ -369,7 +378,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  {
  	struct nlattr *config, *elems;
  	int ifidx;
-@@ -5450,8 +5450,9 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -5453,8 +5453,9 @@ static int wpa_driver_nl80211_set_ap(voi
  	    nl80211_unsol_bcast_probe_resp(bss, msg, &params->ubpr) < 0)
  		goto fail;
  
@@ -380,7 +389,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  #endif /* CONFIG_IEEE80211AX */
  
  #ifdef CONFIG_SAE
-@@ -11265,8 +11266,7 @@ static int wpa_driver_nl80211_status(voi
+@@ -11268,8 +11269,7 @@ static int wpa_driver_nl80211_status(voi
  	return pos - buf;
  }
  
@@ -390,7 +399,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  {
  	if ((settings->head &&
  	     nla_put(msg, NL80211_ATTR_BEACON_HEAD,
-@@ -11288,6 +11288,9 @@ static int set_beacon_data(struct nl_msg
+@@ -11291,6 +11291,9 @@ static int set_beacon_data(struct nl_msg
  		     settings->probe_resp_len, settings->probe_resp)))
  		return -ENOBUFS;
  
@@ -400,7 +409,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	return 0;
  }
  
-@@ -11392,7 +11395,7 @@ static int nl80211_switch_channel(void *
+@@ -11395,7 +11398,7 @@ static int nl80211_switch_channel(void *
  		goto error;
  
  	/* beacon_after params */
@@ -409,7 +418,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	if (ret)
  		goto error;
  
-@@ -11405,7 +11408,7 @@ static int nl80211_switch_channel(void *
+@@ -11408,7 +11411,7 @@ static int nl80211_switch_channel(void *
  	if (!beacon_csa)
  		goto fail;
  
@@ -418,7 +427,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	if (ret)
  		goto error;
  
-@@ -11506,7 +11509,7 @@ static int nl80211_switch_color(void *pr
+@@ -11509,7 +11512,7 @@ static int nl80211_switch_color(void *pr
  		goto error;
  
  	/* beacon_after params */
@@ -427,7 +436,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	if (ret)
  		goto error;
  
-@@ -11517,7 +11520,7 @@ static int nl80211_switch_color(void *pr
+@@ -11520,7 +11523,7 @@ static int nl80211_switch_color(void *pr
  		goto error;
  	}
  
