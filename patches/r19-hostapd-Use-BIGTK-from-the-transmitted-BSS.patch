@@ -96,7 +96,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  			if (wpa_auth->conf.beacon_prot) {
  				/* MLO BIGTK KDE
  				 * Header + Key-idx & IPN + Link-id
-@@ -5100,19 +5129,30 @@ static int wpa_gtk_update(struct wpa_aut
+@@ -5117,19 +5146,30 @@ static int wpa_gtk_update(struct wpa_aut
  				group->IGTK[group->GN_igtk - 4], len);
  	}
  
@@ -138,7 +138,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  	return ret;
  }
  
-@@ -5296,9 +5336,10 @@ int wpa_wnmsleep_igtk_subelem(struct wpa
+@@ -5313,9 +5353,10 @@ int wpa_wnmsleep_igtk_subelem(struct wpa
  
  int wpa_wnmsleep_bigtk_subelem(struct wpa_state_machine *sm, u8 *pos)
  {
@@ -151,7 +151,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  
  	/*
  	 * BIGTK subelement:
-@@ -5308,7 +5349,7 @@ int wpa_wnmsleep_bigtk_subelem(struct wp
+@@ -5325,7 +5366,7 @@ int wpa_wnmsleep_bigtk_subelem(struct wp
  	*pos++ = 2 + 6 + len;
  	WPA_PUT_LE16(pos, gsm->GN_bigtk);
  	pos += 2;
@@ -160,7 +160,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  		return 0;
  	pos += 6;
  
-@@ -5404,12 +5445,21 @@ static int wpa_group_config_group_keys(s
+@@ -5421,12 +5462,21 @@ static int wpa_group_config_group_keys(s
  				     KEY_FLAG_GROUP_TX_DEFAULT) < 0)
  			ret = -1;
  
@@ -184,7 +184,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  	}
  
  	return ret;
-@@ -5592,9 +5642,11 @@ void wpa_gtk_rekey(struct wpa_authentica
+@@ -5609,9 +5659,11 @@ void wpa_gtk_rekey(struct wpa_authentica
  		tmp = group->GM_igtk;
  		group->GM_igtk = group->GN_igtk;
  		group->GN_igtk = tmp;
@@ -280,3 +280,108 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  #ifdef CONFIG_P2P
  	struct bitfield *ip_pool;
  #endif /* CONFIG_P2P */
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -8394,6 +8394,39 @@ static bool mbssid_known_bss(unsigned in
+ 	return *known_bss & (u8) (BIT(i % 8));
+ }
+ 
++static size_t hostapd_mbssid_ext_capa(struct hostapd_data *bss,
++				      struct hostapd_data *tx_bss, u8 *buf)
++{
++	u8 *ext_capa_tx, *ext_capa_tx_end, *ext_capa, *ext_capa_end;
++	size_t ext_capa_len, ext_capa_tx_len, len = 0;
++
++	ext_capa_tx = os_malloc(hostapd_eid_ext_capab_len(tx_bss));
++	if (!ext_capa_tx)
++		return 0;
++
++	ext_capa = os_malloc(hostapd_eid_ext_capab_len(bss));
++	if (!ext_capa)
++		goto err_ext_capa;
++
++	ext_capa_tx_end = hostapd_eid_ext_capab(tx_bss, ext_capa_tx,
++						true);
++	ext_capa_tx_len = ext_capa_tx_end - ext_capa_tx;
++	ext_capa_end = hostapd_eid_ext_capab(bss, ext_capa, true);
++	ext_capa_len = ext_capa_end - ext_capa;
++	if (ext_capa_tx_len != ext_capa_len ||
++	    os_memcmp(ext_capa_tx, ext_capa, ext_capa_len) != 0) {
++		if (buf)
++			os_memcpy(buf, ext_capa, ext_capa_len);
++		len = ext_capa_len;
++	}
++
++	os_free(ext_capa);
++err_ext_capa:
++	os_free(ext_capa_tx);
++
++	return len;
++}
++
+ 
+ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd_probed,
+ 					  u32 frame_type, size_t *bss_index,
+@@ -8453,6 +8486,9 @@ static size_t hostapd_eid_mbssid_elem_le
+ 			if (rsnx)
+ 				nontx_profile_len += 2 + rsnx[1];
+ 		}
++
++		nontx_profile_len += hostapd_mbssid_ext_capa(bss, tx_bss, NULL);
++
+ 		if (!rsn && hostapd_wpa_ie(tx_bss, WLAN_EID_RSN))
+ 			ie_count++;
+ 		if (!rsnx && hostapd_wpa_ie(tx_bss, WLAN_EID_RSNX))
+@@ -8638,6 +8674,9 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 				eid += 2 + rsnx[1];
+ 			}
+ 		}
++
++		eid += hostapd_mbssid_ext_capa(bss, tx_bss, eid);
++
+ 		eid = hostapd_eid_ext_supp_rates(bss, eid, &xrate_len);
+ 		if (!rsn && hostapd_wpa_ie(tx_bss, WLAN_EID_RSN))
+ 			non_inherit_ie[ie_count++] = WLAN_EID_RSN;
+--- a/src/ap/ieee802_11_shared.c
++++ b/src/ap/ieee802_11_shared.c
+@@ -457,12 +457,9 @@ static void hostapd_ext_capab_byte(struc
+ 	}
+ }
+ 
+-
+-u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid,
+-			   bool mbssid_complete)
++size_t hostapd_eid_ext_capab_len(struct hostapd_data *hapd)
+ {
+-	u8 *pos = eid;
+-	u8 len = EXT_CAPA_MAX_LEN, i;
++	u8 len = EXT_CAPA_MAX_LEN;
+ 
+ 	if (len < hapd->iface->extended_capa_len)
+ 		len = hapd->iface->extended_capa_len;
+@@ -470,6 +467,15 @@ u8 * hostapd_eid_ext_capab(struct hostap
+ 	 if (hapd->iconf->ext_cap_len > 0 && hapd->iconf->ext_cap_len < len)
+ 		 len = hapd->iconf->ext_cap_len;
+ 
++	 return len;
++}
++
++u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid,
++			   bool mbssid_complete)
++{
++	u8 *pos = eid;
++	u8 i, len = hostapd_eid_ext_capab_len(hapd);
++
+ 	*pos++ = WLAN_EID_EXT_CAPAB;
+ 	*pos++ = len;
+ 	for (i = 0; i < len; i++, pos++) {
+--- a/src/ap/ieee802_11.h
++++ b/src/ap/ieee802_11.h
+@@ -58,6 +58,7 @@ static inline int ieee802_11_get_mib_sta
+ #endif /* NEED_AP_MLME */
+ u16 hostapd_own_capab_info(struct hostapd_data *hapd);
+ void ap_ht2040_timeout(void *eloop_data, void *user_data);
++size_t hostapd_eid_ext_capab_len(struct hostapd_data *hapd);
+ u8 * hostapd_eid_ext_capab(struct hostapd_data *hapd, u8 *eid,
+ 			   bool mbssid_complete);
+ u8 * hostapd_eid_qos_map_set(struct hostapd_data *hapd, u8 *eid);
