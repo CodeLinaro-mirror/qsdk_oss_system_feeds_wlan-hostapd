@@ -34,7 +34,7 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
 
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -199,7 +199,6 @@ static int hostapd_driver_init(struct ho
+@@ -198,7 +198,6 @@ static int hostapd_driver_init(struct ho
  			os_memcpy(hapd->own_addr, b, ETH_ALEN);
  		}
  
@@ -42,7 +42,7 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
  		wpa_printf(MSG_DEBUG, "Setup of non first link BSS(link id %d) of MLD %s",
  			   hapd->mld_link_id, hapd->conf->iface);
  
-@@ -285,7 +284,6 @@ pre_setup_mld:
+@@ -282,7 +281,6 @@ pre_setup_mld:
  		else
  			os_memcpy(hapd->own_addr, b, ETH_ALEN);
  
@@ -50,10 +50,10 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
  		wpa_printf(MSG_DEBUG, "Setup of first link (link %d) BSS of MLD %s",
  			   hapd->mld_link_id, hapd->conf->iface);
  	}
-@@ -345,8 +343,14 @@ setup_mld:
+@@ -340,8 +338,14 @@ setup_mld:
+ 			   hapd->mld_link_id, MAC2STR(hapd->mld->mld_addr),
+ 			   MAC2STR(hapd->own_addr));
  
- 		if (hapd->mld && hapd->mld->is_ml_netdev)
- 			hostapd_drv_mark_mlnetdev(hapd);
 -		hostapd_drv_link_add(hapd, hapd->mld_link_id,
 -				     hapd->own_addr);
 +		if (hostapd_drv_link_add(hapd, hapd->mld_link_id,
@@ -69,7 +69,7 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1452,7 +1452,6 @@ static int hostapd_setup_bss(struct host
+@@ -1451,7 +1451,6 @@ static int hostapd_setup_bss(struct host
  			if (h_hapd) {
  				hapd->drv_priv = h_hapd->drv_priv;
  				hapd->interface_added = h_hapd->interface_added;
@@ -77,7 +77,7 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
  				wpa_printf(MSG_DEBUG, "TSetup of non first link BSS(link id %d) of MLD %s",
  					   hapd->mld_link_id, hapd->conf->iface);
  				goto setup_mld;
-@@ -1478,7 +1477,6 @@ static int hostapd_setup_bss(struct host
+@@ -1477,7 +1476,6 @@ static int hostapd_setup_bss(struct host
  			wpa_printf(MSG_DEBUG, "TSetup of first link BSS of MLD %s",
  				   hapd->conf->iface);
  			os_memcpy(hapd->mld->mld_addr, hapd->own_addr, ETH_ALEN);
@@ -85,10 +85,10 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
  		}
  	}
  
-@@ -1709,8 +1707,15 @@ setup_mld:
+@@ -1707,8 +1705,14 @@ setup_mld:
+ 			   hapd->mld_link_id, MAC2STR(hapd->mld->mld_addr),
  			   MAC2STR(hapd->own_addr));
- 		if (hapd->mld && hapd->mld->is_ml_netdev)
- 			hostapd_drv_mark_mlnetdev(hapd);
+ 
 -		hostapd_drv_link_add(hapd, hapd->mld_link_id,
 -				     hapd->own_addr);
 +		if (hostapd_drv_link_add(hapd, hapd->mld_link_id,
@@ -99,7 +99,6 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
 +			return -1;
 +		}
 +		hostapd_mld_add_link(hapd);
-+
  	}
  #endif /* CONFIG_IEEE80211BE */
  
