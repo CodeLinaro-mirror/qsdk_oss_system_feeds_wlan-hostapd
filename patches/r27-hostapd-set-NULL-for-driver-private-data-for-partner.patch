@@ -17,11 +17,11 @@ function.
 
 Signed-off-by: Ganesh Kariganuru Mahabalesh <quic_gkarigan@quicinc.com>
 
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 2c50a10..ccdc9ee 100644
---- a/src/ap/hostapd.c
-+++ b/src/ap/hostapd.c
-@@ -3449,8 +3449,9 @@ static void hostapd_cleanup_driver(const struct wpa_driver_ops *driver,
+Index: hostapd-2023-06-22-599d00be/src/ap/hostapd.c
+===================================================================
+--- hostapd-2023-06-22-599d00be.orig/src/ap/hostapd.c
++++ hostapd-2023-06-22-599d00be/src/ap/hostapd.c
+@@ -3449,8 +3449,9 @@ static void hostapd_cleanup_driver(const
  #endif /* CONFIG_IEEE80211BE */
  
  	if (driver->get_drv_shared_status &&
@@ -32,10 +32,19 @@ index 2c50a10..ccdc9ee 100644
  		goto exit;
  	}
  
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index ca598bb..feb5005 100644
---- a/src/drivers/driver_nl80211.c
-+++ b/src/drivers/driver_nl80211.c
+@@ -5305,7 +5306,7 @@ void hostapd_bss_free(struct hostapd_dat
+ {
+ 	struct hostapd_data *link_bss = NULL;
+ 
+-	if (!hapd)
++	if (!hapd || !hapd->conf->mld_ap)
+ 		return;
+ 
+ 	hapd->drv_priv = NULL;
+Index: hostapd-2023-06-22-599d00be/src/drivers/driver_nl80211.c
+===================================================================
+--- hostapd-2023-06-22-599d00be.orig/src/drivers/driver_nl80211.c
++++ hostapd-2023-06-22-599d00be/src/drivers/driver_nl80211.c
 @@ -14196,26 +14196,36 @@ fail:
  	return ret;
  }
@@ -80,6 +89,3 @@ index ca598bb..feb5005 100644
  	return false;
  }
  
--- 
-2.25.1
-
