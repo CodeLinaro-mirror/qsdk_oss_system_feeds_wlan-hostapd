@@ -25,11 +25,9 @@ Signed-off-by: Naveen S <quic_naves@quicinc.com>
  src/drivers/driver_nl80211.c |  8 ++++++++
  5 files changed, 33 insertions(+)
 
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index 6ef59f7..d204622 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2526,6 +2526,11 @@ void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
+@@ -2527,6 +2527,11 @@ void hostapd_wpa_event(void *ctx, enum w
  		if (link_hapd)
  			hostapd_event_update_cu_param(link_hapd, &data->cu_event);
  		break;
@@ -41,11 +39,9 @@ index 6ef59f7..d204622 100644
  	default:
  		wpa_printf(MSG_DEBUG, "Unknown event %d", event);
  		break;
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index f50d8c2..3323176 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -5217,4 +5217,18 @@ struct hostapd_data * hostapd_mld_get_first_bss(struct hostapd_data *hapd)
+@@ -5296,4 +5296,18 @@ struct hostapd_data * hostapd_mld_get_fi
  	return mld->fbss;
  }
  
@@ -64,21 +60,17 @@ index f50d8c2..3323176 100644
 +}
 +
  #endif /* CONFIG_IEEE80211BE */
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index f69a8b3..0473863 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -912,4 +912,5 @@ int hostapd_mld_add_link(struct hostapd_data *hapd);
+@@ -915,4 +915,5 @@ int hostapd_mld_add_link(struct hostapd_
  int hostapd_mld_remove_link(struct hostapd_data *hapd);
  bool hostapd_mld_is_first_bss(struct hostapd_data *hapd);
  struct hostapd_data * hostapd_mld_get_first_bss(struct hostapd_data *hapd);
 +void hostapd_bss_free(struct hostapd_data *hapd);
  #endif /* HOSTAPD_H */
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 0dfc40d..7748be8 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5980,6 +5980,11 @@ enum wpa_event_type {
+@@ -5975,6 +5975,11 @@ enum wpa_event_type {
  	 */
  
  	EVENT_RX_CRITICAL_UPDATE,
@@ -90,11 +82,9 @@ index 0dfc40d..7748be8 100644
  };
  
  
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index eb7c97f..5bd7ea6 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -9187,6 +9187,7 @@ static int wpa_driver_nl80211_if_link_remove(struct i802_bss *bss,
+@@ -9192,6 +9192,7 @@ static int wpa_driver_nl80211_if_link_re
  	struct wpa_driver_nl80211_data *drv = bss->drv;
  	struct i802_link *link;
  	int num_links = bss->n_links;
@@ -102,10 +92,10 @@ index eb7c97f..5bd7ea6 100644
  
  	wpa_printf(MSG_DEBUG, "nl80211: %s(type=%d ifname=%s num_links=%d) link_id=%d",
  		   __func__, type, ifname, num_links, link_id);
-@@ -9208,6 +9209,13 @@ static int wpa_driver_nl80211_if_link_remove(struct i802_bss *bss,
+@@ -9209,6 +9210,13 @@ static int wpa_driver_nl80211_if_link_re
+ 		drv->ctx = bss->ctx;
  
- remove_if:
- 	if (num_links == 1 || type == WPA_IF_AP_VLAN) {
+ 	if (num_links == 1) {
 +		/*
 +		 * EVENT_BSS_FREE used to dereference the bss in
 +		 * other interfaces as well before removing it
@@ -116,6 +106,3 @@ index eb7c97f..5bd7ea6 100644
  		wpa_printf(MSG_DEBUG, "nl80211: Only 1 link was there hence remove interface");
  		return wpa_driver_nl80211_if_remove(bss, type, ifname);
  	}
--- 
-2.34.1
-
