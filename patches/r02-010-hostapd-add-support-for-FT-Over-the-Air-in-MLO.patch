@@ -939,6 +939,15 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	buflen = 2 + sizeof(struct rsn_mdie) + 2 + sizeof(struct rsn_ftie) +
  		2 + FT_R1KH_ID_LEN + 200;
+@@ -3463,7 +3827,7 @@ void wpa_ft_process_auth(struct wpa_stat
+ 
+ 
+ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
+-			    size_t ies_len)
++			    size_t ies_len, struct mld_info *mld_info)
+ {
+ 	struct wpa_ft_ies parse;
+ 	struct rsn_mdie *mdie;
 @@ -3473,6 +3837,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
  	const u8 *kck;
  	size_t kck_len;
@@ -948,7 +957,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (sm == NULL)
  		return WLAN_STATUS_UNSPECIFIED_FAILURE;
-@@ -3607,23 +3973,59 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -3607,23 +3973,58 @@ int wpa_ft_validate_reassoc(struct wpa_s
  		kck = sm->PTK.kck;
  		kck_len = sm->PTK.kck_len;
  	}
@@ -956,7 +965,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	struct link_data *assoc_link_data = NULL;
 +	is_mld = sm->mld_assoc_link_id >= 0 ? true : false;
 +
-+	if (is_mld) {
++	if (is_mld && mld_info) {
 +		int pos, link_id;
 +
 +		assoc_link_data = os_zalloc((sm->n_mld_affiliated_links + 1) * sizeof(struct link_data));
@@ -966,18 +975,17 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +				   MAC2STR(wpa_auth_get_spa(sm)));
 +			return WLAN_STATUS_UNSPECIFIED_FAILURE;
 +		}
-+		for (pos = 0, link_id = 0; link_id < MAX_NUM_MLD_LINKS &&
-+		     pos < (sm->n_mld_affiliated_links + 1); link_id++) {
-+			struct mld_link *sm_link = &sm->mld_links[link_id];
++		for (pos = 0, link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
++			struct mld_link *link_info = &mld_info->links[link_id];
 +
-+			if (!sm_link->valid)
++			if (!link_info->valid)
 +				continue;
 +
 +			assoc_link_data[pos].link_id = link_id;
-+			os_memcpy(assoc_link_data[pos].link_addr, sm_link->peer_addr, ETH_ALEN);
++			os_memcpy(assoc_link_data[pos].link_addr, link_info->peer_addr, ETH_ALEN);
 +			pos++;
 +		}
-+		ml_links_data.num_links = sm->n_mld_affiliated_links + 1;
++		ml_links_data.num_links = pos;
 +		ml_links_data.link_data = assoc_link_data;
 +	}
 +#endif /* CONFIG_IEEE80211BE */
@@ -1274,6 +1282,21 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  		wpa_auth_set_auth_alg(sta->wpa_sm, sta->auth_alg);
  		res = wpa_validate_wpa_ie(hapd->wpa_auth, sta->wpa_sm,
+@@ -4089,8 +4087,13 @@ static int __check_assoc_ies(struct host
+ 				return WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 			}
+ 
++#ifdef CONFIG_IEEE80211BE
+ 			resp = wpa_ft_validate_reassoc(sta->wpa_sm, ies,
+-						       ies_len);
++						       ies_len, &sta->mld_info);
++#else /* CONFIG_IEEE80211BE */
++			resp = wpa_ft_validate_reassoc(sta->wpa_sm, ies,
++						       ies_len, NULL);
++#endif /* CONFIG_IEEE80211BE */
+ 			if (resp != WLAN_STATUS_SUCCESS)
+ 				return resp;
+ 		}
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
 @@ -955,6 +955,7 @@ static const u8 * auth_skip_fixed_fields
@@ -1292,3 +1315,25 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	case WLAN_AUTH_FILS_SK:
  	case WLAN_AUTH_FILS_SK_PFS:
  	case WLAN_AUTH_FILS_PK:
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -449,7 +449,7 @@ int hostapd_notif_assoc(struct hostapd_d
+ #ifdef CONFIG_IEEE80211R_AP
+ 		if (sta->auth_alg == WLAN_AUTH_FT) {
+ 			status = wpa_ft_validate_reassoc(sta->wpa_sm, req_ies,
+-							 req_ies_len);
++							 req_ies_len, NULL);
+ 			if (status != WLAN_STATUS_SUCCESS) {
+ 				if (status == WLAN_STATUS_INVALID_PMKID)
+ 					reason = WLAN_REASON_INVALID_IE;
+--- a/src/ap/wpa_auth.h
++++ b/src/ap/wpa_auth.h
+@@ -526,7 +526,7 @@ void wpa_ft_process_auth(struct wpa_stat
+ 				    const u8 *ies, size_t ies_len),
+ 			 void *ctx);
+ int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
+-			    size_t ies_len);
++			    size_t ies_len, struct mld_info *mld_info);
+ int wpa_ft_action_rx(struct wpa_state_machine *sm, const u8 *data, size_t len);
+ int wpa_ft_rrb_rx(struct wpa_authenticator *wpa_auth, const u8 *src_addr,
+ 		  const u8 *data, size_t data_len);
