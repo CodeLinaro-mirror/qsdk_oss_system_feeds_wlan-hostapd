@@ -59,7 +59,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  int hostapd_sta_assoc(struct hostapd_data *hapd, const u8 *addr,
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3073,6 +3073,7 @@ static void hostapd_bss_setup_multi_link
+@@ -3078,6 +3078,7 @@ static void hostapd_bss_setup_multi_link
  	interfaces->mld = all_mld;
  	interfaces->mld[interfaces->mld_count] = mld;
  	interfaces->mld_count++;
@@ -147,7 +147,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  static u8 hostapd_max_bssid_indicator(struct hostapd_data *hapd)
  {
  	size_t num_bss_nontx;
-@@ -5284,6 +5313,93 @@ void fils_hlp_timeout(void *eloop_ctx, v
+@@ -5288,6 +5317,96 @@ void fils_hlp_timeout(void *eloop_ctx, v
  #endif /* CONFIG_FILS */
  
  
@@ -203,6 +203,9 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +		return NULL;
 +
 +	sta_mld = hostapd_mlie_to_get_mld_addr_from_assoc(hapd, mgmt, len, reassoc);
++	if (!sta_mld)
++		return NULL;
++
 +	entry = ap_get_ft_ds_ml_sta(hapd, sta_mld);
 +	if (!entry)
 +		return NULL;
@@ -241,7 +244,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  static void handle_assoc(struct hostapd_data *hapd,
  			 const struct ieee80211_mgmt *mgmt, size_t len,
  			 int reassoc, int rssi)
-@@ -5357,6 +5473,11 @@ static void handle_assoc(struct hostapd_
+@@ -5361,6 +5480,11 @@ static void handle_assoc(struct hostapd_
  
  	sta = ap_get_sta(hapd, mgmt->sa);
  #ifdef CONFIG_IEEE80211R_AP
@@ -266,7 +269,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -69,6 +69,26 @@ int ap_for_each_sta(struct hostapd_data
+@@ -69,6 +69,29 @@ int ap_for_each_sta(struct hostapd_data
  }
  
  
@@ -280,6 +283,9 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +			   __func__, __LINE__);
 +		return NULL;
 +	}
++
++	if (!sta)
++		return NULL;
 +
 +	dl_list_for_each(item, &hapd->mld->ft_ds_ml_stas,
 +			  struct hostapd_ft_over_ds_ml_sta_entry, list) {
@@ -364,7 +370,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  }
  
  
-@@ -4209,8 +4210,39 @@ static int wpa_ft_rrb_rx_request(struct
+@@ -4216,8 +4217,39 @@ static int wpa_ft_rrb_rx_request(struct
  	u8 *resp_ies;
  	size_t resp_ies_len;
  	int res;
@@ -510,7 +516,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		return NULL;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -4503,7 +4503,7 @@ struct wpa_driver_ops {
+@@ -4505,7 +4505,7 @@ struct wpa_driver_ops {
  	 * This function adds the station node in the driver, when
  	 * the station gets added by FT-over-DS.
  	 */
