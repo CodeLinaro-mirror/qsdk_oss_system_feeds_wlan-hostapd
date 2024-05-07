@@ -40,7 +40,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2934,12 +2934,176 @@ void ieee802_11_set_beacon_per_bss_only(
+@@ -2931,12 +2931,177 @@ void ieee802_11_set_beacon_per_bss_only(
  }
  
  
@@ -177,6 +177,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +			wpa_printf(MSG_ERROR,
 +				   "MLD: Could not generate link STA profile for link %d",
 +				   link_id);
++			os_free(link_data);
 +			continue;
 +		}
 +
@@ -217,7 +218,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  	ret = __ieee802_11_set_beacon(hapd);
  	if (ret != 0)
-@@ -2980,6 +3144,15 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -2977,6 +3142,15 @@ int ieee802_11_set_beacon(struct hostapd
  		}
  	}
  
@@ -235,7 +236,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -651,9 +651,19 @@ void hostapd_free_hapd_data(struct hosta
+@@ -758,9 +758,19 @@ void hostapd_free_hapd_data(struct hosta
  static void hostapd_bss_link_deinit(struct hostapd_data *hapd)
  {
  #ifdef CONFIG_IEEE80211BE
@@ -257,7 +258,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -552,6 +552,10 @@ struct hostapd_data {
+@@ -551,6 +551,10 @@ struct hostapd_data {
  	struct hostapd_mld *mld;
  	struct dl_list link;
  	u8 mld_link_id;
@@ -266,8 +267,8 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	struct mld_link_info partner_links[MAX_NUM_MLD_LINKS];
 +
  	char ctrl_sock_iface[IFNAMSIZ + 1];
- #ifdef CONFIG_TESTING_OPTIONS
  	u8 eht_mld_link_removal_count;
+ 	u8 eht_mld_link_removal_inprogress;
 --- a/src/ap/beacon.h
 +++ b/src/ap/beacon.h
 @@ -36,4 +36,6 @@ const u8 * hostapd_wpa_ie(struct hostapd
