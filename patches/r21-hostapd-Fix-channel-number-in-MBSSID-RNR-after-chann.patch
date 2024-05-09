@@ -71,7 +71,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	return 0;
  
-@@ -2372,7 +2372,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2375,7 +2375,7 @@ int ieee802_11_build_ap_params(struct ho
  		}
  		complete = hapd->iconf->mbssid == MBSSID_ENABLED ||
  			(hapd->iconf->mbssid == ENHANCED_MBSSID_ENABLED &&
@@ -80,7 +80,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	}
  
  	tailpos = hostapd_eid_ext_capab(hapd, tailpos, complete);
-@@ -2424,7 +2424,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2427,7 +2427,7 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_fils_indic(hapd, tailpos, 0);
  	tailpos = hostapd_get_rsnxe(hapd, tailpos, tailend - tailpos);
  	tailpos = hostapd_eid_mbssid_config(hapd, tailpos,
@@ -89,7 +89,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  #ifdef CONFIG_IEEE80211AX
  	if (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax) {
-@@ -2649,14 +2649,14 @@ void ieee802_11_free_ap_params(struct wp
+@@ -2652,14 +2652,14 @@ void ieee802_11_free_ap_params(struct wp
  	params->head = NULL;
  	os_free(params->proberesp);
  	params->proberesp = NULL;
@@ -124,8 +124,8 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 +	beacon->mbssid.mbssid_elem_offset = NULL;
 +	os_free(beacon->mbssid.rnr_elem);
 +	beacon->mbssid.rnr_elem = NULL;
-+	os_free(beacon->mbssid.mbssid_elem_offset);
-+	beacon->mbssid.mbssid_elem_offset = NULL;
++	os_free(beacon->mbssid.rnr_elem_offset);
++	beacon->mbssid.rnr_elem_offset = NULL;
  }
  
  
