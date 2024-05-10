@@ -50,7 +50,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -4130,7 +4124,40 @@ static int __check_assoc_ies(struct host
+@@ -4130,6 +4124,36 @@ static int __check_assoc_ies(struct host
  		wpa_ie -= 2;
  		wpa_ie_len += 2;
  
@@ -85,44 +85,27 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
 +		}
 +#endif /* CONFIG_IEEE80211BE */
  		if (!sta->wpa_sm) {
-+#ifdef CONFIG_IEEE80211BE
-+			struct mld_info *info = &sta->mld_info;
-+#endif /* CONFIG_IEEE80211BE */
  			if (!link)
  				assoc_sta = hostapd_ml_get_assoc_sta(hapd, sta, &assoc_hapd);
- 			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
-@@ -4142,20 +4169,19 @@ static int __check_assoc_ies(struct host
- 					   "Failed to initialize RSN state machine");
+@@ -4143,15 +4167,14 @@ static int __check_assoc_ies(struct host
  				return WLAN_STATUS_UNSPECIFIED_FAILURE;
  			}
--		}
- 
+ 		}
+-
  #ifdef CONFIG_IEEE80211BE
--		struct mld_info *info = &sta->mld_info;
+ 		struct mld_info *info = &sta->mld_info;
 -
 -		if (info->mld_sta) {
--			wpa_printf(MSG_DEBUG,
--				   "MLD: Set ML info in RSN Authenticator");
--			wpa_auth_set_ml_info(sta->wpa_sm,
--					     hapd->mld->mld_addr,
--					     sta->mld_assoc_link_id,
--					     info);
--		}
-+			if (info->mld_sta) {
-+				wpa_printf(MSG_DEBUG,
-+					   "MLD: Set ML info in RSN Authenticator");
-+				wpa_auth_set_ml_info(sta->wpa_sm,
-+						     hapd->mld->mld_addr,
-+						     hapd->mld_link_id,
-+						     sta->mld_assoc_link_id,
-+						     info);
-+			}
- #endif /* CONFIG_IEEE80211BE */
-+		}
- 
- 		wpa_auth_set_auth_alg(sta->wpa_sm, sta->auth_alg);
- 		res = wpa_validate_wpa_ie(hapd->wpa_auth, sta->wpa_sm,
-@@ -4557,8 +4583,10 @@ static void ieee80211_ml_process_link(st
++		if (!link && info->mld_sta) {
+ 			wpa_printf(MSG_DEBUG,
+ 				   "MLD: Set ML info in RSN Authenticator");
+ 			wpa_auth_set_ml_info(sta->wpa_sm,
+ 					     hapd->mld->mld_addr,
++					     hapd->mld_link_id,
+ 					     sta->mld_assoc_link_id,
+ 					     info);
+ 		}
+@@ -4557,8 +4580,10 @@ static void ieee80211_ml_process_link(st
  		goto out;
  	}
  
@@ -134,7 +117,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	status = __check_assoc_ies(hapd, sta, NULL, 0, &elems, reassoc, true);
  	if (status != WLAN_STATUS_SUCCESS) {
  		wpa_printf(MSG_DEBUG, "MLD: link: Element check failed");
-@@ -4583,12 +4611,6 @@ static void ieee80211_ml_process_link(st
+@@ -4583,12 +4608,6 @@ static void ieee80211_ml_process_link(st
  	sta->listen_interval = origin_sta->listen_interval;
  	update_ht_state(hapd, sta);
  
@@ -147,7 +130,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	/*
  	 * Do not initialize the EAPOL state machine.
  	 * TODO: Maybe it is needed?
-@@ -4605,7 +4627,7 @@ static void ieee80211_ml_process_link(st
+@@ -4605,7 +4624,7 @@ static void ieee80211_ml_process_link(st
  	link->rsne = hostapd_wpa_ie(hapd, WLAN_EID_RSN);
  	link->rsnxe = hostapd_wpa_ie(hapd, WLAN_EID_RSNX);
  
@@ -156,7 +139,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	sta->vlan_id = origin_sta->vlan_id;
  
  	/* TODO: What other processing is required? */
-@@ -4617,10 +4639,17 @@ out:
+@@ -4617,10 +4636,17 @@ out:
  	link->status = status;
  
  	wpa_printf(MSG_DEBUG, "MLD: link: status=%u", status);
@@ -177,7 +160,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	link->resp_sta_profile_len =
  		ieee80211_ml_build_assoc_resp(hapd, link->status,
  					      link->resp_sta_profile,
-@@ -4650,6 +4679,10 @@ static void hostapd_process_assoc_ml_inf
+@@ -4650,6 +4676,10 @@ static void hostapd_process_assoc_ml_inf
  {
  #ifdef CONFIG_IEEE80211BE
  	unsigned int i, j;
@@ -188,7 +171,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  
  	if (!hostapd_is_mld_ap(hapd))
  		return;
-@@ -4663,6 +4696,46 @@ static void hostapd_process_assoc_ml_inf
+@@ -4663,6 +4693,46 @@ static void hostapd_process_assoc_ml_inf
  	sta->mld_info.links[hapd->mld_link_id].rsnxe =
  		hostapd_wpa_ie(hapd, WLAN_EID_RSNX);
  
@@ -235,7 +218,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
  		struct hostapd_iface *iface = NULL;
  		struct hostapd_data *bss = NULL;
-@@ -4736,11 +4809,13 @@ static int add_associated_sta(struct hos
+@@ -4736,11 +4806,13 @@ static int add_associated_sta(struct hos
  	bool mld_link_sta = false;
  	u16 eml_cap = 0;
  	u16 mld_cap = 0;
@@ -249,7 +232,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  		mld_link_sta = sta->mld_assoc_link_id != mld_link_id;
  		mld_link_addr = sta->mld_info.links[mld_link_id].peer_addr;
  
-@@ -4786,7 +4861,7 @@ static int add_associated_sta(struct hos
+@@ -4786,7 +4858,7 @@ static int add_associated_sta(struct hos
  		   wpa_auth_sta_ft_tk_already_set(sta->wpa_sm),
  		   wpa_auth_sta_fils_tk_already_set(sta->wpa_sm));
  
@@ -258,7 +241,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	    (!(sta->flags & WLAN_STA_AUTHORIZED) ||
  	     (reassoc && sta->ft_over_ds && sta->auth_alg == WLAN_AUTH_FT) ||
  	     (!wpa_auth_sta_ft_tk_already_set(sta->wpa_sm) &&
-@@ -4850,7 +4925,7 @@ static int add_associated_sta(struct hos
+@@ -4850,7 +4922,7 @@ static int add_associated_sta(struct hos
  			       "Could not %s STA to kernel driver",
  			       set ? "set" : "add");
  
@@ -267,7 +250,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
-@@ -6559,6 +6634,7 @@ static void ieee80211_ml_link_sta_assoc_
+@@ -6562,6 +6634,7 @@ static void ieee80211_ml_link_sta_assoc_
  		ap_sta_set_authorized(hapd, sta, 1);
  
  	hostapd_set_sta_flags(hapd, sta);
