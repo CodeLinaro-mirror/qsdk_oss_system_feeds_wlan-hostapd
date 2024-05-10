@@ -976,7 +976,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +			return WLAN_STATUS_UNSPECIFIED_FAILURE;
 +		}
 +		for (pos = 0, link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
-+			struct mld_link *link_info = &mld_info->links[link_id];
++			struct mld_link_info *link_info = &mld_info->links[link_id];
 +
 +			if (!link_info->valid)
 +				continue;
