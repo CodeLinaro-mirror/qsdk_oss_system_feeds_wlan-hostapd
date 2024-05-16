@@ -46,7 +46,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
 
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -41,6 +41,8 @@ u32 hostapd_sta_flags_to_drv(u32 flags)
+@@ -42,6 +42,8 @@ u32 hostapd_sta_flags_to_drv(u32 flags)
  		res |= WPA_STA_AUTHENTICATED;
  	if (flags & WLAN_STA_ASSOC)
  		res |= WPA_STA_ASSOCIATED;
@@ -79,7 +79,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  /**
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4680,7 +4680,7 @@ static void hostapd_process_assoc_ml_inf
+@@ -4685,7 +4685,7 @@ static void hostapd_process_assoc_ml_inf
  	u16 eml_cap = 0;
  	u16 mld_cap = 0;
  
@@ -260,7 +260,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
  			    struct wpa_state_machine *sm)
  {
-@@ -4514,7 +4512,7 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
+@@ -4516,7 +4514,7 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
  				  2 + sm->assoc_resp_ftie[1]);
  			res = 2 + sm->assoc_resp_ftie[1];
  		} else {
@@ -269,7 +269,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  					     sm->xxkey_len,
  					     conf->r0_key_holder,
  					     conf->r0_key_holder_len,
-@@ -6508,7 +6506,7 @@ int wpa_auth_write_fte(struct wpa_authen
+@@ -6512,7 +6510,7 @@ int wpa_auth_write_fte(struct wpa_authen
  {
  	struct wpa_auth_config *conf = &wpa_auth->conf;
  
@@ -278,7 +278,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  			      conf->r0_key_holder, conf->r0_key_holder_len,
  			      NULL, NULL, buf, len, NULL, 0, 0);
  }
-@@ -6724,7 +6722,7 @@ int wpa_auth_resend_m3(struct wpa_state_
+@@ -6728,7 +6726,7 @@ int wpa_auth_resend_m3(struct wpa_state_
  				  2 + sm->assoc_resp_ftie[1]);
  			res = 2 + sm->assoc_resp_ftie[1];
  		} else {
@@ -586,12 +586,14 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  
  	wpa_printf(MSG_DEBUG, "FT: RRB authentication response: STA=" MACSTR
  		   " CurrentAP=" MACSTR " status=%u (%s)",
-@@ -4296,7 +4324,17 @@ static int wpa_ft_send_rrb_auth_resp(str
+@@ -4296,9 +4324,19 @@ static int wpa_ft_send_rrb_auth_resp(str
  	/*
  	 * data: Category[1] Action[1] STA_Address[6] Target_AP_Address[6]
  	 * Status_Code[2] FT Request action frame body[variable]
 +	 * Basic MLIE
  	 */
+ 	rlen = 2 + 2 * ETH_ALEN + 2 + resp_ies_len;
+ 
 +#ifdef CONFIG_IEEE80211BE
 +	if (is_mld) {
 +		ml_resp = hostapd_ml_auth_resp(hapd);
@@ -601,9 +603,9 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
 +	}
 +#endif
 +
- 	rlen = 2 + 2 * ETH_ALEN + 2 + resp_ies_len;
- 
  	frame = os_malloc(sizeof(*frame) + rlen);
+ 	if (frame == NULL)
+ 		return -1;
 @@ -4306,6 +4344,7 @@ static int wpa_ft_send_rrb_auth_resp(str
  	frame->packet_type = FT_PACKET_RESPONSE;
  	frame->action_length = host_to_le16(rlen);
