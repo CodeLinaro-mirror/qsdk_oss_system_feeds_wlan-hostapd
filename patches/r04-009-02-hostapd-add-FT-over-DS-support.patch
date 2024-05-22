@@ -477,7 +477,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +		/*
 +		 * Cancel the existing timer
 +		 */
-+		eloop_cancel_timeout(hostap_ft_ds_ml_sta_timeout, sta_ml_obj, NULL);
++		eloop_cancel_timeout(hostap_ft_ds_ml_sta_timeout, entry, NULL);
 +	else
 +		dl_list_add(&hapd->mld->ft_ds_ml_stas, &entry->list);
 +
@@ -485,7 +485,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +	 * Expect FT-Assoc at least 5 seconds after receiving FT-Request,
 +	 * otherwise remove from list
 +	 */
-+	eloop_register_timeout(5, 0, hostap_ft_ds_ml_sta_timeout, sta_ml_obj, NULL);
++	eloop_register_timeout(5, 0, hostap_ft_ds_ml_sta_timeout, entry, NULL);
 +	return wpa_sm;
 +}
 +
