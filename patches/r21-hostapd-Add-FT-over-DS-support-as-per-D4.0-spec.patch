@@ -697,7 +697,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  		/*
  		 * Cancel the existing timer
  		 */
- 		eloop_cancel_timeout(hostap_ft_ds_ml_sta_timeout, sta_ml_obj, NULL);
+ 		eloop_cancel_timeout(hostap_ft_ds_ml_sta_timeout, entry, NULL);
 -	else
 +	} else {
  		dl_list_add(&hapd->mld->ft_ds_ml_stas, &entry->list);
