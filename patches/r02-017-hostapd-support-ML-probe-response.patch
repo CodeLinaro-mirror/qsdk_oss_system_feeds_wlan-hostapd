@@ -296,7 +296,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 +
 +		link_id = link_bss->mld_link_id;
 +
-+		if (link_id > MAX_NUM_MLD_LINKS)
++		if (link_id >= MAX_NUM_MLD_LINKS)
 +			continue;
 +
 +		sta_profile = NULL;
