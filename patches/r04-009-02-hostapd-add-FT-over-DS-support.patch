@@ -427,18 +427,18 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +			wpa_printf(MSG_ERROR,
 +				   "ERROR!! %s MLD Mac extraction from ML-IE failure\n",
 +				   __func__);
-+		} else if (os_memcmp(mld_mac, sta_addr, ETH_ALEN) != 0) {
-+			wpa_printf(MSG_ERROR,
-+				   "ERROR!! %s MIMSATCH between sta_addr in FT-REQUEST fixed field and in the ML-IE "MACSTR" "MACSTR"\n",
-+				   __func__, MAC2STR(mld_mac), MAC2STR(sta_addr));
-+			return -1;
++		} else {
++			if (os_memcmp(mld_mac, sta_addr, ETH_ALEN) != 0) {
++				wpa_printf(MSG_ERROR,
++					   "ERROR!! %s MIMSATCH between sta_addr in FT-REQUEST fixed field and in the ML-IE "MACSTR" "MACSTR"\n",
++					   __func__, MAC2STR(mld_mac), MAC2STR(sta_addr));
++				return -1;
++			}
++			wpa_printf(MSG_MSGDUMP,
++				   "FT over DS: Received STA "MACSTR" "MACSTR"\n",
++				   MAC2STR(mld_mac), MAC2STR(sta_addr));
++			is_ml = true;
 +		}
-+		wpa_printf(MSG_MSGDUMP,
-+			   "FT over DS: Received STA "MACSTR" "MACSTR"\n",
-+			   MAC2STR(mld_mac), MAC2STR(sta_addr));
-+		is_ml = true;
-+	} else {
-+		is_ml = false;
 +	}
 +
 +	sm = wpa_ft_add_sta(wpa_auth, sta_addr, is_ml);
