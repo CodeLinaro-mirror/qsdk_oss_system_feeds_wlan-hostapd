@@ -246,6 +246,27 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  		if (sm->assoc_resp_ftie &&
  		    kde + kde_len - pos >= 2 + sm->assoc_resp_ftie[1]) {
+@@ -6912,4 +6941,20 @@ void wpa_auth_set_ml_info(struct wpa_sta
+ 		}
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
++}
++
++void wpa_auth_reset_ml_link_info(struct wpa_state_machine *sm, u8 mld_assoc_link_id) {
++#ifdef CONFIG_IEEE80211BE
++	struct mld_link *link;
++	u8 link_id;
++
++	for_each_sm_auth(sm, link_id) {
++		if (link_id != mld_assoc_link_id) {
++			link = &sm->mld_links[link_id];
++			wpa_group_put(link->wpa_auth, link->wpa_auth->group);
++			link->wpa_auth = NULL;
++			link->valid = false;
++		}
++	}
++#endif /* CONFIG_IEEE80211BE */
+ }
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
 @@ -818,6 +818,7 @@ int wpa_write_ftie(struct wpa_auth_confi
@@ -990,7 +1011,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (sm == NULL)
  		return WLAN_STATUS_UNSPECIFIED_FAILURE;
-@@ -3607,23 +3992,58 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -3607,23 +3992,66 @@ int wpa_ft_validate_reassoc(struct wpa_s
  		kck = sm->PTK.kck;
  		kck_len = sm->PTK.kck_len;
  	}
@@ -999,9 +1020,17 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	is_mld = sm->mld_assoc_link_id >= 0 ? true : false;
 +
 +	if (is_mld && mld_info) {
-+		int pos, link_id;
++		int pos, link_id, num_links = 0;
 +
-+		assoc_link_data = os_zalloc((sm->n_mld_affiliated_links + 1) * sizeof(struct link_data));
++		for (pos = 0, link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
++			struct mld_link_info *link_info = &mld_info->links[link_id];
++
++			if (!link_info->valid)
++				continue;
++			num_links++;
++		}
++
++		assoc_link_data = os_zalloc(num_links * sizeof(struct link_data));
 +		if (!assoc_link_data) {
 +			wpa_printf(MSG_DEBUG, "MLO FT: " MACSTR " failed"
 +				   "to allocate memory for MIC elements",
@@ -1294,7 +1323,31 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  #ifdef CONFIG_NO_RC4
  	if (auth_alg == WLAN_AUTH_SHARED_KEY) {
-@@ -4032,9 +4032,6 @@ static int __check_assoc_ies(struct host
+@@ -3204,9 +3204,22 @@ static void handle_auth(struct hostapd_d
+ #ifdef CONFIG_IEEE80211R_AP
+ 	case WLAN_AUTH_FT:
+ 		sta->auth_alg = WLAN_AUTH_FT;
+-		if (sta->wpa_sm == NULL)
++		if (sta->wpa_sm == NULL) {
+ 			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
+ 							sta->addr, NULL);
++#ifdef CONFIG_IEEE80211BE
++			struct mld_info *sta_mld_info = &sta->mld_info;
++			if (sta_mld_info->mld_sta) {
++				wpa_printf(MSG_DEBUG,
++					   "MLD: Set ML info in RSN Authenticator");
++				wpa_auth_set_ml_info(sta->wpa_sm,
++						     hapd->mld->mld_addr,
++						     hapd->mld_link_id,
++						     sta->mld_assoc_link_id,
++						     sta_mld_info);
++			}
++#endif /* CONFIG_IEEE80211BE */
++		}
+ 		if (sta->wpa_sm == NULL) {
+ 			wpa_printf(MSG_DEBUG, "FT: Failed to initialize WPA "
+ 				   "state machine");
+@@ -4032,9 +4045,6 @@ static int __check_assoc_ies(struct host
  		wpa_ie_len += 2;
  
  		if (!sta->wpa_sm) {
@@ -1304,7 +1357,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			if (!link)
  				assoc_sta = hostapd_ml_get_assoc_sta(hapd, sta, &assoc_hapd);
  			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
-@@ -4046,18 +4043,20 @@ static int __check_assoc_ies(struct host
+@@ -4046,18 +4056,20 @@ static int __check_assoc_ies(struct host
  					   "Failed to initialize RSN state machine");
  				return WLAN_STATUS_UNSPECIFIED_FAILURE;
  			}
@@ -1334,22 +1387,46 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  		wpa_auth_set_auth_alg(sta->wpa_sm, sta->auth_alg);
  		res = wpa_validate_wpa_ie(hapd->wpa_auth, sta->wpa_sm,
-@@ -4089,8 +4088,13 @@ static int __check_assoc_ies(struct host
+@@ -4089,8 +4101,13 @@ static int __check_assoc_ies(struct host
  				return WLAN_STATUS_UNSPECIFIED_FAILURE;
  			}
  
 +#ifdef CONFIG_IEEE80211BE
- 			resp = wpa_ft_validate_reassoc(sta->wpa_sm, ies,
--						       ies_len);
++			resp = wpa_ft_validate_reassoc(sta->wpa_sm, ies,
 +						       ies_len, &sta->mld_info);
 +#else /* CONFIG_IEEE80211BE */
-+			resp = wpa_ft_validate_reassoc(sta->wpa_sm, ies,
+ 			resp = wpa_ft_validate_reassoc(sta->wpa_sm, ies,
+-						       ies_len);
 +						       ies_len, NULL);
 +#endif /* CONFIG_IEEE80211BE */
  			if (resp != WLAN_STATUS_SUCCESS)
  				return resp;
  		}
-@@ -4350,10 +4354,15 @@ static int check_assoc_ies(struct hostap
+@@ -4098,6 +4115,23 @@ static int __check_assoc_ies(struct host
+ 
+ 		if (link)
+ 			goto skip_sae_owe;
++#ifdef CONFIG_IEEE80211BE
++		/*
++		 * For FT, since the MIC has been validated, reset the affiliated
++		 * links' auth references of previous association.
++		 */
++		if (info->mld_sta && sta->auth_alg == WLAN_AUTH_FT) {
++			sta->wpa_sm->n_mld_affiliated_links = 0;
++			wpa_auth_reset_ml_link_info(sta->wpa_sm, sta->mld_assoc_link_id);
++			wpa_printf(MSG_DEBUG,
++				   "MLD: Set ML info in RSN Authenticator");
++			wpa_auth_set_ml_info(sta->wpa_sm,
++					     hapd->mld->mld_addr,
++					     hapd->mld_link_id,
++					     sta->mld_assoc_link_id,
++					     info);
++		}
++#endif /* CONFIG_IEEE80211BE */
+ #ifdef CONFIG_SAE
+ 		if (wpa_auth_uses_sae(sta->wpa_sm) && sta->sae &&
+ 		    sta->sae->state == SAE_ACCEPTED)
+@@ -4350,10 +4384,15 @@ static int check_assoc_ies(struct hostap
  #ifdef CONFIG_IEEE80211BE
  
  static size_t ieee80211_ml_build_assoc_resp(struct hostapd_data *hapd,
@@ -1365,7 +1442,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	/* Capability Info */
  	WPA_PUT_LE16(p, hostapd_own_capab_info(hapd));
-@@ -4373,6 +4382,22 @@ static size_t ieee80211_ml_build_assoc_r
+@@ -4373,6 +4412,22 @@ static size_t ieee80211_ml_build_assoc_r
  	p = hostapd_eid_ht_capabilities(hapd, p);
  	p = hostapd_eid_ht_operation(hapd, p);
  
@@ -1388,7 +1465,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	if (hapd->iconf->ieee80211ac && !hapd->conf->disable_11ac) {
  		p = hostapd_eid_vht_capabilities(hapd, p, 0);
  		p = hostapd_eid_vht_operation(hapd, p);
-@@ -4407,6 +4432,7 @@ static size_t ieee80211_ml_build_assoc_r
+@@ -4407,6 +4462,7 @@ static size_t ieee80211_ml_build_assoc_r
  
  
  static void ieee80211_ml_process_link(struct hostapd_data *hapd,
@@ -1396,7 +1473,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  				      struct sta_info *origin_sta,
  				      struct mld_link_info *link,
  				      const u8 *ies, size_t ies_len,
-@@ -4518,7 +4544,7 @@ out:
+@@ -4518,7 +4574,7 @@ out:
  
  	/* ToDO if link is not accepted remove its data from ml info of assoc sta? */
  	link->resp_sta_profile_len =
@@ -1405,7 +1482,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  					      link->resp_sta_profile,
  					      sizeof(link->resp_sta_profile));
  }
-@@ -4575,7 +4601,7 @@ static void hostapd_process_assoc_ml_inf
+@@ -4575,7 +4631,7 @@ static void hostapd_process_assoc_ml_inf
  			if (bss->mld_link_id != i)
  				continue;
  
@@ -1414,7 +1491,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  						  ies, ies_len, reassoc);
  			link_bss_found = true;
  			break;
-@@ -4588,7 +4614,7 @@ static void hostapd_process_assoc_ml_inf
+@@ -4588,7 +4644,7 @@ static void hostapd_process_assoc_ml_inf
  			link->status = WLAN_STATUS_UNSPECIFIED_FAILURE;
  			link->resp_sta_profile_len =
  				ieee80211_ml_build_assoc_resp(
@@ -1445,3 +1522,11 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  int wpa_ft_action_rx(struct wpa_state_machine *sm, const u8 *data, size_t len);
  int wpa_ft_rrb_rx(struct wpa_authenticator *wpa_auth, const u8 *src_addr,
  		  const u8 *data, size_t data_len);
+@@ -640,6 +640,7 @@ void wpa_auth_sta_radius_psk_resp(struct
+ 
+ void wpa_auth_set_ml_info(struct wpa_state_machine *sm, const u8 *mld_addr,
+ 			  u8 mld_assoc_link_id, struct mld_info *info);
++void wpa_auth_reset_ml_link_info(struct wpa_state_machine *sm, u8 mld_assoc_link_id);
+ void wpa_auth_ml_get_rsn_info(struct wpa_authenticator *a,
+ 			      struct wpa_auth_ml_link_rsn_info *info);
+ void wpa_auth_ml_get_key_info(struct wpa_authenticator *a,
