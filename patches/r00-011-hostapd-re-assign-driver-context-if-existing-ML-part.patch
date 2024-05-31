@@ -63,7 +63,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		hapd->interface_added = 0;
  		if (hostapd_if_remove(hapd, WPA_IF_AP_BSS, hapd->conf->iface)) {
  			wpa_printf(MSG_WARNING,
-@@ -3233,25 +3236,26 @@ static void hostapd_cleanup_driver(const
+@@ -3235,25 +3238,26 @@ static void hostapd_cleanup_driver(const
  	ap_mld = !!iface->bss[0]->conf->mld_ap;
  #endif /* CONFIG_IEEE80211BE */
  
@@ -312,7 +312,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +				      params->ifname, addr, ctx, drv_priv,
 +				      force_ifname, if_addr,
 +				      params->num_bridge && params->bridge[0] ? params->bridge[0] : NULL,
-+				      0, 1)) {
++				      1, 1)) {
 +		wpa_printf(MSG_DEBUG, "nl80211: Failed to add BSS. Expect issues!");
 +		goto free_all;
 +	}
