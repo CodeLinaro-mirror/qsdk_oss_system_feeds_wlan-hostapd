@@ -105,7 +105,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  #ifdef CONFIG_FILS
  static struct wpabuf *
-@@ -3069,6 +3070,17 @@ static void handle_auth(struct hostapd_d
+@@ -3072,6 +3073,17 @@ static void handle_auth(struct hostapd_d
  		return;
  	}
  #endif /* CONFIG_SAE */
@@ -123,7 +123,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  	sta = ap_get_sta(hapd, sa);
  	if (sta) {
-@@ -3307,6 +3319,23 @@ static void handle_auth(struct hostapd_d
+@@ -3322,6 +3334,23 @@ static void handle_auth(struct hostapd_d
  }
  
  
@@ -147,7 +147,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  static u8 hostapd_max_bssid_indicator(struct hostapd_data *hapd)
  {
  	size_t num_bss_nontx;
-@@ -5287,6 +5316,96 @@ void fils_hlp_timeout(void *eloop_ctx, v
+@@ -5336,6 +5365,106 @@ void fils_hlp_timeout(void *eloop_ctx, v
  #endif /* CONFIG_FILS */
  
  
@@ -211,6 +211,16 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +		return NULL;
 +
 +	wpa_sm = entry->wpa_sm;
++
++	if (hapd->mld_link_id != wpa_sm->wpa_auth->link_id) {
++		wpa_printf(MSG_DEBUG, "FT: assoc link id different from"
++			   " the MLD id hence changing wpa_auth of sm to assoc link");
++		wpa_group_put_sm(wpa_sm);
++		wpa_sm->wpa_auth = hapd->wpa_auth;
++		wpa_sm->group = hapd->wpa_auth->group;
++		wpa_group_get_sm(wpa_sm);
++	}
++
 +	eloop_cancel_timeout(hostap_ft_ds_ml_sta_timeout, entry, NULL);
 +	dl_list_del(&entry->list);
 +	os_free(entry);
@@ -244,7 +254,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  static void handle_assoc(struct hostapd_data *hapd,
  			 const struct ieee80211_mgmt *mgmt, size_t len,
  			 int reassoc, int rssi)
-@@ -5360,6 +5479,11 @@ static void handle_assoc(struct hostapd_
+@@ -5409,6 +5538,11 @@ static void handle_assoc(struct hostapd_
  
  	sta = ap_get_sta(hapd, mgmt->sa);
  #ifdef CONFIG_IEEE80211R_AP
@@ -333,6 +343,22 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  struct wpa_state_machine *
  wpa_auth_sta_init(struct wpa_authenticator *wpa_auth, const u8 *addr,
  		  const u8 *p2p_dev_addr)
+@@ -6159,6 +6165,15 @@ static void wpa_group_put(struct wpa_aut
+ 	wpa_group_free(wpa_auth, group);
+ }
+ 
++void wpa_group_get_sm(struct wpa_state_machine *sm)
++{
++	wpa_group_get(sm->wpa_auth, sm->group);
++}
++
++void wpa_group_put_sm(struct wpa_state_machine *sm)
++{
++	wpa_group_put(sm->wpa_auth, sm->group);
++}
+ 
+ /*
+  * Add a group that has its references counter set to zero. Caller needs to
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
 @@ -365,7 +365,8 @@ struct wpa_auth_callbacks {
@@ -353,6 +379,14 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
  			    struct wpa_state_machine *sm);
  void wpa_auth_sta_no_wpa(struct wpa_state_machine *sm);
+@@ -647,5 +649,7 @@ void wpa_auth_ml_get_rsn_info(struct wpa
+ void wpa_auth_ml_get_key_info(struct wpa_authenticator *a,
+ 			      struct wpa_auth_ml_link_key_info *info,
+ 			      bool mgmt_frame_prot, bool beacon_prot);
++void wpa_group_get_sm(struct wpa_state_machine *sm);
++void wpa_group_put_sm(struct wpa_state_machine *sm);
+ 
+ #endif /* WPA_AUTH_H */
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
 @@ -674,11 +674,12 @@ static const u8 * wpa_ft_get_psk(struct
@@ -370,7 +404,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  }
  
  
-@@ -4216,8 +4217,39 @@ static int wpa_ft_rrb_rx_request(struct
+@@ -4243,8 +4244,39 @@ static int wpa_ft_rrb_rx_request(struct
  	u8 *resp_ies;
  	size_t resp_ies_len;
  	int res;

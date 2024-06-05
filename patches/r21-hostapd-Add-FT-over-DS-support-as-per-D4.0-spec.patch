@@ -97,7 +97,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  
  	if (!hapd->mld)
  		return NULL;
-@@ -5449,34 +5449,48 @@ get_sta_from_ft_ds_list(struct hostapd_d
+@@ -5449,44 +5449,58 @@ get_sta_from_ft_ds_list(struct hostapd_d
  		return NULL;
  
  	entry = ap_get_ft_ds_ml_sta(hapd, sta_mld);
@@ -107,8 +107,18 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
 +			   MAC2STR(sta_mld));
  		return NULL;
 +	}
- 
+
  	wpa_sm = entry->wpa_sm;
+
+	if (hapd->mld_link_id != wpa_sm->wpa_auth->link_id) {
+		wpa_printf(MSG_DEBUG, "FT: assoc link id different from"
+			   " the MLD id hence changing wpa_auth of sm to assoc link");
+		wpa_group_put_sm(wpa_sm);
+		wpa_sm->wpa_auth = hapd->wpa_auth;
+		wpa_sm->group = hapd->wpa_auth->group;
+		wpa_group_get_sm(wpa_sm);
+	}
+ 
  	eloop_cancel_timeout(hostap_ft_ds_ml_sta_timeout, entry, NULL);
 -	dl_list_del(&entry->list);
 -	os_free(entry);
