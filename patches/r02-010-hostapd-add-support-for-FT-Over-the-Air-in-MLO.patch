@@ -885,7 +885,28 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			    out_pmk_r1_name,
  			    sm->pairwise, r0->vlan, expires_in, session_timeout,
  			    r0->identity, r0->identity_len,
-@@ -3227,7 +3591,7 @@ static int wpa_ft_process_auth_req(struc
+@@ -3220,6 +3584,20 @@ static int wpa_ft_process_auth_req(struc
+ 	if (wpa_ft_set_key_mgmt(sm, &parse) < 0)
+ 		return WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 
++	if (parse.rsnxe && parse.rsnxe_len) {
++		if (!sm->rsnxe || sm->rsnxe_len < (parse.rsnxe_len + 2)) {
++			if (sm->rsnxe)
++				os_free(sm->rsnxe);
++			sm->rsnxe = os_malloc(parse.rsnxe_len + 2);
++			if (!sm->rsnxe)
++				return WLAN_STATUS_UNSPECIFIED_FAILURE;
++		}
++		sm->rsnxe[0] = WLAN_EID_RSNX;
++		sm->rsnxe[1] = parse.rsnxe_len;
++		os_memcpy(sm->rsnxe + 2, parse.rsnxe, parse.rsnxe_len);
++		sm->rsnxe_len = parse.rsnxe_len + 2;
++	}
++
+ 	wpa_hexdump(MSG_DEBUG, "FT: Requested PMKR0Name",
+ 		    parse.rsn_pmkid, WPA_PMK_NAME_LEN);
+ 
+@@ -3227,7 +3605,7 @@ static int wpa_ft_process_auth_req(struc
  	    wpa_key_mgmt_ft_psk(sm->wpa_key_mgmt)) {
  		if (wpa_derive_pmk_r1_name(parse.rsn_pmkid,
  					   sm->wpa_auth->conf.r1_key_holder,
@@ -894,7 +915,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			return WLAN_STATUS_UNSPECIFIED_FAILURE;
  		if (wpa_ft_psk_pmk_r1(sm, pmk_r1_name, pmk_r1, &pairwise,
  				      &vlan, &identity, &identity_len,
-@@ -3252,10 +3616,10 @@ static int wpa_ft_process_auth_req(struc
+@@ -3252,10 +3630,10 @@ static int wpa_ft_process_auth_req(struc
  			continue;
  		if (wpa_derive_pmk_r1_name(parse.rsn_pmkid,
  					   sm->wpa_auth->conf.r1_key_holder,
@@ -907,7 +928,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  					pmk_r1, &pmk_r1_len, &pairwise, &vlan,
  					&identity, &identity_len, &radius_cui,
  					&radius_cui_len,
-@@ -3349,7 +3713,7 @@ pmk_r1_derived:
+@@ -3349,7 +3727,7 @@ pmk_r1_derived:
  		kdk_len = 0;
  
  	if (wpa_pmk_r1_to_ptk(pmk_r1, pmk_r1_len, sm->SNonce, sm->ANonce,
@@ -916,7 +937,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			      &sm->PTK, ptk_name, parse.key_mgmt,
  			      pairwise, kdk_len) < 0)
  		return WLAN_STATUS_UNSPECIFIED_FAILURE;
-@@ -3368,18 +3732,18 @@ pmk_r1_derived:
+@@ -3368,18 +3746,18 @@ pmk_r1_derived:
  	sm->tk_already_set = false;
  	wpa_ft_install_ptk(sm, 0);
  
@@ -939,7 +960,19 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	buflen = 2 + sizeof(struct rsn_mdie) + 2 + sizeof(struct rsn_ftie) +
  		2 + FT_R1KH_ID_LEN + 200;
-@@ -3463,7 +3827,7 @@ void wpa_ft_process_auth(struct wpa_stat
+@@ -3395,6 +3773,11 @@ pmk_r1_derived:
+ 		goto fail;
+ 	pos += ret;
+ 
++	ret = wpa_write_rsnxe(conf, pos, end - pos);
++	if (ret < 0)
++		goto fail;
++	pos += ret;
++
+ 	ret = wpa_write_mdie(conf, pos, end - pos);
+ 	if (ret < 0)
+ 		goto fail;
+@@ -3463,7 +3846,7 @@ void wpa_ft_process_auth(struct wpa_stat
  
  
  int wpa_ft_validate_reassoc(struct wpa_state_machine *sm, const u8 *ies,
@@ -948,7 +981,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  {
  	struct wpa_ft_ies parse;
  	struct rsn_mdie *mdie;
-@@ -3473,6 +3837,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -3473,6 +3856,8 @@ int wpa_ft_validate_reassoc(struct wpa_s
  	const u8 *kck;
  	size_t kck_len;
  	struct wpa_auth_config *conf;
@@ -957,7 +990,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  	if (sm == NULL)
  		return WLAN_STATUS_UNSPECIFIED_FAILURE;
-@@ -3607,23 +3973,58 @@ int wpa_ft_validate_reassoc(struct wpa_s
+@@ -3607,23 +3992,58 @@ int wpa_ft_validate_reassoc(struct wpa_s
  		kck = sm->PTK.kck;
  		kck_len = sm->PTK.kck_len;
  	}
