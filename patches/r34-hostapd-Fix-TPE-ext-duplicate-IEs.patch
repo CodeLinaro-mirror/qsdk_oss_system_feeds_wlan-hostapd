@@ -15,12 +15,10 @@ Signed-off-by: Banka Sai Krishna <quic_banksaik@quicinc.com>
  src/ap/ieee802_11.c | 22 ++++++++++++----------
  1 file changed, 12 insertions(+), 10 deletions(-)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index b9f2274..7642998 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7673,16 +7673,6 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
- 		if (!is_different_psd && (psd_pwr != chan_data.channels[i].psd_values[pwr_mode]))
+@@ -7738,16 +7738,6 @@ static int get_psd_values(struct hostapd
+ 		if (!is_different_psd && (psd_pwr != chan_data.channels[i].psd_values[client_mode]))
  			is_different_psd = 1;
  	}
 -
@@ -36,11 +34,11 @@ index b9f2274..7642998 100644
  #ifdef CONFIG_IEEE80211BE
  	/* For 11be the TPE extension parameter added if the bw is 320MHZ or if
  	 * any channel is punctured in 320MHZ/160MHZ/80MHZ
-@@ -7706,8 +7696,20 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -7771,8 +7761,20 @@ static int get_psd_values(struct hostapd
  		}
  		tx_pwr_ext_array++;
  		*tx_pwr_ext_count += 1;
-+		if (!is_different_psd && (psd_pwr != chan_data.channels[i].psd_values[pwr_mode]))
++		if (!is_different_psd && (psd_pwr != chan_data.channels[i].psd_values[client_mode]))
 +			is_different_psd = 1;
  	}
  #endif
@@ -57,6 +55,3 @@ index b9f2274..7642998 100644
  	return 0;
  }
  
--- 
-2.34.1
-
