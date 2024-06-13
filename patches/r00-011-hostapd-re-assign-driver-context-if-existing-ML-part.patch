@@ -374,7 +374,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +int wpa_driver_set_phyname(struct wpa_driver_nl80211_data *drv)
 +{
 +	struct nl_msg *msg;
-+	u32 feat, nl_flags;
++	u32 feat, nl_flags = 0;
 +
 +	feat = get_nl80211_protocol_features(drv);
 +	if (feat & NL80211_PROTOCOL_FEATURE_SPLIT_WIPHY_DUMP)
