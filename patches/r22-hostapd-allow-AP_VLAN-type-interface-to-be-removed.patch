@@ -17,12 +17,12 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
 
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -629,7 +629,7 @@ int hostapd_if_remove(struct hostapd_dat
+@@ -674,7 +674,7 @@ int hostapd_if_remove(struct hostapd_dat
  		return -1;
  
  #ifdef CONFIG_IEEE80211BE
 -	if (hapd->conf->mld_ap)
 +	if (hapd->conf->mld_ap && type == WPA_IF_AP_BSS)
- 		return hostapd_if_link_remove(hapd, type, ifname, hapd->mld_link_id);
+ 		return hostapd_if_link_remove(hapd, type, ifname,
+ 					      hapd->mld_link_id);
  #endif /* CONFIG_IEEE80211BE */
- 

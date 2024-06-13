@@ -18,8 +18,8 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
 
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1213,8 +1213,13 @@ int hostapd_select_hw_mode(struct hostap
- 			    !hw_mode_get_channel(mode, iface->freq, &chan))
+@@ -1386,8 +1386,13 @@ int hostapd_select_hw_mode(struct hostap
+ 			if (skip_mode(iface, mode))
  				continue;
  
 -			iface->current_mode = mode;

@@ -20,7 +20,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
 
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -768,6 +768,112 @@ static void acs_update_puncturing_bitmap
+@@ -816,6 +816,112 @@ acs_usable_bw320_chan(struct hostapd_ifa
  
  
  static void
@@ -133,7 +133,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  acs_find_ideal_chan_mode(struct hostapd_iface *iface,
  			 struct hostapd_hw_modes *mode,
  			 int n_chans, u32 bw,
-@@ -1056,10 +1162,18 @@ bw_selected:
+@@ -1125,10 +1231,18 @@ bw_selected:
  
  	for (i = 0; i < iface->num_hw_features; i++) {
  		mode = &iface->hw_features[i];
@@ -156,7 +156,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	}
  
  	if (ideal_chan) {
-@@ -1238,7 +1352,8 @@ static void acs_scan_complete(struct hos
+@@ -1320,7 +1434,8 @@ static void acs_scan_complete(struct hos
  	wpa_printf(MSG_DEBUG, "ACS: Using survey based algorithm (acs_num_scans=%d)",
  		   iface->conf->acs_num_scans);
  
@@ -166,21 +166,21 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	if (err) {
  		wpa_printf(MSG_ERROR, "ACS: Failed to get survey data");
  		goto fail;
-@@ -1288,6 +1403,11 @@ static int * acs_request_scan_add_freqs(
- 		if ((chan->flag & HOSTAPD_CHAN_INDOOR_ONLY) &&
+@@ -1371,6 +1486,11 @@ static int * acs_request_scan_add_freqs(
  		    iface->conf->country[2] == 0x4f)
  			continue;
-+  
+ 
 +  		if (is_6ghz_freq(chan->freq) &&
 +		     iface->conf->acs_exclude_6ghz_non_psc &&
 +		     !is_6ghz_psc_frequency(chan->freq))
 +			continue;
- 
++
  		*freq++ = chan->freq;
  	}
+ 
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -280,13 +280,15 @@ static inline void hostapd_drv_poll_clie
+@@ -285,13 +285,15 @@ static inline void hostapd_drv_poll_clie
  }
  
  static inline int hostapd_drv_get_survey(struct hostapd_data *hapd,
@@ -212,7 +212,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  		return;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -4541,6 +4541,8 @@ struct wpa_driver_ops {
+@@ -4668,6 +4668,8 @@ struct wpa_driver_ops {
  	 * @priv: Private driver interface data
  	 * @freq: If set, survey data for the specified frequency is only
  	 *	being requested. If not set, all survey data is requested.
@@ -221,7 +221,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	 * Returns: 0 on success, -1 on failure
  	 *
  	 * Use this to retrieve:
-@@ -4559,7 +4561,7 @@ struct wpa_driver_ops {
+@@ -4686,7 +4688,7 @@ struct wpa_driver_ops {
  	 * for each survey. The min_nf of the channel is updated for each
  	 * survey.
  	 */
@@ -232,7 +232,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	 * status - Get driver interface status information
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -9984,6 +9984,10 @@ static int check_survey_ok(struct nlattr
+@@ -10254,6 +10254,10 @@ static int check_survey_ok(struct nlattr
  	return freq_filter == surveyed_freq;
  }
  
@@ -243,7 +243,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
  static int survey_handler(struct nl_msg *msg, void *arg)
  {
-@@ -9991,15 +9995,19 @@ static int survey_handler(struct nl_msg
+@@ -10261,15 +10265,19 @@ static int survey_handler(struct nl_msg
  	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
  	struct nlattr *sinfo[NL80211_SURVEY_INFO_MAX + 1];
  	struct survey_results *survey_results;
@@ -264,7 +264,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
  	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
  		  genlmsg_attrlen(gnlh, 0), NULL);
-@@ -10028,6 +10036,11 @@ static int survey_handler(struct nl_msg
+@@ -10298,6 +10306,11 @@ static int survey_handler(struct nl_msg
  			     survey_results->freq_filter))
  		return NL_SKIP;
  
@@ -276,7 +276,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	if (survey_results->freq_filter &&
  	    survey_results->freq_filter != surveyed_freq) {
  		wpa_printf(MSG_EXCESSIVE, "nl80211: Ignoring survey data for freq %d MHz",
-@@ -10040,21 +10053,22 @@ static int survey_handler(struct nl_msg
+@@ -10310,21 +10323,22 @@ static int survey_handler(struct nl_msg
  	return NL_SKIP;
  }
  
@@ -305,16 +305,16 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	msg = nl80211_drv_msg(drv, NLM_F_DUMP, NL80211_CMD_GET_SURVEY);
  	if (!msg)
  		return -ENOBUFS;
-@@ -10065,7 +10079,7 @@ static int wpa_driver_nl80211_get_survey
+@@ -10335,7 +10349,7 @@ static int wpa_driver_nl80211_get_survey
  	do {
  		wpa_printf(MSG_DEBUG, "nl80211: Fetch survey data");
- 		err = send_and_recv_msgs(drv, msg, survey_handler,
--					 survey_results, NULL, NULL);
-+					 &arg, NULL, NULL);
+ 		err = send_and_recv_resp(drv, msg, survey_handler,
+-					 survey_results);
++					 arg.survey_results);
  	} while (err > 0);
  
  	if (err)
-@@ -10073,7 +10087,7 @@ static int wpa_driver_nl80211_get_survey
+@@ -10343,7 +10357,7 @@ static int wpa_driver_nl80211_get_survey
  	else
  		wpa_supplicant_event(drv->ctx, EVENT_SURVEY, &data);
  

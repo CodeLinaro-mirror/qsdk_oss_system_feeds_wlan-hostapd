@@ -29,7 +29,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -529,9 +529,9 @@ ieee802_11_build_ap_params_mbssid(struct
+@@ -532,9 +532,9 @@ ieee802_11_build_ap_params_mbssid(struct
  
  	tx_bss = hostapd_mbssid_get_tx_bss(hapd);
  	if (tx_bss->conf->mld_ap)
@@ -39,11 +39,11 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 -		params->mbssid_tx_iface_linkid = -1;
 +		params->mbssid.mbssid_tx_iface_linkid = -1;
  	len = hostapd_eid_mbssid_len(tx_bss, WLAN_FC_STYPE_BEACON, &elem_count,
- 				     NULL, 0, &rnr_len, false);
+ 				     NULL, 0, &rnr_len);
  	if (!len || (iface->conf->mbssid == ENHANCED_MBSSID_ENABLED &&
-@@ -560,18 +560,18 @@ ieee802_11_build_ap_params_mbssid(struct
+@@ -563,18 +563,18 @@ ieee802_11_build_ap_params_mbssid(struct
  				 elem_count, elem_offset, NULL, 0, rnr_elem,
- 				 &rnr_elem_count, rnr_elem_offset, rnr_len, false);
+ 				 &rnr_elem_count, rnr_elem_offset, rnr_len);
  
 -	params->mbssid_tx_iface = tx_bss->conf->iface;
 -	params->mbssid_index = hostapd_mbssid_get_bss_index(hapd);
@@ -71,7 +71,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	return 0;
  
-@@ -2375,7 +2375,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2471,7 +2471,7 @@ int ieee802_11_build_ap_params(struct ho
  		}
  		complete = hapd->iconf->mbssid == MBSSID_ENABLED ||
  			(hapd->iconf->mbssid == ENHANCED_MBSSID_ENABLED &&
@@ -80,7 +80,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	}
  
  	tailpos = hostapd_eid_ext_capab(hapd, tailpos, complete);
-@@ -2427,7 +2427,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2523,7 +2523,7 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_fils_indic(hapd, tailpos, 0);
  	tailpos = hostapd_get_rsnxe(hapd, tailpos, tailend - tailpos);
  	tailpos = hostapd_eid_mbssid_config(hapd, tailpos,
@@ -89,7 +89,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  #ifdef CONFIG_IEEE80211AX
  	if (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax) {
-@@ -2652,14 +2652,14 @@ void ieee802_11_free_ap_params(struct wp
+@@ -2792,14 +2792,14 @@ void ieee802_11_free_ap_params(struct wp
  	params->head = NULL;
  	os_free(params->proberesp);
  	params->proberesp = NULL;
@@ -114,7 +114,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	params->fd_frame_tmpl = NULL;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4236,6 +4236,14 @@ void free_beacon_data(struct beacon_data
+@@ -4282,6 +4282,14 @@ void free_beacon_data(struct beacon_data
  	beacon->proberesp_ies = NULL;
  	os_free(beacon->assocresp_ies);
  	beacon->assocresp_ies = NULL;
@@ -129,7 +129,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  }
  
  
-@@ -4243,8 +4251,11 @@ static int hostapd_build_beacon_data(str
+@@ -4289,8 +4297,11 @@ static int hostapd_build_beacon_data(str
  				     struct beacon_data *beacon)
  {
  	struct wpabuf *beacon_extra, *proberesp_extra, *assocresp_extra;
@@ -142,7 +142,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	os_memset(beacon, 0, sizeof(*beacon));
  	ret = ieee802_11_build_ap_params(hapd, &params);
-@@ -4310,6 +4321,72 @@ static int hostapd_build_beacon_data(str
+@@ -4356,6 +4367,72 @@ static int hostapd_build_beacon_data(str
  	beacon->elemid_added = params.elemid_added;
  	beacon->elemid_modified = params.elemid_modified;
  
@@ -217,7 +217,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	/* if the function fails, the caller should not free beacon data */
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1482,6 +1482,61 @@ struct unsol_bcast_probe_resp {
+@@ -1527,6 +1527,61 @@ struct unsol_bcast_probe_resp {
  	size_t unsol_bcast_probe_resp_tmpl_len;
  };
  
@@ -279,7 +279,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  struct wpa_driver_ap_params {
  	/**
  	 * head - Beacon head from IEEE 802.11 header to IEs before TIM IE
-@@ -1830,49 +1885,7 @@ struct wpa_driver_ap_params {
+@@ -1875,49 +1930,7 @@ struct wpa_driver_ap_params {
  	 * FILS Discovery frame template length
  	 */
  	size_t fd_frame_tmpl_len;
@@ -330,7 +330,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	/**
  	 * Beacon Tx mode - To configure STAGGERED or BURST mode
-@@ -1889,27 +1902,6 @@ struct wpa_driver_ap_params {
+@@ -1934,27 +1947,6 @@ struct wpa_driver_ap_params {
  	 */
  	u16 punct_bitmap;
  
@@ -356,9 +356,9 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 -	 */
 -	u8 **rnr_elem_offset;
  
- 	/* Unsolicited broadcast Probe Response data*/
+ 	/* Unsolicited broadcast Probe Response data */
  	struct unsol_bcast_probe_resp ubpr;
-@@ -2813,6 +2805,8 @@ struct beacon_data {
+@@ -2888,6 +2880,8 @@ struct beacon_data {
  	/* critical_update_flag - critical update flag*/
  	bool elemid_added;
  	bool elemid_modified;
@@ -369,7 +369,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4814,7 +4814,7 @@ static int nl80211_unsol_bcast_probe_res
+@@ -4881,7 +4881,7 @@ static int nl80211_unsol_bcast_probe_res
  
  
  static int nl80211_mbssid(struct nl_msg *msg,
@@ -378,7 +378,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  {
  	struct nlattr *config, *elems;
  	int ifidx;
-@@ -5453,8 +5453,9 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -5541,8 +5541,9 @@ static int wpa_driver_nl80211_set_ap(voi
  	    nl80211_unsol_bcast_probe_resp(bss, msg, &params->ubpr) < 0)
  		goto fail;
  
@@ -389,7 +389,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  #endif /* CONFIG_IEEE80211AX */
  
  #ifdef CONFIG_SAE
-@@ -11272,8 +11273,7 @@ static int wpa_driver_nl80211_status(voi
+@@ -11561,8 +11562,7 @@ static int wpa_driver_nl80211_status(voi
  	return pos - buf;
  }
  
@@ -399,7 +399,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  {
  	if ((settings->head &&
  	     nla_put(msg, NL80211_ATTR_BEACON_HEAD,
-@@ -11295,6 +11295,9 @@ static int set_beacon_data(struct nl_msg
+@@ -11584,6 +11584,9 @@ static int set_beacon_data(struct nl_msg
  		     settings->probe_resp_len, settings->probe_resp)))
  		return -ENOBUFS;
  
@@ -409,7 +409,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	return 0;
  }
  
-@@ -11399,7 +11402,7 @@ static int nl80211_switch_channel(void *
+@@ -11691,7 +11694,7 @@ static int nl80211_switch_channel(void *
  		goto error;
  
  	/* beacon_after params */
@@ -418,7 +418,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	if (ret)
  		goto error;
  
-@@ -11412,7 +11415,7 @@ static int nl80211_switch_channel(void *
+@@ -11704,7 +11707,7 @@ static int nl80211_switch_channel(void *
  	if (!beacon_csa)
  		goto fail;
  
@@ -427,7 +427,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	if (ret)
  		goto error;
  
-@@ -11513,7 +11516,7 @@ static int nl80211_switch_color(void *pr
+@@ -11795,7 +11798,7 @@ static int nl80211_switch_color(void *pr
  		goto error;
  
  	/* beacon_after params */
@@ -436,7 +436,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	if (ret)
  		goto error;
  
-@@ -11524,7 +11527,7 @@ static int nl80211_switch_color(void *pr
+@@ -11806,7 +11809,7 @@ static int nl80211_switch_color(void *pr
  		goto error;
  	}
  

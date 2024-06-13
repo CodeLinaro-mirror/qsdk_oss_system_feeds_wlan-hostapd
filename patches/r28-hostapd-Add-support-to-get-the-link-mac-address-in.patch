@@ -23,7 +23,7 @@ Signed-off-by: Dhanavandhana Kannan <quic_dhanavan@quicinc.com>
 
 --- a/src/ap/rrm.c
 +++ b/src/ap/rrm.c
-@@ -596,11 +596,15 @@ int hostapd_send_beacon_req(struct hosta
+@@ -644,11 +644,15 @@ int hostapd_send_beacon_req(struct hosta
  	pos = wpabuf_head(req);
  	mode = pos[6];
  
@@ -44,7 +44,7 @@ Signed-off-by: Dhanavandhana Kannan <quic_dhanavan@quicinc.com>
  	}
  
  	switch (mode) {
-@@ -661,7 +665,7 @@ int hostapd_send_beacon_req(struct hosta
+@@ -709,7 +713,7 @@ int hostapd_send_beacon_req(struct hosta
  	wpabuf_put_u8(buf, MEASURE_TYPE_BEACON); /* Measurement Type */
  	wpabuf_put_buf(buf, req);
  

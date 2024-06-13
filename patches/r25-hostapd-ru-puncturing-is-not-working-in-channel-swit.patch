@@ -17,11 +17,9 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  hostapd/ctrl_iface.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index 1fecd20..ae7b511 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2942,7 +2942,7 @@ static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
+@@ -2906,7 +2906,7 @@ static int hostapd_ctrl_iface_chan_switc
          }
  
  	ret = hostapd_ctrl_check_freq_params(&settings.freq_params,
@@ -30,6 +28,3 @@ index 1fecd20..ae7b511 100644
  	if (ret) {
  		wpa_printf(MSG_INFO,
  			   "chanswitch: invalid frequency settings provided");
--- 
-2.34.1
-

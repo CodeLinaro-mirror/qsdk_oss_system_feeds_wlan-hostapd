@@ -11,11 +11,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/drivers/driver_nl80211.c | 13 +++++++++++--
  1 file changed, 11 insertions(+), 2 deletions(-)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index afbae6b..27bd4ab 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -4957,6 +4957,16 @@ static int nl80211_put_freq_params(struct nl_msg *msg,
+@@ -5030,6 +5030,16 @@ static int nl80211_put_freq_params(struc
  		     nla_put_u32(msg, NL80211_ATTR_CENTER_FREQ2,
  				 freq->center_freq2)))
  			return -ENOBUFS;
@@ -32,7 +30,7 @@ index afbae6b..27bd4ab 100644
  	} else if (freq->ht_enabled || (freq->he_enabled && is_24ghz)) {
  		enum nl80211_channel_type ct;
  
-@@ -5452,10 +5462,11 @@ static int nl80211_set_channel(struct i802_bss *bss,
+@@ -5526,10 +5536,11 @@ static int nl80211_set_channel(struct i8
  	int ret;
  
  	wpa_printf(MSG_DEBUG,

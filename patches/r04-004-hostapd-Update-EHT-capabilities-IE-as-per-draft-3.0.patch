@@ -26,7 +26,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1012,6 +1012,9 @@ struct eht_phy_capabilities_info {
+@@ -1040,6 +1040,9 @@ struct eht_phy_capabilities_info {
  	bool non_ofdma_ulmumimo_80mhz;
  	bool non_ofdma_ulmumimo_160mhz;
  	bool non_ofdma_ulmumimo_320mhz;
@@ -38,7 +38,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  /**
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -183,6 +183,18 @@ u8 * hostapd_eid_eht_capab(struct hostap
+@@ -188,6 +188,18 @@ u8 * hostapd_eid_eht_capab(struct hostap
  		cap->phy_cap[EHT_PHYCAP_MU_CAPABILITY_IDX] &=
  					~EHT_PHYCAP_NON_OFDMA_UL_MU_MIMO_320MHZ;
  
@@ -59,7 +59,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	mcs_nss_len = ieee80211_eht_mcs_set_size(mode->mode,
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2559,6 +2559,8 @@ struct ieee80211_eht_operation {
+@@ -2676,6 +2676,8 @@ struct ieee80211_eht_operation {
  #define EHT_MACCAP_MAX_MPDU_LEN_7991		BIT(6)
  #define EHT_MACCAP_MAX_MPDU_LEN_11454		BIT(7)
  #define EHT_MACCAP_MAX_AMPDU_LEN_EXP_EXT	BIT(8)
@@ -68,7 +68,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  /* Figure 9-1002ag: EHT PHY Capabilities Information field format
   * _IDX indicates the octet index within the field */
-@@ -2585,6 +2587,12 @@ struct ieee80211_eht_operation {
+@@ -2702,6 +2704,12 @@ struct ieee80211_eht_operation {
  #define EHT_PHYCAP_MU_BEAMFORMER_MASK	(EHT_PHYCAP_MU_BEAMFORMER_80MHZ | \
  					 EHT_PHYCAP_MU_BEAMFORMER_160MHZ | \
  					 EHT_PHYCAP_MU_BEAMFORMER_320MHZ)
@@ -79,5 +79,5 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +#define EHT_PHYCAP_20MHZ_ONLY_MRU_SUPP_IDX      8
 +#define EHT_PHYCAP_20MHZ_ONLY_MRU_SUPP          ((u8) BIT(4))
  
- /* Figure 9-1002ah: Supported EHT-MCS and NSS Set field format */
- #define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY	4
+ #define EHT_PHYCAP_SCS_DESC_IDX 5
+ #define EHT_PHYCAP_SCS_DESC_BIT ((u8) BIT(1))

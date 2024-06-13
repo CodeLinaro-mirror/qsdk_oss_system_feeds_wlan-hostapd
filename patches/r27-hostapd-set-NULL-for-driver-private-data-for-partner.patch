@@ -17,22 +17,18 @@ function.
 
 Signed-off-by: Ganesh Kariganuru Mahabalesh <quic_gkarigan@quicinc.com>
 
-Index: hostapd-2023-06-22-599d00be/src/ap/hostapd.c
-===================================================================
---- hostapd-2023-06-22-599d00be.orig/src/ap/hostapd.c
-+++ hostapd-2023-06-22-599d00be/src/ap/hostapd.c
-@@ -3449,8 +3449,9 @@ static void hostapd_cleanup_driver(const
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3490,7 +3490,7 @@ static void hostapd_cleanup_driver(const
  #endif /* CONFIG_IEEE80211BE */
  
- 	if (driver->get_drv_shared_status &&
--	    !driver->get_drv_shared_status(drv_priv, iface->bss[0])) {
-+	    !driver->get_drv_shared_status(drv_priv, iface->bss[0]->mld_link_id)) {
+ 	if (driver->is_drv_shared &&
+-	    !driver->is_drv_shared(drv_priv, iface->bss[0])) {
++	    !driver->is_drv_shared(drv_priv, iface->bss[0]->mld_link_id)) {
  		driver->hapd_deinit(drv_priv);
-+		hostapd_bss_free(iface->bss[0]);
+ 		hostapd_bss_free(iface->bss[0]);
  		goto exit;
- 	}
- 
-@@ -5305,7 +5306,7 @@ void hostapd_bss_free(struct hostapd_dat
+@@ -5287,7 +5287,7 @@ void hostapd_bss_free(struct hostapd_dat
  {
  	struct hostapd_data *link_bss = NULL;
  
@@ -41,51 +37,62 @@ Index: hostapd-2023-06-22-599d00be/src/ap/hostapd.c
  		return;
  
  	hapd->drv_priv = NULL;
-Index: hostapd-2023-06-22-599d00be/src/drivers/driver_nl80211.c
-===================================================================
---- hostapd-2023-06-22-599d00be.orig/src/drivers/driver_nl80211.c
-+++ hostapd-2023-06-22-599d00be/src/drivers/driver_nl80211.c
-@@ -14196,26 +14196,36 @@ fail:
- 	return ret;
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -11134,11 +11134,12 @@ static int driver_nl80211_link_remove(vo
  }
  
--static bool wpa_driver_get_shared_status(void *priv, void *bss_ctx)
-+static bool wpa_driver_get_shared_status(void *priv, int link_id)
+ 
+-static bool nl80211_is_drv_shared(void *priv, void *bss_ctx)
++static bool nl80211_is_drv_shared(void *priv, int link_id)
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
- 	int num_bss = 0;
--
--	/* more than one links means some one is still using */
--	if (bss->n_links > 1)
--		return true;
+ 	unsigned int num_bss = 0;
 +	int i;
  
- 	/* If any other bss exist, means someone else is using since at this
- 	 * time, we would have removed all bss created by this driver and only
- 	 * this bss should be remaining if driver is not shared by anyone
- 	 */
--	for (bss = drv->first_bss; bss; bss = bss->next)
-+	for (bss = drv->first_bss; bss; bss = bss->next) {
- 		num_bss++;
-+		if (num_bss > 1)
-+			return true;
-+	}
+ 	/* If any other BSS exist, someone else is using this since at this
+ 	 * time, we would have removed all BSSs created by this driver and only
+@@ -11153,15 +11154,18 @@ static bool nl80211_is_drv_shared(void *
+ 	/* This is the only BSS present */
+ 	bss = priv;
  
--	if (num_bss > 1)
-+	bss = priv;
-+	/* more than one links means some one is still using */
-+	if (bss->n_links > 1)
- 		return true;
+-	/* If only one/no link is there no one is sharing */
+-	if (bss->valid_links <= 1)
+-		return false;
+-
+ 	/* More than one link means someone is still using. To check if
+ 	 * only 1 bit is set, power of 2 condition can be checked. */
+ 	if (!(bss->valid_links & (bss->valid_links - 1)))
+ 		return false;
  
 +	/* In some scenarios, NL80211_CMD_STOP_AP from kernel can remove link
 +	 * from the bss which would decrement n_links.
 +	 */
-+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
-+		if (bss->links[i].link_id != link_id &&
-+		    bss->links[i].link_id != NL80211_DRV_LINK_ID_NA)
++	for_each_link(bss->valid_links, i) {
++		if (i != link_id)
 +			return true;
 +	}
- 	return false;
+ 	return true;
  }
  
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -5394,7 +5394,7 @@ struct wpa_driver_ops {
+ 	/**
+ 	 * is_drv_shared - Check whether the driver interface is shared
+ 	 * @priv: Private driver interface data from init()
+-	 * @bss_ctx: BSS context for %WPA_IF_AP_BSS interfaces
++	 * @link_id: Link ID
+ 	 *
+ 	 * Checks whether the driver interface is being used by other partner
+ 	 * BSS(s) or not. This is used to decide whether the driver interface
+@@ -5402,7 +5402,7 @@ struct wpa_driver_ops {
+ 	 *
+ 	 * Returns: true if it is being used or else false.
+ 	 */
+-	bool (*is_drv_shared)(void *priv, void *bss_ctx);
++	bool (*is_drv_shared)(void *priv, int link_id);
+ 
+ 
+ 	/**

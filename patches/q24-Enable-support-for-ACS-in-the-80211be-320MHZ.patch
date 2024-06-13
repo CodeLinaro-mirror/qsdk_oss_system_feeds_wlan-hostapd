@@ -14,37 +14,22 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  src/ap/acs.c | 33 ++++++++++++++++++++++++++++++---
  1 file changed, 30 insertions(+), 3 deletions(-)
 
-diff --git a/src/ap/acs.c b/src/ap/acs.c
-index cc64514..0515df1 100644
 --- a/src/ap/acs.c
 +++ b/src/ap/acs.c
-@@ -246,6 +246,7 @@ enum bw_type {
- 	ACS_BW40,
- 	ACS_BW80,
- 	ACS_BW160,
-+	ACS_BW320,
- };
- 
- struct bw_item {
-@@ -287,10 +288,16 @@ static const struct bw_item bw_160[] = {
- 	{ 6435, 6575, 111 }, { 6595, 6735, 143 },
+@@ -289,8 +289,9 @@ static const struct bw_item bw_160[] = {
  	{ 6755, 6895, 175 }, { 6915, 7055, 207 }, { -1, -1, -1 }
  };
-+static const struct bw_item bw_320[] = {
-+	{ 5955, 6255, 31 },  { 6115, 6415, 63 }, { 6275, 6575, 95 },
-+	{ 6435, 6735, 127 }, { 6595, 6895, 159}, { 6755, 7055, 191 },
-+	{ -1, -1, -1 }
-+};
- static const struct bw_item *bw_desc[] = {
- 	[ACS_BW40] = bw_40,
- 	[ACS_BW80] = bw_80,
- 	[ACS_BW160] = bw_160,
-+	[ACS_BW320] = bw_320,
+ static const struct bw_item bw_320_1[] = {
+-	{ 5955, 6255, 31 }, { 6275, 6575, 95 }, { 6595, 6895, 159 },
+-	{ -1, -1, -1 }
++	{ 5500, 5720, 130 },  { 5955, 6255, 31 },  { 6115, 6415, 63 },
++	{ 6275, 6575, 95 }, { 6435, 6735, 127 }, { 6595, 6895, 159},
++	{ 6755, 7055, 191 }, { -1, -1, -1 }
  };
- 
- 
-@@ -995,6 +1002,18 @@ acs_find_ideal_chan_mode(struct hostapd_iface *iface,
- 			}
+ static const struct bw_item bw_320_2[] = {
+ 	{ 6115, 6415, 63 }, { 6435, 6735, 127 }, { 6755, 7055, 191 },
+@@ -871,6 +872,18 @@ acs_find_6g_psc_chan_mode(struct hostapd
+ 			continue;
  		}
  
 +		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
@@ -62,52 +47,508 @@ index cc64514..0515df1 100644
  		factor = 0;
  		if (acs_usable_chan(chan))
  			factor = chan->interference_factor;
-@@ -1172,7 +1191,8 @@ acs_find_ideal_chan(struct hostapd_iface *iface)
- 	    iface->conf->secondary_channel)
- 		n_chans = 2;
+@@ -958,256 +971,258 @@ acs_find_ideal_chan_mode(struct hostapd_
+ 			 struct hostapd_channel_data **ideal_chan,
+ 			 long double *ideal_factor)
+ {
+-	struct hostapd_channel_data *chan, *adj_chan = NULL, *best;
+-	long double factor;
+-	int i, j;
+-	int bw320_offset = 0, ideal_bw320_offset = 0;
+-	unsigned int k;
+-	int secondary_channel = 1, freq_offset;
+-
+-	if (is_24ghz_mode(mode->mode))
+-		secondary_channel = iface->conf->secondary_channel;
+-
+-	for (i = 0; i < mode->num_channels; i++) {
+-		double total_weight = 0;
+-		struct acs_bias *bias, tmp_bias;
+-
+-		chan = &mode->channels[i];
+-
+-		/* Since in the current ACS implementation the first channel is
+-		 * always a primary channel, skip channels not available as
+-		 * primary until more sophisticated channel selection is
+-		 * implemented.
+-		 *
+-		 * If this implementation is changed to allow any channel in
+-		 * the bandwidth to be the primary one, the last parameter to
+-		 * acs_update_puncturing_bitmap() should be changed to the index
+-		 * of the primary channel
+-		 */
+-		if (!chan_pri_allowed(chan))
+-			continue;
+-
+-		if ((chan->flag & HOSTAPD_CHAN_RADAR) &&
+-		    iface->conf->acs_exclude_dfs)
+-			continue;
+-
+-		if (!is_in_chanlist(iface, chan))
+-			continue;
+-
+-		if (!is_in_freqlist(iface, chan))
+-			continue;
+-
+-		if (chan->max_tx_power < iface->conf->min_tx_power)
+-			continue;
+-
+-		if ((chan->flag & HOSTAPD_CHAN_INDOOR_ONLY) &&
+-		    iface->conf->country[2] == 0x4f)
+-			continue;
+-
+-		if (!chan_bw_allowed(chan, bw, secondary_channel != -1, 1)) {
+-			wpa_printf(MSG_DEBUG,
+-				   "ACS: Channel %d: BW %u is not supported",
+-				   chan->chan, bw);
+-			continue;
+-		}
+-
+-		/* HT40 on 5 GHz has a limited set of primary channels as per
+-		 * 11n Annex J */
+-		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
+-		    ((iface->conf->ieee80211n &&
+-		      iface->conf->secondary_channel) ||
+-		     is_6ghz_freq(chan->freq)) &&
+-		    !acs_usable_bw_chan(chan, ACS_BW40)) {
+-			wpa_printf(MSG_DEBUG,
+-				   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
+-				   chan->chan);
+-			continue;
+-		}
+-
+-		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
+-		    (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
+-		     iface->conf->ieee80211be)) {
+-			if (hostapd_get_oper_chwidth(iface->conf) ==
+-			    CONF_OPER_CHWIDTH_80MHZ &&
+-			    !acs_usable_bw_chan(chan, ACS_BW80)) {
+-				wpa_printf(MSG_DEBUG,
+-					   "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
+-					   chan->chan);
+-				continue;
+-			}
+-
+-			if (hostapd_get_oper_chwidth(iface->conf) ==
+-			    CONF_OPER_CHWIDTH_160MHZ &&
+-			    !acs_usable_bw_chan(chan, ACS_BW160)) {
+-				wpa_printf(MSG_DEBUG,
+-					   "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
+-					   chan->chan);
+-				continue;
+-			}
+-		}
+-
+-		if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
+-		    iface->conf->ieee80211be) {
+-			if (hostapd_get_oper_chwidth(iface->conf) ==
+-			    CONF_OPER_CHWIDTH_320MHZ &&
+-			    !acs_usable_bw320_chan(iface, chan, &bw320_offset))
+-				continue;
+-		}
+-
+-		factor = 0;
+-		best = NULL;
+-		if (acs_usable_chan(chan)) {
+-			factor = chan->interference_factor;
+-			total_weight = 1;
+-			best = chan;
+-		}
+-
+-		/* 5GHz is supported for 240Mhz and so reducing number of channels*/
+-		if(!is_6ghz_op_class(iface->conf->op_class) &&
+-		   hostapd_get_oper_chwidth(iface->conf) == CONF_OPER_CHWIDTH_320MHZ)
+-			n_chans = n_chans - 4;
+-
+-		for (j = 1; j < n_chans; j++) {
+-			adj_chan = acs_find_chan(iface, chan->freq +
+-						 j * secondary_channel * 20);
+-			if (!adj_chan)
+-				break;
+-
+-			if (!chan_bw_allowed(adj_chan, bw, 1, 0)) {
+-				wpa_printf(MSG_DEBUG,
+-					   "ACS: PRI Channel %d: secondary channel %d BW %u is not supported",
+-					   chan->chan, adj_chan->chan, bw);
+-				break;
+-			}
+-
+-			if (!acs_usable_chan(adj_chan))
+-				continue;
+-
+-			factor += adj_chan->interference_factor;
+-			total_weight += 1;
+-
+-			/* find the best channel in this segment */
+-			if (!best || adj_chan->interference_factor <
+-			    best->interference_factor)
+-				best = adj_chan;
+-		}
+-
+-		if (j != n_chans) {
+-			wpa_printf(MSG_DEBUG, "ACS: Channel %d: not enough bandwidth",
+-				   chan->chan);
+-			continue;
+-		}
+-
+-		/* If the AP is in the 5 GHz or 6 GHz band, lets prefer a less
+-		 * crowded primary channel if one was found in the segment */
+-		if (iface->current_mode &&
+-		    iface->current_mode->mode == HOSTAPD_MODE_IEEE80211A &&
+-		    best && chan != best) {
+-			wpa_printf(MSG_DEBUG,
+-				   "ACS: promoting channel %d over %d (less interference %Lg/%Lg)",
+-				   best->chan, chan->chan,
+-				   chan->interference_factor,
+-				   best->interference_factor);
+-			chan = best;
+-		}
+-
+-		/* 2.4 GHz has overlapping 20 MHz channels. Include adjacent
+-		 * channel interference factor. */
+-		if (is_24ghz_mode(mode->mode)) {
+-			for (j = 0; j < n_chans; j++) {
+-				freq_offset = j * 20 * secondary_channel;
+-				adj_chan = acs_find_chan(iface, chan->freq +
+-							 freq_offset - 5);
+-				if (adj_chan && acs_usable_chan(adj_chan)) {
+-					factor += ACS_ADJ_WEIGHT *
+-						adj_chan->interference_factor;
+-					total_weight += ACS_ADJ_WEIGHT;
+-				}
+-
+-				adj_chan = acs_find_chan(iface, chan->freq +
+-							 freq_offset - 10);
+-				if (adj_chan && acs_usable_chan(adj_chan)) {
+-					factor += ACS_NEXT_ADJ_WEIGHT *
+-						adj_chan->interference_factor;
+-					total_weight += ACS_NEXT_ADJ_WEIGHT;
+-				}
+-
+-				adj_chan = acs_find_chan(iface, chan->freq +
+-							 freq_offset + 5);
+-				if (adj_chan && acs_usable_chan(adj_chan)) {
+-					factor += ACS_ADJ_WEIGHT *
+-						adj_chan->interference_factor;
+-					total_weight += ACS_ADJ_WEIGHT;
+-				}
+-
+-				adj_chan = acs_find_chan(iface, chan->freq +
+-							 freq_offset + 10);
+-				if (adj_chan && acs_usable_chan(adj_chan)) {
+-					factor += ACS_NEXT_ADJ_WEIGHT *
+-						adj_chan->interference_factor;
+-					total_weight += ACS_NEXT_ADJ_WEIGHT;
+-				}
+-			}
+-		}
+-
+-		if (total_weight == 0)
+-			continue;
+-
+-		factor /= total_weight;
+-
+-		bias = NULL;
+-		if (iface->conf->acs_chan_bias) {
+-			for (k = 0; k < iface->conf->num_acs_chan_bias; k++) {
+-				bias = &iface->conf->acs_chan_bias[k];
+-				if (bias->channel == chan->chan)
+-					break;
+-				bias = NULL;
+-			}
+-		} else if (is_24ghz_mode(mode->mode) &&
+-			   is_common_24ghz_chan(chan->chan)) {
+-			tmp_bias.channel = chan->chan;
+-			tmp_bias.bias = ACS_24GHZ_PREFER_1_6_11;
+-			bias = &tmp_bias;
+-		}
+-
+-		if (bias) {
+-			factor *= bias->bias;
+-			wpa_printf(MSG_DEBUG,
+-				   "ACS:  * channel %d: total interference = %Lg (%f bias)",
+-				   chan->chan, factor, bias->bias);
+-		} else {
+-			wpa_printf(MSG_DEBUG,
+-				   "ACS:  * channel %d: total interference = %Lg",
+-				   chan->chan, factor);
+-		}
++        struct hostapd_channel_data *chan, *adj_chan = NULL, *best;
++        long double factor;
++        int i, j, start_freq = 0, freq_match_size = 0;
++        unsigned int k;
++        int *start_freq_list = NULL;
++
++        for (i = 0; i < mode->num_channels; i++) {
++                double total_weight;
++                struct acs_bias *bias, tmp_bias;
++                bool update_best = true;
++
++                best = chan = &mode->channels[i];
++
++                /* Since in the current ACS implementation the first channel is
++                 * always a primary channel, skip channels not available as
++                 * primary until more sophisticated channel selection is
++                 * implemented.
++                 *
++                 * If this implementation is changed to allow any channel in
++                 * the bandwidth to be the primary one, the last parameter to
++                 * acs_update_puncturing_bitmap() should be changed to the index
++                 * of the primary channel
++                 */
++                if (!chan_pri_allowed(chan))
++                        continue;
++
++                if ((chan->flag & HOSTAPD_CHAN_RADAR) &&
++                    iface->conf->acs_exclude_dfs)
++                        continue;
++
++                if (!is_in_chanlist(iface, chan))
++                        continue;
++
++                if (!is_in_freqlist(iface, chan))
++                        continue;
++
++                if (chan->max_tx_power < iface->conf->min_tx_power)
++                        continue;
++
++                if ((chan->flag & HOSTAPD_CHAN_INDOOR_ONLY) &&
++                    iface->conf->country[2] == 0x4f)
++                        continue;
++
++                if (!chan_bw_allowed(chan, bw, 1, 1)) {
++                        wpa_printf(MSG_DEBUG,
++                                   "ACS: Channel %d: BW %u is not supported",
++                                   chan->chan, bw);
++                        continue;
++                }
++
++                /* HT40 on 5 GHz has a limited set of primary channels as per
++                 * 11n Annex J */
++                if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
++                    ((iface->conf->secondary_channel) &&
++                     (iface->conf->ieee80211n ||
++                     is_6ghz_freq(chan->freq))) &&
++                    !acs_usable_bw_chan(chan, ACS_BW40)) {
++                        wpa_printf(MSG_DEBUG,
++                                   "ACS: Channel %d: not allowed as primary channel for 40 MHz bandwidth",
++                                   chan->chan);
++                        continue;
++                }
++
++                if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
++                    (iface->conf->ieee80211ac || iface->conf->ieee80211ax)) {
++                        if (hostapd_get_oper_chwidth(iface->conf) ==
++                            CONF_OPER_CHWIDTH_80MHZ &&
++                            !acs_usable_bw_chan(chan, ACS_BW80)) {
++                                wpa_printf(MSG_DEBUG,
++                                           "ACS: Channel %d: not allowed as primary channel for 80 MHz bandwidth",
++                                           chan->chan);
++                                continue;
++                        }
++
++                        if (hostapd_get_oper_chwidth(iface->conf) ==
++                            CONF_OPER_CHWIDTH_160MHZ &&
++                            !acs_usable_bw_chan(chan, ACS_BW160)) {
++                                wpa_printf(MSG_DEBUG,
++                                           "ACS: Channel %d: not allowed as primary channel for 160 MHz bandwidth",
++                                           chan->chan);
++                                continue;
++                        }
++                }
++
++                if (mode->mode == HOSTAPD_MODE_IEEE80211A &&
++                    iface->conf->ieee80211be) {
++                        if (hostapd_get_oper_chwidth(iface->conf) ==
++                            CONF_OPER_CHWIDTH_320MHZ &&
++                            !acs_usable_bw_chan(chan, ACS_BW320)) {
++                                wpa_printf(MSG_DEBUG,
++                                           "ACS: Channel %d: not allowed as primary channel for 320 MHz bandwidth",
++                                           chan->chan);
++                                continue;
++                        }
++                }
++
++                start_freq_list =  acs_get_bw_start_chan(bw, chan->freq,
++                                                         &freq_match_size);
++                for (int i = 0; i < freq_match_size; i++) {
++                        factor = 0;
++                        if (acs_usable_chan(chan))
++                                factor = chan->interference_factor;
++                        total_weight = 1;
++
++                        /* 5GHz is supported for 240Mhz and
++                         * so reducing number of channels
++                         */
++                        if (!is_6ghz_op_class(iface->conf->op_class) &&
++                            hostapd_get_oper_chwidth(iface->conf) ==
++                            CONF_OPER_CHWIDTH_320MHZ)
++                                n_chans = n_chans - 4;
++
++                        start_freq = start_freq_list[i];
++                        for (j = 0; j < n_chans; j++) {
++                                adj_chan = acs_find_chan(iface, start_freq + (j * 20));
++                                if (!adj_chan)
++                                        break;
++
++                                if (!chan_bw_allowed(adj_chan, bw, 1, 0)) {
++                                        wpa_printf(MSG_DEBUG,
++                                                   "ACS: PRI Channel %d: secondary channel %d BW %u is not supported",
++                                                   chan->chan, adj_chan->chan, bw);
++                                        break;
++                                }
++
++                                if (acs_usable_chan(adj_chan)) {
++                                        factor += adj_chan->interference_factor;
++                                        total_weight += 1;
++                                } else {
++                                        update_best = false;
++                                }
++
++                                /* find the best channel in this segment */
++                                if (update_best &&
++                                    adj_chan->interference_factor <
++                                    best->interference_factor)
++                                        best = adj_chan;
++                        }
++
++                        if (j != n_chans) {
++                                wpa_printf(MSG_DEBUG,
++                                           "ACS: Channel %d: not enough bandwidth",
++                                           chan->chan);
++                                continue;
++                        }
++
++                        /* If the AP is in the 5 GHz or 6 GHz band, lets prefer a less
++                         * crowded primary channel if one was found in the segment
++                         */
++                        if (iface->current_mode->mode == HOSTAPD_MODE_IEEE80211A &&
++                            chan != best) {
++                                wpa_printf(MSG_DEBUG,
++                                           "ACS: promoting channel %d over %d (less interference %Lg/%Lg)",
++                                           best->chan, chan->chan,
++                                           chan->interference_factor,
++                                           best->interference_factor);
++                                chan = best;
++                        }
++
++                        /* 2.4 GHz has overlapping 20 MHz channels. Include adjacent
++                         * channel interference factor.
++                         */
++                        if (is_24ghz_mode(mode->mode)) {
++                                for (j = 0; j < n_chans; j++) {
++                                        adj_chan = acs_find_chan(iface, chan->freq +
++                                                                 (j * 20) - 5);
++                                        if (adj_chan && acs_usable_chan(adj_chan)) {
++                                                factor += ACS_ADJ_WEIGHT *
++                                                        adj_chan->interference_factor;
++                                                total_weight += ACS_ADJ_WEIGHT;
++                                        }
++
++                                        adj_chan = acs_find_chan(iface, chan->freq +
++                                                                 (j * 20) - 10);
++                                        if (adj_chan && acs_usable_chan(adj_chan)) {
++                                                factor += ACS_NEXT_ADJ_WEIGHT *
++                                                        adj_chan->interference_factor;
++                                                total_weight += ACS_NEXT_ADJ_WEIGHT;
++                                        }
++
++                                        adj_chan = acs_find_chan(iface, chan->freq +
++                                                                 (j * 20) + 5);
++                                        if (adj_chan && acs_usable_chan(adj_chan)) {
++                                                factor += ACS_ADJ_WEIGHT *
++                                                        adj_chan->interference_factor;
++                                                total_weight += ACS_ADJ_WEIGHT;
++                                        }
++
++                                        adj_chan = acs_find_chan(iface, chan->freq +
++                                                                 (j * 20) + 10);
++                                        if (adj_chan && acs_usable_chan(adj_chan)) {
++                                                factor += ACS_NEXT_ADJ_WEIGHT *
++                                                        adj_chan->interference_factor;
++                                                total_weight += ACS_NEXT_ADJ_WEIGHT;
++                                        }
++                                }
++                        }
++
++                        factor /= total_weight;
++
++                        bias = NULL;
++                        if (iface->conf->acs_chan_bias) {
++                                for (k = 0; k < iface->conf->num_acs_chan_bias; k++) {
++                                        bias = &iface->conf->acs_chan_bias[k];
++                                        if (bias->channel == chan->chan)
++                                                break;
++                                        bias = NULL;
++                                }
++                        } else if (is_24ghz_mode(mode->mode) &&
++                                   is_common_24ghz_chan(chan->chan)) {
++                                tmp_bias.channel = chan->chan;
++                                tmp_bias.bias = ACS_24GHZ_PREFER_1_6_11;
++                                bias = &tmp_bias;
++                        }
++
++                        if (bias) {
++                                factor *= bias->bias;
++                                wpa_printf(MSG_DEBUG,
++                                           "ACS:  * channel %d: total interference = %Lg (%f bias)",
++                                           chan->chan, factor, bias->bias);
++                        } else {
++                                wpa_printf(MSG_DEBUG,
++                                           "ACS:  * channel %d: total interference = %Lg",
++                                           chan->chan, factor);
++                        }
++
++                        if (acs_usable_chan(chan) &&
++                            (!*ideal_chan || factor < *ideal_factor)) {
++                                /* Reset puncturing bitmap for the previous ideal
++                                 * channel
++                                 */
++                                if (*ideal_chan)
++                                        (*ideal_chan)->punct_bitmap = 0;
  
--	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax) {
-+	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
-+	    iface->conf->ieee80211be) {
- 		switch (hostapd_get_oper_chwidth(iface->conf)) {
- 		case CONF_OPER_CHWIDTH_80MHZ:
- 			n_chans = 4;
-@@ -1180,6 +1200,9 @@ acs_find_ideal_chan(struct hostapd_iface *iface)
- 		case CONF_OPER_CHWIDTH_160MHZ:
- 			n_chans = 8;
- 			break;
-+		case CONF_OPER_CHWIDTH_320MHZ:
-+			n_chans = 16;
-+			break;
- 		default:
- 			break;
- 		}
-@@ -1272,11 +1295,14 @@ static void acs_adjust_center_freq(struct hostapd_iface *iface)
- 	case CONF_OPER_CHWIDTH_160MHZ:
- 		center = acs_get_bw_center_chan(iface->freq, ACS_BW160);
- 		break;
-+	case CONF_OPER_CHWIDTH_320MHZ:
-+		center = acs_get_bw_center_chan(iface->freq, ACS_BW320);
-+		break;
- 	default:
- 		/* TODO: How can this be calculated? Adjust
- 		 * acs_find_ideal_chan() */
- 		wpa_printf(MSG_INFO,
--			   "ACS: Only VHT20/40/80/160 is supported now");
-+			   "ACS: Only VHT20/40/80/160/320 is supported now");
- 		return;
- 	}
+-		if (acs_usable_chan(chan) &&
+-		    (!*ideal_chan || factor < *ideal_factor)) {
+-			/* Reset puncturing bitmap for the previous ideal
+-			 * channel */
+-			if (*ideal_chan)
+-				(*ideal_chan)->punct_bitmap = 0;
+-
+-			*ideal_factor = factor;
+-			*ideal_chan = chan;
+-			ideal_bw320_offset = bw320_offset;
++                                *ideal_factor = factor;
++                                *ideal_chan = chan;
  
-@@ -1337,7 +1363,8 @@ static void acs_study(struct hostapd_iface *iface)
- 	iface->freq = ideal_chan->freq;
- 	iface->conf->ru_punct_bitmap = ideal_chan->ru_punct_bitmap;
+ #ifdef CONFIG_IEEE80211BE
+-			if (iface->conf->ieee80211be)
+-				acs_update_puncturing_bitmap(iface, mode, bw,
+-							     n_chans, chan,
+-							     factor, 0);
++                                if (iface->conf->ieee80211be)
++                                        acs_update_puncturing_bitmap(iface, mode, bw,
++                                                                     n_chans, chan,
++                                                                     factor, 0);
+ #endif /* CONFIG_IEEE80211BE */
+-		}
+-
+-		/* This channel would at least be usable */
+-		if (!(*rand_chan)) {
+-			*rand_chan = chan;
+-			ideal_bw320_offset = bw320_offset;
+-		}
+-	}
+-
+-	hostapd_set_and_check_bw320_offset(iface->conf, ideal_bw320_offset);
++                        }
++                }
++                if (!start_freq_list)
++                        os_free(start_freq_list);
++
++                /* This channel would at least be usable */
++                if (!(*rand_chan))
++                        *rand_chan = chan;
++        }
+ }
  
--	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax) {
-+	if (iface->conf->ieee80211ac || iface->conf->ieee80211ax ||
-+	    iface->conf->ieee80211be) {
- 		acs_adjust_secondary(iface);
- 		acs_adjust_center_freq(iface);
- 	}
--- 
-2.34.1
-
+ 

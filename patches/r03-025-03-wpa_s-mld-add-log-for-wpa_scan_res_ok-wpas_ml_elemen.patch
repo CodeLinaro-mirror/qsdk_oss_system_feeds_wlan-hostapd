@@ -13,7 +13,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
 
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -1256,6 +1256,9 @@ static bool wpa_scan_res_ok(struct wpa_s
+@@ -1257,6 +1257,9 @@ static bool wpa_scan_res_ok(struct wpa_s
  #endif /* CONFIG_SAE */
  	const u8 *ie;
  
@@ -23,7 +23,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  	ie = wpa_bss_get_vendor_ie(bss, WPA_IE_VENDOR_TYPE);
  	wpa = ie && ie[1];
  	ie = wpa_bss_get_ie(bss, WLAN_EID_RSN);
-@@ -1348,9 +1351,15 @@ static bool wpa_scan_res_ok(struct wpa_s
+@@ -1349,9 +1352,15 @@ static bool wpa_scan_res_ok(struct wpa_s
  		return false;
  	}
  
@@ -39,7 +39,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  	if (!osen && !wpa &&
  	    !(ssid->key_mgmt & WPA_KEY_MGMT_NONE) &&
  	    !(ssid->key_mgmt & WPA_KEY_MGMT_WPS) &&
-@@ -1578,6 +1587,9 @@ skip_assoc_disallow:
+@@ -1602,6 +1611,9 @@ skip_assoc_disallow:
  		return false;
  	}
  
@@ -49,7 +49,7 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  	/* Matching configuration found */
  	return true;
  }
-@@ -1672,12 +1684,18 @@ struct wpa_ssid * wpa_scan_res_match(str
+@@ -1702,12 +1714,18 @@ struct wpa_ssid * wpa_scan_res_match(str
  		return NULL;
  	}
  
@@ -68,22 +68,3 @@ Signed-off-by: Amutha Ravikumar <quic_aravikum@quicinc.com>
  	/* No matching configuration found */
  	return NULL;
  }
---- a/wpa_supplicant/sme.c
-+++ b/wpa_supplicant/sme.c
-@@ -499,6 +499,16 @@ static bool wpas_ml_element(struct wpa_s
- 		} else {
- 			struct wpa_bss *neigh_bss =
- 				wpa_bss_get_bssid(wpa_s, ap_info->data + 1);
-+
-+			wpa_printf(MSG_DEBUG, "Neighbor bssid : " MACSTR,
-+				   MAC2STR(ap_info->data + 1));
-+
-+			if (neigh_bss)
-+				wpa_printf(MSG_DEBUG, "MLD: Neighbor founded in scan");
-+
-+			if (!wpa_s->current_ssid)
-+				wpa_printf(MSG_DEBUG, "MLD: empty wpa_s->current_ssid");
-+
- 			u8 link_id = *(data + 1) & 0xF;
- 
- 			if (neigh_bss) {

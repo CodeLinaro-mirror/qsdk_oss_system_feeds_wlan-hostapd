@@ -30,11 +30,9 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  src/drivers/driver_nl80211_scan.c | 13 +++++++++++--
  2 files changed, 16 insertions(+), 6 deletions(-)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 0b218fd..ee33942 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -7635,10 +7635,11 @@ done:
+@@ -7754,10 +7754,11 @@ done:
  void nl80211_restore_ap_mode(struct i802_bss *bss)
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -50,11 +48,9 @@ index 0b218fd..ee33942 100644
  	    bss->brname[0] &&
  	    (bss->added_if_into_bridge || bss->already_in_bridge)) {
  		wpa_printf(MSG_DEBUG,
-diff --git a/src/drivers/driver_nl80211_scan.c b/src/drivers/driver_nl80211_scan.c
-index a5c310b..1719dfe 100644
 --- a/src/drivers/driver_nl80211_scan.c
 +++ b/src/drivers/driver_nl80211_scan.c
-@@ -349,8 +349,9 @@ int wpa_driver_nl80211_scan(struct i802_bss *bss,
+@@ -356,8 +356,9 @@ int wpa_driver_nl80211_scan(struct i802_
  	struct wpa_driver_nl80211_data *drv = bss->drv;
  	int ret = -1, timeout;
  	struct nl_msg *msg = NULL;
@@ -66,7 +62,7 @@ index a5c310b..1719dfe 100644
  	drv->scan_for_auth = 0;
  
  	if (TEST_FAIL())
-@@ -437,10 +438,18 @@ int wpa_driver_nl80211_scan(struct i802_bss *bss,
+@@ -462,10 +463,18 @@ int wpa_driver_nl80211_scan(struct i802_
  			}
  
  			/* Restore AP mode when processing scan results */
@@ -85,6 +81,3 @@ index a5c310b..1719dfe 100644
  	}
  
  	drv->scan_state = SCAN_REQUESTED;
--- 
-2.34.1
-

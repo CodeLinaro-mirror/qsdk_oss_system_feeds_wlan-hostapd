@@ -141,13 +141,15 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  	for (i = 0; i < mode->num_channels; i++) {
  		chan = &mode->channels[i];
  
-@@ -272,22 +269,15 @@ static int intf_awgn_find_channel_list(s
- 				   " chan_width : %d", chan->chan, chan_width);
+@@ -273,22 +270,14 @@ static int intf_awgn_find_channel_list(s
  			return 0;
  		}
+ 
 -		new_start_freq = new_centre_freq - channel_width_to_int(chan_width) / 2;
 -		new_end_freq = new_centre_freq + channel_width_to_int(chan_width) / 2;
-- 
++               new_start_freq = (new_centre_freq - channel_width_to_int(chan_width) / 2) + 10;
++               new_end_freq = (new_centre_freq + channel_width_to_int(chan_width) / 2) - 10;
+ 
 -		/* check whether new operating range is outside the current
 -		 * operating range since current operating range contains awgn
 -		 * interference
@@ -155,24 +157,20 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 -		if (((new_start_freq > curr_start_freq) && (new_start_freq < curr_end_freq)) ||
 -		    ((new_end_freq > curr_start_freq) && (new_end_freq < curr_end_freq)) ||
 -		    ((new_centre_freq > curr_start_freq && new_centre_freq < curr_end_freq))) {
-+
-+		new_start_freq = (new_centre_freq - channel_width_to_int(chan_width) / 2) + 10;
-+		new_end_freq = (new_centre_freq + channel_width_to_int(chan_width) / 2) - 10;
-+
-+		if (is_interference_in_chanlist(new_start_freq, new_end_freq,
-+						    awgn_interference_freqs)) {
++               if (is_interference_in_chanlist(new_start_freq, new_end_freq,
++                                                   awgn_interference_freqs)) {
  			wpa_printf(MSG_DEBUG,
 -				   "AWGN : freq range overlap new_start_freq : %d"
 -				   " new_end_freq : %d curr_start_freq : %d"
 -				   " curr_end_freq : %d centre_freq : %d",
 -				   new_start_freq, new_end_freq, curr_start_freq,
 -				   curr_end_freq, new_centre_freq);
-+			    "AWGN: found frequency which has interference in channel (%d)",
-+			    chan->chan);
++				   "AWGN: found frequency which has interference in channel (%d)",
++				   chan->chan);
  			continue;
  		}
  
-@@ -368,8 +358,10 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -369,8 +358,10 @@ int hostapd_intf_awgn_detected(struct ho
  	u8 channel_switch = 0;
  	int new_chan_width;
  	int new_centre_freq;
@@ -183,7 +181,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  	wpa_printf(MSG_DEBUG,
  		   "input freq=%d, chan_width=%d, cf1=%d cf2=%d"
-@@ -391,18 +383,27 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -392,18 +383,27 @@ int hostapd_intf_awgn_detected(struct ho
  	available_chandef_list = os_zalloc(sizeof(struct hostapd_channel_data *) *
  					   mode->num_channels);
  	if (channel_switch) {
@@ -220,7 +218,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  		if (num_available_chandefs == 0) {
 --- a/src/common/defs.h
 +++ b/src/common/defs.h
-@@ -535,4 +535,6 @@ enum sae_pwe {
+@@ -542,4 +542,6 @@ enum sae_pwe {
  #define US_TO_TU(m) ((m) / US_80211_TU)
  #define TU_TO_US(m) ((m) * US_80211_TU)
  

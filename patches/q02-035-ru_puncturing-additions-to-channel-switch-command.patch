@@ -21,7 +21,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2539,6 +2539,11 @@ static int hostapd_ctrl_check_freq_param
+@@ -2499,6 +2499,11 @@ static int hostapd_ctrl_check_freq_param
  		if (punct_bitmap)
  			return -1;
  		break;
@@ -33,7 +33,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	case 40:
  		if (params->center_freq2 || !params->sec_channel_offset)
  			return -1;
-@@ -2546,6 +2551,9 @@ static int hostapd_ctrl_check_freq_param
+@@ -2506,6 +2511,9 @@ static int hostapd_ctrl_check_freq_param
  		if (punct_bitmap)
  			return -1;
  
@@ -43,7 +43,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		if (!params->center_freq1)
  			break;
  		switch (params->sec_channel_offset) {
-@@ -2583,6 +2591,9 @@ static int hostapd_ctrl_check_freq_param
+@@ -2543,6 +2551,9 @@ static int hostapd_ctrl_check_freq_param
  		if (params->center_freq2 && punct_bitmap)
  			return -1;
  
@@ -53,7 +53,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		/* Adjacent and overlapped are not allowed for 80+80 */
  		if (params->center_freq2 &&
  		    params->center_freq1 - params->center_freq2 <= 80 &&
-@@ -2670,6 +2681,32 @@ static int hostapd_ctrl_check_freq_param
+@@ -2630,6 +2641,32 @@ static int hostapd_ctrl_check_freq_param
  		return -1;
  	}
  
@@ -88,7 +88,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #endif /* NEED_AP_MLME */
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1182,11 +1182,14 @@ int hostapd_parse_csa_settings(const cha
+@@ -1139,11 +1139,14 @@ int hostapd_parse_csa_settings(const cha
  	SET_CSA_SETTING(center_freq2);
  	SET_CSA_SETTING(bandwidth);
  	SET_CSA_SETTING(sec_channel_offset);
@@ -105,7 +105,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  #undef SET_CSA_SETTING_EXT
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -870,7 +870,7 @@ void hostapd_event_sta_opmode_changed(st
+@@ -1133,7 +1133,7 @@ void hostapd_event_sta_opmode_changed(st
  
  void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  			     int offset, int width, int cf1, int cf2,
@@ -114,7 +114,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  {
  #ifdef NEED_AP_MLME
  	int channel, chwidth, is_dfs0, is_dfs;
-@@ -879,14 +879,15 @@ void hostapd_event_ch_switch(struct host
+@@ -1142,14 +1142,15 @@ void hostapd_event_ch_switch(struct host
  
  	hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
  		       HOSTAPD_LEVEL_INFO,
@@ -132,16 +132,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	if (!hapd->iface->current_mode) {
  		hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
-@@ -990,6 +991,8 @@ void hostapd_event_ch_switch(struct host
- 	hostapd_set_oper_centr_freq_seg0_idx(hapd->iconf, seg0_idx);
- 	hostapd_set_oper_centr_freq_seg1_idx(hapd->iconf, seg1_idx);
- 	hapd->iconf->op_class = op_class;
-+	hapd->iconf->ru_punct_bitmap = ru_punct_bitmap;
-+	hapd->iconf->ru_punct_ofdma = ru_punct_ofdma;
- #ifdef CONFIG_IEEE80211BE
- 	hapd->iconf->punct_bitmap = punct_bitmap;
- #endif /* CONFIG_IEEE80211BE */
-@@ -1007,11 +1010,13 @@ void hostapd_event_ch_switch(struct host
+@@ -1279,11 +1280,13 @@ void hostapd_event_ch_switch(struct host
  				  hapd->iface->num_hw_features);
  
  	wpa_msg(hapd->msg_ctx, MSG_INFO,
@@ -157,7 +148,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	if (!finished)
  		return;
  
-@@ -2183,6 +2188,8 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -2631,6 +2634,8 @@ void hostapd_wpa_event(void *ctx, enum w
  					data->ch_switch.cf1,
  					data->ch_switch.cf2,
  					data->ch_switch.punct_bitmap,
@@ -166,39 +157,21 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  					event == EVENT_CH_SWITCH);
  		break;
  	case EVENT_CONNECT_FAILED_REASON:
---- a/src/ap/hostapd.c
-+++ b/src/ap/hostapd.c
-@@ -3943,6 +3943,8 @@ static int hostapd_change_config_freq(st
- 	conf->ieee80211n = params->ht_enabled;
- 	conf->ieee80211ac = params->vht_enabled;
- 	conf->secondary_channel = params->sec_channel_offset;
-+	conf->ru_punct_bitmap = params->ru_punct_bitmap;
-+	conf->ru_punct_ofdma= params->ru_punct_ofdma;
- 	ieee80211_freq_to_chan(params->center_freq1,
- 			       &seg0);
- 	ieee80211_freq_to_chan(params->center_freq2,
-@@ -4171,6 +4173,8 @@ hostapd_switch_channel_fallback(struct h
- 	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, seg0_idx);
- 	hostapd_set_oper_centr_freq_seg1_idx(iface->conf, seg1_idx);
- 	hostapd_set_oper_chwidth(iface->conf, bw);
-+	iface->conf->ru_punct_bitmap = freq_params->ru_punct_bitmap;
-+	iface->conf->ru_punct_ofdma = freq_params->ru_punct_ofdma;
-  
- 	/*
- 	 * Resetting operating class to avoid referring previous values
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -771,6 +771,7 @@ int hostapd_probe_req_rx(struct hostapd_
+@@ -826,7 +826,8 @@ int hostapd_probe_req_rx(struct hostapd_
  			 int ssi_signal);
  void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  			     int offset, int width, int cf1, int cf2,
-+			     u16 ru_punct_bitmap, u8 ru_punct_ofdma,
- 			     u16 punct_bitmap, int finished);
+-			     u16 punct_bitmap, int finished);
++			     u16 punct_bitmap, u16 ru_punct_bitmap,
++			     u8 ru_punct_ofdma, int finished);
  struct survey_results;
  void hostapd_event_get_survey(struct hostapd_iface *iface,
+ 			      struct survey_results *survey_results);
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -6550,6 +6550,8 @@ union wpa_event_data {
+@@ -6713,6 +6713,8 @@ union wpa_event_data {
  		int cf2;
  		int link_id;
  		u16 punct_bitmap;
@@ -209,17 +182,17 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	/**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11013,7 +11013,7 @@ static int nl80211_switch_channel(void *
+@@ -11345,7 +11345,7 @@ static int nl80211_switch_channel(void *
  	int i;
  
  	wpa_printf(MSG_DEBUG,
--		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d puncturing_bitmap=0x%04x%s%s%s)",
-+		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d puncturing_bitmap=0x%04x%s%s%s  puncturing bitmap=0x%04x, ru_punct_ofdma=%u)",
+-		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d puncturing_bitmap=0x%04x link_id=%d%s%s%s)",
++		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d puncturing_bitmap=0x%04x link_id=%d%s%s%s puncturing bitmap=0x%04x, ru_punct_ofdma=%u)",
  		   settings->cs_count, settings->block_tx,
  		   settings->freq_params.freq,
  		   settings->freq_params.channel,
-@@ -11024,7 +11024,9 @@ static int nl80211_switch_channel(void *
- 		   settings->punct_bitmap,
+@@ -11357,7 +11357,9 @@ static int nl80211_switch_channel(void *
+ 		   settings->link_id,
  		   settings->freq_params.ht_enabled ? " ht" : "",
  		   settings->freq_params.vht_enabled ? " vht" : "",
 -		   settings->freq_params.he_enabled ? " he" : "");
@@ -231,7 +204,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		wpa_printf(MSG_DEBUG, "nl80211: Driver does not support channel switch command");
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -1205,6 +1205,8 @@ static void mlme_event_ch_switch(struct
+@@ -1199,6 +1199,8 @@ static void mlme_event_ch_switch(struct
  				 struct nlattr *cf2,
  				 struct nlattr *punct_bitmap,
  				 struct nlattr *count,
@@ -240,20 +213,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  				 int finished)
  {
  	struct i802_bss *bss;
-@@ -1271,6 +1273,12 @@ static void mlme_event_ch_switch(struct
- 	if (count)
- 		data.ch_switch.count = nla_get_u32(count);
- 
-+	if (ru_punct_bitmap) {
-+		data.ch_switch.ru_punct_bitmap = nla_get_u16(ru_punct_bitmap);
-+		if (ru_punct_ofdma)
-+			data.ch_switch.ru_punct_ofdma = nla_get_flag(ru_punct_ofdma);
-+	}
-+
- 	if (finished)
- 		bss->flink->freq = data.ch_switch.freq;
- 
-@@ -3909,6 +3917,8 @@ static void do_process_drv_event(struct
+@@ -4046,6 +4048,8 @@ static void do_process_drv_event(struct
  				     tb[NL80211_ATTR_CENTER_FREQ2],
  				     tb[NL80211_ATTR_PUNCT_BITMAP],
  				     tb[NL80211_ATTR_CH_SWITCH_COUNT],
@@ -262,7 +222,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  				     0);
  		break;
  	case NL80211_CMD_CH_SWITCH_NOTIFY:
-@@ -3922,6 +3932,8 @@ static void do_process_drv_event(struct
+@@ -4059,6 +4063,8 @@ static void do_process_drv_event(struct
  				     tb[NL80211_ATTR_CENTER_FREQ2],
  				     tb[NL80211_ATTR_PUNCT_BITMAP],
  				     NULL,
@@ -273,7 +233,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	case NL80211_CMD_DISCONNECT:
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -1878,7 +1878,7 @@ void wpas_ap_ch_switch(struct wpa_suppli
+@@ -1896,7 +1896,7 @@ void wpas_ap_ch_switch(struct wpa_suppli
  		wpa_s->current_ssid->frequency = freq;
  	hostapd_event_ch_switch(iface->bss[0], freq, ht,
  				offset, width, cf1, cf2, punct_bitmap,

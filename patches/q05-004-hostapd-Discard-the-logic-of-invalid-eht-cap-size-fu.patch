@@ -12,11 +12,9 @@ Signed-off-by: Pradeep Kumar Chitrapu <quic_pradeepc@quicinc.com>
  src/ap/ieee802_11_eht.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index 6ebe0f9..183b906 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -346,6 +346,8 @@ static bool ieee80211_invalid_eht_cap_size(enum hostapd_hw_mode mode,
+@@ -480,6 +480,8 @@ static bool ieee80211_invalid_eht_cap_si
  	size_t cap_len;
  	u16 ppe_thres_hdr;
  

@@ -15,11 +15,9 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  src/common/dpp.c     |  4 ++++
  2 files changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
-index 70dd18e..9d31026 100644
 --- a/src/ap/dpp_hostapd.c
 +++ b/src/ap/dpp_hostapd.c
-@@ -349,8 +349,8 @@ static int hostapd_dpp_pkex_done(void *ctx, void *conn,
+@@ -349,8 +349,8 @@ static int hostapd_dpp_pkex_done(void *c
  
  	auth = dpp_auth_init(hapd->iface->interfaces->dpp, hapd->msg_ctx,
  			     peer_bi, own_bi, allowed_roles, 0,
@@ -30,7 +28,7 @@ index 70dd18e..9d31026 100644
  	if (!auth)
  		return -1;
  
-@@ -931,8 +931,8 @@ int hostapd_dpp_auth_init(struct hostapd_data *hapd, const char *cmd)
+@@ -938,8 +938,8 @@ int hostapd_dpp_auth_init(struct hostapd
  
  	auth = dpp_auth_init(hapd->iface->interfaces->dpp, hapd->msg_ctx,
  			     peer_bi, own_bi, allowed_roles, neg_freq,
@@ -41,7 +39,7 @@ index 70dd18e..9d31026 100644
  	if (!auth)
  		goto fail;
  	hostapd_dpp_set_testing_options(hapd, auth);
-@@ -3646,7 +3646,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
+@@ -3662,7 +3662,7 @@ hostapd_dpp_chirp_scan_res_handler(struc
  
  	/* Preferred chirping channels */
  	mode = dpp_get_mode(hapd, HOSTAPD_MODE_IEEE80211G);
@@ -50,7 +48,7 @@ index 70dd18e..9d31026 100644
  		for (c = 0; c < mode->num_channels; c++) {
  			struct hostapd_channel_data *chan = &mode->channels[c];
  
-@@ -3662,7 +3662,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
+@@ -3678,7 +3678,7 @@ hostapd_dpp_chirp_scan_res_handler(struc
  		int_array_add_unique(&hapd->dpp_chirp_freqs, 2437);
  
  	mode = dpp_get_mode(hapd, HOSTAPD_MODE_IEEE80211A);
@@ -59,7 +57,7 @@ index 70dd18e..9d31026 100644
  		int chan44 = 0, chan149 = 0;
  
  		for (c = 0; c < mode->num_channels; c++) {
-@@ -3683,7 +3683,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
+@@ -3699,7 +3699,7 @@ hostapd_dpp_chirp_scan_res_handler(struc
  	}
  
  	mode = dpp_get_mode(hapd, HOSTAPD_MODE_IEEE80211AD);
@@ -68,11 +66,9 @@ index 70dd18e..9d31026 100644
  		for (c = 0; c < mode->num_channels; c++) {
  			struct hostapd_channel_data *chan = &mode->channels[c];
  
-diff --git a/src/common/dpp.c b/src/common/dpp.c
-index 3b9f35e..837120d 100644
 --- a/src/common/dpp.c
 +++ b/src/common/dpp.c
-@@ -4000,6 +4000,10 @@ int dpp_configurator_own_config(struct dpp_authentication *auth,
+@@ -4000,6 +4000,10 @@ int dpp_configurator_own_config(struct d
  		   "DPP: Building own configuration/connector with curve %s",
  		   auth->curve->name);
  
@@ -83,6 +79,3 @@ index 3b9f35e..837120d 100644
  	auth->own_protocol_key = dpp_gen_keypair(auth->curve);
  	if (!auth->own_protocol_key)
  		return -1;
--- 
-2.17.1
-
