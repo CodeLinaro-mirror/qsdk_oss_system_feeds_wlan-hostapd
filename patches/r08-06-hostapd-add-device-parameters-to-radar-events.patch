@@ -415,7 +415,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 +			nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ_DEVICE]);
  
  	if (is_sta_interface(drv->nlmode))
- 		return nl80211_process_radar_event(bss->ctx, &data, event_type);
+ 		return nl80211_process_radar_event(bss, &data, event_type);
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
 @@ -2171,7 +2171,8 @@ void wpas_ap_event_dfs_radar_detected(st

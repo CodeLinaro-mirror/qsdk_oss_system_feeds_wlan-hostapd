@@ -56,7 +56,7 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  		iface->radar_background.cac_started = 0;
 -		hostapd_dfs_update_background_chain(iface);
 +		if (iface->conf->enable_background_radar)
-+			hostpad_dfs_update_background_chain(iface);
++			hostapd_dfs_update_background_chain(iface);
  	}
  
  	iface->radar_detected = false;

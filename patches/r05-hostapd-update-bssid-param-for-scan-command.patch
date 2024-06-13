@@ -20,28 +20,12 @@ command
 
 Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
 ---
- src/ap/acs.c         |  6 ++++++
  src/ap/hw_features.c | 12 ++++++++++++
- 2 files changed, 18 insertions(+)
+ 1 files changed, 18 insertions(+)
 
---- a/src/ap/acs.c
-+++ b/src/ap/acs.c
-@@ -1652,6 +1652,12 @@ static int acs_request_scan(struct hosta
- 			   iface->acs_num_completed_scans + 1,
- 			   iface->conf->acs_num_scans);
- 
-+	if (iface->num_multi_hws) {
-+		params.bssid = iface->bss[0]->conf->bssid;
-+		wpa_printf(MSG_DEBUG, "scan triggered with bssid" MACSTR "\n",
-+			   MAC2STR(params.bssid));
-+	}
-+
- 	ret = hostapd_driver_scan(iface->bss[0], &params);
- 	os_free(params.freqs);
- 
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -512,6 +512,12 @@ static void ap_ht40_scan_retry(void *elo
+@@ -543,6 +543,12 @@ static void ap_ht40_scan_retry(void *elo
  		params.link_id = iface->bss[0]->mld_link_id;
  #endif /* CONFIG_IEEE80211BE */
  
@@ -54,7 +38,7 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  	ret = hostapd_driver_scan(iface->bss[0], &params);
  	iface->num_ht40_scan_tries++;
  	os_free(params.freqs);
-@@ -564,6 +570,12 @@ static int ieee80211n_check_40mhz(struct
+@@ -595,6 +601,12 @@ static int ieee80211n_check_40mhz(struct
  	else
  		ieee80211n_scan_channels_5g(iface, &params);
  
@@ -63,7 +47,22 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
 +		wpa_printf(MSG_DEBUG, "scan triggered with bssid" MACSTR "\n",
 +			   MAC2STR(params.bssid));
 +	}
-+ 
++
  	params.link_id = -1;
  #ifdef CONFIG_IEEE80211BE
  	if (iface->bss[0]->conf->mld_ap)
+--- a/src/ap/acs.c
++++ b/src/ap/acs.c
+@@ -1648,6 +1648,12 @@ static int acs_request_scan(struct hosta
+ 		   iface->acs_num_completed_scans + 1,
+ 		   iface->conf->acs_num_scans);
+ 
++	if (iface->num_multi_hws) {
++		params.bssid = iface->bss[0]->conf->bssid;
++		wpa_printf(MSG_DEBUG, "scan triggered with bssid" MACSTR "\n",
++			   MAC2STR(params.bssid));
++	}
++
+ 	if (hostapd_driver_scan(iface->bss[0], &params) < 0) {
+ 		wpa_printf(MSG_ERROR, "ACS: Failed to request initial scan");
+ 		acs_cleanup(iface);

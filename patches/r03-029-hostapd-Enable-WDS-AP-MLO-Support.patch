@@ -182,16 +182,14 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  u16 copy_sta_vendor_vht(struct hostapd_data *hapd, struct sta_info *sta,
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -234,10 +234,18 @@ void ap_free_sta(struct hostapd_data *ha
- 	hostapd_set_sta_flags(hapd, sta);
+@@ -235,9 +235,17 @@ void ap_free_sta(struct hostapd_data *ha
  
  	if ((sta->flags & WLAN_STA_WDS) ||
--	    (sta->flags & WLAN_STA_MULTI_AP &&
+ 	    (sta->flags & WLAN_STA_MULTI_AP &&
 -	     (hapd->conf->multi_ap & BACKHAUL_BSS) &&
 -	     !(sta->flags & WLAN_STA_WPS)))
-+			(sta->flags & WLAN_STA_MULTI_AP &&
-+			 (hapd->conf->multi_ap & FRONTHAUL_BSS) &&
-+			 !(sta->flags & WLAN_STA_WPS))) {
++	    (hapd->conf->multi_ap & FRONTHAUL_BSS) &&
++	    !(sta->flags & WLAN_STA_WPS))) {
 +		int aid;
 +
 +		if (hapd->conf->mld_ap && (sta->flags & WLAN_STA_WDS))

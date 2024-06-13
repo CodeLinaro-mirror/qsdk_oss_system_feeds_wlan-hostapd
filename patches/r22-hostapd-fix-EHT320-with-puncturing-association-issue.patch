@@ -23,7 +23,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -228,7 +228,7 @@ u8 * hostapd_eid_eht_capab(struct hostap
+@@ -216,7 +216,7 @@ u8 * hostapd_eid_eht_capab(struct hostap
  u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid,
  			       enum ieee80211_op_mode opmode)
  {
@@ -32,7 +32,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  	struct hostapd_config *conf = hapd->iconf;
  	struct ieee80211_eht_operation *oper;
  	u8 *pos = eid, seg0 = 0, seg1 = 0;
-@@ -236,7 +236,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -224,7 +224,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  	size_t elen = 1 + 4;
  	bool eht_oper_info_present;
  	u16 punct_bitmap = hostapd_get_punct_bitmap(hapd);
@@ -41,34 +41,34 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  	if (!mode)
  		return eid;
-@@ -280,6 +280,12 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -268,6 +268,12 @@ u8 * hostapd_eid_eht_operation(struct ho
  	if (!seg0)
  		seg0 = hapd->iconf->channel;
  
 +	if (is_5ghz_freq(mode->channels->freq) && (chwidth == CONF_OPER_CHWIDTH_320MHZ)
-+	    && (hapd->iconf->ru_punct_bitmap || hapd->iconf->punct_bitmap)) {
++	    && (hapd->iconf->punct_bitmap)) {
 +		chwidth = CONF_OPER_CHWIDTH_160MHZ;
 +		is_5g_240_punctured = true;
 +	}
 +
  	switch (chwidth) {
- 		case CONF_OPER_CHWIDTH_320MHZ:
- 			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_320MHZ;
-@@ -300,7 +306,7 @@ u8 * hostapd_eid_eht_operation(struct ho
- 					oper->oper_info.ccfs0 = oper->oper_info.ccfs1 + 8;
- 			}
+ 	case CONF_OPER_CHWIDTH_320MHZ:
+ 		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_320MHZ;
+@@ -288,7 +294,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 				oper->oper_info.ccfs0 = oper->oper_info.ccfs1 + 8;
+ 		}
  
--			if (hapd->iconf->ru_punct_bitmap &&
-+			if (!is_5g_240_punctured && hapd->iconf->ru_punct_bitmap &&
- 			    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
- 				hapd->iconf->ru_punct_bitmap = 0;
- 				wpa_printf(MSG_ERROR,
-@@ -334,7 +340,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+-		if (hapd->iconf->punct_bitmap &&
++		if (!is_5g_240_punctured && hapd->iconf->punct_bitmap &&
+ 		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
+ 			hapd->iconf->ru_punct_bitmap = 0;
+ 			wpa_printf(MSG_ERROR,
+@@ -322,7 +328,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  	oper->oper_info.ccfs0 = seg0;
  	oper->oper_info.ccfs1 = seg1;
  
--	if (hapd->iconf->ru_punct_bitmap) {
-+	if (!is_5g_240_punctured && hapd->iconf->ru_punct_bitmap) {
+-	if (punct_bitmap) {
++	if (!is_5g_240_punctured && punct_bitmap) {
  		oper->oper_params |= EHT_OPER_DISABLED_SUBCHAN_BITMAP_PRESENT;
  		oper->oper_info.disabled_chan_bitmap =
  			host_to_le16(punct_bitmap);

@@ -250,7 +250,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  		wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for STA "
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -761,6 +761,9 @@ static u8 * hostapd_eid_eht_basic_ml_com
+@@ -747,6 +747,9 @@ static u8 * hostapd_eid_eht_basic_ml_com
  				ptr += slice_len;
  			}
  		}

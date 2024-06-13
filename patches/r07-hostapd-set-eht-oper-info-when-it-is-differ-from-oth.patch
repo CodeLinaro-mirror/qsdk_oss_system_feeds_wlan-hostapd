@@ -71,105 +71,33 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  	if (hapd->iconf->eht_default_pe_duration)
  		oper->oper_params |= EHT_OPER_DEFAULT_PE_DURATION;
  
-@@ -278,71 +281,69 @@ u8 * hostapd_eid_eht_operation(struct ho
- 		seg0 = hapd->iconf->channel;
- 
- 	switch (chwidth) {
--	case CONF_OPER_CHWIDTH_320MHZ:
--		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_320MHZ;
--		seg1 = seg0;
--		if (hapd->iconf->channel < seg0)
--			seg0 -= 16;
--		else
--			seg0 += 16;
--		break;
--	case CONF_OPER_CHWIDTH_160MHZ:
--		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_160MHZ;
--		if (!oper->oper_info.ccfs1) {
--			/* CCFS0 points to center channel frequency in config */
--			oper->oper_info.ccfs1 = oper->oper_info.ccfs0;
--			if (hapd->iconf->channel < oper->oper_info.ccfs0)
--				oper->oper_info.ccfs0 = oper->oper_info.ccfs1 - 8;
-+		case CONF_OPER_CHWIDTH_320MHZ:
-+			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_320MHZ;
-+			seg1 = seg0;
-+			if (hapd->iconf->channel < seg0)
-+				seg0 -= 16;
- 			else
--				oper->oper_info.ccfs0 = oper->oper_info.ccfs1 + 8;
--		}
--
--		if (hapd->iconf->ru_punct_bitmap &&
--		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
-+				seg0 += 16;
-+			break;
-+		case CONF_OPER_CHWIDTH_160MHZ:
-+			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_160MHZ;
-+			if (!oper->oper_info.ccfs1) {
-+				/* CCFS0 points to center channel frequency in config */
-+				oper->oper_info.ccfs1 = oper->oper_info.ccfs0;
-+				if (hapd->iconf->channel < oper->oper_info.ccfs0)
-+					oper->oper_info.ccfs0 = oper->oper_info.ccfs1 - 8;
-+				else
-+					oper->oper_info.ccfs0 = oper->oper_info.ccfs1 + 8;
-+			}
-+
-+			if (hapd->iconf->ru_punct_bitmap &&
-+			    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
-+				hapd->iconf->ru_punct_bitmap = 0;
-+				wpa_printf(MSG_ERROR,
-+						"Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
-+			}
-+
-+			seg1 = seg0;
-+			if (hapd->iconf->channel < seg0)
-+				seg0 -= 8;
-+			else
-+				seg0 += 8;
-+			break;
-+		case CONF_OPER_CHWIDTH_80MHZ:
-+			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_80MHZ;
-+			break;
-+		case CONF_OPER_CHWIDTH_USE_HT:
-+			hapd->iconf->ru_punct_bitmap = 0;
-+			if ((is_6ghz_op_class(hapd->iconf->op_class) &&
-+						op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
-+					hapd->iconf->secondary_channel)
-+				oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_40MHZ;
-+			else
-+				oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_20MHZ;
-+			break;
-+		default:
+@@ -301,8 +304,9 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
  			hapd->iconf->ru_punct_bitmap = 0;
--			wpa_printf(MSG_ERROR,
+ 			wpa_printf(MSG_ERROR,
 -				   "Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
--		}
--		seg1 = seg0;
--		if (hapd->iconf->channel < seg0)
--			seg0 -= 8;
--		else
--			seg0 += 8;
--		break;
--	case CONF_OPER_CHWIDTH_80MHZ:
--		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_80MHZ;
--		break;
--	case CONF_OPER_CHWIDTH_USE_HT:
--		hapd->iconf->ru_punct_bitmap = 0;
--		if ((is_6ghz_op_class(hapd->iconf->op_class) &&
++					"Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
+ 		}
++
+ 		seg1 = seg0;
+ 		if (hapd->iconf->channel < seg0)
+ 			seg0 -= 8;
+@@ -315,12 +319,11 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 	case CONF_OPER_CHWIDTH_USE_HT:
+ 		hapd->iconf->ru_punct_bitmap = 0;
+ 		if ((is_6ghz_op_class(hapd->iconf->op_class) &&
 -		    op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
 -		    hapd->iconf->secondary_channel)
--			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_40MHZ;
--		else
++					op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
++				hapd->iconf->secondary_channel)
+ 			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_40MHZ;
+ 		else
  			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_20MHZ;
 -
--		break;
--	default:
--		hapd->iconf->ru_punct_bitmap = 0;
--		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_20MHZ;
--		break;
-+			break;
- 	}
- 
+ 		break;
+ 	default:
+ 		hapd->iconf->ru_punct_bitmap = 0;
+@@ -331,18 +334,16 @@ u8 * hostapd_eid_eht_operation(struct ho
  	oper->oper_info.ccfs0 = seg0;
  	oper->oper_info.ccfs1 = seg1;
  
