@@ -15,47 +15,14 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  src/ap/ap_config.h    |  2 ++
  3 files changed, 17 insertions(+)
 
---- a/hostapd/hostapd.conf
-+++ b/hostapd/hostapd.conf
-@@ -1107,6 +1107,17 @@ wmm_ac_vo_acm=0
- # will be used as the AP MLD MAC address.
- #mld_addr=02:03:04:05:06:07
- 
-+# RU puncturing bitmap (16 bits) where each bit corresponds to
-+# a 20 MHz channel in the given bandwidth, bit 0 corresponding to the channel
-+# with lowest frequency.
-+# Bit set to 1 indicates that the channel is punctured, otherwise active.
-+# Default value is 0 indicating that no channel is punctured.
-+#ru_punct_bitmap=4
-+
-+# If the kernel should consider OFDMA patterns while validating the provided
-+# RU puncturing bitmap. Default value is 0.
-+#ru_punct_ofdma=1
-+
- ##### IEEE 802.1X-2004 related configuration ##################################
- 
- # Require IEEE 802.1X authorization
---- a/src/ap/ap_config.h
-+++ b/src/ap/ap_config.h
-@@ -1242,6 +1242,8 @@ struct hostapd_config {
- #define CH_SWITCH_EHT_ENABLED BIT(0)
- #define CH_SWITCH_EHT_DISABLED BIT(1)
- 	unsigned int ch_switch_eht_config;
-+	u16 ru_punct_bitmap;
-+	u8 ru_punct_ofdma;
- 
- 	enum mbssid {
- 		MBSSID_DISABLED = 0,
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5044,6 +5044,10 @@ static int hostapd_config_fill(struct ho
- 		conf->eht_phy_capab.su_beamformee = atoi(pos);
- 	} else if (os_strcmp(buf, "eht_mu_beamformer") == 0) {
+@@ -5047,7 +5047,7 @@ static int hostapd_config_fill(struct ho
  		conf->eht_phy_capab.mu_beamformer = atoi(pos);
-+	} else if (os_strcmp(buf, "ru_punct_bitmap") == 0) {
-+		conf->ru_punct_bitmap = atoi(pos);
-+	} else if (os_strcmp(buf, "ru_punct_ofdma") == 0) {
-+		conf->ru_punct_ofdma = atoi(pos);
  	} else if (os_strcmp(buf, "eht_default_pe_duration") == 0) {
  		conf->eht_default_pe_duration = atoi(pos);
- 	} else if (os_strcmp(buf, "punct_bitmap") == 0) {
+-	} else if (os_strcmp(buf, "punct_bitmap") == 0) {
++	} else if (os_strcmp(buf, "punct_bitmap") == 0 || os_strcmp(buf, "ru_punct_bitmap") == 0) {
+ 		if (get_u16(pos, line, &conf->punct_bitmap))
+ 			return 1;
+ 	} else if (os_strcmp(buf, "punct_acs_threshold") == 0) {

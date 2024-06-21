@@ -25,7 +25,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
 
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -228,15 +228,20 @@ u8 * hostapd_eid_eht_capab(struct hostap
+@@ -216,15 +216,20 @@ u8 * hostapd_eid_eht_capab(struct hostap
  u8 * hostapd_eid_eht_operation(struct hostapd_data *hapd, u8 *eid,
  			       enum ieee80211_op_mode opmode)
  {
@@ -48,7 +48,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  		return eid;
  
  	if (is_6ghz_op_class(conf->op_class))
-@@ -245,7 +250,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -233,7 +238,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  		chwidth = conf->eht_oper_chwidth;
  
  	eht_oper_info_present = chwidth == CONF_OPER_CHWIDTH_320MHZ ||
@@ -57,7 +57,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  
  	if (eht_oper_info_present)
  		elen += 3;
-@@ -254,12 +259,10 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -242,12 +247,10 @@ u8 * hostapd_eid_eht_operation(struct ho
  		elen += EHT_OPER_DISABLED_SUBCHAN_BITMAP_SIZE;
  
  	*pos++ = WLAN_EID_EXTENSION;
@@ -71,40 +71,39 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  	if (hapd->iconf->eht_default_pe_duration)
  		oper->oper_params |= EHT_OPER_DEFAULT_PE_DURATION;
  
-@@ -301,8 +304,9 @@ u8 * hostapd_eid_eht_operation(struct ho
- 		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
- 			hapd->iconf->ru_punct_bitmap = 0;
- 			wpa_printf(MSG_ERROR,
--				   "Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
-+					"Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
+@@ -285,6 +288,13 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 				oper->oper_info.ccfs0 = oper->oper_info.ccfs1 + 8;
  		}
+ 
++		if (hapd->iconf->punct_bitmap &&
++		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
++			hapd->iconf->punct_bitmap = 0;
++			wpa_printf(MSG_ERROR,
++				   "Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
++		}
 +
  		seg1 = seg0;
  		if (hapd->iconf->channel < seg0)
  			seg0 -= 8;
-@@ -315,12 +319,11 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -296,14 +306,15 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 		break;
  	case CONF_OPER_CHWIDTH_USE_HT:
- 		hapd->iconf->ru_punct_bitmap = 0;
  		if ((is_6ghz_op_class(hapd->iconf->op_class) &&
 -		    op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
 -		    hapd->iconf->secondary_channel)
-+					op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
-+				hapd->iconf->secondary_channel)
++		     op_class_to_bandwidth(hapd->iconf->op_class) == 40) ||
++		     hapd->iconf->secondary_channel)
  			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_40MHZ;
  		else
  			oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_20MHZ;
--
+ 
  		break;
  	default:
- 		hapd->iconf->ru_punct_bitmap = 0;
-@@ -331,18 +334,16 @@ u8 * hostapd_eid_eht_operation(struct ho
- 	oper->oper_info.ccfs0 = seg0;
- 	oper->oper_info.ccfs1 = seg1;
- 
--	if (punct_bitmap) {
-+	if (hapd->iconf->ru_punct_bitmap) {
- 		oper->oper_params |= EHT_OPER_DISABLED_SUBCHAN_BITMAP_PRESENT;
- 		oper->oper_info.disabled_chan_bitmap =
++		hapd->iconf->punct_bitmap = 0;
+ 		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_20MHZ;
+ 		break;
+ 	}
+@@ -317,10 +328,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  			host_to_le16(punct_bitmap);
  	}
  
@@ -115,18 +114,7 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
 +	return pos + elen;
  }
  
-+
  u8 * hostapd_eid_vendor_240mhz(struct hostapd_data *hapd, u8 *eid,
-                                enum ieee80211_op_mode opmode)
- {
-@@ -408,6 +409,7 @@ u8 * hostapd_eid_vendor_240mhz(struct ho
-        return pos;
- }
- 
-+
- static bool check_valid_eht_mcs_nss(struct hostapd_data *hapd, const u8 *ap_mcs,
- 				    const u8 *sta_mcs, u8 mcs_count, u8 map_len)
- {
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -228,6 +228,8 @@ struct hostapd_data {
@@ -138,19 +126,9 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  
  	u8 own_addr[ETH_ALEN];
  
---- a/src/ap/ieee802_11_he.c
-+++ b/src/ap/ieee802_11_he.c
-@@ -288,6 +288,7 @@ u8 * hostapd_eid_he_operation(struct hos
- 
- 		*pos++ = control;
- 
-+		hapd->he_oper_chwidth = oper_chwidth;
- 		/* Channel Center Freq Seg0/Seg1 */
- 		if (oper_chwidth == CONF_OPER_CHWIDTH_160MHZ ||
- 		    oper_chwidth == CONF_OPER_CHWIDTH_320MHZ) {
 --- a/src/ap/ieee802_11_vht.c
 +++ b/src/ap/ieee802_11_vht.c
-@@ -134,6 +134,7 @@ u8 * hostapd_eid_vht_operation(struct ho
+@@ -127,6 +127,7 @@ u8 * hostapd_eid_vht_operation(struct ho
  	oper->vht_op_info_chan_center_freq_seg1_idx = seg1;
  
  	oper->vht_op_info_chwidth = oper_chwidth;
@@ -158,3 +136,13 @@ Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
  	vht_capabilities_info = host_to_le32(hapd->iface->current_mode->vht_capab);
  	if (oper_chwidth == CONF_OPER_CHWIDTH_160MHZ) {
  		/*
+--- a/src/ap/ieee802_11_he.c
++++ b/src/ap/ieee802_11_he.c
+@@ -275,6 +275,7 @@ u8 * hostapd_eid_he_operation(struct hos
+ 
+ 		*pos++ = control;
+ 
++		hapd->he_oper_chwidth = oper_chwidth;
+ 		/* Channel Center Freq Seg0/Seg1 */
+ 		if (oper_chwidth == CONF_OPER_CHWIDTH_160MHZ ||
+ 		    oper_chwidth == CONF_OPER_CHWIDTH_320MHZ) {

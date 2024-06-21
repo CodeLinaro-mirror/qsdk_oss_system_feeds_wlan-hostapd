@@ -197,8 +197,8 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 +		break;
 +	}
 +
-+	if (hapd->iconf->ru_punct_bitmap) {
-+		punct_update_legacy_bw(hapd->iconf->ru_punct_bitmap, pri_chan,
++	if (hapd->iconf->punct_bitmap) {
++		punct_update_legacy_bw(hapd->iconf->punct_bitmap, pri_chan,
 +				       &chan_width, &seg0, &seg1);
 +		switch (chan_width) {
 +		case CONF_OPER_CHWIDTH_160MHZ:
@@ -264,7 +264,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 +{
 +	struct hostapd_iface *iface = hapd->iface;
 +	struct hostapd_hw_modes *mode = iface->current_mode;
-+	u16 ru_punct_bitmap = iface->conf->ru_punct_bitmap;
++	u16 punct_bitmap = iface->conf->punct_bitmap;
 +	u16 non_be_chan_index_map = 0;
 +	int is_different_psd = 0, non11be_chan_pos = non_11be_start_idx - chan_start_idx;
 +	s8 psd_pwr;
@@ -293,7 +293,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 +			is_different_psd = 1;
 +	}
 +
-+	if (!is_different_psd && !ru_punct_bitmap) {
++	if (!is_different_psd && !punct_bitmap) {
 +		*tx_pwr_count = 0;
 +	} else {
 +		*tx_pwr_count = num_psd_values_to_psd_count(non_11be_chan_count);
@@ -314,7 +314,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 +		if (non_be_chan_index_map & BIT(j)) { /* filled in 11ax TPE*/
 +			continue;
 +		}
-+		if (ru_punct_bitmap & BIT(j)) {
++		if (punct_bitmap & BIT(j)) {
 +			/* Punctured channel. set power value to
 +			 * RNR_20_MHZ_PSD_MAX_TXPOWER (127) which
 +			 * indicates "no maximum transmit power is specified"

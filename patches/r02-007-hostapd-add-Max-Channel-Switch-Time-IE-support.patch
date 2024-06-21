@@ -84,7 +84,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +			tail_len += 6;
 +		}
  
- 		if (hapd->iconf->ru_punct_bitmap)
+ 		if (hapd->iconf->punct_bitmap)
  			tail_len +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
 @@ -2362,6 +2397,9 @@ int ieee802_11_build_ap_params(struct ho
  		hapd->cs_c_off_ecsa_beacon = csa_pos - tail - 1;

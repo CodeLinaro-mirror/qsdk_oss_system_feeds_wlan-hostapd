@@ -39,7 +39,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	struct eht_phy_capabilities_info eht_phy_capab;
  	u16 punct_bitmap; /* a bitmap of disabled 20 MHz channels */
  	u8 punct_acs_threshold;
-@@ -1333,6 +1334,10 @@ hostapd_set_oper_centr_freq_seg0_idx(str
+@@ -1331,6 +1332,10 @@ hostapd_set_oper_centr_freq_seg0_idx(str
  static inline u8
  hostapd_get_oper_centr_freq_seg1_idx(struct hostapd_config *conf)
  {
@@ -50,7 +50,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  #ifdef CONFIG_IEEE80211AX
  	if (conf->ieee80211ax)
  		return conf->he_oper_centr_freq_seg1_idx;
-@@ -1344,6 +1349,10 @@ static inline void
+@@ -1342,6 +1347,10 @@ static inline void
  hostapd_set_oper_centr_freq_seg1_idx(struct hostapd_config *conf,
  				     u8 oper_centr_freq_seg1_idx)
  {
@@ -63,16 +63,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		conf->he_oper_centr_freq_seg1_idx = oper_centr_freq_seg1_idx;
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -670,6 +670,8 @@ static size_t hostapd_probe_resp_elems_l
- 	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
- 		buflen += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
- 		buflen += 3 + sizeof(struct ieee80211_eht_operation);
-+		if (hapd->iconf->ru_punct_bitmap)
-+			buflen +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
- 		if (hapd->iconf->punct_bitmap)
- 			buflen += EHT_OPER_DISABLED_SUBCHAN_BITMAP_SIZE;
- 
-@@ -848,7 +850,7 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -848,7 +848,7 @@ static u8 * hostapd_probe_resp_fill_elem
  				pos, !!params->mld_ap);
  
  		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
@@ -81,17 +72,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -2241,6 +2243,9 @@ int ieee802_11_build_ap_params(struct ho
- 		 */
- 		if (hapd->conf->mld_ap)
- 			tail_len += 256;
-+
-+		if (hapd->iconf->ru_punct_bitmap)
-+			tail_len +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
- 	}
- #endif /* CONFIG_IEEE80211BE */
- 
-@@ -2421,7 +2426,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2421,7 +2421,7 @@ int ieee802_11_build_ap_params(struct ho
  							    tailpos, false);
  		tailpos = hostapd_eid_eht_capab(hapd, tailpos,
  						IEEE80211_MODE_AP);
@@ -127,16 +108,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		}
  	}
  
-@@ -4821,6 +4821,8 @@ static u16 send_assoc_resp(struct hostap
- 	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
- 		buflen += hostapd_eid_eht_capab_len(hapd, IEEE80211_MODE_AP);
- 		buflen += 3 + sizeof(struct ieee80211_eht_operation);
-+		if (hapd->iconf->ru_punct_bitmap)
-+			buflen +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
- 		if (hapd->iconf->punct_bitmap)
- 			buflen += EHT_OPER_DISABLED_SUBCHAN_BITMAP_SIZE;
- 	}
-@@ -4978,7 +4980,7 @@ rsnxe_done:
+@@ -4978,7 +4978,7 @@ rsnxe_done:
  		if (hapd->conf->mld_ap)
  			p = hostapd_eid_eht_ml_assoc(hapd, sta, p);
  		p = hostapd_eid_eht_capab(hapd, p, IEEE80211_MODE_AP);
@@ -196,10 +168,10 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
 +				oper->oper_info.ccfs0 = oper->oper_info.ccfs1 + 8;
 +		}
 +
- 		if (hapd->iconf->ru_punct_bitmap &&
- 		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
- 			hapd->iconf->ru_punct_bitmap = 0;
-@@ -316,7 +326,10 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 		seg1 = seg0;
+ 		if (hapd->iconf->channel < seg0)
+ 			seg0 -= 8;
+@@ -308,7 +318,10 @@ u8 * hostapd_eid_eht_operation(struct ho
  			host_to_le16(punct_bitmap);
  	}
  
@@ -228,7 +200,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		buf_len += 3 + 2 + EHT_PHY_CAPAB_LEN + EHT_MCS_NSS_CAPAB_LEN +
  			EHT_PPE_THRESH_CAPAB_LEN;
  		buf_len += 3 + sizeof(struct ieee80211_eht_operation);
-+		if (bss->iconf->ru_punct_bitmap)
++		if (bss->iconf->punct_bitmap)
 +			buf_len +=  DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
  }
  #endif /* CONFIG_IEEE80211BE */

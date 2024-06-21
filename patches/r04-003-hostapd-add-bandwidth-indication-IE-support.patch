@@ -22,7 +22,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -855,7 +855,7 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -853,7 +853,7 @@ static u8 * hostapd_probe_resp_fill_elem
  	if ((hapd->iconf->ieee80211ac && !hapd->conf->disable_11ac) ||
  	    (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax) ||
  	    (hapd->iconf->ieee80211be && !hapd->conf->disable_11be))
@@ -31,7 +31,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  	if (!params->is_ml_sta_info)
  		pos = hostapd_eid_rnr(hapd, pos, WLAN_FC_STYPE_PROBE_RESP,
-@@ -2461,7 +2461,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2456,7 +2456,7 @@ int ieee802_11_build_ap_params(struct ho
  	if ((hapd->iconf->ieee80211ac && !hapd->conf->disable_11ac) ||
  	    (hapd->iconf->ieee80211ax && !hapd->conf->disable_11ax) ||
  	    (hapd->iconf->ieee80211be && !hapd->conf->disable_11be))
@@ -110,7 +110,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	u8 tbtt_info_len;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7375,6 +7375,179 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7373,6 +7373,179 @@ u8 * hostapd_eid_txpower_envelope(struct
  				    tx_pwr);
  }
  
@@ -173,7 +173,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +        size_t fixed_eid_len;
 +
 +        if (hapd->cs_freq_params.bandwidth > 160 ||
-+            hapd->cs_freq_params.ru_punct_bitmap)
++            hostapd_get_punct_bitmap(hapd))
 +                bw_ind_status = true;
 +
 +        if (!bw_ind_status)
@@ -192,11 +192,11 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +        bw_ind_elem = (struct ieee80211_bw_ind_element *) pos;
 +        os_memset(bw_ind_elem, 0, sizeof(struct ieee80211_bw_ind_element));
 +
-+        if (hapd->cs_freq_params.ru_punct_bitmap) {
++        if (hostapd_get_punct_bitmap(hapd)) {
 +                bw_ind_elem->bw_ind_params |=
 +                        BW_IND_PARAMETER_DISABLED_SUBCHAN_BITMAP_PRESENT;
 +                bw_ind_elem->bw_ind_info.disabled_chan_bitmap =
-+                        host_to_le16(hapd->cs_freq_params.ru_punct_bitmap);
++                        host_to_le16(hostapd_get_punct_bitmap(hapd));
 +                pos += DISABLED_SUBCHANNEL_BITMAP_BYTES_SIZE;
 +        } else {
 +                bw_ind_elem->bw_ind_params &=

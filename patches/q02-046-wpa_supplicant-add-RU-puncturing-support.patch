@@ -39,8 +39,8 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1000,6 +1000,15 @@ static int hostapd_is_usable_ru_punct_bi
- 		return 0;
+@@ -999,6 +999,14 @@ static bool hostapd_is_usable_punct_bitm
+ 		return false;
  	}
  
 +#ifdef CONFIG_MESH
@@ -48,62 +48,85 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +		wpa_printf(MSG_DEBUG,
 +			   "%s: Mesh RU bitmap will be validated in kernel while joining the mesh network",
 +			   iface->bss[0]->conf->iface);
-+		return 1;
++		return true;
 +	}
 +#endif
-+
- 	switch (conf->eht_oper_chwidth) {
- 	case 0:
- 		wpa_printf(MSG_ERROR,
+ 	/*
+ 	 * In the 6 GHz band, eht_oper_chwidth is ignored. Use operating class
+ 	 * to determine channel width.
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1412,6 +1412,13 @@ struct wpa_driver_associate_params {
+@@ -1398,6 +1398,13 @@ struct wpa_driver_associate_params {
  	int enable_160mhz_bw;
  
  	/**
-+	 * RU puncturing bitmap - Each bit corresponds to a 20 MHz subchannel,
++	 * puncturing bitmap - Each bit corresponds to a 20 MHz subchannel,
 +	 * lowest bit for the channel with the lowest frequency.
 +	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.
 +	 */
-+	u16 ru_punct_bitmap;
++	u16 punct_bitmap;
 +
 +	/**
  	 * disable_eht - Disable EHT for this connection
  	 */
  	int disable_eht;
-@@ -2626,6 +2633,7 @@ struct hostapd_sta_add_params {
+@@ -1937,6 +1944,7 @@ struct wpa_driver_mesh_join_params {
+ #define WPA_DRIVER_MESH_FLAG_AMPE	0x00000008
+ 	unsigned int flags;
+ 	bool handle_dfs;
++	u16 punct_bitmap;
+ 	int mcast_rate;
+ 	int beacon_tx_mode;
+ };
+@@ -2612,6 +2620,7 @@ struct hostapd_sta_add_params {
  	const u8 *supp_oper_classes;
  	size_t supp_oper_classes_len;
  	int support_p2p_ps;
-+	u16 ru_punct_bitmap;
++	u16 punct_bitmap;
  
  	bool mld_link_sta;
  	s8 mld_link_id;
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5883,6 +5883,12 @@ static int wpa_driver_nl80211_sta_add(vo
+@@ -5872,6 +5872,12 @@ static int wpa_driver_nl80211_sta_add(vo
  		nla_nest_end(msg, wme);
  	}
  
-+	if (params->ru_punct_bitmap) {
-+		wpa_printf(MSG_DEBUG, "  * eht ru puncturing bitmap=0x%x", params->ru_punct_bitmap);
-+		if (nla_put_u16(msg, NL80211_ATTR_RU_PUNCT_BITMAP, params->ru_punct_bitmap))
++	if (params->punct_bitmap) {
++		wpa_printf(MSG_DEBUG, "  * eht ru puncturing bitmap=0x%x", params->punct_bitmap);
++		if (nla_put_u16(msg, NL80211_ATTR_RU_PUNCT_BITMAP, params->punct_bitmap))
 +			goto fail;
 +	}
 +
  	/* In case we are an AP MLD need to always specify the link ID */
  	if (params->mld_link_id >= 0) {
  		wpa_printf(MSG_DEBUG, "  * mld_link_id=%d",
+@@ -12181,6 +12187,13 @@ static int nl80211_join_mesh(struct i802
+ 	      nla_put_u32(msg, NL80211_ATTR_BEACON_TX_MODE, params->beacon_tx_mode)))
+ 		goto fail;
+ 
++	if (params->punct_bitmap) {
++		wpa_printf(MSG_DEBUG, "nl80211: Puncturing bitmap=0x%04x",
++			   params->punct_bitmap);
++		if (nla_put_u32(msg, NL80211_ATTR_PUNCT_BITMAP,
++				params->punct_bitmap))
++			goto fail;
++	}
+ 	wpa_printf(MSG_DEBUG, "  * flags=%08X", params->flags);
+ 
+ 	if (params->handle_dfs && nla_put_flag(msg, NL80211_ATTR_HANDLE_DFS))
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -434,8 +434,10 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+@@ -434,8 +434,12 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  
  			if (mode->eht_capab[wpas_mode_to_ieee80211_mode(
  					    ssid->mode)].eht_supported &&
 -			    ssid->eht)
-+			   ssid->eht) {
++			    ssid->eht) {
  				conf->ieee80211be = 1;
-+				conf->ru_punct_bitmap = ssid->ru_punct_bitmap;
++#ifdef CONFIG_IEEE80211BE
++				conf->punct_bitmap = ssid->punct_bitmap;
++#endif
 +			}
  
  			if (mode->vht_capab && ssid->vht) {
@@ -114,7 +137,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	{ INT_RANGE(beacon_tx_mode, 1, 2)},
  	{ INT_RANGE(enable_160mhz_bw, 0, 1)},
  	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
-+	{ INT(ru_punct_bitmap) },
++	{ INT(punct_bitmap) },
  	{ INT_RANGE(disable_eht, 0, 1)},
  	{ INT_RANGE(enable_4addr_mode, 0, 1)},
  	{ INT_RANGE(max_idle, 0, 65535)},
@@ -122,7 +145,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	ssid->mac_addr = WPAS_MAC_ADDR_STYLE_NOT_SET;
  	ssid->max_oper_chwidth = DEFAULT_MAX_OPER_CHWIDTH;
  	ssid->beacon_tx_mode = DEFAULT_BEACON_TX_MODE;
-+	ssid->ru_punct_bitmap = 0;
++	ssid->punct_bitmap = 0;
  }
  
  
@@ -132,7 +155,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	INT(disable_40mhz_scan);
  	INT(beacon_tx_mode);
  	INT(enable_160mhz_bw);
-+	INT(ru_punct_bitmap);
++	INT(punct_bitmap);
  	INT(enable_4addr_mode);
  	INT(max_idle);
  
@@ -142,10 +165,10 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	int enable_320mhz_bw;
  
  	/**
-+	 * RU puncturing bitmap - Each bit corresponds to a 20 MHz subchannel,
++	 * puncturing bitmap - Each bit corresponds to a 20 MHz subchannel,
 +	 * lowest bit for the channel with the lowest frequency.
 +	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.*/
-+	u16 ru_punct_bitmap;
++	u16 punct_bitmap;
 +
 +	/**
  	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
@@ -153,7 +176,25 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	 * By default, use it if it is available, but this can be configured
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
-@@ -411,6 +411,7 @@ static int wpa_supplicant_mesh_init(stru
+@@ -281,14 +281,15 @@ static int wpas_mesh_complete(struct wpa
+ 		wpa_s->mgmt_group_cipher = wpa_s->mesh_rsn->mgmt_group_cipher;
+ 	}
+ 
++	params->punct_bitmap = ifmsh->conf->punct_bitmap;
+ 	params->ies = ifmsh->mconf->rsn_ie;
+ 	params->ie_len = ifmsh->mconf->rsn_ie_len;
+ 	params->basic_rates = ifmsh->basic_rates;
+ 	params->conf.flags |= WPA_DRIVER_MESH_CONF_FLAG_HT_OP_MODE;
+ 	params->conf.ht_opmode = ifmsh->bss[0]->iface->ht_op_mode;
+ 
+-	wpa_msg(wpa_s, MSG_INFO, "joining mesh %s",
+-		wpa_ssid_txt(ssid->ssid, ssid->ssid_len));
++	wpa_msg(wpa_s, MSG_INFO, "joining mesh %s punct_bitmap:%d ",
++		wpa_ssid_txt(ssid->ssid, ssid->ssid_len), params->punct_bitmap);
+ 	ret = wpa_drv_join_mesh(wpa_s, params);
+ 	if (ret)
+ 		wpa_msg(wpa_s, MSG_ERROR, "mesh join error=%d", ret);
+@@ -409,6 +410,7 @@ static int wpa_supplicant_mesh_init(stru
  	ifmsh->num_bss = 1;
  	ifmsh->enable_iface_cb = wpa_supplicant_mesh_enable_iface_cb;
  	ifmsh->disable_iface_cb = wpa_supplicant_mesh_disable_iface_cb;
@@ -161,13 +202,14 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	ifmsh->bss = os_calloc(wpa_s->ifmsh->num_bss,
  			       sizeof(struct hostapd_data *));
  	if (!ifmsh->bss)
-@@ -493,6 +494,9 @@ static int wpa_supplicant_mesh_init(stru
+@@ -491,6 +493,10 @@ static int wpa_supplicant_mesh_init(stru
  		wpa_s->mesh_params->handle_dfs = true;
  	}
  
++#ifdef CONFIG_IEEE80211BE
 +	if (ssid->eht)
-+                conf->ru_punct_bitmap = freq->ru_punct_bitmap;
-+
++		conf->punct_bitmap = ssid->punct_bitmap;
++#endif
  	bss->iconf = conf;
  	ifmsh->conf = conf;
  
@@ -195,32 +237,32 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +		if (eht_oper_ie->oper_info.control >= EHT_OPER_CHANNEL_WIDTH_80MHZ &&
 +		    (eht_oper_ie->oper_params & EHT_OPER_DISABLED_SUBCHAN_BITMAP_PRESENT) &&
 +		    eht_oper_ie->oper_info.disabled_chan_bitmap) {
-+			params.ru_punct_bitmap = eht_oper_ie->oper_info.disabled_chan_bitmap;
++			params.punct_bitmap = eht_oper_ie->oper_info.disabled_chan_bitmap;
 +			/* Validate Peer's puncture bitmap and reset if invalid */
 +			switch (eht_oper_ie->oper_info.control) {
 +			case EHT_OPER_CHANNEL_WIDTH_80MHZ:
 +				bw = 80;
 +				start_chan = eht_oper_ie->oper_info.ccfs0 - 6;
-+				if (!is_ru_punct_bitmap_valid(bw, (pri_chan - start_chan) / 4,
-+							      params.ru_punct_bitmap, 0))
-+					params.ru_punct_bitmap = 0;
++				if (!is_punct_bitmap_valid(bw, (pri_chan - start_chan) / 4,
++							      params.punct_bitmap))
++					params.punct_bitmap = 0;
 +				break;
 +			case EHT_OPER_CHANNEL_WIDTH_160MHZ:
 +				bw = 160;
 +				start_chan = eht_oper_ie->oper_info.ccfs0 - 14;
-+				if (!is_ru_punct_bitmap_valid(bw, (pri_chan - start_chan) / 4,
-+							      params.ru_punct_bitmap, 0))
-+					params.ru_punct_bitmap = 0;
++				if (!is_punct_bitmap_valid(bw, (pri_chan - start_chan) / 4,
++							      params.punct_bitmap))
++					params.punct_bitmap = 0;
 +				break;
 +			case EHT_OPER_CHANNEL_WIDTH_320MHZ:
 +				bw = 320;
 +				start_chan = eht_oper_ie->oper_info.ccfs0 - 30;
-+				if (!is_ru_punct_bitmap_valid(bw, (pri_chan - start_chan) / 4,
-+							      params.ru_punct_bitmap, 0))
-+					params.ru_punct_bitmap = 0;
++				if (!is_punct_bitmap_valid(bw, (pri_chan - start_chan) / 4,
++							      params.punct_bitmap))
++					params.punct_bitmap = 0;
 +				break;
 +			default:
-+				params.ru_punct_bitmap = 0;
++				params.punct_bitmap = 0;
 +			}
 +		}
 +	}
@@ -230,7 +272,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	params.mld_link_id = -1;
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -7371,6 +7371,7 @@ static int wpa_supplicant_init_iface(str
+@@ -7370,6 +7370,7 @@ static int wpa_supplicant_init_iface(str
  		wpa_s->wmm_ac_supported = capa.wmm_ac_supported;
  #endif /* CONFIG_NO_WMM_AC */
  		wpa_s->max_num_akms = capa.max_num_akms;
@@ -244,12 +286,12 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  # during radar detection
  #disable_csa_dfs=1
  
-+# RU puncturing bitmap (16 bits) where each bit corresponds to
++# Puncturing bitmap (16 bits) where each bit corresponds to
 +# a 20 MHz channel in the given bandwidth, bit 0 corresponding to the channel
 +# with lowest frequency.
 +# Bit set to 1 indicates that the channel is punctured, otherwise active.
 +# Default value is 0 indicating that no channel is punctured.
-+#ru_punct_bitmap=4
++#punct_bitmap=4
 +
  # This value is used to configure the channel bonding feature.
  # Default value is 0.

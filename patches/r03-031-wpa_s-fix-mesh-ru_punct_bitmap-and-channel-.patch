@@ -123,8 +123,8 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	}
 -	return NULL;
 -}
- 
 -
+ 
 -static bool ibss_mesh_can_use_ht(struct wpa_supplicant *wpa_s,
 -				 const struct wpa_ssid *ssid,
 -				 struct hostapd_hw_modes *mode)
@@ -530,7 +530,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		} else {
 +			/* There is only one 320MHz(240+80 Punctured) in 5 GHz Band */
 +			u8 start_chan_idx = 100;
-+			if (freq->channel >= 100 && freq->channel <= 144 && (ssid->ru_punct_bitmap & 0xF000) == 0xF000) {
++			if (freq->channel >= 100 && freq->channel <= 144 && (ssid->punct_bitmap & 0xF000) == 0xF000) {
 +				for (i = start_chan_idx; i <= start_chan_idx + 44; i += 4) {
 +					struct hostapd_channel_data *chan;
 +					chan = hw_get_channel_chan(mode, i, NULL);
@@ -580,19 +580,57 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  				/* Found a suitable second segment for 80+80 */
  				chwidth = CONF_OPER_CHWIDTH_80P80MHZ;
-@@ -3132,7 +3208,7 @@ skip_80mhz:
- 				    0, 0) != 0)
- 		return false;
+@@ -3116,100 +3192,44 @@ static bool ibss_mesh_select_80_160mhz(s
+ 			vht_caps |= VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
+ 			seg0 = 114;
+ 		}
++	} else if (ssid->max_oper_chwidth == CONF_OPER_CHWIDTH_USE_HT) {
++		chwidth = CONF_OPER_CHWIDTH_USE_HT;
++		seg0 = channel + 2;
++#ifdef CONFIG_HT_OVERRIDES
++	if (ssid->disable_ht40)
++		seg0 = 0;
++#endif /* CONFIG_HT_OVERRIDES */
+ 	}
+ 
+-skip_80mhz:
++#ifdef CONFIG_HE_OVERRIDES
++	if (ssid->disable_he) {
++		vht_freq.he_enabled = 0;
++		freq->he_enabled = 0;
++	}
++#endif /* CONFIG_HE_OVERRIDES */
++#ifdef CONFIG_EHT_OVERRIDES
++	if (ssid->disable_eht) {
++		vht_freq.eht_enabled = 0;
++		freq->eht_enabled = 0;
++	}
++#endif /* CONFIG_EHT_OVERRIDES */
++
+ 	if (hostapd_set_freq_params(&vht_freq, mode->mode, freq->freq,
+ 				    freq->channel, ssid->enable_edmg,
+ 				    ssid->edmg_channel, freq->ht_enabled,
+-				    freq->vht_enabled, freq->he_enabled,
+-				    freq->eht_enabled,
++				    vht_freq.vht_enabled, vht_freq.he_enabled,
++				    vht_freq.eht_enabled,
+ 				    freq->sec_channel_offset,
+ 				    chwidth, seg0, seg1, vht_caps,
+ 				    &mode->he_capab[ieee80211_mode],
+ 				    &mode->eht_capab[ieee80211_mode], 0,
+ 				    freq->he_6ghz_reg_pwr_type) != 0)
+-		return false;
++		return;
  
 -	*freq = vht_freq;
 +	memcpy(freq, &vht_freq, sizeof(vht_freq));
  
  	wpa_printf(MSG_DEBUG, "IBSS: VHT setup freq cf1 %d, cf2 %d, bw %d",
  		   freq->center_freq1, freq->center_freq2, freq->bandwidth);
-@@ -3140,80 +3216,6 @@ skip_80mhz:
- }
- 
- 
+-	return true;
+-}
+-
+-
 -void ibss_mesh_setup_freq(struct wpa_supplicant *wpa_s,
 -			  const struct wpa_ssid *ssid,
 -			  struct hostapd_freq_params *freq)
@@ -664,13 +702,10 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 -	if (freq->he_enabled)
 -		freq->eht_enabled = ibss_mesh_can_use_eht(wpa_s, ssid, mode,
 -							  ieee80211_mode);
--}
--
--
- #ifdef CONFIG_FILS
- static size_t wpas_add_fils_hlp_req(struct wpa_supplicant *wpa_s, u8 *ie_buf,
- 				    size_t ie_buf_len)
-@@ -6552,13 +6554,13 @@ void fst_wpa_supplicant_fill_iface_obj(s
+ }
+ 
+ 
+@@ -6551,13 +6571,13 @@ void fst_wpa_supplicant_fill_iface_obj(s
  				       struct fst_wpa_obj *iface_obj)
  {
  	os_memset(iface_obj, 0, sizeof(*iface_obj));
@@ -689,16 +724,16 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	iface_obj->update_mb_ie     = wpas_fst_update_mb_ie_cb;
  	iface_obj->get_peer_first   = wpas_fst_get_peer_first;
  	iface_obj->get_peer_next    = wpas_fst_get_peer_next;
-@@ -7717,7 +7719,7 @@ extern void supplicant_event(void *ctx,
+@@ -7716,7 +7736,7 @@ extern void supplicant_event(void *ctx,
  			     union wpa_event_data *data);
  
  extern void supplicant_event_global(void *ctx, enum wpa_event_type event,
 - 				 union wpa_event_data *data);
-+				 union wpa_event_data *data);
++ 				    union wpa_event_data *data);
  
  /**
   * wpa_supplicant_add_iface - Add a new network interface
-@@ -7883,8 +7885,8 @@ const char * wpa_supplicant_get_eap_mode
+@@ -7882,8 +7902,8 @@ const char * wpa_supplicant_get_eap_mode
  {
  	const char *eapol_method;
  

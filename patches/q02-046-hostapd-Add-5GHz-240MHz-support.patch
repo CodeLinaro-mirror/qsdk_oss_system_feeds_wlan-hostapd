@@ -85,12 +85,12 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  		hostapd_get_oper_centr_freq_seg0_idx(iface->conf),
  		hostapd_get_oper_centr_freq_seg1_idx(iface->conf),
 -		iface->dfs_cac_ms / 1000);
-++		 iface->dfs_cac_ms / 1000,
-++		 iface->conf->ru_punct_bitmap);
++		iface->dfs_cac_ms / 1000,
++		iface->conf->punct_bitmap);
  
  	res = hostapd_start_dfs_cac(
  		iface, iface->conf->hw_mode, iface->freq, iface->conf->channel,
-@@ -1823,6 +1827,9 @@ int hostapd_is_dfs_overlap(struct hostap
+@@ -1816,6 +1820,9 @@ int hostapd_is_dfs_overlap(struct hostap
  	case CHAN_WIDTH_160:
  		half_width = 80;
  		break;
@@ -102,26 +102,27 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  			   width);
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -980,7 +980,7 @@ static int hostapd_is_usable_edmg(struct
- static int hostapd_is_usable_ru_punct_bitmap(struct hostapd_iface *iface)
+@@ -982,8 +982,7 @@ static bool hostapd_is_usable_punct_bitm
  {
+ #ifdef CONFIG_IEEE80211BE
  	struct hostapd_config *conf = iface->conf;
--	u8 bw, start_chan;
+-	u16 bw;
+-	u8 start_chan;
 +	int bw, start_chan;
  
- 	if (!conf->ru_punct_bitmap) {
- 		conf->ru_punct_ofdma = 0;
-@@ -1013,6 +1013,10 @@ static int hostapd_is_usable_ru_punct_bi
- 		bw = 160;
- 		start_chan = conf->eht_oper_centr_freq_seg0_idx - 14;
- 		break;
-+	case 9:
-+		bw = 320;
-+		start_chan = conf->eht_oper_centr_freq_seg0_idx - 30;
-+		break;
- 	default:
- 		return 0;
- 	}
+ 	if (!conf->punct_bitmap)
+ 		return true;
+@@ -1021,6 +1020,10 @@ static bool hostapd_is_usable_punct_bitm
+ 			bw = 160;
+ 			start_chan = conf->eht_oper_centr_freq_seg0_idx - 14;
+ 			break;
++		case 9:
++			bw = 320;
++			start_chan = conf->eht_oper_centr_freq_seg0_idx - 30;
++			break;
+ 		default:
+ 			return false;
+ 		}
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
 @@ -7863,6 +7863,7 @@ static u8 * hostapd_eid_rnr_iface(struct
