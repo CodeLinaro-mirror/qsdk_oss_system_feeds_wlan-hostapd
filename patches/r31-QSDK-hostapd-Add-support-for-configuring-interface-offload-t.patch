@@ -159,7 +159,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  #include "drivers/driver.h"
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1462,7 +1462,7 @@ static int hostapd_setup_bss(struct host
+@@ -1523,7 +1523,7 @@ static int hostapd_setup_bss(struct host
  				   conf->iface, addr, hapd,
  				   &hapd->drv_priv, force_ifname, if_addr,
  				   conf->bridge[0] ? conf->bridge : NULL,
@@ -367,7 +367,18 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	ret = nl80211_create_iface_once(drv, ifname, iftype, addr, wds, handler,
  					arg);
  
-@@ -6309,10 +6317,13 @@ int nl80211_create_iface(struct wpa_driv
+@@ -6290,6 +6298,10 @@ int nl80211_create_iface(struct wpa_driv
+ 			     linux_set_iface_flags(drv->global->ioctl_sock,
+ 						   ifname, 1) < 0))
+ 					return -1;
++			nl80211_vendor_cmd_if_offload_type((void *)drv,  OUI_QCA,
++							   QCA_NL80211_VENDOR_SUBCMD_SET_WIFI_CONFIGURATION,
++							   NULL, 0, 0, NULL, ifname,
++							   ppe_vp_type, false);
+ 			return -ENFILE;
+ 		}
+ 		wpa_printf(MSG_INFO, "Try to remove and re-create %s", ifname);
+@@ -6309,10 +6321,13 @@ int nl80211_create_iface(struct wpa_driv
  		nl80211_disable_11b_rates(drv, ret, 1);
  	}
  
@@ -382,7 +393,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  static int nl80211_setup_ap(struct i802_bss *bss)
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-@@ -7474,6 +7485,12 @@ static int nl80211_set_mode(struct i802_
+@@ -7474,6 +7489,12 @@ static int nl80211_set_mode(struct i802_
  	wpa_printf(MSG_DEBUG, "nl80211: Set mode ifindex %d iftype %d (%s)",
  		   ifindex, mode, nl80211_iftype_str(mode));
  
@@ -395,7 +406,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	msg = nl80211_cmd_msg(bss, 0, NL80211_CMD_SET_INTERFACE);
  	if (!msg || nla_put_u32(msg, NL80211_ATTR_IFTYPE, mode))
  		goto fail;
-@@ -8580,10 +8597,10 @@ static int i802_set_wds_sta(void *priv,
+@@ -8580,10 +8601,10 @@ static int i802_set_wds_sta(void *priv,
  
  	if (val) {
  		if (!if_nametoindex(name)) {
@@ -408,7 +419,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  				return -1;
  			if (bridge_ifname &&
  			    linux_br_add_if(drv->global->ioctl_sock,
-@@ -8721,7 +8738,8 @@ static void *i802_init(struct hostapd_da
+@@ -8721,7 +8742,8 @@ static void *i802_init(struct hostapd_da
  
  	bss = wpa_driver_nl80211_drv_init(hapd, params->ifname,
  					  params->global_priv, 1,
@@ -418,7 +429,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	if (bss == NULL)
  		return NULL;
  
-@@ -8929,7 +8947,7 @@ static int wpa_driver_nl80211_if_add(voi
+@@ -8929,7 +8951,7 @@ static int wpa_driver_nl80211_if_add(voi
  				     void *bss_ctx, void **drv_priv,
  				     char *force_ifname, u8 *if_addr,
  				     const char *bridge, int use_existing,
@@ -427,7 +438,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  {
  	enum nl80211_iftype nlmode;
  	struct i802_bss *bss = priv;
-@@ -8946,7 +8964,7 @@ static int wpa_driver_nl80211_if_add(voi
+@@ -8946,7 +8968,7 @@ static int wpa_driver_nl80211_if_add(voi
  		os_memset(&p2pdev_info, 0, sizeof(p2pdev_info));
  		ifidx = nl80211_create_iface(drv, ifname, nlmode, addr,
  					     0, nl80211_wdev_handler,
@@ -436,7 +447,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		if (!p2pdev_info.wdev_id_set || ifidx != 0) {
  			wpa_printf(MSG_ERROR, "nl80211: Failed to create a P2P Device interface %s",
  				   ifname);
-@@ -8962,7 +8980,7 @@ static int wpa_driver_nl80211_if_add(voi
+@@ -8962,7 +8984,7 @@ static int wpa_driver_nl80211_if_add(voi
  			   (long long unsigned int) p2pdev_info.wdev_id);
  	} else {
  		ifidx = nl80211_create_iface(drv, ifname, nlmode, addr,
@@ -445,7 +456,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		if (use_existing && ifidx == -ENFILE) {
  			added = 0;
  			ifidx = if_nametoindex(ifname);
-@@ -11762,6 +11780,66 @@ static bool is_cmd_with_nested_attrs(uns
+@@ -11762,6 +11784,66 @@ static bool is_cmd_with_nested_attrs(uns
  	}
  }
  
@@ -512,7 +523,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  static int nl80211_vendor_cmd(void *priv, unsigned int vendor_id,
  			      unsigned int subcmd, const u8 *data,
-@@ -14279,6 +14357,7 @@ static int wpa_driver_nl80211_can_share_
+@@ -14279,6 +14361,7 @@ static int wpa_driver_nl80211_can_share_
  	bss = drv->first_bss;
  	bss->drv = drv;
  	bss->ctx = ctx;
@@ -520,7 +531,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	os_strlcpy(bss->ifname, params->ifname, sizeof(bss->ifname));
  
-@@ -14314,7 +14393,7 @@ static int wpa_driver_nl80211_can_share_
+@@ -14314,7 +14397,7 @@ static int wpa_driver_nl80211_can_share_
  				      params->ifname, addr, ctx, drv_priv,
  				      force_ifname, if_addr,
  				      params->num_bridge && params->bridge[0] ? params->bridge[0] : NULL,
@@ -529,7 +540,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		wpa_printf(MSG_DEBUG, "nl80211: Failed to add BSS. Expect issues!");
  		goto free_all;
  	}
-@@ -14569,6 +14648,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -14569,6 +14652,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.get_drv_shared_status = wpa_driver_get_shared_status,
  	.can_share_drv = wpa_driver_nl80211_can_share_drv,
  	.set_scs = nl80211_set_scs,
