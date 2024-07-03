@@ -1,0 +1,70 @@
+From 886e8835dde9a2bd0b8729be3ebd06b38f9a0348 Mon Sep 17 00:00:00 2001
+From: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
+Date: Mon, 24 Jun 2024 17:16:38 +0530
+Subject: [PATCH 4/4] hostapd: Include EHT basic ML info for critical
+ update.patch
+
+Add critical update check for EHT basic ML info when
+number of simultaneous links get modified on link addition.
+
+Patch-depdendency: r04-007-hostapd-Add-NL-attribute-to-set-critical-update-para.patch
+
+Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
+---
+ src/ap/beacon.c  | 11 ++++++++---
+ src/ap/hostapd.h |  1 +
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index 2273cc0..552daca 100644
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -2193,7 +2193,7 @@ static u8 * hostapd_fils_discovery(struct hostapd_data *hapd,
+ 
+ 
+ #ifdef CONFIG_IEEE80211BE
+-static void hostapd_eid_update_cu_info(struct hostapd_data *hapd, u8 *elemid_modified,
++static void hostapd_eid_update_cu_info(struct hostapd_data *hapd, u16 *elemid_modified,
+ 				       const u8 *eid_pos, size_t eid_len,
+ 				       enum elemid_cu eid_cu)
+ {
+@@ -2230,7 +2230,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+ 	u8 *pos, *tailpos, *tailend, *csa_pos;
+ 	bool complete = false;
+ 	u8 *startpos;
+-	u8 elemid_modified = 0;
++	u16 elemid_modified = 0;
+ #endif /* NEED_AP_MLME */
+ 	struct hostapd_data *lhapd;
+ 
+@@ -2524,9 +2524,14 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+ 
+ #ifdef CONFIG_IEEE80211BE
+ 	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
+-		if (hapd->conf->mld_ap)
++		if (hapd->conf->mld_ap) {
++			startpos = tailpos;
+ 			tailpos = hostapd_eid_eht_basic_ml(hapd, tailpos, NULL,
+ 							   false, WLAN_FC_STYPE_BEACON, NULL);
++			hostapd_eid_update_cu_info(hapd, &elemid_modified, startpos,
++						   tailpos-startpos, ELEMID_CU_PARAM_EXT_ML);
++		}
++
+ 		tailpos = hostapd_eid_eht_capab(hapd, tailpos,
+ 						IEEE80211_MODE_AP);
+ 		startpos = tailpos;
+diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
+index 682a93e..0de3488 100644
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -205,6 +205,7 @@ enum elemid_cu {
+ 	ELEMID_CU_PARAM_WMM,
+ 	ELEMID_CU_PARAM_MU_EDCA,
+ 	ELEMID_CU_PARAM_SPATIAL_REUSE,
++	ELEMID_CU_PARAM_EXT_ML,
+ 
+ 	ELEMID_CU_PARAM_MAX,
+ };
+-- 
+2.34.1
+
