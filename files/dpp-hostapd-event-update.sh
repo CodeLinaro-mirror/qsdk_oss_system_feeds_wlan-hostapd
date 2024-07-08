@@ -80,10 +80,9 @@ local ifname=$2
 			hostapd_cli -i"$ifname" set rsn_pairwise "CCMP"
 			;;
 		DPP-CONFOBJ-AKM)
-			local encryption=
-			local sae=
-			local dpp=
-			local ieee80211w=
+			encryption=
+			dpp=
+			ieee80211w=
 			case "$CONFIG" in
 				dpp)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "DPP"
@@ -91,20 +90,17 @@ local ifname=$2
 					encryption="dpp"
 					ieee80211w=2
 					dpp=1
-					sae=0
 					;;
 				sae)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "SAE"
 					hostapd_cli -i"$ifname" set ieee80211w 2
-					encryption="ccmp"
-					sae=1
+					encryption="sae"
 					ieee80211w=2
 					dpp=0
 					;;
 				psk+sae|psk-sae)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "WPA-PSK SAE"
-					encryption="psk2+ccmp"
-					sae=1
+					encryption="sae-mixed"
 					ieee80211w=1
 					dpp=0
 					;;
@@ -113,27 +109,23 @@ local ifname=$2
 					encryption="psk2"
 					ieee80211w=1
 					dpp=0
-					sae=0
 					;;
 				dpp+sae|dpp-sae)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "DPP SAE"
 					hostapd_cli -i"$ifname" set ieee80211w 2
-					encryption="ccmp"
+					encryption="sae"
 					ieee80211w=2
 					dpp=1
-					sae=1
 					;;
 				dpp+psk+sae|dpp-psk-sae)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "DPP WPA-PSK SAE"
-					encryption="psk2+ccmp"
-					sae=1
+					encryption="sae-mixed"
 					ieee80211w=1
 					dpp=1
 					;;
 			esac
 			[ -n "$mld_group" ] && uci set wireless.$mld_group.encryption=$encryption
 			uci set wireless."${sect}".encryption=$encryption
-			uci set wireless."${sect}".sae=$sae
 			uci set wireless."${sect}".dpp=$dpp
 			uci set wireless."${sect}".ieee80211w=$ieee80211w
 			uci commit wireless
