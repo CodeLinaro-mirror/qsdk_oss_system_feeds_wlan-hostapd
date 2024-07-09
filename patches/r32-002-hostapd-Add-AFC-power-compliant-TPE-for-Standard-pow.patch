@@ -23,11 +23,9 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  src/common/ieee802_11_defs.h   |  21 ++
  6 files changed, 629 insertions(+), 9 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 8715e74..42b45ae 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -955,6 +955,11 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -955,6 +955,11 @@ static u8 * hostapd_gen_probe_resp(struc
  			    HE_6GHZ_INDOOR_AP)
  				buflen += 3 + MAX_PSD_TPE_POWER_COUNT +
  					  1 + MAX_PSD_TPE_EXT_POWER_COUNT;
@@ -39,7 +37,7 @@ index 8715e74..42b45ae 100644
  		}
  	}
  #endif /* CONFIG_IEEE80211AX */
-@@ -982,6 +987,12 @@ static u8 * hostapd_gen_probe_resp(struct hostapd_data *hapd,
+@@ -982,6 +987,12 @@ static u8 * hostapd_gen_probe_resp(struc
  				/* inclusion on MCST IE is mandatory */
  				buflen += 6;
  			}
@@ -52,7 +50,7 @@ index 8715e74..42b45ae 100644
  		}
  		/* QCN Vendor IE for 240MHz */
  		if (is_5ghz_freq(hapd->iface->freq))
-@@ -2052,6 +2063,10 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
+@@ -2053,6 +2064,10 @@ static u8 * hostapd_gen_fils_discovery(s
  		if (hapd->iconf->he_6ghz_reg_pwr_type == HE_6GHZ_INDOOR_AP)
  			total_len += 3 + MAX_PSD_TPE_POWER_COUNT +
  				     1 + MAX_PSD_TPE_EXT_POWER_COUNT;
@@ -63,7 +61,7 @@ index 8715e74..42b45ae 100644
  	}
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2263,6 +2278,12 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -2265,6 +2280,12 @@ int ieee802_11_build_ap_params(struct ho
  				tail_len += 3 + MAX_PSD_TPE_POWER_COUNT +
  					    1 + MAX_PSD_TPE_EXT_POWER_COUNT;
  			}
@@ -76,11 +74,9 @@ index 8715e74..42b45ae 100644
  		}
  	}
  #endif /* CONFIG_IEEE80211AX */
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 9a33472..e6754b3 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7342,6 +7342,12 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
+@@ -7381,6 +7381,13 @@ void ieee802_11_rx_from_unknown(struct h
  #define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI         2      /* dBm/MHz */
  #define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP         1      /* dBm/MHz */
  
@@ -89,11 +85,12 @@ index 9a33472..e6754b3 100644
 +#define TPE_NUM_EIRP_POWER_EXT_SUPPORTED   1
 +#define MAX_NUM_20_MHZ_IN_CURR_BW	   16
 +#define EIRP_PWR_SCALE                     100
++#define PSD_SCALE                          100
 +
  #ifndef REG_DOM_SUPPORT_TX_POWER
  static u8 hostapd_get_6g_tx_power(struct hostapd_data *hapd, u8 ap_type, u8 tx_pwr_cat)
  {
-@@ -7429,7 +7435,7 @@ static u8 *hostapd_add_tpe_info(u8 *eid, enum max_tx_pwr_interpretation tx_pwr_i
+@@ -7468,7 +7475,7 @@ static u8 *hostapd_add_tpe_info(u8 *eid,
  					   tx_pwr_ext_count);
  				return eid;
  			}
@@ -102,7 +99,7 @@ index 9a33472..e6754b3 100644
  			*length += tx_pwr_ext_count;
  		}
  	} else if (tx_pwr_intrpn == LOCAL_EIRP_PSD || tx_pwr_intrpn == REGULATORY_CLIENT_EIRP_PSD) {
-@@ -7451,6 +7457,45 @@ static u8 *hostapd_add_tpe_info(u8 *eid, enum max_tx_pwr_interpretation tx_pwr_i
+@@ -7490,6 +7497,45 @@ static u8 *hostapd_add_tpe_info(u8 *eid,
  	return eid;
  }
  
@@ -137,7 +134,7 @@ index 9a33472..e6754b3 100644
 +	for (i = 0; i < num_freq_objs; i++) {
 +		if (hostapd_is_freq_present_in_freq_obj(&afc_freq_info[i],
 +							chan_freq)) {
-+			afc_psd = afc_freq_info[i].max_psd;
++			afc_psd = afc_freq_info[i].max_psd / PSD_SCALE;
 +			break;
 +		}
 +	}
@@ -148,7 +145,7 @@ index 9a33472..e6754b3 100644
  static int get_chan_list(struct hostapd_data *hapd, int *non_11be_start_idx,
  			 int *chan_start_idx, int *non_11be_chan_count,
  			 int *total_chan_count, struct ieee_chan_data chan_data)
-@@ -7558,7 +7603,7 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -7597,7 +7643,7 @@ static int get_psd_values(struct hostapd
  			  int chan_start_idx, int non_11be_chan_count,
  			  int total_chan_count, u8 *tx_pwr_count,
  			  s8 *tx_pwr_array, u8 *tx_pwr_ext_count,
@@ -157,7 +154,7 @@ index 9a33472..e6754b3 100644
  {
  	struct hostapd_iface *iface = hapd->iface;
  	struct hostapd_hw_modes *mode = iface->current_mode;
-@@ -7566,6 +7611,7 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -7605,6 +7651,7 @@ static int get_psd_values(struct hostapd
  	u16 non_be_chan_index_map = 0;
  	int is_different_psd = 0, non11be_chan_pos = non_11be_start_idx - chan_start_idx;
  	s8 psd_pwr;
@@ -165,7 +162,7 @@ index 9a33472..e6754b3 100644
  	int i = 0, j = 0;
  
  	if (!tx_pwr_array || ((total_chan_count - non_11be_chan_count) && !tx_pwr_ext_array))
-@@ -7577,7 +7623,18 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -7616,7 +7663,18 @@ static int get_psd_values(struct hostapd
  		return -1;
  	}
  
@@ -185,7 +182,7 @@ index 9a33472..e6754b3 100644
  	for (i = non_11be_start_idx; i < non_11be_start_idx + non_11be_chan_count;
  	     i++, non11be_chan_pos++) {
  		if (i >= chan_data.num_channels) {
-@@ -7585,9 +7642,9 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -7624,9 +7682,9 @@ static int get_psd_values(struct hostapd
  			return -1;
  		}
  		non_be_chan_index_map |= BIT(non11be_chan_pos);
@@ -197,7 +194,7 @@ index 9a33472..e6754b3 100644
  			is_different_psd = 1;
  	}
  
-@@ -7619,7 +7676,7 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -7658,7 +7716,7 @@ static int get_psd_values(struct hostapd
  			 */
  			*tx_pwr_ext_array = RNR_20_MHZ_PSD_MAX_TXPOWER;
  		} else {
@@ -206,7 +203,7 @@ index 9a33472..e6754b3 100644
  		}
  		tx_pwr_ext_array++;
  		*tx_pwr_ext_count += 1;
-@@ -7682,8 +7739,426 @@ static void free_ieee_ordered_chan_list(struct ieee_chan_data *chan_data)
+@@ -7721,8 +7779,426 @@ static void free_ieee_ordered_chan_list(
  	os_free(chan_data->channels);
  }
  
@@ -635,7 +632,7 @@ index 9a33472..e6754b3 100644
  {
  	s8 tx_pwr_ext_array[MAX_PSD_TPE_EXT_POWER_COUNT] = {0};
  	int non_11be_chan_count = 0, total_chan_count = 0;
-@@ -7705,7 +8180,7 @@ static u8 *hostapd_add_psd_tpe(struct hostapd_data *hapd, u8 pwr_mode, u8 *eid,
+@@ -7744,7 +8220,7 @@ static u8 *hostapd_add_psd_tpe(struct ho
  	if (get_psd_values(hapd, non_11be_start_idx, chan_start_idx,
  			   non_11be_chan_count, total_chan_count, &tx_pwr_count,
  			   tx_pwr_array, &tx_pwr_ext_count, tx_pwr_ext_array,
@@ -644,7 +641,7 @@ index 9a33472..e6754b3 100644
  		wpa_printf(MSG_ERROR, "failed to get the PSD values");
  		goto free;
  	}
-@@ -7763,6 +8238,19 @@ u8 *hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
+@@ -7802,6 +8278,19 @@ u8 *hostapd_eid_txpower_envelope(struct
  			eid = hostapd_add_psd_tpe(hapd, pwr_mode, eid, REG_SUBORDINATE_CLIENT,
  						  REGULATORY_CLIENT_EIRP_PSD);
  		}
@@ -664,8 +661,6 @@ index 9a33472..e6754b3 100644
  		return eid;
  	}
  #endif /* CONFIG_IEEE80211AX */
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 85d053d..5622ecd 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
 @@ -9,6 +9,8 @@
@@ -677,8 +672,6 @@ index 85d053d..5622ecd 100644
  struct hostapd_iface;
  struct hostapd_data;
  struct sta_info;
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index 18f1e16..ef4954c 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
 @@ -2911,6 +2911,92 @@ bool is_6ghz_freq(int freq)
@@ -774,8 +767,6 @@ index 18f1e16..ef4954c 100644
  
  bool is_6ghz_op_class(u8 op_class)
  {
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index 9b1e682..53a6992 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
 @@ -318,6 +318,8 @@ bool is_6ghz_freq(int freq);
@@ -787,8 +778,6 @@ index 9b1e682..53a6992 100644
  
  int ieee802_11_parse_candidate_list(const char *pos, struct sta_info *sta,
  				     u8 *nei_rep, size_t nei_rep_len);
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 3e9f5d9..900d0f3 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -2068,6 +2068,27 @@ enum reg_6g_client_type {
@@ -819,6 +808,3 @@ index 3e9f5d9..900d0f3 100644
  #define RRM_CAPABILITIES_IE_LEN 5
  
  /* IEEE Std 802.11-2012, 8.5.7.4 - Link Measurement Request frame format */
--- 
-2.34.1
-
