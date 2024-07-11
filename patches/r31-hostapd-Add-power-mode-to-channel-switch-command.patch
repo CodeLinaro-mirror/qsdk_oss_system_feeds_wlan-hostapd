@@ -97,7 +97,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	settings->freq_params.he_enabled = !!os_strstr(pos, " he");
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -924,6 +924,30 @@ void hostapd_event_sta_opmode_changed(st
+@@ -924,6 +924,29 @@ void hostapd_event_sta_opmode_changed(st
  	}
  }
  
@@ -109,7 +109,6 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +
 +	settings.pwr_mode =
 +		hapd->iface->power_mode_6ghz_before_change;
-+	hapd->iface->power_mode_6ghz_before_change = -1;
 +	for (i = 0; i < hapd->iface->num_bss; i++) {
 +		err = hostapd_drv_set_6ghz_pwr_mode(hapd->iface->bss[i], &settings);
 +		if (ret) {
@@ -128,7 +127,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  
  void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  			     int offset, int width, int cf1, int cf2,
-@@ -1100,6 +1124,14 @@ void hostapd_event_ch_switch(struct host
+@@ -1100,6 +1123,16 @@ void hostapd_event_ch_switch(struct host
  
  	if (hapd->csa_in_progress &&
  	    freq == hapd->cs_freq_params.freq) {
@@ -137,6 +136,8 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +			    hapd->iconf->he_6ghz_reg_pwr_type) {
 +				if (hostapd_switch_power_mode(hapd))
 +					wpa_printf(MSG_ERROR, "Power mode change failed");
++			} else {
++				hapd->iface->power_mode_6ghz_before_change = -1;
 +			}
 +		}
 +
@@ -171,14 +172,6 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	ret = hostapd_build_beacon_data(hapd, &settings->beacon_csa);
  	if (ret) {
  		free_beacon_data(&settings->beacon_after);
-@@ -4763,6 +4766,7 @@ void hostapd_cleanup_cs_params(struct ho
- 	hapd->csa_in_progress = 0;
- 	hapd->cs_c_off_ecsa_beacon = 0;
- 	hapd->cs_c_off_ecsa_proberesp = 0;
-+	hapd->iface->power_mode_6ghz_before_change = -1;
- }
- 
- 
 --- a/src/ap/interference.c
 +++ b/src/ap/interference.c
 @@ -499,6 +499,7 @@ int hostapd_intf_awgn_detected(struct ho
