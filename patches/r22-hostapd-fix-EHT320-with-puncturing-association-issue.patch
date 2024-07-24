@@ -23,7 +23,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -228,6 +228,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -227,6 +227,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  	struct ieee80211_eht_operation *oper;
  	u8 *pos = eid, seg0 = 0, seg1 = 0, *length_pos;
  	enum oper_chan_width chwidth;
@@ -31,7 +31,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  	mode = hapd->iface->current_mode;
  	if (!mode)
-@@ -294,6 +295,11 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -293,6 +294,12 @@ u8 * hostapd_eid_eht_operation(struct ho
  	if (!seg0)
  		seg0 = hapd->iconf->channel;
  
@@ -39,11 +39,12 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 +	    && (hapd->iconf->ru_punct_bitmap || hapd->iconf->punct_bitmap)) {
 +		chwidth = CONF_OPER_CHWIDTH_160MHZ;
 +		is_5g_240_punctured = true;
++		seg0 -= 16;
 +	}
  	switch (chwidth) {
  	case CONF_OPER_CHWIDTH_320MHZ:
  		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_320MHZ;
-@@ -314,7 +320,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -313,7 +320,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  				oper->oper_info.ccfs0 = oper->oper_info.ccfs1 + 8;
  		}
  
@@ -52,7 +53,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
  			hapd->iconf->ru_punct_bitmap = 0;
  			wpa_printf(MSG_ERROR,
-@@ -348,7 +354,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -347,7 +354,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  	oper->oper_info.ccfs0 = seg0;
  	oper->oper_info.ccfs1 = seg1;
  
@@ -61,7 +62,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  		oper->oper_params |= EHT_OPER_DISABLED_SUBCHAN_BITMAP_PRESENT;
  		oper->oper_info.disabled_chan_bitmap =
  			host_to_le16(hapd->iconf->punct_bitmap);
-@@ -358,7 +364,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -357,7 +364,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  
  exit:
  
