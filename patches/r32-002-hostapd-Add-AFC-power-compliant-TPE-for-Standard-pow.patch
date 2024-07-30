@@ -175,7 +175,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		}
  		tx_pwr_ext_array++;
  		*tx_pwr_ext_count += 1;
-@@ -7769,8 +7826,426 @@ static void free_ieee_ordered_chan_list(
+@@ -7769,8 +7826,428 @@ static void free_ieee_ordered_chan_list(
  	os_free(chan_data->channels);
  }
  
@@ -235,7 +235,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +	if (get_chan_list(hapd, &non_11be_start_idx, &chan_start_idx,
 +			  &non_11be_chan_count, &total_chan_count, chan_data)) {
 +		wpa_printf(MSG_ERROR, "Unable to get chan list");
-+		return 0;
++		goto free;
 +	}
 +
 +	psd = chan_data.channels[non_11be_start_idx].psd_values[client_type];
@@ -243,6 +243,8 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +		chan_data.channels[non_11be_start_idx].eirp_values[client_type];
 +	reg_get_eirp_from_psd_and_reg_max_eirp(psd, bw, &reg_eirp_pwr);
 +
++free:
++	free_ieee_ordered_chan_list(&chan_data);
 +	return reg_eirp_pwr;
 +}
 +
@@ -604,7 +606,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  {
  	s8 tx_pwr_ext_array[MAX_PSD_TPE_EXT_POWER_COUNT] = {0};
  	int non_11be_chan_count = 0, total_chan_count = 0;
-@@ -7792,7 +8267,7 @@ static u8 *hostapd_add_psd_tpe(struct ho
+@@ -7792,7 +8269,7 @@ static u8 *hostapd_add_psd_tpe(struct ho
  	if (get_psd_values(hapd, non_11be_start_idx, chan_start_idx,
  			   non_11be_chan_count, total_chan_count, &tx_pwr_count,
  			   tx_pwr_array, &tx_pwr_ext_count, tx_pwr_ext_array,
@@ -613,7 +615,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		wpa_printf(MSG_ERROR, "failed to get the PSD values");
  		goto free;
  	}
-@@ -7851,10 +8326,10 @@ u8 *hostapd_eid_txpower_envelope(struct
+@@ -7851,10 +8328,10 @@ u8 *hostapd_eid_txpower_envelope(struct
  						  REGULATORY_CLIENT_EIRP_PSD);
  		}
  
