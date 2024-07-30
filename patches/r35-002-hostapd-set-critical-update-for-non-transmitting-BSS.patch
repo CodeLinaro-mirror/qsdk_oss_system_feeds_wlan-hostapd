@@ -309,7 +309,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd_probed,
  					  u32 frame_type, size_t *bss_index,
-@@ -9541,11 +9564,12 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9543,11 +9566,12 @@ static u8 * hostapd_eid_mbssid_elem(stru
  				    u32 frame_type, u8 max_bssid_indicator,
  				    size_t *bss_index, u8 elem_count,
  				    const u8 *known_bss, size_t known_bss_len,
@@ -323,7 +323,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	hostapd_eid_ext_supp_rates(tx_bss, NULL, &tx_xrate_len);
  	*eid++ = WLAN_EID_MULTIPLE_BSSID;
-@@ -9562,6 +9586,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9564,6 +9588,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		u8 *non_inherit_eid_len_offset;
  		size_t auth_len = 0, xrate_len = 0;
  		u16 capab_info;
@@ -331,21 +331,21 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  		if (!bss || !bss->conf || !bss->started ||
  		    mbssid_known_bss(i, known_bss, known_bss_len))
-@@ -9641,7 +9666,13 @@ static u8 * hostapd_eid_mbssid_elem(stru
- #endif /* CONFIG_IEEE80211BE */
+@@ -9644,7 +9669,13 @@ static u8 * hostapd_eid_mbssid_elem(stru
  
- 		/* WMM IE */
-+		startpos = eid;
- 		eid = hostapd_eid_wmm(bss, eid);
-+		hostapd_eid_update_cu_info(bss, &modified_flag, startpos,
-+					   eid-startpos, ELEMID_CU_PARAM_WMM);
-+		if (modified_flag && elemid_modified_bmap)
-+			*elemid_modified_bmap |= BIT(i);
+ 		if (bss->conf->wmm_override) {
+ 			/* WMM IE */
++			startpos = eid;
+ 			eid = hostapd_eid_wmm(bss, eid);
++			hostapd_eid_update_cu_info(bss, &modified_flag, startpos,
++						   eid-startpos, ELEMID_CU_PARAM_WMM);
++			if (modified_flag && elemid_modified_bmap)
++				*elemid_modified_bmap |= BIT(i);
 +
- 		if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
- 			non_inherit_ie[ie_count++] = WLAN_EID_VENDOR_SPECIFIC;
- 
-@@ -9686,7 +9717,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+ 			if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
+ 				non_inherit_ie[ie_count++] = WLAN_EID_VENDOR_SPECIFIC;
+ 		}
+@@ -9689,7 +9720,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			unsigned int frame_stype, u8 elem_count,
  			u8 **elem_offset,
  			const u8 *known_bss, size_t known_bss_len, u8 *rnr_eid,
@@ -355,7 +355,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  {
  	size_t bss_index = 1, cur_len = 0;
  	u8 elem_index = 0, *rnr_start_eid = rnr_eid;
-@@ -9724,7 +9756,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -9727,7 +9759,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  		eid = hostapd_eid_mbssid_elem(hapd_probed, eid, end, frame_stype,
  					      hostapd_max_bssid_indicator(hapd),
  					      &bss_index, elem_count,
