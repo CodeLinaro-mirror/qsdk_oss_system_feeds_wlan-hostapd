@@ -22,7 +22,20 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2999,11 +2999,22 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2989,6 +2989,12 @@ static int hostapd_ctrl_iface_chan_switc
+ 	if (ret)
+ 		return ret;
+ 
++	if (settings.power_mode == HE_6GHZ_STANDARD_POWER_AP &&
++	    !iface->is_afc_power_event_received) {
++		wpa_printf(MSG_ERROR, "Standard Power mode cant be set without AFC");
++		return -1;
++	}
++
+         if (iface->num_hw_features > 1 &&
+ 	    !hostapd_ctrl_is_freq_in_cmode(iface->current_mode, iface->current_hw_info,
+ 					   settings.freq_params.freq)) {
+@@ -3005,11 +3011,22 @@ static int hostapd_ctrl_iface_chan_switc
  		return ret;
  	}
  
@@ -45,7 +58,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		return ret;
  	}
  
-@@ -3047,6 +3058,9 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -3053,6 +3070,9 @@ static int hostapd_ctrl_iface_chan_switc
  				   settings.freq_params.freq,
  				   settings.freq_params.sec_channel_offset,
  				   settings.freq_params.bandwidth);
@@ -55,7 +68,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  			return -1;
  		}
  
-@@ -3092,6 +3106,8 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -3098,6 +3118,8 @@ static int hostapd_ctrl_iface_chan_switc
  
  		ret = hostapd_switch_channel(iface->bss[i], &settings);
  		if (ret) {
@@ -146,7 +159,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		ieee802_11_set_beacon(hapd);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4592,7 +4592,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4596,7 +4596,7 @@ static int hostapd_fill_csa_settings(str
  #ifdef CONFIG_IEEE80211BE
  	u16 old_punct_bitmap;
  #endif /* CONFIG_IEEE80211BE */
@@ -155,7 +168,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	u8 oper_centr_freq0_idx = 0;
  	u8 oper_centr_freq1_idx = 0;
  	int sec_channel_offset = settings->freq_params.sec_channel_offset;
-@@ -4666,6 +4666,8 @@ static int hostapd_fill_csa_settings(str
+@@ -4670,6 +4670,8 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -164,7 +177,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #ifdef CONFIG_IEEE80211BE
  	old_punct_bitmap = iface->conf->punct_bitmap;
  	iface->conf->punct_bitmap = settings->punct_bitmap;
-@@ -4726,6 +4728,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4730,6 +4732,7 @@ static int hostapd_fill_csa_settings(str
  	 hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
  	 hapd->parameter_set_count = 0;
  
