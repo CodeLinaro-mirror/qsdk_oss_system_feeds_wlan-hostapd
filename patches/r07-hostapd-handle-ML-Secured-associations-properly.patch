@@ -240,7 +240,16 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
-@@ -6874,6 +6946,7 @@ static void handle_assoc_cb(struct hosta
+@@ -5073,7 +5145,7 @@ static u16 send_assoc_resp(struct hostap
+ #endif /* CONFIG_IEEE80211AX */
+ 
+ 	p = hostapd_eid_ext_capab(hapd, p, false);
+-	p = hostapd_eid_bss_max_idle_period(hapd, p, sta->max_idle_period);
++	p = hostapd_eid_bss_max_idle_period(hapd, p,sta ? sta->max_idle_period : 0);
+ 	if (sta && sta->qos_map_enabled)
+ 		p = hostapd_eid_qos_map_set(hapd, p);
+ 
+@@ -6872,6 +6944,7 @@ static void handle_assoc_cb(struct hosta
  	}
  
  	hostapd_set_sta_flags(hapd, sta);
@@ -250,7 +259,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  		wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for STA "
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -747,6 +747,9 @@ static u8 * hostapd_eid_eht_basic_ml_com
+@@ -739,6 +739,9 @@ static u8 * hostapd_eid_eht_basic_ml_com
  				ptr += slice_len;
  			}
  		}
@@ -320,7 +329,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  	wpa_group_put(sm->wpa_auth, sm->group);
-@@ -7209,17 +7214,23 @@ void wpa_auth_sta_radius_psk_resp(struct
+@@ -7209,17 +7214,22 @@ void wpa_auth_sta_radius_psk_resp(struct
  }
  
  
@@ -341,14 +350,14 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  		return;
  
 -	os_memset(sm->mld_links, 0, sizeof(sm->mld_links));
- 	sm->n_mld_affiliated_links = 0;
+-	sm->n_mld_affiliated_links = 0;
 +	link = &info->links[link_id];
 +	sm_link = &sm->mld_links[link_id];
 +	os_memset(sm_link, 0, sizeof(*sm_link));
  
  	wpa_auth_logger(sm->wpa_auth, wpa_auth_get_spa(sm), LOGGER_DEBUG,
  			"MLD: Initialization");
-@@ -7227,46 +7238,48 @@ void wpa_auth_set_ml_info(struct wpa_sta
+@@ -7227,46 +7237,50 @@ void wpa_auth_set_ml_info(struct wpa_sta
  	os_memcpy(sm->peer_mld_addr, info->common_info.mld_addr, ETH_ALEN);
  
  	sm->mld_assoc_link_id = mld_assoc_link_id;
@@ -396,6 +405,8 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
 +		sm->n_mld_affiliated_links++;
 +		ctx.addr = link->local_addr;
 +		ctx.wpa_auth = NULL;
++		ctx.mld_addr = NULL;
++		ctx.link_id = -1;
 +		wpa_auth_for_each_auth(sm->wpa_auth, wpa_get_link_sta_auth, &ctx);
 +		if (ctx.wpa_auth) {
 +			sm_link->wpa_auth = ctx.wpa_auth;
