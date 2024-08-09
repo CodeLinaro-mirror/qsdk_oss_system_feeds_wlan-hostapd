@@ -41,6 +41,15 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  	if (!mode)
  		return eid;
+@@ -243,7 +243,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 	if (eht_oper_info_present)
+ 		elen += 3;
+ 
+-	if (punct_bitmap)
++	if (!is_5g_240_punctured && punct_bitmap)
+ 		elen += EHT_OPER_DISABLED_SUBCHAN_BITMAP_SIZE;
+ 
+ 	*pos++ = WLAN_EID_EXTENSION;
 @@ -268,6 +268,12 @@ u8 * hostapd_eid_eht_operation(struct ho
  	if (!seg0)
  		seg0 = hapd->iconf->channel;
@@ -61,7 +70,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 -		if (hapd->iconf->punct_bitmap &&
 +		if (!is_5g_240_punctured && hapd->iconf->punct_bitmap &&
  		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
- 			hapd->iconf->ru_punct_bitmap = 0;
+ 			hapd->iconf->punct_bitmap = 0;
  			wpa_printf(MSG_ERROR,
 @@ -322,7 +328,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  	oper->oper_info.ccfs0 = seg0;

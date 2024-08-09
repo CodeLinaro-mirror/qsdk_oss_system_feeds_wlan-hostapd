@@ -60,16 +60,6 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	params->ies = ifmsh->mconf->rsn_ie;
  	params->ie_len = ifmsh->mconf->rsn_ie_len;
  	params->basic_rates = ifmsh->basic_rates;
---- a/src/ap/hostapd.c
-+++ b/src/ap/hostapd.c
-@@ -4865,6 +4865,7 @@ hostapd_switch_channel_fallback(struct h
- 	iface->conf->bandwidth_device = freq_params->bandwidth_device;
- 	iface->conf->center_freq_device = freq_params->center_freq_device;
- 	iface->conf->bandwidth_device = freq_params->bandwidth_device;
-+	iface->conf->punct_bitmap = freq_params->punct_bitmap;
- 
- 
- 	hostapd_set_oper_centr_freq_seg0_idx(iface->conf, seg0_idx);
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
 @@ -1385,6 +1385,7 @@ int hostapd_parse_csa_settings(const cha
