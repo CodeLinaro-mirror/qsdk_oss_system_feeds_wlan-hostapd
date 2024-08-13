@@ -17,11 +17,9 @@ Signed-off-by: Banka Sai Krishna <quic_banksaik@quicinc.com>
  src/ap/ieee802_11.c | 21 ++++++++++++---------
  1 file changed, 12 insertions(+), 9 deletions(-)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 9a33472..f2453ac 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7591,15 +7591,6 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -7749,15 +7749,6 @@ static int get_psd_values(struct hostapd
  			is_different_psd = 1;
  	}
  
@@ -37,11 +35,11 @@ index 9a33472..f2453ac 100644
  #ifdef CONFIG_IEEE80211BE
  	/* For 11be the TPE extension parameter added if the bw is 320MHZ or if
  	 * any channel is punctured in 320MHZ/160MHZ/80MHZ
-@@ -7623,8 +7614,20 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -7782,8 +7773,20 @@ static int get_psd_values(struct hostapd
  		}
  		tx_pwr_ext_array++;
  		*tx_pwr_ext_count += 1;
-+		if (!is_different_psd && (psd_pwr != chan_data.channels[i].psd_values[client_mode]))
++		if (!is_different_psd && (start_chan_psd != chan_psd))
 +			is_different_psd = 1;
  	}
  #endif
@@ -58,6 +56,3 @@ index 9a33472..f2453ac 100644
  	return 0;
  }
  
--- 
-2.34.1
-
