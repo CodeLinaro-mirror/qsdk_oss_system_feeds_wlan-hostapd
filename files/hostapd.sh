@@ -5,14 +5,14 @@ wpa_supplicant_add_rate() {
 	local var="$1"
 	local val="$(($2 / 1000))"
 	local sub="$((($2 / 100) % 10))"
-	append $var "$val" ","
-	[ $sub -gt 0 ] && append $var "."
+	append "$var" "$val" ","
+	[ $sub -gt 0 ] && append "$var" "."
 }
 
 hostapd_add_rate() {
 	local var="$1"
 	local val="$(($2 / 100))"
-	append $var "$val" " "
+	append "$var" "$val" " "
 }
 
 hostapd_append_wep_key() {
@@ -24,31 +24,37 @@ hostapd_append_wep_key() {
 		[1234])
 			for idx in 1 2 3 4; do
 				local zidx
-				zidx="$(($idx - 1))"
+				zidx="$((idx - 1))"
 				json_get_var ckey "key${idx}"
 				[ -n "$ckey" ] && \
-					append $var "wep_key${zidx}=$(prepare_key_wep "$ckey")" "$N$T"
+					append "$var" "wep_key${zidx}=$(prepare_key_wep "$ckey")" "$N$T"
 			done
 			wep_keyidx="$((key - 1))"
 		;;
 		*)
-			append $var "wep_key0=$(prepare_key_wep "$key")" "$N$T"
+			append "$var" "wep_key0=$(prepare_key_wep "$key")" "$N$T"
 		;;
 	esac
 }
 
 hostapd_append_wpa_key_mgmt() {
-	local auth_type_l="$(echo $auth_type | tr 'a-z' 'A-Z')"
+	local auth_type_l
+	auth_type_l="$(echo "$auth_type" | tr 'a-z' 'A-Z')"
 
 	case "$auth_type" in
 		psk|eap)
 			append wpa_key_mgmt "WPA-$auth_type_l"
-			[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-${auth_type_l}"
+			[ "${wpa:-2}" -ge 2 ] && [ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-${auth_type_l}"
 			[ "${ieee80211w:-0}" -gt 0 ] && append wpa_key_mgmt "WPA-${auth_type_l}-SHA256"
 		;;
 		eap192)
 			append wpa_key_mgmt "WPA-EAP-SUITE-B-192"
 			[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-EAP-SHA384"
+		;;
+		eap-eap2)
+			append wpa_key_mgmt "WPA-EAP"
+			append wpa_key_mgmt "WPA-EAP-SHA256"
+			[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-EAP"
 		;;
 		eap-eap192)
 			append wpa_key_mgmt "WPA-EAP-SUITE-B-192"
@@ -58,6 +64,10 @@ hostapd_append_wpa_key_mgmt() {
 				append wpa_key_mgmt "FT-EAP"
 			}
 			[ "${ieee80211w:-0}" -gt 0 ] && append wpa_key_mgmt "WPA-EAP-SHA256"
+		;;
+		eap2)
+			[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt "FT-EAP"
+			append wpa_key_mgmt "WPA-EAP-SHA256"
 		;;
 		sae)
 			append wpa_key_mgmt "SAE"
@@ -73,10 +83,20 @@ hostapd_append_wpa_key_mgmt() {
 		owe)
 			append wpa_key_mgmt "OWE"
 		;;
+		sae-ext-key)
+			append wpa_key_mgmt "SAE-EXT-KEY"
+		;;
+		ft-sae-ext-key)
+			append wpa_key_mgmt "FT-SAE-EXT-KEY"
+		;;
 	esac
 
 	[ "$fils" -gt 0 ] && {
 		case "$auth_type" in
+			eap192)
+				append wpa_key_mgmt FILS-SHA384
+				[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt FT-FILS-SHA384
+			;;
 			eap*)
 				append wpa_key_mgmt FILS-SHA256
 				[ "${ieee80211r:-0}" -gt 0 ] && append wpa_key_mgmt FT-FILS-SHA256
@@ -121,6 +141,7 @@ hostapd_common_add_device_config() {
 	config_add_array hostapd_options
 
 	config_add_int airtime_mode
+	config_add_int mbssid
 
 	hostapd_add_log_config
 }
@@ -133,7 +154,8 @@ hostapd_prepare_device_config() {
 
 	json_get_vars country country3 country_ie beacon_int:100 doth require_mode legacy_rates \
 		acs_chan_bias local_pwr_constraint spectrum_mgmt_required airtime_mode cell_density \
-		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_ignore_probe_request maxassoc
+		rts_threshold beacon_rate rssi_reject_assoc_rssi rssi_ignore_probe_request maxassoc \
+		mbssid:0
 
 	hostapd_set_log_options base_cfg
 
@@ -153,7 +175,7 @@ hostapd_prepare_device_config() {
 			[ -n "$local_pwr_constraint" ] && append base_cfg "local_pwr_constraint=$local_pwr_constraint" "$N"
 			[ "$spectrum_mgmt_required" -gt 0 ] && append base_cfg "spectrum_mgmt_required=$spectrum_mgmt_required" "$N"
 		}
-		[ "$hwmode" = "a" -a "$doth" -gt 0 ] && append base_cfg "ieee80211h=1" "$N"
+		([ "$hwmode" = "a" ] && [ "$doth" -gt 0 ]) && append base_cfg "ieee80211h=1" "$N"
 	}
 
 	[ -n "$acs_chan_bias" ] && append base_cfg "acs_chan_bias=$acs_chan_bias" "$N"
@@ -228,12 +250,11 @@ hostapd_prepare_device_config() {
 	[ -n "$rssi_reject_assoc_rssi" ] && append base_cfg "rssi_reject_assoc_rssi=$rssi_reject_assoc_rssi" "$N"
 	[ -n "$rssi_ignore_probe_request" ] && append base_cfg "rssi_ignore_probe_request=$rssi_ignore_probe_request" "$N"
 	[ -n "$beacon_rate" ] && append base_cfg "beacon_rate=$beacon_rate" "$N"
-	[ -n "$rlist" ] && append base_cfg "supported_rates=$rlist" "$N"
-	[ -n "$brlist" ] && append base_cfg "basic_rates=$brlist" "$N"
 	append base_cfg "beacon_int=$beacon_int" "$N"
 	[ -n "$rts_threshold" ] && append base_cfg "rts_threshold=$rts_threshold" "$N"
 	[ "$airtime_mode" -gt 0 ] && append base_cfg "airtime_mode=$airtime_mode" "$N"
 	[ -n "$maxassoc" ] && append base_cfg "iface_max_num_sta=$maxassoc" "$N"
+	[ "$mbssid" -gt 0 ] && [ "$mbssid" -le 2 ] && append base_cfg "mbssid=$mbssid" "$N"
 
 	json_get_values opts hostapd_options
 	for val in $opts; do
@@ -376,21 +397,26 @@ hostapd_common_add_bss_config() {
 	config_add_string fils_dhcp
 
 	config_add_int ocv
+	config_add_array 'sae_groups:list(saelist)'
+	config_add_array 'owe_groups:list(owelist)'
+
+	config_add_int dpp
+	config_add_string dpp_csign dpp_connector dpp_netaccesskey dpp_ppkey dpp_connector_sign
 }
 
 hostapd_set_vlan_file() {
 	local ifname="$1"
 	local vlan="$2"
 	json_get_vars name vid
-	echo "${vid} ${ifname}-${name}" >> /var/run/hostapd-${ifname}.vlan
+	echo "${vid} ${ifname}-${name}" >> /var/run/hostapd-"${ifname}".vlan
 	wireless_add_vlan "${vlan}" "${ifname}-${name}"
 }
 
 hostapd_set_vlan() {
 	local ifname="$1"
 
-	rm -f /var/run/hostapd-${ifname}.vlan
-	for_each_vlan hostapd_set_vlan_file ${ifname}
+	rm -f /var/run/hostapd-"${ifname}".vlan
+	for_each_vlan hostapd_set_vlan_file "${ifname}"
 }
 
 hostapd_set_psk_file() {
@@ -401,14 +427,14 @@ hostapd_set_psk_file() {
 	json_get_vars mac vid key
 	set_default mac "00:00:00:00:00:00"
 	[ -n "$vid" ] && vlan_id="vlanid=$vid "
-	echo "${vlan_id} ${mac} ${key}" >> /var/run/hostapd-${ifname}.psk
+	echo "${vlan_id} ${mac} ${key}" >> /var/run/hostapd-"${ifname}".psk
 }
 
 hostapd_set_psk() {
 	local ifname="$1"
 
-	rm -f /var/run/hostapd-${ifname}.psk
-	for_each_station hostapd_set_psk_file ${ifname}
+	rm -f /var/run/hostapd-"${ifname}".psk
+	for_each_station hostapd_set_psk_file "${ifname}"
 }
 
 append_iw_roaming_consortium() {
@@ -562,11 +588,14 @@ hostapd_set_bss_options() {
 		ppsk airtime_bss_weight airtime_bss_limit airtime_sta_weight \
 		multicast_to_unicast_all proxy_arp per_sta_vif \
 		eap_server eap_user_file ca_cert server_cert private_key private_key_passwd server_id \
-		vendor_elements fils ocv
+		vendor_elements fils ocv dpp
+
+	json_get_values sae_groups sae_groups
+	json_get_values owe_groups owe_groups
 
 	set_default fils 0
 	set_default isolate 0
-	set_default maxassoc 0
+	set_default maxassoc 128
 	set_default max_inactivity 0
 	set_default short_preamble 1
 	set_default disassoc_low_ack 1
@@ -604,6 +633,9 @@ hostapd_set_bss_options() {
 	[ "$airtime_bss_limit" -gt 0 ] && append bss_conf "airtime_bss_limit=$airtime_bss_limit" "$N"
 	json_for_each_item append_airtime_sta_weight airtime_sta_weight
 
+	#[ -n "$bss_load_update_period" ] && append bss_conf "bss_load_update_period=$bss_load_update_period" "$N"
+	append bss_conf "chan_util_avg_period=$chan_util_avg_period" "$N"
+	append bss_conf "disassoc_low_ack=$disassoc_low_ack" "$N"
 	append bss_conf "skip_inactivity_poll=$skip_inactivity_poll" "$N"
 	append bss_conf "preamble=$short_preamble" "$N"
 	append bss_conf "wmm_enabled=$wmm" "$N"
@@ -623,7 +655,7 @@ hostapd_set_bss_options() {
 	}
 
 	set_default nasid "${macaddr//\:}"
-	append bss_conf "nas_identifier=$nasid" "$N"
+	[ -n "$nasid" ] && append bss_conf "nas_identifier=$nasid" "$N"
 
 	[ -n "$acct_interval" ] && \
 		append bss_conf "radius_acct_interim_interval=$acct_interval" "$N"
@@ -633,19 +665,27 @@ hostapd_set_bss_options() {
 	[ -n "$ocv" ] && append bss_conf "ocv=$ocv" "$N"
 
 	case "$auth_type" in
-		sae|owe|eap192|eap-eap192)
+		sae|owe|eap2|eap192|eap-eap192)
 			set_default ieee80211w 2
 			set_default sae_require_mfp 1
 			set_default sae_pwe 2
 		;;
-		psk-sae)
+		psk-sae|eap-eap2)
 			set_default ieee80211w 1
 			set_default sae_require_mfp 1
+			set_default sae_pwe 2
+		;;
+		ft-sae-ext-key|sae-ext-key)
+			set_default ieee80211w 2
 			set_default sae_pwe 2
 		;;
 	esac
 	[ -n "$sae_require_mfp" ] && append bss_conf "sae_require_mfp=$sae_require_mfp" "$N"
 	[ -n "$sae_pwe" ] && append bss_conf "sae_pwe=$sae_pwe" "$N"
+	[ -n "$sae_groups" ] && append bss_conf "sae_groups=$sae_groups" "$N"
+	if [ "$auth_type" = "owe" ]; then
+		[ -n "$owe_groups" ] && append bss_conf "owe_groups=$owe_groups" "$N"
+	fi
 
 	local vlan_possible=""
 
@@ -683,13 +723,13 @@ hostapd_set_bss_options() {
 				[ -e "$wpa_psk_file" ] || touch "$wpa_psk_file"
 				append bss_conf "wpa_psk_file=$wpa_psk_file" "$N"
 			}
-			[ "$eapol_version" -ge "1" -a "$eapol_version" -le "2" ] && append bss_conf "eapol_version=$eapol_version" "$N"
+			([ "$eapol_version" -ge "1" ] && [ "$eapol_version" -le "2" ]) && append bss_conf "eapol_version=$eapol_version" "$N"
 
 			set_default dynamic_vlan 0
 			vlan_possible=1
 			wps_possible=1
 		;;
-		eap|eap192|eap-eap192)
+		eap|eap2|eap-eap2|eap192|eap-eap192)
 			json_get_vars \
 				auth_server auth_secret auth_port \
 				dae_client dae_secret dae_port \
@@ -726,7 +766,7 @@ hostapd_set_bss_options() {
 						[ -n "$fils_dhcp" ] && break
 					done
 
-					[ -z "$fils_dhcp" -a -n "$network_bridge" -a -n "$network_ifname" ] && \
+					([ -z "$fils_dhcp" ] && [ -n "$network_bridge" ] && [ -n "$network_ifname" ]) && \
 						fils_dhcp="$(udhcpc -B -n -q -s /lib/netifd/dhcp-get-server.sh -t 1 -i "$network_ifname" 2>/dev/null)"
 				}
 				[ -n "$fils_dhcp" ] && append bss_conf "dhcp_server=$fils_dhcp" "$N"
@@ -740,7 +780,7 @@ hostapd_set_bss_options() {
 			[ "$request_cui" -gt 0 ] && append bss_conf "radius_request_cui=$request_cui" "$N"
 			[ -n "$eap_reauth_period" ] && append bss_conf "eap_reauth_period=$eap_reauth_period" "$N"
 
-			[ -n "$dae_client" -a -n "$dae_secret" ] && {
+			([ -n "$dae_client" ] && [ -n "$dae_secret" ]) && {
 				append bss_conf "radius_das_port=$dae_port" "$N"
 				append bss_conf "radius_das_client=$dae_client $dae_secret" "$N"
 			}
@@ -756,7 +796,7 @@ hostapd_set_bss_options() {
 			append bss_conf "eapol_key_index_workaround=1" "$N"
 			append bss_conf "ieee8021x=1" "$N"
 
-			[ "$eapol_version" -ge "1" -a "$eapol_version" -le "2" ] && append bss_conf "eapol_version=$eapol_version" "$N"
+			([ "$eapol_version" -ge "1" ] && [ "$eapol_version" -le "2" ]) && append bss_conf "eapol_version=$eapol_version" "$N"
 		;;
 		wep)
 			local wep_keyidx=0
@@ -784,7 +824,7 @@ hostapd_set_bss_options() {
 		;;
 	esac
 
-	local auth_algs="$((($auth_mode_shared << 1) | $auth_mode_open))"
+	local auth_algs="$(((auth_mode_shared << 1) | auth_mode_open))"
 	append bss_conf "auth_algs=${auth_algs:-1}" "$N"
 	append bss_conf "wpa=$wpa" "$N"
 	[ -n "$wpa_pairwise" ] && append bss_conf "wpa_pairwise=$wpa_pairwise" "$N"
@@ -800,7 +840,7 @@ hostapd_set_bss_options() {
 	# WPS not possible on Multi-AP backhaul-only SSID
 	[ "$multi_ap" = 1 ] && wps_possible=
 
-	[ -n "$wps_possible" -a -n "$config_methods" ] && {
+	([ -n "$wps_possible" ] && [ -n "$config_methods" ]) && {
 		set_default ext_registrar 0
 		set_default wps_device_type "6-0050F204-1"
 		set_default wps_device_name "OpenWrt AP"
@@ -839,6 +879,7 @@ hostapd_set_bss_options() {
 
 	append bss_conf "ssid=$ssid" "$N"
 	[ -n "$network_bridge" ] && append bss_conf "bridge=$network_bridge${N}wds_bridge=" "$N"
+	[ -n "$network_ifname" ] && append bss_conf "snoop_iface=$network_ifname" "$N"
 	[ -n "$iapp_interface" ] && {
 		local ifname
 		network_get_device ifname "$iapp_interface" || ifname="$iapp_interface"
@@ -860,8 +901,9 @@ hostapd_set_bss_options() {
 	[ "$bss_transition" -eq "1" ] && append bss_conf "bss_transition=1" "$N"
 	[ "$mbo" -eq 1 ] && append bss_conf "mbo=1" "$N"
 
-	json_get_vars ieee80211k rrm_neighbor_report rrm_beacon_report
+	json_get_vars ieee80211k rrm_neighbor_report rrm_beacon_report rnr
 	set_default ieee80211k 0
+	set_default rnr 0
 	if [ "$ieee80211k" -eq "1" ]; then
 		set_default rrm_neighbor_report 1
 		set_default rrm_beacon_report 1
@@ -872,6 +914,7 @@ hostapd_set_bss_options() {
 
 	[ "$rrm_neighbor_report" -eq "1" ] && append bss_conf "rrm_neighbor_report=1" "$N"
 	[ "$rrm_beacon_report" -eq "1" ] && append bss_conf "rrm_beacon_report=1" "$N"
+	[ "$rnr" -eq "1" ] && append bss_conf "rnr=1" "$N"
 
 	json_get_vars ftm_responder stationary_ap lci civic
 	set_default ftm_responder 0
@@ -885,10 +928,21 @@ hostapd_set_bss_options() {
 		}
 	fi
 
+	json_get_vars ieee80211r
+	set_default ieee80211r 0
 	if [ "$wpa" -ge "1" ]; then
-		json_get_vars ieee80211r
-		set_default ieee80211r 0
+		if [ "$fils" -gt 0 ]; then
+			json_get_vars fils_realm
+			set_default fils_realm "$(echo "$ssid" | md5sum | head -c 8)"
+		fi
 
+		append bss_conf "wpa_disable_eapol_key_retries=$wpa_disable_eapol_key_retries" "$N"
+
+		hostapd_append_wpa_key_mgmt
+		[ -n "$wpa_key_mgmt" ] && append bss_conf "wpa_key_mgmt=$wpa_key_mgmt" "$N"
+	fi
+
+	if [ "$wpa" -ge "2" ]; then
 		if [ "$ieee80211r" -gt "0" ]; then
 			json_get_vars mobility_domain ft_psk_generate_local ft_over_ds reassociation_deadline
 
@@ -919,7 +973,11 @@ hostapd_set_bss_options() {
 				set_default r0_key_lifetime 10000
 				set_default pmk_r1_push 0
 
-				[ -n "$r0kh" -a -n "$r1kh" ] || {
+				([ -n "$r0kh" ] && [ -n "$r1kh" ]) || {
+					if ([ -z "$auth_secret" ] && [ -z "$key" ]); then
+						wireless_setup_vif_failed FT_KEY_CANT_BE_DERIVED
+						return 1
+					fi
 					ft_key=`echo -n "$mobility_domain/${auth_secret:-${key}}" | md5sum | awk '{print $1}'`
 
 					set_default r0kh "ff:ff:ff:ff:ff:ff,*,$ft_key"
@@ -946,11 +1004,12 @@ hostapd_set_bss_options() {
 		append bss_conf "wpa_disable_eapol_key_retries=$wpa_disable_eapol_key_retries" "$N"
 
 		hostapd_append_wpa_key_mgmt
+		[ "$dpp" -eq "1" ] && append wpa_key_mgmt "DPP"
 		[ -n "$wpa_key_mgmt" ] && append bss_conf "wpa_key_mgmt=$wpa_key_mgmt" "$N"
 	fi
 
 	if [ "$wpa" -ge "2" ]; then
-		if [ -n "$network_bridge" -a "$rsn_preauth" = 1 ]; then
+		if ([ -n "$network_bridge" ] && [ "$rsn_preauth" = 1 ]); then
 			set_default auth_cache 1
 			append bss_conf "rsn_preauth=1" "$N"
 			append bss_conf "rsn_preauth_interfaces=$network_bridge" "$N"
@@ -966,7 +1025,7 @@ hostapd_set_bss_options() {
 		fi
 
 		append bss_conf "okc=$auth_cache" "$N"
-		[ "$auth_cache" = 0 -a "$fils" = 0 ] && append bss_conf "disable_pmksa_caching=1" "$N"
+		([ "$auth_cache" = 0 ] && [ "$fils" = 0 ]) && append bss_conf "disable_pmksa_caching=1" "$N"
 
 		# RSN -> allow management frame protection
 		case "$ieee80211w" in
@@ -1014,16 +1073,22 @@ hostapd_set_bss_options() {
 			for mac in $maclist; do
 				echo "$mac"
 			done
-			[ -n "$macfile" -a -f "$macfile" ] && cat "$macfile"
+			([ -n "$macfile" ] && [ -f "$macfile" ]) && cat "$macfile"
 		) > "$_macfile"
 	}
 
-	[ -n "$vlan_possible" -a -n "$dynamic_vlan" ] && {
+	([ -n "$vlan_possible"] && [ -n "$dynamic_vlan" ]) && {
 		json_get_vars vlan_naming vlan_tagged_interface vlan_bridge vlan_file vlan_no_bridge
 		set_default vlan_naming 1
-		[ -z "$vlan_file" ] && set_default vlan_file /var/run/hostapd-$ifname.vlan
+		[ -z "$vlan_file" ] && set_default vlan_file /var/run/hostapd-"$ifname".vlan
 		append bss_conf "dynamic_vlan=$dynamic_vlan" "$N"
 		append bss_conf "vlan_naming=$vlan_naming" "$N"
+		if [ -n "$vlan_bridge" ]; then
+			append bss_conf "vlan_bridge=$vlan_bridge" "$N"
+		else
+			set_default vlan_no_bridge 1
+		fi
+		append bss_conf "vlan_no_bridge=$vlan_no_bridge" "$N"
 		[ -n "$vlan_tagged_interface" ] && \
 			append bss_conf "vlan_tagged_interface=$vlan_tagged_interface" "$N"
 		[ -n "$vlan_file" ] && {
@@ -1093,7 +1158,7 @@ hostapd_set_bss_options() {
 		hs20_t_c_server_url
 
 	set_default hs20 0
-	set_default disable_dgaf $hs20
+	set_default disable_dgaf "$hs20"
 	set_default osen 0
 	set_default anqp_domain_id 0
 	set_default hs20_deauth_req_timeout 60
@@ -1146,8 +1211,20 @@ hostapd_set_bss_options() {
 		append bss_conf "$val" "$N"
 	done
 
-	bss_md5sum="$(echo $bss_conf | md5sum | cut -d" " -f1)"
+	bss_md5sum="$(echo "$bss_conf" | md5sum | cut -d" " -f1)"
 	append bss_conf "config_id=$bss_md5sum" "$N"
+
+	if [ "$dpp" -eq "1" ]; then
+		json_get_vars \
+			dpp_csign dpp_connector dpp_netaccesskey dpp_ppkey\
+			dpp_connector_sign
+
+		[ -n "$dpp_csign" ] && append bss_conf "dpp_csign=$dpp_csign" "$N"
+		[ -n "$dpp_connector" ] && append bss_conf "dpp_connector=$dpp_connector" "$N"
+		[ -n "$dpp_netaccesskey" ] && append bss_conf "dpp_netaccesskey=$dpp_netaccesskey" "$N"
+		[ -n "$dpp_ppkey" ] && append bss_conf " dpp_ppkey=$dpp_ppkey" "$N"
+		[ -n "$dpp_connector_sign" ] && append bss_conf "dpp_connector_sign=$dpp_connector_sign" "$N"
+	fi
 
 	append "$var" "$bss_conf" "$N"
 	return 0
@@ -1169,13 +1246,13 @@ hostapd_set_log_options() {
 	set_default log_mlme   1
 
 	local log_mask="$(( \
-		($log_80211  << 0) | \
-		($log_8021x  << 1) | \
-		($log_radius << 2) | \
-		($log_wpa    << 3) | \
-		($log_driver << 4) | \
-		($log_iapp   << 5) | \
-		($log_mlme   << 6)   \
+		(log_80211  << 0) | \
+		(log_8021x  << 1) | \
+		(log_radius << 2) | \
+		(log_wpa    << 3) | \
+		(log_driver << 4) | \
+		(log_iapp   << 5) | \
+		(log_mlme   << 6)   \
 	))"
 
 	append "$var" "logger_syslog=$log_mask" "$N"
@@ -1184,6 +1261,14 @@ hostapd_set_log_options() {
 	append "$var" "logger_stdout_level=$log_level" "$N"
 
 	return 0
+}
+
+hostapd_dpp_action() {
+	local ifname="$1"
+
+	if [ "${dpp}" -eq 1 ]; then
+		/usr/sbin/hostapd_cli -i "$ifname" -p /var/run/hostapd -a /lib/netifd/dpp-hostapd-event-update -B
+	fi
 }
 
 _wpa_supplicant_common() {
@@ -1213,7 +1298,7 @@ wpa_supplicant_prepare_interface() {
 				fail=1
 			;;
 			sta)
-				[ "$wds" = 1 -o "$multi_ap" = 1 ] || fail=1
+				([ "$wds" = 1 ] || [ "$multi_ap" = 1 ]) || fail=1
 			;;
 		esac
 
@@ -1266,11 +1351,21 @@ wpa_supplicant_set_fixed_freq() {
 		VHT*) append network_data "vht=1" "$N$T";;
 	esac
 	case "$htmode" in
-		HE80|VHT80) append network_data "max_oper_chwidth=1" "$N$T";;
-		HE160|VHT160) append network_data "max_oper_chwidth=2" "$N$T";;
+		HE80|VHT80|EHT80) append network_data "max_oper_chwidth=1" "$N$T";;
+		HE160|VHT160|EHT160)
+			append network_data "max_oper_chwidth=2" "$N$T"
+			if [ "$_w_mode" = "mesh" ]; then
+				append network_data "enable_160mhz_bw=1" "$N$T"
+			fi
+		;;
 		HE20|HE40|VHT20|VHT40) append network_data "max_oper_chwidth=0" "$N$T";;
-		HE160|EHT160|VHT160) append network_data "enable_160mhz_bw=1" "$N$T";;
-		EHT320) append network_data "enable_320mhz_bw=1" "$N$T";;
+		EHT320)
+			if [ "$_w_mode" = "mesh" ]; then
+				append network_data "enable_160mhz_bw=1" "$N$T"
+				append network_data "enable_320mhz_bw=1" "$N$T"
+			fi
+			append network_data "max_oper_chwidth=9" "$N$T"
+		;;
 		*) append network_data "disable_vht=1" "$N$T";;
 	esac
 }
@@ -1281,6 +1376,9 @@ wpa_supplicant_add_network() {
 	local htmode="$3"
 	local noscan="$4"
 	local disable_40mhz_scan=0
+	local ru_punct_bitmap=$5
+	local disable_csa_dfs=$6
+	local ccfs=0
 
 	_wpa_supplicant_common "$1"
 	wireless_vif_parse_encryption
@@ -1290,10 +1388,11 @@ wpa_supplicant_add_network() {
 		basic_rate mcast_rate \
 		ieee80211w ieee80211r fils ocv \
 		multi_ap \
-		default_disabled
+		default_disabled dpp \
+		ppe_vp
 
 	case "$auth_type" in
-		sae|owe|eap192|eap-eap192)
+		sae|owe|eap2|eap192|eap-eap192)
 			set_default ieee80211w 2
 		;;
 		psk-sae)
@@ -1306,6 +1405,7 @@ wpa_supplicant_add_network() {
 	set_default default_disabled 0
 
 	local key_mgmt='NONE'
+	local ru_punct_str=${ru_punct_bitmap:+punct_bitmap=$ru_punct_bitmap}
 	local network_data=
 	local T="	"
 
@@ -1330,6 +1430,7 @@ wpa_supplicant_add_network() {
 
 	[ "$_w_mode" = "mesh" ] && {
 		json_get_vars mesh_id mesh_fwding mesh_rssi_threshold encryption
+		beacon_int=
 		[ -n "$mesh_id" ] && ssid="${mesh_id}"
 		[ -n "$noscan" ] && disable_40mhz_scan=$noscan
 
@@ -1338,8 +1439,21 @@ wpa_supplicant_add_network() {
 		[ -n "$mesh_rssi_threshold" ] && append network_data "mesh_rssi_threshold=${mesh_rssi_threshold}" "$N$T"
 		[ -n "$freq" ] && wpa_supplicant_set_fixed_freq "$freq" "$htmode"
 		[ "$noscan" = "1" ] && append network_data "noscan=1" "$N$T"
-		[ "$encryption" = "none" -o -z "$encryption" ] || append wpa_key_mgmt "SAE"
+		([ "$encryption" = "none" ] || [ -z "$encryption" ]) || append wpa_key_mgmt "SAE"
 		scan_ssid=""
+
+		[[ "$htmode" == "EHT320" ]] && {
+                        config_ccfs=$7
+                        if [ -n "$config_ccfs" ] && [ "$config_ccfs" -gt 0 ]; then
+                                ccfs=$config_ccfs
+                        fi
+                }
+		[ -n "$disable_csa_dfs" ] && {
+			 disable_csa_dfs="disable_csa_dfs=$disable_csa_dfs"
+		}
+		[ -n "$freq_list" ] && {
+			freq_list="freq_list=$freq_list"
+		}
 	}
 
 	[ "$_w_mode" = "sta" ] && {
@@ -1383,14 +1497,14 @@ wpa_supplicant_add_network() {
 			fi
 			append network_data "$passphrase" "$N$T"
 		;;
-		eap|eap192|eap-eap192)
+		eap|eap2|eap192|eap-eap192)
 			hostapd_append_wpa_key_mgmt
 			key_mgmt="$wpa_key_mgmt"
 
 			json_get_vars eap_type identity anonymous_identity ca_cert ca_cert_usesystem
 
 			[ "$fils" -gt 0 ] && append network_data "erp=1" "$N$T"
-			if [ "$ca_cert_usesystem" -eq "1" -a -f "/etc/ssl/certs/ca-certificates.crt" ]; then
+			if ([ "$ca_cert_usesystem" -eq "1" ] && [ -f "/etc/ssl/certs/ca-certificates.crt" ]); then
 				append network_data "ca_cert=\"/etc/ssl/certs/ca-certificates.crt\"" "$N$T"
 			else
 				[ -n "$ca_cert" ] && append network_data "ca_cert=\"$ca_cert\"" "$N$T"
@@ -1439,7 +1553,7 @@ wpa_supplicant_add_network() {
 					set_default auth MSCHAPV2
 
 					if [ "$auth" = "EAP-TLS" ]; then
-						if [ "$ca_cert2_usesystem" -eq "1" -a -f "/etc/ssl/certs/ca-certificates.crt" ]; then
+						if ([ "$ca_cert2_usesystem" -eq "1" ] && [ -f "/etc/ssl/certs/ca-certificates.crt" ]); then
 							append network_data "ca_cert2=\"/etc/ssl/certs/ca-certificates.crt\"" "$N$T"
 						else
 							[ -n "$ca_cert2" ] && append network_data "ca_cert2=\"$ca_cert2\"" "$N$T"
@@ -1576,13 +1690,48 @@ wpa_supplicant_add_network() {
 		append network_data "mcast_rate=$mc_rate" "$N$T"
 	}
 
+	if [ "${dpp}" -eq 1 ]; then
+		json_get_vars \
+			dpp_csign dpp_connector dpp_netaccesskey dpp_ppkey\
+			dpp_connector_sign
+
+		[ -n "$dpp_csign" ] && append network_data "dpp_csign=$dpp_csign" "$N"
+		[ -n "$dpp_connector" ] && append network_data "dpp_connector=$dpp_connector" "$N"
+		[ -n "$dpp_netaccesskey" ] && append network_data "dpp_netaccesskey=$dpp_netaccesskey" "$N"
+		[ -n "$dpp_ppkey" ] && append network_data "dpp_ppkey=$dpp_ppkey" "$N"
+		[ -n "$dpp_connector_sign" ] && append network_data "dpp_connector_sign=$dpp_connector_sign" "$N"
+
+	fi
+
+	local ppe_vp_type=
+	case "$ppe_vp" in
+		"passive")
+			ppe_vp_type=1
+			;;
+		"active")
+			ppe_vp_type=2
+			;;
+		"ds")
+			ppe_vp_type=3
+			;;
+		*)
+			ppe_vp_type=3
+			;;
+	esac
+
+	[ "$mode" = "mesh" ] && {
+		ppe_vp_type=1
+	}
+
 	if [ "$key_mgmt" = "WPS" ]; then
 		echo "wps_cred_processing=1" >> "$_config"
 	else
 		cat >> "$_config" <<EOF
 $mesh_ctrl_interface
 $user_mpm
+$disable_csa_dfs
 $saepwe
+#ppe_vp=$ppe_vp_type
 $freq_list
 network={
 	$scan_ssid
@@ -1590,6 +1739,8 @@ network={
 	key_mgmt=$key_mgmt
 	$network_data
 	disable_40mhz_scan=$disable_40mhz_scan
+	$ru_punct_str
+	ccfs=$ccfs
 	$freq_list
 }
 EOF
@@ -1599,7 +1750,6 @@ EOF
 
 wpa_supplicant_run() {
 	local ifname="$1"
-	local hostapd_ctrl="$2"
 
 	_wpa_supplicant_common "$ifname"
 
@@ -1615,6 +1765,10 @@ wpa_supplicant_run() {
 	ret="$?"
 
 	wireless_add_process "$(cat "/var/run/wpa_supplicant-${ifname}.pid")" /usr/sbin/wpa_supplicant 1
+
+	if [ "${dpp}" -eq 1 ]; then
+		/usr/sbin/wpa_cli -i $ifname -p /var/run/wpa_supplicant -a /lib/netifd/dpp-supplicant-event-update -B
+	fi
 
 	[ "$ret" != 0 ] && wireless_setup_vif_failed WPA_SUPPLICANT_FAILED
 
