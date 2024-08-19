@@ -24,10 +24,10 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  7 files changed, 571 insertions(+), 1 deletion(-)
 
 diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index c82ec67..b0aca0b 100644
+index 66e56a0..76587fd 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2078,6 +2078,91 @@ static void hostapd_event_6ghz_power_mode(struct hostapd_data *hapd,
+@@ -2433,6 +2433,91 @@ static void hostapd_event_6ghz_power_mode(struct hostapd_data *hapd,
  	iface->power_mode_6ghz_before_change = -1;
  }
  
@@ -119,7 +119,7 @@ index c82ec67..b0aca0b 100644
  #ifdef CONFIG_OWE
  static int hostapd_notif_update_dh_ie(struct hostapd_data *hapd,
  				      const u8 *peer, const u8 *ie,
-@@ -2554,6 +2639,10 @@ void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
+@@ -3002,6 +3087,10 @@ void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
  			   hapd->conf->iface);
  		hostapd_bss_free(hapd);
  		break;
@@ -131,10 +131,10 @@ index c82ec67..b0aca0b 100644
  		wpa_printf(MSG_DEBUG, "Unknown event %d", event);
  		break;
 diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 1f70c6b..6f2b0cf 100644
+index 5ef5175..b9b1395 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2186,9 +2186,10 @@ static void hostapd_set_6ghz_sec_chan(struct hostapd_iface *iface)
+@@ -2226,9 +2226,10 @@ static void hostapd_set_6ghz_sec_chan(struct hostapd_iface *iface)
  	}
  }
  
@@ -146,7 +146,7 @@ index 1f70c6b..6f2b0cf 100644
  	iface->wait_channel_update = 0;
  	iface->is_no_ir = false;
  	iface->power_mode_6ghz_before_change = -1;
-@@ -2984,7 +2985,44 @@ static void hostapd_bss_deinit(struct hostapd_data *hapd)
+@@ -3016,7 +3017,44 @@ void hostapd_bss_deinit(struct hostapd_data *hapd)
  	hostapd_bss_link_deinit(hapd);
  	hostapd_cleanup(hapd);
  }
@@ -191,7 +191,7 @@ index 1f70c6b..6f2b0cf 100644
  
  void hostapd_interface_deinit(struct hostapd_iface *iface)
  {
-@@ -3000,6 +3038,8 @@ void hostapd_interface_deinit(struct hostapd_iface *iface)
+@@ -3032,6 +3070,8 @@ void hostapd_interface_deinit(struct hostapd_iface *iface)
  	iface->wait_channel_update = 0;
  	iface->power_mode_6ghz_before_change = -1;
  	iface->is_no_ir = false;
@@ -200,30 +200,30 @@ index 1f70c6b..6f2b0cf 100644
  
  #ifdef CONFIG_FST
  	if (iface->fst) {
-@@ -3279,6 +3319,8 @@ struct hostapd_iface * hostapd_init(struct hapd_interfaces *interfaces,
- 	}
- 	hapd_iface->is_ch_switch_dfs = false;
- 
+@@ -3116,6 +3156,8 @@ struct hostapd_iface * hostapd_alloc_iface(void)
+
+	dl_list_init(&hapd_iface->sta_seen);
+
 +	hapd_iface->is_afc_power_event_received = false;
 +
  	return hapd_iface;
+ }
  
- fail:
 diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index d906a65..4e7af83 100644
+index 1b67abe..fcfb1ef 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -798,6 +798,9 @@ struct hostapd_iface {
- 	struct hostapd_multi_hw_info *current_hw_info;
- 	/* Channel switch from ACS to DFS*/
- 	bool is_ch_switch_dfs;
+@@ -805,6 +805,9 @@ struct hostapd_iface {
+	bool is_no_ir;
+
+	bool is_ch_switch_dfs; /* Channel switch from ACS to DFS */
 +	/* 6 GHz AFC information */
 +	struct afc_sp_reg_info *afc_rsp_info;
 +	bool is_afc_power_event_received;
- };
- 
- /* Iterate over all affiliated links in MLD to which @self belongs.
-@@ -863,6 +866,7 @@ void hostapd_switch_color(struct hostapd_data *hapd, u64 bitmap);
+
+	struct hostapd_multi_hw_info *multi_hw_info;
+	u8 num_multi_hws;
+@@ -869,6 +872,7 @@ void hostapd_switch_color(struct hostapd_data *hapd, u64 bitmap);
  void hostapd_cleanup_cca_params(struct hostapd_data *hapd);
  int hostapd_fill_cca_settings(struct hostapd_data *hapd, struct cca_settings *settings);
  
@@ -232,12 +232,12 @@ index d906a65..4e7af83 100644
  int hostapd_register_probereq_cb(struct hostapd_data *hapd,
  				 int (*cb)(void *ctx, const u8 *sa,
 diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index eb18db0..3e9f5d9 100644
+index 0d65d0e..5253925 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2451,6 +2451,35 @@ enum he_6ghz_ap_type {
- 	HE_6GHZ_VERY_LOW_POWER_AP       = 2,
- };
+@@ -2547,6 +2547,35 @@ static inline bool he_reg_is_sp(enum he_reg_info_6ghz_ap_type type)
+		type == HE_REG_INFO_6GHZ_AP_TYPE_INDOOR_SP;
+ }
  
 +struct afc_freq_obj {
 +	u32 low_freq;
@@ -272,7 +272,7 @@ index eb18db0..3e9f5d9 100644
  #define IEEE80211_HE_6GHZ_OPER_CTRL_REG_INFO_LSB    3
  
 diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index fa7bbb9..8affe80 100644
+index 9cb9b5e..7c24347 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
 @@ -71,6 +71,29 @@ enum hostapd_chan_width_attr {
@@ -305,8 +305,8 @@ index fa7bbb9..8affe80 100644
  /**
   * enum reg_change_initiator - Regulatory change initiator
   */
-@@ -191,7 +214,18 @@ struct hostapd_channel_data {
- 	u16 punct_bitmap;
+@@ -194,7 +217,18 @@ struct hostapd_channel_data {
+	 */
  	const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab;
  	size_t eht_240mhz_len;
 +
@@ -324,7 +324,7 @@ index fa7bbb9..8affe80 100644
  };
  
  #define HE_MAC_CAPAB_0		0
-@@ -5999,6 +6033,11 @@ enum wpa_event_type {
+@@ -6122,6 +6156,11 @@ enum wpa_event_type {
  	 * EVENT_6GHZ_POWER_MODE_NOTIFY - Notify the AP power mode change
  	 */
  	EVENT_6GHZ_POWER_MODE_NOTIFY,
@@ -336,7 +336,7 @@ index fa7bbb9..8affe80 100644
  };
  
  
-@@ -6983,6 +7022,8 @@ union wpa_event_data {
+@@ -7146,6 +7185,8 @@ union wpa_event_data {
  		struct t2lm_mapping t2lmap[MAX_NUM_MLD_LINKS];
  	} t2l_map_info;
  
@@ -346,10 +346,10 @@ index fa7bbb9..8affe80 100644
  	 * Data for critical_update
  	 */
 diff --git a/src/drivers/driver_nl80211_capa.c b/src/drivers/driver_nl80211_capa.c
-index e720f1c..a00bf39 100644
+index 161860c..bbfafe5 100644
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -2325,6 +2325,7 @@ static void nl80211_reg_rule_max_eirp(u32 start, u32 end, u32 max_eirp,
+@@ -2360,6 +2360,7 @@ static void nl80211_reg_rule_max_eirp(u32 start, u32 end, u32 max_eirp,
  			    (u32) chan->freq + 10 <= end) {
  				chan->max_tx_power = max_eirp;
  				chan->psd_values[pwr_mode] = psd;
@@ -358,13 +358,13 @@ index e720f1c..a00bf39 100644
  		}
  	}
 diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index b4c42af..16a4e2a 100644
+index fb487ad..936c854 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -3435,6 +3435,367 @@ qca_nl80211_6ghz_pwr_mode_change_completed(struct wpa_driver_nl80211_data *drv,
- 	wpa_supplicant_event(drv->ctx, EVENT_6GHZ_POWER_MODE_NOTIFY, &event);
- }
- 
+@@ -3520,6 +3520,367 @@ qca_nl80211_6ghz_pwr_mode_change_completed(struct wpa_driver_nl80211_data *drv,
+ #endif /* CONFIG_DRIVER_NL80211_QCA */
+
+
 +static void compute_num_freq_obj(struct nlattr **attr, u8 *num_freq_obj)
 +{
 +	u8 nl_len;
@@ -729,16 +729,13 @@ index b4c42af..16a4e2a 100644
  static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
  				     u32 subcmd, u8 *data, size_t len)
  {
-@@ -3483,6 +3844,9 @@ static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
- 	case QCA_NL80211_VENDOR_SUBCMD_POWER_MODE_CHANGE_COMPLETED:
- 		qca_nl80211_6ghz_pwr_mode_change_completed(drv, data, len);
- 		break;
+@@ -3647,6 +4008,9 @@ static void nl80211_vendor_event_brcm(struct wpa_driver_nl80211_data *drv,
+	case BRCM_VENDOR_EVENT_ACS:
+		brcm_nl80211_acs_select_ch(drv, data, len);
+		break;
 +	case QCA_NL80211_VENDOR_SUBCMD_AFC_EVENT:
 +		qca_nl80211_afc_power_update_completed(drv, data, len);
 +		break;
  	default:
  		wpa_printf(MSG_DEBUG,
- 			   "nl80211: Ignore unsupported QCA vendor event %u",
--- 
-2.34.1
-
+			   "%s: Ignore unsupported BRCM vendor event %u",
