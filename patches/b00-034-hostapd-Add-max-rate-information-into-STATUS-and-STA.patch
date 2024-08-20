@@ -182,7 +182,7 @@ index 50a4dc4..f9c3fa0 100644
  			return len;
  		len += ret;
 + 
-+		 if (mode) {
++		 if (mode && iface->conf->ieee80211n) {
 +			 ret = os_snprintf(buf + len, buflen - len,
 +					   "max_mcs=%u\n",
 +					   hostapd_htmaxmcs(mode->mcs_set));
