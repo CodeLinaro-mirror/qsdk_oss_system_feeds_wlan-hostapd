@@ -1,0 +1,262 @@
+From c71cb033f55b73a6fee2f13a44c0a4c497a2302c Mon Sep 17 00:00:00 2001
+From: Pavithra Ganesan <quic_pavigane@quicinc.com>
+Date: Wed, 21 Aug 2024 13:28:41 +0530
+Subject: [PATCH] [Revert] [UPSTREAM] hostapd: MLD: add
+support to remove link station from AP
+
+Currently NL80211_CMD_REMOVE_LINK_STA is not handled in ath12k
+during wifi down in ML Station. So the ML Station not connectd
+to AP with wifi reload.
+
+Reverted the NL80211_CMD_REMOVE_LINK_STA changes on hostapd
+to connect the ML Station.
+
+Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
+---
+ src/ap/ap_drv_ops.c          | 23 ++++++----------------
+ src/ap/ap_drv_ops.h          | 13 -------------
+ src/ap/hostapd.c             |  1 -
+ src/ap/sta_info.c            | 37 ++----------------------------------
+ src/ap/sta_info.h            |  1 -
+ src/drivers/driver.h         |  9 ---------
+ src/drivers/driver_nl80211.c | 32 -------------------------------
+ 7 files changed, 8 insertions(+), 108 deletions(-)
+
+--- a/src/ap/ap_drv_ops.c
++++ b/src/ap/ap_drv_ops.c
+@@ -281,19 +281,6 @@ int hostapd_set_ap_wps_ie(struct hostapd_data *hapd)
+ }
+ 
+ 
+-bool hostapd_sta_is_link_sta(struct hostapd_data *hapd,
+-			     struct sta_info *sta)
+-{
+-#ifdef CONFIG_IEEE80211BE
+-	if (ap_sta_is_mld(hapd, sta) &&
+-	    sta->mld_assoc_link_id != hapd->mld_link_id)
+-		return true;
+-#endif /* CONFIG_IEEE80211BE */
+-
+-	return false;
+-}
+-
+-
+ int hostapd_set_authorized(struct hostapd_data *hapd,
+ 			   struct sta_info *sta, int authorized)
+ {
+@@ -303,12 +290,13 @@ int hostapd_set_authorized(struct hostapd_data *hapd,
+	 * MLD peers). Thus, do not propagate the change to the driver for the
+	 * link stations.
+	 */
+-	if (hostapd_sta_is_link_sta(hapd, sta)) {
++	/* TODO: Need to check the function*/
++	/*if (hostapd_sta_is_link_sta(hapd, sta)) {
+		wpa_printf(MSG_DEBUG,
+			   "%s: Do not update link station flags (" MACSTR ")",
+			   __func__, MAC2STR(sta->addr));
+		return 0;
+-	}
++	}*/
+
+	if (authorized) {
+		return hostapd_sta_set_flags(hapd, sta->addr,
+@@ -338,12 +326,13 @@ int hostapd_set_sta_flags(struct hostapd_data *hapd, struct sta_info *sta)
+	 * support short preamble. Thus, do not propagate the change to the
+	 * driver for the link stations.
+	 */
+-	if (hostapd_sta_is_link_sta(hapd, sta)) {
++	/* TODO: Need to check the function*/
++	/*if (hostapd_sta_is_link_sta(hapd, sta)) {
+		wpa_printf(MSG_DEBUG,
+			   "%s: Do not update link station flags (" MACSTR ")",
+			   __func__, MAC2STR(sta->addr));
+		return 0;
+-	}
++	}*/
+
+	flags_or = total_flags & set_flags;
+	flags_and = total_flags | ~set_flags;
+--- a/src/ap/ap_drv_ops.h
++++ b/src/ap/ap_drv_ops.h
+@@ -31,8 +31,6 @@ void hostapd_free_ap_extra_ies(struct hostapd_data *hapd, struct wpabuf *beacon,
+ 			       struct wpabuf *assocresp);
+ int hostapd_reset_ap_wps_ie(struct hostapd_data *hapd);
+ int hostapd_set_ap_wps_ie(struct hostapd_data *hapd);
+-bool hostapd_sta_is_link_sta(struct hostapd_data *hapd,
+-			     struct sta_info *sta);
+ int hostapd_set_authorized(struct hostapd_data *hapd,
+ 			   struct sta_info *sta, int authorized);
+ int hostapd_set_sta_flags(struct hostapd_data *hapd, struct sta_info *sta);
+@@ -508,17 +506,6 @@ static inline int hostapd_drv_link_add(struct hostapd_data *hapd,
+ 
+ }
+ 
+-static inline int hostapd_drv_link_sta_remove(struct hostapd_data *hapd,
+-					      const u8 *addr)
+-{
+-	if (!hapd->conf->mld_ap || !hapd->driver || !hapd->drv_priv ||
+-	    !hapd->driver->link_sta_remove)
+-		return -1;
+-
+-	return hapd->driver->link_sta_remove(hapd->drv_priv, hapd->mld_link_id,
+-					     addr);
+-}
+-
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ struct hostapd_multi_hw_info *
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -445,7 +445,6 @@ static void hostapd_link_remove_timeout_handler(void *eloop_data,
+ 	ieee802_11_set_beacon(hapd);
+ 
+ 	if (!hapd->eht_mld_link_removal_count) {
+-		hostapd_free_link_stas(hapd);
+ 		hostapd_disable_iface(hapd->iface);
+ 		return;
+ 	}
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -227,17 +227,6 @@ void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta)
+ #endif /* CONFIG_PASN */
+ 
+ 
+-static void __ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
+-{
+-#ifdef CONFIG_IEEE80211BE
+-	if (hostapd_sta_is_link_sta(hapd, sta) &&
+-	    !hostapd_drv_link_sta_remove(hapd, sta->addr))
+-		return;
+-#endif /* CONFIG_IEEE80211BE */
+-
+-	hostapd_drv_sta_remove(hapd, sta->addr);
+-}
+-
+ 
+ #ifdef CONFIG_IEEE80211BE
+ static void clear_wpa_sm_for_each_partner_link(struct hostapd_data *hapd,
+@@ -293,7 +282,7 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
+ 
+ 	if (!hapd->iface->driver_ap_teardown &&
+ 	    !(sta->flags & WLAN_STA_PREAUTH)) {
+-		__ap_free_sta(hapd, sta);
++		hostapd_drv_sta_remove(hapd, sta->addr);
+ 		sta->added_unassoc = 0;
+ 	}
+ 
+@@ -400,7 +389,7 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
+ 
+ 	/* Release group references in case non-association link STA is removed
+ 	 * before association link STA */
+-	if (hostapd_sta_is_link_sta(hapd, sta))
++	if (sta->mld_info.mld_sta && hapd->mld_link_id != sta->mld_assoc_link_id)
+ 		wpa_release_link_auth_ref(sta->wpa_sm, hapd->mld_link_id);
+ #else /* CONFIG_IEEE80211BE */
+ 	wpa_auth_sta_deinit(sta->wpa_sm);
+@@ -557,28 +546,6 @@ void hostapd_free_stas(struct hostapd_data *hapd)
+ 	}
+ }
+ 
+-
+-#ifdef CONFIG_IEEE80211BE
+-void hostapd_free_link_stas(struct hostapd_data *hapd)
+-{
+-	struct sta_info *sta, *prev;
+-
+-	sta = hapd->sta_list;
+-	while (sta) {
+-		prev = sta;
+-		sta = sta->next;
+-
+-		if (!hostapd_sta_is_link_sta(hapd, prev))
+-			continue;
+-
+-		wpa_printf(MSG_DEBUG, "Removing link station from MLD " MACSTR,
+-			   MAC2STR(prev->addr));
+-		ap_free_sta(hapd, prev);
+-	}
+-}
+-#endif /* CONFIG_IEEE80211BE */
+-
+-
+ /**
+  * ap_handle_timer - Per STA timer handler
+  * @eloop_ctx: struct hostapd_data *
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
+@@ -466,6 +466,5 @@ static inline void ap_sta_set_mld(struct sta_info *sta, bool mld)
+ 
+ void ap_sta_free_sta_profile(struct mld_info *info);
+ 
+-void hostapd_free_link_stas(struct hostapd_data *hapd);
+ 
+ #endif /* STA_INFO_H */
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -5481,15 +5481,6 @@ struct wpa_driver_ops {
+ 	struct hostapd_multi_hw_info * (*get_multi_hw_info)(void *priv,
+ 							    u8 *num_multi_hws);
+ 
+-	/**
+-	 * link_sta_remove - Remove a link STA from an MLD STA
+-	 * @priv: Private driver interface data
+-	 * @link_id: The link ID which the link STA is using
+-	 * @addr: The MLD MAC address of the MLD STA
+-	 * Returns: 0 on success, negative value on failure
+-	 */
+-	int (*link_sta_remove)(void *priv, u8 link_id, const u8 *addr);
+-
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	int (*register_frame)(void *priv, u16 type,
+ 			      const u8 *match, size_t match_len,
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -14398,37 +14398,6 @@ static int nl80211_link_add(void *priv, u8 link_id, const u8 *addr,
+ 	return 0;
+ }
+ 
+-
+-#ifdef CONFIG_IEEE80211BE
+-static int wpa_driver_nl80211_link_sta_remove(void *priv, u8 link_id,
+-					      const u8 *addr)
+-{
+-	struct i802_bss *bss = priv;
+-	struct wpa_driver_nl80211_data *drv = bss->drv;
+-	struct nl_msg *msg;
+-	int ret;
+-
+-	if (!(bss->valid_links & BIT(link_id)))
+-		return -ENOLINK;
+-
+-	if (!(msg = nl80211_bss_msg(bss, 0, NL80211_CMD_REMOVE_LINK_STA)) ||
+-	    nla_put(msg, NL80211_ATTR_MLD_ADDR, ETH_ALEN, addr) ||
+-	    nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID, link_id)) {
+-		nlmsg_free(msg);
+-		return -ENOBUFS;
+-	}
+-
+-	ret = send_and_recv_cmd(drv, msg);
+-	wpa_printf(MSG_DEBUG,
+-		   "nl80211: link_sta_remove -> REMOVE_LINK_STA on link_id %u from MLD STA "
+-		   MACSTR ", from %s --> %d (%s)",
+-		   link_id, MAC2STR(addr), bss->ifname, ret, strerror(-ret));
+-
+-	return ret;
+-}
+-#endif /* CONFIG_IEEE80211BE */
+-
+-
+ #ifdef CONFIG_TESTING_OPTIONS
+ 
+ static int testing_nl80211_register_frame(void *priv, u16 type,
+@@ -14831,7 +14800,6 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ #ifdef CONFIG_IEEE80211BE
+ 	.link_remove = driver_nl80211_link_remove,
+ 	.is_drv_shared = nl80211_is_drv_shared,
+-	.link_sta_remove = wpa_driver_nl80211_link_sta_remove,
+ 	.can_share_drv = wpa_driver_nl80211_can_share_drv,
+ 	.set_scs = nl80211_set_scs,
+ #endif /* CONFIG_IEEE80211BE */
+-- 
+2.34.1
+
