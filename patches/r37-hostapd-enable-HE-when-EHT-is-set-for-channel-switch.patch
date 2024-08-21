@@ -22,20 +22,17 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  1 file changed, 2 insertions(+), 1 deletion(-)
 
 diff --git a/src/ap/ctrl_iface_ap.c b/src/ap/ctrl_iface_ap.c
-index 31b53a133a14..10a713a0248e 100644
+index 698ace8..3acce24 100644
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1417,8 +1417,9 @@ int hostapd_parse_csa_settings(const char *pos,
- 
+@@ -1403,8 +1403,9 @@ int hostapd_parse_csa_settings(const char *pos,
+	settings->freq_params.punct_bitmap = settings->punct_bitmap;
  	settings->freq_params.ht_enabled = !!os_strstr(pos, " ht");
  	settings->freq_params.vht_enabled = !!os_strstr(pos, " vht");
 -	settings->freq_params.he_enabled = !!os_strstr(pos, " he");
  	settings->freq_params.eht_enabled = !!os_strstr(pos, " eht");
 +	settings->freq_params.he_enabled = !!os_strstr(pos, " he") ||
 +					   settings->freq_params.eht_enabled;
- 	settings->freq_params.ru_punct_ofdma = !!os_strstr(pos,
- 							    " ru_punct_ofdma");
  	settings->block_tx = !!os_strstr(pos, " blocktx");
--- 
-2.39.0
-
+	settings->handle_dfs = !!os_strstr(pos, " handle_dfs");
+ #undef SET_CSA_SETTING
