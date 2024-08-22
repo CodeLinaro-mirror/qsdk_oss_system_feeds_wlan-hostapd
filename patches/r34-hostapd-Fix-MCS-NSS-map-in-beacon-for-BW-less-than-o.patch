@@ -20,11 +20,9 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  src/ap/ieee802_11_eht.c | 23 ++++++++++++++---------
  1 file changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index 4f3b01a..b461e26 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -46,7 +46,7 @@ static u16 ieee80211_eht_ppet_size(u16 ppe_thres_hdr, const u8 *phy_cap_info)
+@@ -46,7 +46,7 @@ static u16 ieee80211_eht_ppet_size(u16 p
  
  static u8 ieee80211_eht_mcs_set_size(enum hostapd_hw_mode mode, u8 opclass,
  				     u8 he_oper_chwidth, const u8 *he_phy_cap,
@@ -33,7 +31,7 @@ index 4f3b01a..b461e26 100644
  {
  	u8 sz = EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
  	bool band24, band5, band6;
-@@ -93,7 +93,7 @@ static u8 ieee80211_eht_mcs_set_size(enum hostapd_hw_mode mode, u8 opclass,
+@@ -93,7 +93,7 @@ static u8 ieee80211_eht_mcs_set_size(enu
  	      HE_PHYCAP_CHANNEL_WIDTH_SET_80PLUS80MHZ_IN_5G)))
  	    sz += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
  
@@ -42,7 +40,7 @@ index 4f3b01a..b461e26 100644
  	    (eht_phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
  	     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK)) {
  		sz += EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS;
-@@ -121,7 +121,8 @@ size_t hostapd_eid_eht_capab_len(struct hostapd_data *hapd,
+@@ -121,7 +121,8 @@ size_t hostapd_eid_eht_capab_len(struct
  	len += ieee80211_eht_mcs_set_size(mode->mode, hapd->iconf->op_class,
  					  hapd->iconf->he_oper_chwidth,
  					  mode->he_capab[opmode].phy_cap,
@@ -52,16 +50,17 @@ index 4f3b01a..b461e26 100644
  	len += ieee80211_eht_ppet_size(WPA_GET_LE16(&eht_cap->ppet[0]),
  				       eht_cap->phy_cap);
  
-@@ -155,7 +156,7 @@ u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
+@@ -155,7 +156,8 @@ u8 * hostapd_eid_eht_capab(struct hostap
  	cap->mac_cap = host_to_le16(eht_cap->mac_cap);
  	os_memcpy(cap->phy_cap, eht_cap->phy_cap, EHT_PHY_CAPAB_LEN);
  
 -	if (!is_6ghz_op_class(hapd->iconf->op_class))
-+	if (hapd->iconf->eht_oper_chwidth != CONF_OPER_CHWIDTH_320MHZ)
++	if (!is_6ghz_op_class(hapd->iconf->op_class) ||
++	    (hapd->iconf->eht_oper_chwidth != CONF_OPER_CHWIDTH_320MHZ))
  		cap->phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &=
  			~EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK;
  	if (!hapd->iface->conf->eht_phy_capab.su_beamformer)
-@@ -200,7 +201,8 @@ u8 * hostapd_eid_eht_capab(struct hostapd_data *hapd, u8 *eid,
+@@ -200,7 +202,8 @@ u8 * hostapd_eid_eht_capab(struct hostap
  						 hapd->iconf->op_class,
  						 hapd->iconf->he_oper_chwidth,
  						 mode->he_capab[opmode].phy_cap,
@@ -71,7 +70,7 @@ index 4f3b01a..b461e26 100644
  	if (mcs_nss_len) {
  		os_memcpy(pos, eht_cap->mcs, mcs_nss_len);
  		pos += mcs_nss_len;
-@@ -485,7 +487,8 @@ static bool check_valid_eht_mcs(struct hostapd_data *hapd,
+@@ -486,7 +489,8 @@ static bool check_valid_eht_mcs(struct h
  	if (ieee80211_eht_mcs_set_size(mode->mode, hapd->iconf->op_class,
  				       hapd->iconf->he_oper_chwidth,
  				       mode->he_capab[opmode].phy_cap,
@@ -81,7 +80,7 @@ index 4f3b01a..b461e26 100644
  	    EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY)
  		return check_valid_eht_mcs_nss(
  			hapd, ap_mcs, sta_mcs, 1,
-@@ -511,7 +514,7 @@ static bool check_valid_eht_mcs(struct hostapd_data *hapd,
+@@ -512,7 +516,7 @@ static bool check_valid_eht_mcs(struct h
  static bool ieee80211_invalid_eht_cap_size(enum hostapd_hw_mode mode,
  					   u8 opclass, u8 he_oper_chwidth,
  					   const u8 *he_cap, const u8 *eht_cap,
@@ -90,7 +89,7 @@ index 4f3b01a..b461e26 100644
  {
  	const struct ieee80211_he_capabilities *he_capab;
  	struct ieee80211_eht_capabilities *cap;
-@@ -529,7 +532,8 @@ static bool ieee80211_invalid_eht_cap_size(enum hostapd_hw_mode mode,
+@@ -530,7 +534,8 @@ static bool ieee80211_invalid_eht_cap_si
  		return true;
  
  	cap_len += ieee80211_eht_mcs_set_size(mode, opclass, he_oper_chwidth,
@@ -100,7 +99,7 @@ index 4f3b01a..b461e26 100644
  	if (len < cap_len)
  		return true;
  
-@@ -555,7 +559,8 @@ u16 copy_sta_eht_capab(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -556,7 +561,8 @@ u16 copy_sta_eht_capab(struct hostapd_da
  	    ieee80211_invalid_eht_cap_size(mode, hapd->iconf->op_class,
  					   hapd->iconf->he_oper_chwidth,
  					   he_capab, eht_capab,
@@ -110,6 +109,3 @@ index 4f3b01a..b461e26 100644
  	    !check_valid_eht_mcs(hapd, eht_capab, opmode)) {
  		sta->flags &= ~WLAN_STA_EHT;
  		os_free(sta->eht_capab);
--- 
-2.34.1
-
