@@ -88,14 +88,14 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +
 +	bss->ctx = bss->links[0].ctx;
 +
-+	if (drv->first_bss == bss)
++	if (drv->first_bss == bss && bss->n_links > 1)
 +		drv->ctx = bss->ctx;
 +
 +	wpa_supplicant_event(ctx, EVENT_INTERFACE_UNAVAILABLE, NULL);
  }
  
  
-@@ -4254,7 +4284,7 @@ static void do_process_drv_event(struct
+@@ -4258,7 +4288,7 @@ static void do_process_drv_event(struct
  		nl80211_radar_event(bss, tb);
  		break;
  	case NL80211_CMD_STOP_AP:
