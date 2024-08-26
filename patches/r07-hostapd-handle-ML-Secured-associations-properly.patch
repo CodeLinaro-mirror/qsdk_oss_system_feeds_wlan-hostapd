@@ -26,6 +26,7 @@ bit in state machine's ml info.
 
 Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
+Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 ---
  src/ap/ieee802_11.c     | 113 +++++++++++++++++++++++++------
  src/ap/ieee802_11_eht.c |   3 +
@@ -59,16 +60,20 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -4167,7 +4161,40 @@ static int __check_assoc_ies(struct host
+@@ -4167,11 +4161,40 @@ static int __check_assoc_ies(struct host
  		wpa_ie -= 2;
  		wpa_ie_len += 2;
  
+-		if (!sta->wpa_sm) {
+-			if (!link)
+-				assoc_sta = hostapd_ml_get_assoc_sta(
+-					hapd, sta, &assoc_hapd);
 +#ifdef CONFIG_IEEE80211BE
 +		if (!link && sta->mld_info.mld_sta && sta->mld_assoc_link_id != hapd->mld_link_id) {
 +			struct hostapd_data *bss;
 +			struct sta_info *lsta;
 +			u8 link_id = hapd->mld_link_id;
-+
+ 
 +			wpa_printf(MSG_WARNING,
 +				   "Existing ML STA "MACSTR" on link %u is associating after "
 +				   "SA query timeout on a different link %u", MAC2STR(sta->addr),
@@ -93,14 +98,14 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
 +				return resp;
 +		}
 +#endif /* CONFIG_IEEE80211BE */
- 		if (!sta->wpa_sm) {
++		if (!sta->wpa_sm) {
 +#ifdef CONFIG_IEEE80211BE
 +			struct mld_info *info = &sta->mld_info;
 +#endif /* CONFIG_IEEE80211BE */
- 			if (!link)
- 				assoc_sta = hostapd_ml_get_assoc_sta(
- 					hapd, sta, &assoc_hapd);
-@@ -4184,11 +4211,11 @@ static int __check_assoc_ies(struct host
+ 			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
+ 							sta->addr,
+ 							p2p_dev_addr);
+@@ -4184,14 +4207,16 @@ static int __check_assoc_ies(struct host
  		}
  
  #ifdef CONFIG_IEEE80211BE
@@ -114,7 +119,12 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  					     sta->mld_assoc_link_id,
  					     info);
  		}
-@@ -4607,8 +4634,10 @@ static int ieee80211_ml_process_link(str
++		if (sta->mld_info.mld_sta && link)
++			assoc_sta = hostapd_ml_get_assoc_sta(hapd, sta, &assoc_hapd);
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ 		wpa_auth_set_auth_alg(sta->wpa_sm, sta->auth_alg);
+@@ -4607,8 +4632,10 @@ static int ieee80211_ml_process_link(str
  		goto out;
  	}
  
@@ -126,7 +136,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  
  	status = __check_assoc_ies(hapd, sta, NULL, 0, &elems, reassoc, true);
  	if (status != WLAN_STATUS_SUCCESS) {
-@@ -4643,12 +4672,6 @@ static int ieee80211_ml_process_link(str
+@@ -4643,12 +4670,6 @@ static int ieee80211_ml_process_link(str
  			ieee802_11_update_beacons(hapd->iface);
  	}
  
@@ -139,7 +149,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	/*
  	 * Do not initialize the EAPOL state machine.
  	 * TODO: Maybe it is needed?
-@@ -4658,7 +4681,7 @@ static int ieee80211_ml_process_link(str
+@@ -4658,7 +4679,7 @@ static int ieee80211_ml_process_link(str
  	wpa_printf(MSG_DEBUG, "MLD: link=%u, association OK (aid=%u)",
  		   hapd->mld_link_id, sta->aid);
  
@@ -148,7 +158,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	sta->vlan_id = origin_sta->vlan_id;
  
  	/* TODO: What other processing is required? */
-@@ -4673,10 +4696,15 @@ out:
+@@ -4673,10 +4694,15 @@ out:
  		ieee80211_ml_build_assoc_resp(hapd, link);
  
  	wpa_printf(MSG_DEBUG, "MLD: link: status=%u", status);
@@ -167,7 +177,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	}
  
  	return 0;
-@@ -4706,10 +4734,54 @@ int hostapd_process_assoc_ml_info(struct
+@@ -4706,10 +4732,54 @@ int hostapd_process_assoc_ml_info(struct
  {
  #ifdef CONFIG_IEEE80211BE
  	unsigned int i;
@@ -222,7 +232,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
  		struct hostapd_data *bss = NULL;
  		struct mld_link_info *link = &sta->mld_info.links[i];
-@@ -4839,7 +4911,7 @@ static int add_associated_sta(struct hos
+@@ -4839,7 +4909,7 @@ static int add_associated_sta(struct hos
  		   wpa_auth_sta_ft_tk_already_set(sta->wpa_sm),
  		   wpa_auth_sta_fils_tk_already_set(sta->wpa_sm));
  
@@ -231,7 +241,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	    (!(sta->flags & WLAN_STA_AUTHORIZED) ||
  	     (reassoc && sta->ft_over_ds && sta->auth_alg == WLAN_AUTH_FT) ||
  	     (!wpa_auth_sta_ft_tk_already_set(sta->wpa_sm) &&
-@@ -4903,7 +4975,7 @@ static int add_associated_sta(struct hos
+@@ -4903,7 +4973,7 @@ static int add_associated_sta(struct hos
  			       "Could not %s STA to kernel driver",
  			       set ? "set" : "add");
  
@@ -240,7 +250,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
-@@ -5073,7 +5145,7 @@ static u16 send_assoc_resp(struct hostap
+@@ -5073,7 +5143,7 @@ static u16 send_assoc_resp(struct hostap
  #endif /* CONFIG_IEEE80211AX */
  
  	p = hostapd_eid_ext_capab(hapd, p, false);
@@ -249,7 +259,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	if (sta && sta->qos_map_enabled)
  		p = hostapd_eid_qos_map_set(hapd, p);
  
-@@ -6872,6 +6944,7 @@ static void handle_assoc_cb(struct hosta
+@@ -6872,6 +6942,7 @@ static void handle_assoc_cb(struct hosta
  	}
  
  	hostapd_set_sta_flags(hapd, sta);
@@ -314,7 +324,24 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  		}
  	}
  }
-@@ -1042,9 +1045,11 @@ static void wpa_free_sta_sm(struct wpa_s
+@@ -367,6 +370,16 @@ int wpa_auth_for_each_auth(struct wpa_au
+ }
+ 
+ 
++int wpa_auth_for_each_partner_auth(struct wpa_authenticator *wpa_auth,
++				   int (*cb)(struct wpa_authenticator *a, void *ctx),
++				   void *cb_ctx)
++{
++	if (!wpa_auth->cb->for_each_partner_auth)
++		return 0;
++	return wpa_auth->cb->for_each_partner_auth(wpa_auth->cb_ctx, cb, cb_ctx);
++}
++
++
+ void wpa_auth_store_ptksa(struct wpa_authenticator *wpa_auth,
+ 			  const u8 *addr, int cipher,
+ 			  u32 life_time, const struct wpa_ptk *ptk)
+@@ -1042,9 +1055,11 @@ static void wpa_free_sta_sm(struct wpa_s
  	os_free(sm->rsnxe);
  #ifdef CONFIG_IEEE80211BE
  	for_each_sm_auth(sm, link_id) {
@@ -329,7 +356,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  	wpa_group_put(sm->wpa_auth, sm->group);
-@@ -7209,17 +7214,22 @@ void wpa_auth_sta_radius_psk_resp(struct
+@@ -7209,17 +7224,22 @@ void wpa_auth_sta_radius_psk_resp(struct
  }
  
  
@@ -357,7 +384,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  
  	wpa_auth_logger(sm->wpa_auth, wpa_auth_get_spa(sm), LOGGER_DEBUG,
  			"MLD: Initialization");
-@@ -7227,46 +7237,50 @@ void wpa_auth_set_ml_info(struct wpa_sta
+@@ -7227,46 +7247,50 @@ void wpa_auth_set_ml_info(struct wpa_sta
  	os_memcpy(sm->peer_mld_addr, info->common_info.mld_addr, ETH_ALEN);
  
  	sm->mld_assoc_link_id = mld_assoc_link_id;
@@ -428,7 +455,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
 +			   "ML STA "MACSTR" on link "MACSTR" link id %d",
 +			   MAC2STR(sm->wpa_auth->mld_addr), MAC2STR(sm_link->wpa_auth->mld_addr), link_id);
 +		return;
- 	}
++	}
 +
 +	rsn_ies = wpa_auth_get_wpa_ie(sm_link->wpa_auth, &rsn_ies_len);
 +	/* This should not really happen */
@@ -436,7 +463,7 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
 +	    rsn_ies[1] + 2 > rsn_ies_len) {
 +		wpa_printf(MSG_INFO, "WPA_AUTH: MLD: Invalid RSNE");
 +		return;
-+	}
+ 	}
 +
 +	if (rsn_ies[1] + 2UL + 2UL < rsn_ies_len &&
 +	    rsn_ies[rsn_ies[1] + 2] == WLAN_EID_RSNX) {
@@ -447,7 +474,16 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
  }
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
-@@ -641,7 +641,7 @@ void wpa_auth_set_ocv_override_freq(stru
+@@ -353,6 +353,8 @@ struct wpa_auth_callbacks {
+ 						 void *ctx), void *cb_ctx);
+ 	int (*for_each_auth)(void *ctx, int (*cb)(struct wpa_authenticator *a,
+ 						  void *ctx), void *cb_ctx);
++	int (*for_each_partner_auth)(void *ctx, int (*cb)(struct wpa_authenticator *a,
++							  void *ctx), void *cb_ctx);
+ 	int (*send_ether)(void *ctx, const u8 *dst, u16 proto, const u8 *data,
+ 			  size_t data_len);
+ 	int (*send_oui)(void *ctx, const u8 *dst, u8 oui_suffix, const u8 *data,
+@@ -641,7 +643,7 @@ void wpa_auth_set_ocv_override_freq(stru
  
  void wpa_auth_sta_radius_psk_resp(struct wpa_state_machine *sm, bool success);
  
@@ -468,4 +504,124 @@ Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
 +			    struct sta_info *sta)
  {
  	struct hostapd_data *tmp_hapd;
+ 
+--- a/src/ap/wpa_auth_glue.c
++++ b/src/ap/wpa_auth_glue.c
+@@ -705,6 +705,28 @@ static int hostapd_wpa_auth_for_each_aut
+ }
+ 
+ 
++static int hostapd_wpa_auth_for_each_partner_auth(
++	void *ctx, int (*cb)(struct wpa_authenticator *sm, void *ctx), void *cb_ctx)
++{
++	struct hostapd_data *hapd = ctx;
++	struct hostapd_data *bss;
++
++	if (cb(hapd->wpa_auth, cb_ctx))
++		return 1;
++
++#ifdef CONFIG_IEEE80211BE
++	if (!hapd->mld)
++		return 0;
++
++	for_each_mld_link(bss, hapd) {
++		if (bss != hapd && bss->wpa_auth && cb(bss->wpa_auth, cb_ctx))
++			return 1;
++	}
++#endif /* CONFIG_IEEE80211BE */
++	return 0;
++}
++
++
+ #ifdef CONFIG_IEEE80211R_AP
+ 
+ struct wpa_ft_rrb_rx_later_data {
+@@ -1780,6 +1802,7 @@ int hostapd_setup_wpa(struct hostapd_dat
+ 		.get_sta_count = hostapd_wpa_auth_get_sta_count,
+ 		.for_each_sta = hostapd_wpa_auth_for_each_sta,
+ 		.for_each_auth = hostapd_wpa_auth_for_each_auth,
++		.for_each_partner_auth = hostapd_wpa_auth_for_each_partner_auth,
+ 		.send_ether = hostapd_wpa_auth_send_ether,
+ 		.send_oui = hostapd_wpa_auth_send_oui,
+ 		.channel_info = hostapd_channel_info,
+--- a/src/ap/wpa_auth_i.h
++++ b/src/ap/wpa_auth_i.h
+@@ -320,6 +320,9 @@ int wpa_auth_for_each_sta(struct wpa_aut
+ int wpa_auth_for_each_auth(struct wpa_authenticator *wpa_auth,
+ 			   int (*cb)(struct wpa_authenticator *a, void *ctx),
+ 			   void *cb_ctx);
++int wpa_auth_for_each_partner_auth(struct wpa_authenticator *wpa_auth,
++				   int (*cb)(struct wpa_authenticator *a, void *ctx),
++				   void *cb_ctx);
+ void wpa_auth_store_ptksa(struct wpa_authenticator *wpa_auth,
+ 			  const u8 *addr, int cipher,
+ 			  u32 life_time, const struct wpa_ptk *ptk);
+--- a/src/ap/wpa_auth_ie.c
++++ b/src/ap/wpa_auth_ie.c
+@@ -602,6 +602,26 @@ static int wpa_auth_okc_iter(struct wpa_
+ }
+ 
+ 
++struct wpa_auth_pmk_iter_data {
++	struct rsn_pmksa_cache_entry **pmksa;
++	const u8 *spa;
++	const u8 *pmkid;
++};
++
++
++static int wpa_auth_get_pmk_iter(struct wpa_authenticator *a, void *ctx)
++{
++	struct wpa_auth_pmk_iter_data *data = ctx;
++
++	*data->pmksa = pmksa_cache_auth_get(a->pmksa, data->spa,
++					    data->pmkid);
++	if (*data->pmksa)
++		return 1;
++
++	return 0;
++}
++
++
+ enum wpa_validate_result
+ wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
+ 		    struct wpa_state_machine *sm, int freq,
+@@ -981,12 +1001,27 @@ wpa_validate_wpa_ie(struct wpa_authentic
+ 	}
+ #endif /* CONFIG_IEEE80211R_AP && CONFIG_FILS */
+ 
++	/* Do not find PMKSA again for an ML link STA, assoc STA would
++	 * have already found and saved it in first iteration
++	 */
++	if (assoc_sm)
++		goto check_pmksa;
++
+ 	sm->pmksa = NULL;
+ 	for (i = 0; i < data.num_pmkid; i++) {
++		struct wpa_auth_pmk_iter_data idata;
++
+ 		wpa_hexdump(MSG_DEBUG, "RSN IE: STA PMKID",
+ 			    &data.pmkid[i * PMKID_LEN], PMKID_LEN);
+-		sm->pmksa = pmksa_cache_auth_get(wpa_auth->pmksa, sm->addr,
+-						 &data.pmkid[i * PMKID_LEN]);
++		/* ML STA could be reassociating with a different link hence
++		 * find PMKSA from partner link cache too if this is an ML BSS.
++		 */
++		idata.pmksa = &sm->pmksa;
++		idata.spa = sm->addr;
++		idata.pmkid = &data.pmkid[i * PMKID_LEN];
++		wpa_auth_for_each_partner_auth(sm->wpa_auth,
++					       wpa_auth_get_pmk_iter,
++					       &idata);
+ 		if (sm->pmksa) {
+ 			pmkid = sm->pmksa->pmkid;
+ 			break;
+@@ -1011,6 +1046,9 @@ wpa_validate_wpa_ie(struct wpa_authentic
+ 			break;
+ 		}
+ 	}
++
++check_pmksa:
++
+ 	if (sm->pmksa && pmkid) {
+ 		struct vlan_description *vlan;
  
