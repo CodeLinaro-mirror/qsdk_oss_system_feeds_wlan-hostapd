@@ -87,7 +87,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +				  6595, 6895, 6755, 7055};
 +	struct hostapd_channel_data *pri_chan = NULL, *sec_chan = NULL;
 +	u8 channel,  chan_80mhz;
-+	int i, chan_idx, ht40 = -1, res, obss_scan = 1;
++	int i, chan_idx, ht40 = -1, res, obss_scan = (!ssid->noscan);
 +	unsigned int j, k;
 +	struct hostapd_freq_params vht_freq;
 +	int chwidth, seg0, seg1;
