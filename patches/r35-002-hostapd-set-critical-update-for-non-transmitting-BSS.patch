@@ -292,7 +292,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  int hostapd_link_remove(struct hostapd_data *hapd, u32 count);
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9132,15 +9132,41 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -9134,15 +9134,41 @@ size_t hostapd_eid_mbssid_len(struct hos
  	return len;
  }
  
@@ -336,7 +336,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	hostapd_eid_ext_supp_rates(tx_bss, NULL, &tx_xrate_len);
  	*eid++ = WLAN_EID_MULTIPLE_BSSID;
-@@ -9155,6 +9181,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9157,6 +9183,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		u8 ie_count = 0, non_inherit_ie[4];
  		size_t auth_len = 0, xrate_len = 0;
  		u16 capab_info;
@@ -344,21 +344,22 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  		if (!bss || !bss->conf || !bss->started ||
  		    mbssid_known_bss(i, known_bss, known_bss_len))
-@@ -9242,7 +9269,13 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9244,8 +9271,14 @@ static u8 * hostapd_eid_mbssid_elem(stru
  #endif
  
  		/* WMM IE */
 +		startpos = eid;
- 		eid = hostapd_eid_wmm(bss, eid);
-+		hostapd_eid_update_cu_info(bss, &modified_flag, startpos,
-+					   eid-startpos, ELEMID_CU_PARAM_WMM);
-+		if (modified_flag && elemid_modified_bmap)
-+			*elemid_modified_bmap |= BIT(i);
+ 		if (bss->conf->wmm_override) {
+ 			eid = hostapd_eid_wmm(bss, eid);
++			hostapd_eid_update_cu_info(bss, &modified_flag, startpos,
++						   eid-startpos, ELEMID_CU_PARAM_WMM);
++			if (modified_flag && elemid_modified_bmap)
++				*elemid_modified_bmap |= BIT(i);
 +
- 		if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
- 			non_inherit_ie[ie_count++] = WLAN_EID_VENDOR_SPECIFIC;
- 
-@@ -9277,7 +9310,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+ 			if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
+ 				non_inherit_ie[ie_count++] = WLAN_EID_VENDOR_SPECIFIC;
+ 		}
+@@ -9280,7 +9313,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			unsigned int frame_stype, u8 elem_count,
  			u8 **elem_offset,
  			const u8 *known_bss, size_t known_bss_len, u8 *rnr_eid,
@@ -368,7 +369,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  {
  	size_t bss_index = 1, cur_len = 0;
  	u8 elem_index = 0, *rnr_start_eid = rnr_eid;
-@@ -9314,7 +9348,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -9317,7 +9351,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  		eid = hostapd_eid_mbssid_elem(hapd, eid, end, frame_stype,
  					      hostapd_max_bssid_indicator(hapd),
  					      &bss_index, elem_count,
