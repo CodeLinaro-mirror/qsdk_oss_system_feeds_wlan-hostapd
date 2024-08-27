@@ -25,30 +25,20 @@ Signed-off-by: Dhanavandhana Kannan <quic_dhanavan@quicinc.com>
 
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1631,11 +1631,15 @@ int hostapd_ctrl_iface_bss_tm_req(struct
+@@ -1631,7 +1631,9 @@ int hostapd_ctrl_iface_bss_tm_req(struct
  	}
  
  	sta = ap_get_sta(hapd, addr);
 -	if (sta == NULL) {
--		wpa_printf(MSG_DEBUG, "Station " MACSTR
--			   " not found for BSS TM Request message",
--			   MAC2STR(addr));
--		return -1;
-+	if (!sta && hapd->mld) {
++	if (!sta && hapd->mld)
 +		sta = ap_get_link_sta(hapd, addr);
-+		if (!sta) {
-+			wpa_printf(MSG_DEBUG, "Station " MACSTR
-+				   " not found for BSS TM Request message",
-+				   MAC2STR(addr));
-+			return -1;
-+		}
-+
- 	}
- 
- 	pos = os_strstr(cmd, " disassoc_timer=");
++	if (!sta) {
+ 		wpa_printf(MSG_DEBUG, "Station " MACSTR
+ 			   " not found for BSS TM Request message",
+ 			   MAC2STR(addr));
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -119,6 +119,19 @@ struct sta_info * ap_get_sta(struct host
+@@ -122,6 +122,19 @@ struct sta_info * ap_get_sta(struct host
  	return s;
  }
  
