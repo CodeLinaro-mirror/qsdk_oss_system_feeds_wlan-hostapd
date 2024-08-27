@@ -560,8 +560,8 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 +	for (i = 0; i < tx_pwr_count; i++)
 +		eirp_tx_pwr_array[0] = tx_pwr;
 +
-+	hostapd_add_tpe_info(eid, LOCAL_EIRP, tx_pwr_count, eirp_tx_pwr_array,
-+			     0, NULL, REG_MAX_CLIENT_TYPE);
++	eid = hostapd_add_tpe_info(eid, LOCAL_EIRP, tx_pwr_count, eirp_tx_pwr_array,
++			           0, NULL, REG_MAX_CLIENT_TYPE);
 +	return eid;
  }
  
