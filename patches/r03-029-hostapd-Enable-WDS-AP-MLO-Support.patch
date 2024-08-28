@@ -35,7 +35,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	void *drv_priv;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3343,6 +3343,54 @@ static u32 hostapd_get_aid_word(struct h
+@@ -3343,6 +3343,54 @@ static u32 hostapd_get_aid_word(struct hostapd_data *hapd,
  }
  
  
@@ -90,7 +90,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	int i, j = 32, aid;
-@@ -6645,6 +6693,12 @@ static void handle_assoc_cb(struct hosta
+@@ -6643,6 +6691,12 @@ static void handle_assoc_cb(struct hostapd_data *hapd,
  			   MAC2STR(sta->addr));
  		sta->pending_wds_enable = 0;
  		sta->flags |= WLAN_STA_WDS;
@@ -103,7 +103,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	}
  
  	/* WPS not supported on backhaul BSS. Disable 4addr mode on fronthaul */
-@@ -6654,12 +6708,18 @@ static void handle_assoc_cb(struct hosta
+@@ -6652,12 +6706,18 @@ static void handle_assoc_cb(struct hostapd_data *hapd,
  	     !(sta->flags & WLAN_STA_WPS))) {
  		int ret;
  		char ifname_wds[IFNAMSIZ + 1];
@@ -124,7 +124,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if (!ret)
  			hostapd_set_wds_encryption(hapd, sta, ifname_wds);
  	}
-@@ -6975,6 +7035,7 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6973,6 +7033,7 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
  				int wds)
  {
  	struct sta_info *sta;
@@ -132,7 +132,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	sta = ap_get_sta(hapd, src);
  	if (sta &&
-@@ -6983,6 +7044,19 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6981,6 +7042,19 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
  		if (!hapd->conf->wds_sta)
  			return;
  
@@ -152,7 +152,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if ((sta->flags & (WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK)) ==
  		    WLAN_STA_ASSOC_REQ_OK) {
  			wpa_printf(MSG_DEBUG,
-@@ -6999,10 +7073,15 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -6997,10 +7071,15 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
  
  			wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for "
  				   "STA " MACSTR " (aid %u)",
@@ -172,7 +172,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  							   ifname_wds);
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -119,6 +119,7 @@ void hostapd_get_eht_240mhz_capab(struct
+@@ -119,6 +119,7 @@ void hostapd_get_eht_240mhz_capab(struct hostapd_data *hapd,
  				  struct ieee80211_240mhz_vendor_oper *dest,
  				  size_t len);
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta);
@@ -182,12 +182,13 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  u16 copy_sta_vendor_vht(struct hostapd_data *hapd, struct sta_info *sta,
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -235,9 +235,17 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -235,9 +235,17 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
  
  	if ((sta->flags & WLAN_STA_WDS) ||
  	    (sta->flags & WLAN_STA_MULTI_AP &&
 -	     (hapd->conf->multi_ap & BACKHAUL_BSS) &&
 -	     !(sta->flags & WLAN_STA_WPS)))
+-		hostapd_set_wds_sta(hapd, NULL, sta->addr, sta->aid, 0);
 +	    (hapd->conf->multi_ap & FRONTHAUL_BSS) &&
 +	    !(sta->flags & WLAN_STA_WPS))) {
 +		int aid;
@@ -197,12 +198,12 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		else
 +			aid = sta->aid;
 +
- 		hostapd_set_wds_sta(hapd, NULL, sta->addr, sta->aid, 0);
++		hostapd_set_wds_sta(hapd, NULL, sta->addr, aid, 0);
 +	}
  
  	if (sta->ipaddr)
  		hostapd_drv_br_delete_ip_neigh(hapd, 4, (u8 *) &sta->ipaddr);
-@@ -256,6 +264,10 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -256,6 +264,10 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
  		hapd->sta_aid[(sta->aid - 1) / 32] &=
  			~BIT((sta->aid - 1) % 32);
  
@@ -225,7 +226,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	u16 capability;
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -8601,6 +8601,7 @@ static int i802_set_wds_sta(void *priv,
+@@ -8590,6 +8590,7 @@ static int i802_set_wds_sta(void *priv, const u8 *addr, int aid, int val,
  
  	wpa_printf(MSG_DEBUG, "nl80211: Set WDS STA addr=" MACSTR
  		   " aid=%d val=%d name=%s", MAC2STR(addr), aid, val, name);
@@ -235,7 +236,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			if (nl80211_create_iface(drv, name,
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2754,7 +2754,10 @@ static void nl80211_spurious_frame(struc
+@@ -2752,7 +2752,10 @@ static void nl80211_spurious_frame(struct i802_bss *bss, struct nlattr **tb,
  				   int wds)
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -246,7 +247,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	if (!tb[NL80211_ATTR_MAC])
  		return;
-@@ -2764,7 +2767,21 @@ static void nl80211_spurious_frame(struc
+@@ -2762,7 +2765,21 @@ static void nl80211_spurious_frame(struct i802_bss *bss, struct nlattr **tb,
  	event.rx_from_unknown.addr = nla_data(tb[NL80211_ATTR_MAC]);
  	event.rx_from_unknown.wds = wds;
  
