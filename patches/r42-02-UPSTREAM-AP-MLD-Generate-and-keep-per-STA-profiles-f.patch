@@ -38,11 +38,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/ap/hostapd.h |   4 ++
  3 files changed, 187 insertions(+)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 1c26f38..90ae3bd 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2934,12 +2934,176 @@ void ieee802_11_set_beacon_per_bss_only(struct hostapd_data *hapd)
+@@ -2934,12 +2934,176 @@ void ieee802_11_set_beacon_per_bss_only(
  }
  
  
@@ -129,7 +127,7 @@ index 1c26f38..90ae3bd 100644
 +}
 +
 +
-+static void hostapd_gen_per_sta_profiles(struct hostapd_data *hapd)
++void hostapd_gen_per_sta_profiles(struct hostapd_data *hapd)
 +{
 +	size_t link_data_len, sta_profile_len;
 +	struct probe_resp_params link_params;
@@ -219,7 +217,7 @@ index 1c26f38..90ae3bd 100644
  
  	ret = __ieee802_11_set_beacon(hapd);
  	if (ret != 0)
-@@ -2980,6 +3144,15 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+@@ -2980,6 +3144,15 @@ int ieee802_11_set_beacon(struct hostapd
  		}
  	}
  
@@ -235,11 +233,9 @@ index 1c26f38..90ae3bd 100644
  	return 0;
  }
  
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index e132bbc..d152530 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -651,9 +651,19 @@ void hostapd_free_hapd_data(struct hostapd_data *hapd)
+@@ -651,9 +651,19 @@ void hostapd_free_hapd_data(struct hosta
  static void hostapd_bss_link_deinit(struct hostapd_data *hapd)
  {
  #ifdef CONFIG_IEEE80211BE
@@ -259,8 +255,6 @@ index e132bbc..d152530 100644
  	if (!hapd->mld->num_links)
  		return;
  
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index b72d06f..c99d1f2 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -552,6 +552,10 @@ struct hostapd_data {
@@ -274,6 +268,12 @@ index b72d06f..c99d1f2 100644
  	char ctrl_sock_iface[IFNAMSIZ + 1];
  #ifdef CONFIG_TESTING_OPTIONS
  	u8 eht_mld_link_removal_count;
--- 
-2.34.1
-
+--- a/src/ap/beacon.h
++++ b/src/ap/beacon.h
+@@ -36,4 +36,6 @@ const u8 * hostapd_wpa_ie(struct hostapd
+ u8 * hostapd_unsol_bcast_probe_resp(struct hostapd_data *hapd,
+ 				    struct unsol_bcast_probe_resp *ubpr);
+ 
++void hostapd_gen_per_sta_profiles(struct hostapd_data *hapd);
++
+ #endif /* BEACON_H */

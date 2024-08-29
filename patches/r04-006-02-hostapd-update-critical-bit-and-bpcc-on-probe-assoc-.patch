@@ -54,7 +54,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +			for_each_mld_link(link_bss, bss) {
 +				if (bss == link_bss)
 +					continue;
-+				//hostapd_gen_per_sta_profiles(link_bss);
++				hostapd_gen_per_sta_profiles(link_bss);
 +			}
 +		}
  	}
@@ -134,7 +134,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +		for_each_mld_link(link_bss, hapd) {
 +			if (hapd == link_bss)
 +				continue;
-+			//hostapd_gen_per_sta_profiles(link_bss);
++			hostapd_gen_per_sta_profiles(link_bss);
 +		}
 +	}
  	return 0;
@@ -158,7 +158,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +			for_each_mld_link(link_bss, bss) {
 +				if (bss == link_bss)
 +					continue;
-+				//hostapd_gen_per_sta_profiles(link_bss);
++				hostapd_gen_per_sta_profiles(link_bss);
 +			}
 +		}
 +
