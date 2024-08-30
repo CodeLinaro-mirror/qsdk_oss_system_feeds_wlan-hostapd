@@ -25,7 +25,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2441,6 +2441,91 @@ static void hostapd_event_6ghz_power_mod
+@@ -2446,6 +2446,91 @@ static void hostapd_event_6ghz_power_mod
  	iface->power_mode_6ghz_before_change = -1;
  }
  
@@ -117,7 +117,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #ifdef CONFIG_OWE
  static int hostapd_notif_update_dh_ie(struct hostapd_data *hapd,
  				      const u8 *peer, const u8 *ie,
-@@ -3044,6 +3129,10 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -3049,6 +3134,10 @@ void hostapd_wpa_event(void *ctx, enum w
  		if (link_hapd)
  			hostapd_event_update_cu_param(link_hapd, &data->cu_event);
  		break;
@@ -347,7 +347,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	}
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -3514,6 +3514,367 @@ qca_nl80211_6ghz_pwr_mode_change_complet
+@@ -3514,6 +3514,368 @@ qca_nl80211_6ghz_pwr_mode_change_complet
  }
  
  
@@ -443,11 +443,11 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +}
 +
 +static int copy_afc_freq_objs(struct nlattr *nl,
-+			      struct afc_freq_obj *afc_freq_info)
++			      struct afc_freq_obj *afc_freq_info,
++			      u8 *count)
 +{
 +	struct nlattr *freq_info[QCA_WLAN_VENDOR_ATTR_AFC_FREQ_PSD_INFO_MAX + 1];
-+	u16 start_freq, end_freq;
-+	u8 count;
++	u16 start_freq = 0, end_freq = 0;
 +
 +	if (nla_parse(freq_info, QCA_WLAN_VENDOR_ATTR_AFC_FREQ_PSD_INFO_MAX,
 +		      nla_data(nl), nla_len(nl), NULL)) {
@@ -466,13 +466,20 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +		nla_get_u16(freq_info[QCA_WLAN_VENDOR_ATTR_AFC_FREQ_PSD_INFO_RANGE_END]);
 +	}
 +
-+	afc_freq_info[count].low_freq = start_freq;
-+	afc_freq_info[count].high_freq = end_freq;
++	afc_freq_info[*count].low_freq = start_freq;
++	afc_freq_info[*count].high_freq = end_freq;
 +
 +	if (freq_info[QCA_WLAN_VENDOR_ATTR_AFC_FREQ_PSD_INFO_PSD]) {
-+		afc_freq_info[count].max_psd =
++		afc_freq_info[*count].max_psd =
 +			nla_get_u32(freq_info[QCA_WLAN_VENDOR_ATTR_AFC_FREQ_PSD_INFO_PSD]);
 +	}
++
++	wpa_printf(MSG_DEBUG,
++		   "i = %d start_freq = %d low_freq = %d max_psd = %d",
++		   *count, afc_freq_info[*count].low_freq,
++		   afc_freq_info[*count].high_freq,
++		   afc_freq_info[*count].max_psd);
++	(*count)++;
 +
 +	return 0;
 +}
@@ -661,17 +668,11 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +		nla_for_each_nested(nl,
 +				    attr[QCA_WLAN_VENDOR_ATTR_AFC_EVENT_FREQ_RANGE_LIST],
 +				    rem) {
-+			if (copy_afc_freq_objs(nl, afc_freq_info)) {
++			if (i >= num_frange_obj || copy_afc_freq_objs(nl, afc_freq_info, &i)) {
 +				wpa_printf(MSG_DEBUG, "afc_freq_info copy failed");
 +				os_free(afc_freq_info);
 +				return -EINVAL;
 +			}
-+
-+			wpa_printf(MSG_DEBUG,
-+				   "i = %d start_freq = %d low_freq = %d max_psd = %d",
-+				   i, afc_freq_info[i].low_freq,
-+				   afc_freq_info[i].high_freq,
-+				   afc_freq_info[i].max_psd);
 +		}
 +
 +		afc_rsp->afc_freq_info = afc_freq_info;
@@ -715,7 +716,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
  				     u32 subcmd, u8 *data, size_t len)
  {
-@@ -3562,6 +3923,9 @@ static void nl80211_vendor_event_qca(str
+@@ -3562,6 +3924,9 @@ static void nl80211_vendor_event_qca(str
  	case QCA_NL80211_VENDOR_SUBCMD_POWER_MODE_CHANGE_COMPLETED:
  		qca_nl80211_6ghz_pwr_mode_change_completed(drv, data, len);
  		break;
