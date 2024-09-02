@@ -33,11 +33,9 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  src/drivers/driver_nl80211_event.c | 34 +++++++++++++++++++++++
  11 files changed, 252 insertions(+)
 
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index 6ccc40a..e1bb1b3 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2826,6 +2826,47 @@ static int hostapd_ctrl_iface_color_change(struct hostapd_iface *iface,
+@@ -2826,6 +2826,49 @@ static int hostapd_ctrl_iface_color_chan
  #endif /* NEED_AP_MLME */
  }
  
@@ -73,8 +71,10 @@ index 6ccc40a..e1bb1b3 100644
 +		   he_6ghz_pwr_mode);
 +
 +	ret = hostapd_drv_set_6ghz_pwr_mode(hapd, &settings);
-+	if (ret)
++	if (ret) {
++		iface->power_mode_6ghz_before_change = -1;
 +		return -1;
++	}
 +
 +	return 0;
 +#else /* NEED_AP_MLME */
@@ -85,7 +85,7 @@ index 6ccc40a..e1bb1b3 100644
  static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
  					  char *pos)
  {
-@@ -4928,6 +4969,9 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
+@@ -4928,6 +4971,9 @@ static int hostapd_ctrl_iface_receive_pr
  	 } else if (os_strncmp(buf, "COLOR_CHANGE ", 12) == 0) {
  		 if (hostapd_ctrl_iface_color_change(hapd->iface, buf + 12))
  			 reply_len = -1;
@@ -95,13 +95,11 @@ index 6ccc40a..e1bb1b3 100644
  	} else if (os_strncmp(buf, "VENDOR ", 7) == 0) {
  		reply_len = hostapd_ctrl_iface_vendor(hapd, buf + 7, reply,
  						      reply_size);
-diff --git a/hostapd/hostapd_cli.c b/hostapd/hostapd_cli.c
-index 22bb6f2..0fb0ba0 100644
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1174,6 +1174,31 @@ static int hostapd_cli_cmd_fst(struct wpa_ctrl *ctrl, int argc, char *argv[])
+@@ -1174,6 +1174,31 @@ static int hostapd_cli_cmd_fst(struct wp
  #endif /* CONFIG_FST */
-
+ 
  
 +static int hostapd_cli_cmd_set_pwr_mode(struct wpa_ctrl *ctrl,
 +					int argc, char *argv[])
@@ -131,7 +129,7 @@ index 22bb6f2..0fb0ba0 100644
  static int hostapd_cli_cmd_chan_switch(struct wpa_ctrl *ctrl,
  				       int argc, char *argv[])
  {
-@@ -1762,6 +1787,8 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
+@@ -1762,6 +1787,8 @@ static const struct hostapd_cli_cmd host
  	  "<addr> = send QoS Map Configure frame" },
  	{ "notify_cw_change", hostapd_cli_cmd_notify_cw_change, NULL,
  	  "<channel_width> = 0 - 20 MHz, 1 - 40 MHz, 2 - 80 MHz, 3 - 160 MHz" },
@@ -140,11 +138,9 @@ index 22bb6f2..0fb0ba0 100644
  	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
  	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"
  	  "  [center_freq2=] [bandwidth=] [bandwidth_device=] \n"
-diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
-index 9eacd9a..fa5204a 100644
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -334,6 +334,17 @@ static inline int hostapd_drv_switch_channel(struct hostapd_data *hapd,
+@@ -334,6 +334,17 @@ static inline int hostapd_drv_switch_cha
  	return hapd->driver->switch_channel(hapd->drv_priv, settings);
  }
  
@@ -162,11 +158,9 @@ index 9eacd9a..fa5204a 100644
  #ifdef CONFIG_IEEE80211AX
  static inline int hostapd_drv_switch_color(struct hostapd_data *hapd,
  					   struct cca_settings *settings)
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index 83a142e..aec6fd1 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2382,6 +2382,34 @@ static void hostapd_event_update_muedca_params(struct hostapd_data *hapd,
+@@ -2382,6 +2382,34 @@ static void hostapd_event_update_muedca_
  			   "Failed to update beacons with MU-EDCA parameters");
  }
  
@@ -201,7 +195,7 @@ index 83a142e..aec6fd1 100644
  #ifdef CONFIG_OWE
  static int hostapd_notif_update_dh_ie(struct hostapd_data *hapd,
  				      const u8 *peer, const u8 *ie,
-@@ -2933,6 +2961,10 @@ void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
+@@ -2933,6 +2961,10 @@ void hostapd_wpa_event(void *ctx, enum w
  			}
  		}
  		break;
@@ -210,13 +204,11 @@ index 83a142e..aec6fd1 100644
 +					      data->ap_6ghz_pwr_mode_event.pwr_mode);
 +		break;
  #endif /* CONFIG_IEEE80211AX */
-	case EVENT_UPDATE_MUEDCA_PARAMS:
+ 	case EVENT_UPDATE_MUEDCA_PARAMS:
  		hostapd_event_update_muedca_params(hapd, &data->update_muedca);
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 2ad5ca6..5c0666a 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2231,6 +2231,7 @@ static int setup_interface2(struct hostapd_iface *iface)
+@@ -2231,6 +2231,7 @@ static int setup_interface2(struct hosta
  {
  	iface->wait_channel_update = 0;
  	iface->is_no_ir = false;
@@ -224,7 +216,7 @@ index 2ad5ca6..5c0666a 100644
  
  	if (hostapd_get_hw_features(iface)) {
  		/* Not all drivers support this yet, so continue without hw
-@@ -3029,6 +3030,7 @@ void hostapd_interface_deinit(struct hostapd_iface *iface)
+@@ -3029,6 +3030,7 @@ void hostapd_interface_deinit(struct hos
  
  	eloop_cancel_timeout(channel_list_update_timeout, iface, NULL);
  	iface->wait_channel_update = 0;
@@ -232,8 +224,6 @@ index 2ad5ca6..5c0666a 100644
  	iface->is_no_ir = false;
  
  #ifdef CONFIG_FST
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index 2d7accd..1b67abe 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -738,6 +738,17 @@ struct hostapd_iface {
@@ -254,8 +244,6 @@ index 2d7accd..1b67abe 100644
  	/* channel utilization calculation */
  	u64 last_channel_time;
  	u64 last_channel_time_busy;
-diff --git a/src/common/qca-vendor.h b/src/common/qca-vendor.h
-index 95476c9..af89692 100644
 --- a/src/common/qca-vendor.h
 +++ b/src/common/qca-vendor.h
 @@ -1231,6 +1231,9 @@ enum qca_radiotap_vendor_ids {
@@ -275,10 +263,10 @@ index 95476c9..af89692 100644
 +	QCA_NL80211_VENDOR_SUBCMD_SET_6GHZ_POWER_MODE = 233,
 +	QCA_NL80211_VENDOR_SUBCMD_POWER_MODE_CHANGE_COMPLETED = 234,
  	/* 232 - reserved for QCA */
-	QCA_NL80211_VENDOR_SUBCMD_TX_LATENCY = 233,
-	/* 234 - reserved for QCA */
+ 	QCA_NL80211_VENDOR_SUBCMD_TX_LATENCY = 233,
+ 	/* 234 - reserved for QCA */
 @@ -17828,4 +17833,18 @@ enum qca_wlan_intf_offload_type {
-	QCA_WLAN_INTF_OFFLOAD_TYPE_PPE_DS = 3,
+ 	QCA_WLAN_INTF_OFFLOAD_TYPE_PPE_DS = 3,
  };
  
 +/*
@@ -296,15 +284,12 @@ index 95476c9..af89692 100644
 +	QCA_WLAN_VENDOR_ATTR_6GHZ_REG_POWER_MODE_AFTER_LAST - 1,
 +};
  #endif /* QCA_VENDOR_H */
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 15c3f6f..b50862e 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2907,6 +2907,14 @@ struct csa_settings {
- 	bool beacon_after_cu;
+@@ -2908,6 +2908,14 @@ struct csa_settings {
  };
  
-+/**
+ /**
 + * struct he_6ghz_pwr_mode_settings - Settings for the 6 GHz power mode
 + * @pwr_mode: 6 GHz power mode
 + */
@@ -312,14 +297,14 @@ index 15c3f6f..b50862e 100644
 +	u8 pwr_mode;
 +};
 +
- /**
++/**
   * struct cca_settings - Settings for color switch command
   * @cca_count: Count in Beacon frames (TBTT) to perform the switch
-@@ -4695,6 +4703,15 @@ struct wpa_driver_ops {
- 	 */
+  * @cca_color: The new color that we are switching to
+@@ -4696,6 +4704,15 @@ struct wpa_driver_ops {
  	int (*switch_channel)(void *priv, struct csa_settings *settings);
  
-+	/**
+ 	/**
 +	 * set_6ghz_pwr_mode - Set the 6 GHz power mode
 +	 * @priv: Private driver interface data
 +	 * @@settings: Settings for 6GHz power mode
@@ -328,9 +313,10 @@ index 15c3f6f..b50862e 100644
 +	int (*set_6ghz_pwr_mode)(void *priv,
 +				 struct he_6ghz_pwr_mode_settings *settings);
 +
- 	/**
++	/**
  	 * switch_color - Announce color switch and migrate the BSS to the
  	 * given color
+ 	 * @priv: Private driver interface data
 @@ -6090,6 +6107,11 @@ enum wpa_event_type {
  	 * EVENT_BSS_FREE - Notification before bss is freed
  	 */
@@ -343,25 +329,23 @@ index 15c3f6f..b50862e 100644
  };
  
  
-@@ -7081,6 +7103,13 @@ union wpa_event_data {
-		int link_id;
+@@ -7082,6 +7104,13 @@ union wpa_event_data {
  	} awgn_event;
  
-+	/**
+ 	/**
 +	 * ap_6ghz_pwr_mode_event - Data for EVENT_6GHZ_POWER_MODE_NOTIFY
 +	 */
 +	struct ap_6ghz_pwr_mode_event {
 +		u8 pwr_mode;
 +	} ap_6ghz_pwr_mode_event;
 +
- 	/**
++	/**
  	 * struct port_authorized - Data for EVENT_PORT_AUTHORIZED
-	 * @td_bitmap: For STA mode, transition disable bitmap, if received in
-diff --git a/src/drivers/driver_common.c b/src/drivers/driver_common.c
-index 94d4cd7..a6a7d59 100644
+ 	 * @td_bitmap: For STA mode, transition disable bitmap, if received in
+ 	 *	EAPOL-Key msg 3/4
 --- a/src/drivers/driver_common.c
 +++ b/src/drivers/driver_common.c
-@@ -103,6 +103,7 @@ const char * event_to_string(enum wpa_event_type event)
+@@ -103,6 +103,7 @@ const char * event_to_string(enum wpa_ev
  	E2S(TID_LINK_MAP);
  	E2S(LINK_RECONFIG);
  	E2S(RX_CRITICAL_UPDATE);
@@ -369,8 +353,6 @@ index 94d4cd7..a6a7d59 100644
  	}
  
  	return "UNKNOWN";
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 63ac90a..4e57564 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
 @@ -11750,6 +11750,47 @@ error:
@@ -421,7 +403,7 @@ index 63ac90a..4e57564 100644
  
  #ifdef CONFIG_IEEE80211AX
  static int nl80211_switch_color(void *priv, struct cca_settings *settings)
-@@ -14721,6 +14762,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+@@ -14721,6 +14762,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.get_survey = wpa_driver_nl80211_get_survey,
  	.status = wpa_driver_nl80211_status,
  	.switch_channel = nl80211_switch_channel,
@@ -429,13 +411,14 @@ index 63ac90a..4e57564 100644
  #ifdef CONFIG_IEEE80211AX
  	.switch_color = nl80211_switch_color,
  #endif /* CONFIG_IEEE80211AX */
-diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index 69b1a5a..fb487ad 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -3486,6 +3486,37 @@ static void qca_nl80211_pasn_auth(struct wpa_driver_nl80211_data *drv,
+@@ -3485,9 +3485,40 @@ static void qca_nl80211_pasn_auth(struct
+ }
  
  #endif /* CONFIG_PASN */
+-
+ #endif /* CONFIG_DRIVER_NL80211_QCA */
  
 +static void
 +qca_nl80211_6ghz_pwr_mode_change_completed(struct wpa_driver_nl80211_data *drv,
@@ -451,7 +434,7 @@ index 69b1a5a..fb487ad 100644
 +		return;
 +	}
 +
-+	ap_6ghz_pwr_mode = nla_get_u8(tb[NL80211_ATTR_6G_REG_POWER_MODE]);
++	ap_6ghz_pwr_mode = nla_get_u8(tb[QCA_WLAN_VENDOR_ATTR_6GHZ_REG_POWER_MODE]);
 +
 +	if (ap_6ghz_pwr_mode < NL80211_REG_AP_LPI ||
 +	    ap_6ghz_pwr_mode > NL80211_REG_AP_VLP) {
@@ -468,19 +451,17 @@ index 69b1a5a..fb487ad 100644
 +
 +	wpa_supplicant_event(drv->ctx, EVENT_6GHZ_POWER_MODE_NOTIFY, &event);
 +}
- #endif /* CONFIG_DRIVER_NL80211_QCA */
++
  
- 
-@@ -3533,6 +3564,9 @@ static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
- 	case QCA_NL80211_VENDOR_SUBCMD_LINK_RECONFIG:
+ static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
+ 				     u32 subcmd, u8 *data, size_t len)
+@@ -3534,6 +3565,9 @@ static void nl80211_vendor_event_qca(str
  		qca_nl80211_link_reconfig_event(drv, data, len);
  		break;
+ #endif /* CONFIG_DRIVER_NL80211_QCA */
 +	case QCA_NL80211_VENDOR_SUBCMD_POWER_MODE_CHANGE_COMPLETED:
 +		qca_nl80211_6ghz_pwr_mode_change_completed(drv, data, len);
 +		break;
- #endif /* CONFIG_DRIVER_NL80211_QCA */
  	default:
  		wpa_printf(MSG_DEBUG,
--- 
-2.34.1
-
+ 			   "nl80211: Ignore unsupported QCA vendor event %u",
