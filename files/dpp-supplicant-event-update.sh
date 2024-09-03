@@ -112,25 +112,22 @@ case "$CMD" in
 		wpa_cli -i"$ifname" set_network 0 proto "RSN"
 		;;
 	DPP-CONFOBJ-AKM)
-		local encryption=
-		local sae=
-		local dpp=
-		local sae_require_mfp=
-		local ieee80211w=
-		local key_mgmt=
+		encryption=
+		dpp=
+		sae_require_mfp=
+		ieee80211w=
+		key_mgmt=
 		case "$CONFIG" in
 			dpp+psk+sae|dpp-psk-sae)
 				key_mgmt="DPP SAE WPA-PSK"
-				encryption="psk2+ccmp"
-				sae=1
+				encryption="sae-mixed"
 				dpp=1
 				ieee80211w=1
 				sae_require_mfp=1
 				;;
 			dpp+sae|dpp-sae)
 				key_mgmt="DPP SAE"
-				encryption="ccmp"
-				sae=1
+				encryption="sae"
 				ieee80211w=2
 				dpp=1
 				;;
@@ -139,19 +136,16 @@ case "$CMD" in
 				encryption="dpp"
 				ieee80211w=2
 				dpp=1
-				sae=0
 				;;
 			sae)
 				key_mgmt="SAE"
-				encryption="ccmp"
-				sae=1
+				encryption="sae"
 				ieee80211w=2
 				dpp=0
 				;;
 			psk+sae|psk-sae)
 				key_mgmt="SAE WPA-PSK"
-				encryption="psk2+ccmp"
-				sae=1
+				encryption="sae-mixed"
 				ieee80211w=1
 				sae_require_mfp=1
 				dpp=0
@@ -161,7 +155,6 @@ case "$CMD" in
 				encryption="psk2"
 				ieee80211w=1
 				dpp=0
-				sae=0
 				;;
 		esac
 		wpa_cli -i"$ifname"  set_network 0 ieee80211w "$ieee80211w"
@@ -171,7 +164,6 @@ case "$CMD" in
 		sect=
 		config_foreach get_section wifi-iface "$ifname" sect
 		uci set wireless.${sect}.encryption=$encryption
-		uci set wireless.${sect}.sae=$sae
 		uci set wireless.${sect}.sae_require_mfp=$sae_require_mfp
 		uci set wireless.${sect}.dpp=$dpp
 		uci set wireless.${sect}.ieee80211w=$ieee80211w
