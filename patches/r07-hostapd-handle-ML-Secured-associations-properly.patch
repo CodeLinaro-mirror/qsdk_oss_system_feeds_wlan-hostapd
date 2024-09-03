@@ -27,6 +27,8 @@ bit in state machine's ml info.
 Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
 Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
+Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
+Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 ---
  src/ap/ieee802_11.c     | 113 +++++++++++++++++++++++++------
  src/ap/ieee802_11_eht.c |   3 +
@@ -38,16 +40,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3249,6 +3249,8 @@ static void handle_auth(struct hostapd_d
- 			if (sta_mld_info->mld_sta) {
- 				wpa_printf(MSG_DEBUG,
- 					   "MLD: Set ML info in RSN Authenticator");
-+				sta->wpa_sm->n_mld_affiliated_links = 0;
-+				wpa_auth_reset_ml_link_info(sta->wpa_sm, sta->mld_assoc_link_id);
- 				wpa_auth_set_ml_info(sta->wpa_sm,
- 						     hapd->mld->mld_addr,
- 						     hapd->mld_link_id,
-@@ -4068,12 +4070,6 @@ static int __check_assoc_ies(struct host
+@@ -4068,12 +4068,6 @@ static int __check_assoc_ies(struct host
  						 elems->eht_240mhz_len);
  		if (resp != WLAN_STATUS_SUCCESS)
  			return resp;
@@ -60,7 +53,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -4146,9 +4142,37 @@ static int __check_assoc_ies(struct host
+@@ -4146,9 +4140,37 @@ static int __check_assoc_ies(struct host
  		wpa_ie -= 2;
  		wpa_ie_len += 2;
  
@@ -100,7 +93,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
  							sta->addr,
  							p2p_dev_addr);
-@@ -4159,18 +4183,19 @@ static int __check_assoc_ies(struct host
+@@ -4159,18 +4181,21 @@ static int __check_assoc_ies(struct host
  				return WLAN_STATUS_UNSPECIFIED_FAILURE;
  			}
  		}
@@ -112,6 +105,8 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +		if (!link && info->mld_sta) {
  			wpa_printf(MSG_DEBUG,
  				   "MLD: Set ML info in RSN Authenticator");
++			sta->wpa_sm->n_mld_affiliated_links = 0;
++			wpa_auth_reset_ml_link_info(sta->wpa_sm, sta->mld_assoc_link_id);
  			wpa_auth_set_ml_info(sta->wpa_sm,
  					     hapd->mld->mld_addr,
 +					     hapd->mld_link_id,
@@ -123,7 +118,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  #endif /* CONFIG_IEEE80211BE */
  
  		wpa_auth_set_auth_alg(sta->wpa_sm, sta->auth_alg);
-@@ -4612,8 +4637,10 @@ static void ieee80211_ml_process_link(st
+@@ -4612,16 +4637,17 @@ static void ieee80211_ml_process_link(st
  		goto out;
  	}
  
@@ -132,10 +127,19 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	sta->mld_assoc_link_id = origin_sta->mld_assoc_link_id;
 +	sta->sa_query_timed_out = origin_sta->sa_query_timed_out;
 +	sta->wpa_sm = origin_sta->wpa_sm;
++	sta->mld_info.mld_sta = true;
  	status = __check_assoc_ies(hapd, sta, NULL, 0, &elems, reassoc, true);
  	if (status != WLAN_STATUS_SUCCESS) {
  		wpa_printf(MSG_DEBUG, "MLD: link: Element check failed");
-@@ -4638,12 +4665,6 @@ static void ieee80211_ml_process_link(st
+ 		goto out;
+ 	}
+ 
+-	sta->mld_info.mld_sta = true;
+-
+ 	os_memcpy(&sta->mld_info, &origin_sta->mld_info, sizeof(sta->mld_info));
+ 
+ 	/*
+@@ -4638,12 +4664,6 @@ static void ieee80211_ml_process_link(st
  	sta->listen_interval = origin_sta->listen_interval;
  	update_ht_state(hapd, sta);
  
@@ -148,7 +152,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	/*
  	 * Do not initialize the EAPOL state machine.
  	 * TODO: Maybe it is needed?
-@@ -4660,7 +4681,7 @@ static void ieee80211_ml_process_link(st
+@@ -4660,7 +4680,7 @@ static void ieee80211_ml_process_link(st
  	link->rsne = hostapd_wpa_ie(hapd, WLAN_EID_RSN);
  	link->rsnxe = hostapd_wpa_ie(hapd, WLAN_EID_RSNX);
  
@@ -157,7 +161,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	sta->vlan_id = origin_sta->vlan_id;
  
  	/* TODO: What other processing is required? */
-@@ -4672,10 +4693,17 @@ out:
+@@ -4672,10 +4692,17 @@ out:
  	link->status = status;
  
  	wpa_printf(MSG_DEBUG, "MLD: link: status=%u", status);
@@ -178,7 +182,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	link->resp_sta_profile_len =
  		ieee80211_ml_build_assoc_resp(hapd, phapd, sta, link->status,
  					      link->resp_sta_profile,
-@@ -4705,6 +4733,10 @@ static void hostapd_process_assoc_ml_inf
+@@ -4705,6 +4732,10 @@ static void hostapd_process_assoc_ml_inf
  {
  #ifdef CONFIG_IEEE80211BE
  	unsigned int i, j;
@@ -189,7 +193,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  	if (!hostapd_is_mld_ap(hapd))
  		return;
-@@ -4718,6 +4750,46 @@ static void hostapd_process_assoc_ml_inf
+@@ -4718,6 +4749,46 @@ static void hostapd_process_assoc_ml_inf
  	sta->mld_info.links[hapd->mld_link_id].rsnxe =
  		hostapd_wpa_ie(hapd, WLAN_EID_RSNX);
  
@@ -236,7 +240,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
  		struct hostapd_iface *iface = NULL;
  		struct hostapd_data *bss = NULL;
-@@ -4791,11 +4863,13 @@ static int add_associated_sta(struct hos
+@@ -4791,11 +4862,13 @@ static int add_associated_sta(struct hos
  	bool mld_link_sta = false;
  	u16 eml_cap = 0;
  	u16 mld_cap = 0;
@@ -250,7 +254,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		mld_link_sta = sta->mld_assoc_link_id != mld_link_id;
  		mld_link_addr = sta->mld_info.links[mld_link_id].peer_addr;
  
-@@ -4841,7 +4915,7 @@ static int add_associated_sta(struct hos
+@@ -4841,7 +4914,7 @@ static int add_associated_sta(struct hos
  		   wpa_auth_sta_ft_tk_already_set(sta->wpa_sm),
  		   wpa_auth_sta_fils_tk_already_set(sta->wpa_sm));
  
@@ -259,7 +263,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	    (!(sta->flags & WLAN_STA_AUTHORIZED) ||
  	     (reassoc && sta->ft_over_ds && sta->auth_alg == WLAN_AUTH_FT) ||
  	     (!wpa_auth_sta_ft_tk_already_set(sta->wpa_sm) &&
-@@ -4905,7 +4979,7 @@ static int add_associated_sta(struct hos
+@@ -4905,7 +4978,7 @@ static int add_associated_sta(struct hos
  			       "Could not %s STA to kernel driver",
  			       set ? "set" : "add");
  
@@ -268,7 +272,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
-@@ -6627,6 +6701,7 @@ static void ieee80211_ml_link_sta_assoc_
+@@ -6627,6 +6700,7 @@ static void ieee80211_ml_link_sta_assoc_
  		ap_sta_set_authorized(hapd, sta, 1);
  
  	hostapd_set_sta_flags(hapd, sta);

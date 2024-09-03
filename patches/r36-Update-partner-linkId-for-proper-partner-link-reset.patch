@@ -30,6 +30,7 @@ Patch-work: None
 
 Feature: PEER_DELETE
 
+Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 ---
  src/ap/ieee802_11.c |  3 +++
@@ -37,25 +38,29 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  src/ap/sta_info.h   |  3 +++
  3 files changed, 26 insertions(+)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index c6fcb6f28ede..3448c50588cf 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3230,6 +3230,9 @@ static void handle_auth(struct hostapd_data *hapd,
+@@ -3229,6 +3229,9 @@ static void handle_auth(struct hostapd_d
+ 				u8 link_id = hapd->mld_link_id;
  
  				sta->mld_info.mld_sta = true;
- 				sta->mld_assoc_link_id = link_id;
 +				set_link_id_for_each_partner_link_sta(hapd,
 +								      sta,
 +								      link_id);
+ 				sta->mld_assoc_link_id = link_id;
  
  				/*
- 				 * Set the MLD address as the station address and the
-diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index bd1c9d6a39af..a7df0d11fa08 100644
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -975,6 +975,26 @@ struct sta_info * ap_sta_add(struct hostapd_data *hapd, const u8 *addr)
+@@ -969,6 +969,7 @@ struct sta_info * ap_sta_add(struct host
+ 	ap_sta_remove_in_other_bss(hapd, sta);
+ 	sta->last_seq_ctrl = WLAN_INVALID_MGMT_SEQ;
+ 	dl_list_init(&sta->ip6addr);
++	sta->mld_assoc_link_id = -1;
+ 
+ #ifdef CONFIG_TAXONOMY
+ 	sta_track_claim_taxonomy_info(hapd->iface, addr,
+@@ -978,6 +979,26 @@ struct sta_info * ap_sta_add(struct host
  	return sta;
  }
  
@@ -74,7 +79,7 @@ index bd1c9d6a39af..a7df0d11fa08 100644
 +			continue;
 +
 +		lsta = ap_get_sta(lhapd, psta->addr);
-+		if (lsta)
++		if (lsta && lsta->mld_assoc_link_id == psta->mld_assoc_link_id)
 +			lsta->mld_assoc_link_id = link_id;
 +	}
 +}
@@ -82,11 +87,9 @@ index bd1c9d6a39af..a7df0d11fa08 100644
  int set_for_each_partner_link_sta(struct hostapd_data *hapd,
  				  struct sta_info *psta,
  				  void *data,
-diff --git a/src/ap/sta_info.h b/src/ap/sta_info.h
-index 71b760b84cb7..02b0bf22a5ba 100644
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -399,6 +399,9 @@ int set_for_each_partner_link_sta(struct hostapd_data *hapd,
+@@ -399,6 +399,9 @@ int set_for_each_partner_link_sta(struct
  					    void *data));
  void ap_sta_remove_link_sta(struct hostapd_data *hapd, struct sta_info *sta);
  int ap_sta_check_link_sta(struct hostapd_data *hapd, struct sta_info *sta);
@@ -96,6 +99,3 @@ index 71b760b84cb7..02b0bf22a5ba 100644
  #endif /* CONFIG_IEEE80211BE */
  int ap_for_each_sta(struct hostapd_data *hapd,
  		    int (*cb)(struct hostapd_data *hapd, struct sta_info *sta,
--- 
-2.34.1
-
