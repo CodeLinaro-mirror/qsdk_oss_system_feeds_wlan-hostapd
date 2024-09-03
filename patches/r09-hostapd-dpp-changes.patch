@@ -13,14 +13,18 @@ Start GAS query timeout in configurator after authentication
 to clear out the DPP session data if GAS query failed to be
 received in configurator.
 
+Patch-work: None
+Patch-dependency: none
+Tag: DPP
+
 Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 ---
- src/ap/dpp_hostapd.c | 37 +++++++++++++++++++++++++++++--------
+ src/ap/dpp_hostapd.c | 46 ++++++++++++++++++++++++++++++++------------
  src/common/dpp.c     |  4 ++++
- 2 files changed, 33 insertions(+), 8 deletions(-)
+ 2 files changed, 38 insertions(+), 12 deletions(-)
 
 diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
-index 70dd18e..b6d6fce 100644
+index 70dd18e..40f9560 100644
 --- a/src/ap/dpp_hostapd.c
 +++ b/src/ap/dpp_hostapd.c
 @@ -349,8 +349,8 @@ static int hostapd_dpp_pkex_done(void *ctx, void *conn,
@@ -34,7 +38,28 @@ index 70dd18e..b6d6fce 100644
  	if (!auth)
  		return -1;
  
-@@ -931,8 +931,8 @@ int hostapd_dpp_auth_init(struct hostapd_data *hapd, const char *cmd)
+@@ -785,15 +785,16 @@ static int hostapd_dpp_auth_init_next(struct hostapd_data *hapd)
+ 		hapd->dpp_resp_wait_time : 2000;
+ 	if (wait_time > max_wait_time)
+ 		wait_time = max_wait_time;
+-	wait_time += 10; /* give the driver some extra time to complete */
+-	eloop_register_timeout(wait_time / 1000, (wait_time % 1000) * 1000,
+-			       hostapd_dpp_reply_wait_timeout, hapd, NULL);
+-	wait_time -= 10;
+ 	if (auth->neg_freq > 0 && freq != auth->neg_freq) {
++		wait_time = 500;
+ 		wpa_printf(MSG_DEBUG,
+ 			   "DPP: Initiate on %u MHz and move to neg_freq %u MHz for response",
+ 			   freq, auth->neg_freq);
+ 	}
++	wait_time += 10; /* give the driver some extra time to complete */
++	eloop_register_timeout(wait_time / 1000, (wait_time % 1000) * 1000,
++			       hostapd_dpp_reply_wait_timeout, hapd, NULL);
++	wait_time -= 10;
+ 	wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_EVENT_TX "dst=" MACSTR
+ 		" freq=%u type=%d",
+ 		MAC2STR(dst), freq, DPP_PA_AUTHENTICATION_REQ);
+@@ -931,8 +932,8 @@ int hostapd_dpp_auth_init(struct hostapd_data *hapd, const char *cmd)
  
  	auth = dpp_auth_init(hapd->iface->interfaces->dpp, hapd->msg_ctx,
  			     peer_bi, own_bi, allowed_roles, neg_freq,
@@ -45,7 +70,7 @@ index 70dd18e..b6d6fce 100644
  	if (!auth)
  		goto fail;
  	hostapd_dpp_set_testing_options(hapd, auth);
-@@ -963,6 +963,20 @@ fail:
+@@ -963,6 +964,20 @@ fail:
  	return -1;
  }
  
@@ -66,7 +91,7 @@ index 70dd18e..b6d6fce 100644
  
  int hostapd_dpp_listen(struct hostapd_data *hapd, const char *cmd)
  {
-@@ -1391,8 +1405,14 @@ static void hostapd_dpp_auth_success(struct hostapd_data *hapd, int initiator)
+@@ -1391,8 +1406,14 @@ static void hostapd_dpp_auth_success(struct hostapd_data *hapd, int initiator)
  	}
  #endif /* CONFIG_TESTING_OPTIONS */
  
@@ -82,7 +107,7 @@ index 70dd18e..b6d6fce 100644
  }
  
  
-@@ -3082,6 +3102,7 @@ hostapd_dpp_gas_req_handler(struct hostapd_data *hapd, const u8 *sa,
+@@ -3082,6 +3103,7 @@ hostapd_dpp_gas_req_handler(struct hostapd_data *hapd, const u8 *sa,
  		wpa_printf(MSG_DEBUG, "DPP: No matching exchange in progress");
  		return NULL;
  	}
@@ -90,7 +115,7 @@ index 70dd18e..b6d6fce 100644
  
  	if (hapd->dpp_auth_ok_on_ack && auth->configurator) {
  		wpa_printf(MSG_DEBUG,
-@@ -3646,7 +3667,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
+@@ -3646,7 +3668,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
  
  	/* Preferred chirping channels */
  	mode = dpp_get_mode(hapd, HOSTAPD_MODE_IEEE80211G);
@@ -99,7 +124,7 @@ index 70dd18e..b6d6fce 100644
  		for (c = 0; c < mode->num_channels; c++) {
  			struct hostapd_channel_data *chan = &mode->channels[c];
  
-@@ -3662,7 +3683,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
+@@ -3662,7 +3684,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
  		int_array_add_unique(&hapd->dpp_chirp_freqs, 2437);
  
  	mode = dpp_get_mode(hapd, HOSTAPD_MODE_IEEE80211A);
@@ -108,7 +133,7 @@ index 70dd18e..b6d6fce 100644
  		int chan44 = 0, chan149 = 0;
  
  		for (c = 0; c < mode->num_channels; c++) {
-@@ -3683,7 +3704,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
+@@ -3683,7 +3705,7 @@ hostapd_dpp_chirp_scan_res_handler(struct hostapd_iface *iface)
  	}
  
  	mode = dpp_get_mode(hapd, HOSTAPD_MODE_IEEE80211AD);
