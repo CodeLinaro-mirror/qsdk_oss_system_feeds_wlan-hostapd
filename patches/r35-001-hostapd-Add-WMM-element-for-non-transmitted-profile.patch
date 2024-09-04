@@ -31,18 +31,20 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9062,6 +9062,10 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -9062,6 +9062,12 @@ static size_t hostapd_eid_mbssid_elem_le
  		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP))
  			nontx_profile_len += hostapd_eid_eht_basic_ml_common_len(bss, NULL, true);
  #endif
 +		/* WMM IE */
-+		nontx_profile_len += hostapd_eid_wmm_len(bss);
-+		if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
-+			ie_count++;
++		if (bss->conf->wmm_override) {
++			nontx_profile_len += hostapd_eid_wmm_len(bss);
++			if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
++				ie_count++;
++		}
  		if (ie_count)
  			nontx_profile_len += 4 + ie_count;
  
-@@ -9148,7 +9152,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9148,7 +9154,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		struct hostapd_bss_config *conf;
  		u8 *eid_len_pos, *nontx_bss_start = eid;
  		const u8 *auth, *rsn = NULL, *rsnx = NULL;
@@ -51,15 +53,16 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  		size_t auth_len = 0, xrate_len = 0;
  		u16 capab_info;
  
-@@ -9237,6 +9241,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9237,6 +9243,12 @@ static u8 * hostapd_eid_mbssid_elem(stru
  			eid = hostapd_eid_eht_basic_ml_common(bss, eid, NULL, true);
  #endif
  
 +		/* WMM IE */
-+		eid = hostapd_eid_wmm(bss, eid);
-+		if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
-+			non_inherit_ie[ie_count++] = WLAN_EID_VENDOR_SPECIFIC;
-+
++		if (bss->conf->wmm_override) {
++			eid = hostapd_eid_wmm(bss, eid);
++			if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
++				non_inherit_ie[ie_count++] = WLAN_EID_VENDOR_SPECIFIC;
++		}
  		if (ie_count) {
  			*eid++ = WLAN_EID_EXTENSION;
  			*eid++ = 2 + ie_count + 1;
