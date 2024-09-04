@@ -25,7 +25,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -633,7 +633,8 @@ static size_t he_elem_len(struct hostapd
+@@ -708,7 +708,8 @@ static size_t he_elem_len(struct hostapd
  		 * client EIRP */
  		if (hapd->iconf->reg_def_cli_eirp != -1 &&
  		    he_reg_is_sp(hapd->iconf->he_6ghz_reg_pwr_type))
@@ -633,7 +633,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	}
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -2982,6 +2982,92 @@ bool is_6ghz_freq(int freq)
+@@ -3014,6 +3014,92 @@ bool is_6ghz_freq(int freq)
  	return true;
  }
  
@@ -728,7 +728,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  {
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -327,6 +327,8 @@ bool is_6ghz_freq(int freq);
+@@ -340,6 +340,8 @@ bool is_6ghz_freq(int freq);
  bool is_6ghz_op_class(u8 op_class);
  bool is_6ghz_psc_frequency(int freq);
  int get_6ghz_sec_channel(int channel);
@@ -739,7 +739,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #define IS_2P4GHZ(n) (n >= 2412 && n <= 2484)
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2149,6 +2149,27 @@ enum reg_6g_client_type {
+@@ -2194,6 +2194,27 @@ enum reg_6g_client_type {
  #define MAX_PSD_TPE_EXT_POWER_COUNT		15
  #define MAX_TPE_EIRP_NUM_POWER_SUPPORTED	4
  

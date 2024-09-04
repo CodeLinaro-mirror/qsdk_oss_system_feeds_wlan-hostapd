@@ -15,11 +15,9 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  src/ap/ieee802_11.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index b9f2274..84f30e4 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5177,7 +5177,7 @@ rsnxe_done:
+@@ -5209,7 +5209,7 @@ rsnxe_done:
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
@@ -28,6 +26,3 @@ index b9f2274..84f30e4 100644
  			p = hostapd_eid_eht_ml_assoc(hapd, sta, p);
  		p = hostapd_eid_eht_capab(hapd, p, IEEE80211_MODE_AP);
  		p = hostapd_eid_eht_operation(hapd, p, IEEE80211_MODE_AP);
--- 
-2.34.1
-

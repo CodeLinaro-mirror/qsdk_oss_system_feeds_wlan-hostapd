@@ -36,7 +36,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  	ASSERT_CMP_INT(bss.bss.valid_links, ==, 1);
 --- a/wpa_supplicant/bss.c
 +++ b/wpa_supplicant/bss.c
-@@ -1528,6 +1528,22 @@ int wpa_bss_ext_capab(const struct wpa_b
+@@ -1604,6 +1604,22 @@ int wpa_bss_ext_capab(const struct wpa_b
  }
  
  
@@ -47,8 +47,8 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
 +
 +	for (i = 0; i < wpa_s->num_multi_hws; i++) {
 +		hw_info = &wpa_s->multi_hw_info[i];
-+		if (partner_freq >= hw_info->freqs[0] &&
-+		    partner_freq <= hw_info->freqs[hw_info->num_freqs - 1])
++		if (partner_freq >= hw_info->start_freq &&
++		    partner_freq <= hw_info->end_freq)
 +			return i;
 +	}
 +
@@ -59,7 +59,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  static void
  wpa_bss_parse_ml_rnr_ap_info(struct wpa_supplicant *wpa_s,
  			     struct wpa_bss *bss, u8 mbssid_idx,
-@@ -1539,6 +1555,8 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
+@@ -1615,6 +1631,8 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
  	const u8 *mld_params;
  	u8 count, mld_params_offset;
  	u8 i, type, link_id;
@@ -68,7 +68,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  
  	count = RNR_TBTT_INFO_COUNT_VAL(ap_info->tbtt_info_hdr) + 1;
  	type = ap_info->tbtt_info_hdr & RNR_TBTT_INFO_HDR_TYPE_MSK;
-@@ -1556,6 +1574,9 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
+@@ -1632,6 +1650,9 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
  	end = pos + len;
  	pos += sizeof(*ap_info);
  
@@ -78,7 +78,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  	for (i = 0; i < count; i++) {
  		u8 bss_params;
  
-@@ -1569,6 +1590,25 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
+@@ -1645,6 +1666,25 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
  		if (link_id >= MAX_NUM_MLD_LINKS)
  			return;
  
@@ -104,7 +104,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  		if (*mld_params != mbssid_idx) {
  			wpa_printf(MSG_DEBUG,
  				   "MLD: Reported link not part of MLD");
-@@ -1580,6 +1620,15 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
+@@ -1662,6 +1702,15 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
  			wpa_printf(MSG_DEBUG, "MLD: mld ID=%u, link ID=%u",
  				   *mld_params, link_id);
  
@@ -120,7 +120,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  			if (!neigh_bss) {
  				*missing |= BIT(link_id);
  			} else if ((!ssid ||
-@@ -1599,7 +1648,7 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
+@@ -1681,7 +1730,7 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
  					RNR_TBTT_INFO_MLD_PARAM2_LINK_DISABLED;
  			}
  		}
@@ -129,7 +129,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  		pos += ap_info->tbtt_info_len;
  	}
  }
-@@ -1627,7 +1676,8 @@ int wpa_bss_parse_basic_ml_element(struc
+@@ -1709,7 +1758,8 @@ int wpa_bss_parse_basic_ml_element(struc
  				   u8 *ap_mld_addr,
  				   u16 *missing_links,
  				   struct wpa_ssid *ssid,
@@ -139,7 +139,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  {
  	struct ieee802_11_elems elems;
  	struct wpabuf *mlbuf;
-@@ -1654,6 +1704,9 @@ int wpa_bss_parse_basic_ml_element(struc
+@@ -1736,6 +1786,9 @@ int wpa_bss_parse_basic_ml_element(struc
  	int ret = -1;
  	struct mld_link *l;
  
@@ -149,7 +149,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  	if (ieee802_11_parse_elems(ies_pos, ies_len, &elems, 1) ==
  	    ParseFailed) {
  		wpa_dbg(wpa_s, MSG_DEBUG, "MLD: Failed to parse elements");
-@@ -1731,6 +1784,8 @@ int wpa_bss_parse_basic_ml_element(struc
+@@ -1825,6 +1878,8 @@ int wpa_bss_parse_basic_ml_element(struc
  	os_memcpy(l->bssid, bss->bssid, ETH_ALEN);
  	l->freq = bss->freq;
  
@@ -158,7 +158,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  
  	/*
  	 * The AP MLD ID in the RNR corresponds to the MBSSID index, see
-@@ -1788,6 +1843,12 @@ int wpa_bss_parse_basic_ml_element(struc
+@@ -1882,6 +1937,12 @@ int wpa_bss_parse_basic_ml_element(struc
  			   i, MAC2STR(bss->mld_links[i].bssid));
  	}
  
@@ -173,7 +173,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  
 --- a/wpa_supplicant/bss.h
 +++ b/wpa_supplicant/bss.h
-@@ -223,7 +223,8 @@ int wpa_bss_parse_basic_ml_element(struc
+@@ -225,7 +225,8 @@ int wpa_bss_parse_basic_ml_element(struc
  				   u8 *ap_mld_addr,
  				   u16 *missing_links,
  				   struct wpa_ssid *ssid,
@@ -185,7 +185,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  u32 wpa_bss_compare_res(const struct wpa_bss *old,
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -1162,7 +1162,7 @@ static bool wpas_valid_ml_bss(struct wpa
+@@ -1180,7 +1180,7 @@ static bool wpas_valid_ml_bss(struct wpa
  {
  	u16 removed_links;
  
@@ -194,7 +194,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  		return true;
  
  	if (!bss->valid_links)
-@@ -1896,7 +1896,7 @@ static int wpa_supplicant_connect_ml_mis
+@@ -1916,7 +1916,7 @@ static int wpa_supplicant_connect_ml_mis
  
  	if (wpa_bss_parse_basic_ml_element(wpa_s, selected, NULL,
  					   &missing_links, ssid,
@@ -205,7 +205,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  
 --- a/wpa_supplicant/sme.c
 +++ b/wpa_supplicant/sme.c
-@@ -568,25 +568,34 @@ static void sme_send_authentication(stru
+@@ -582,25 +582,35 @@ static void sme_send_authentication(stru
  
  	os_memset(&params, 0, sizeof(params));
  
@@ -214,18 +214,18 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
 -					    NULL, ssid, NULL) &&
 -	    bss->valid_links) {
 -		wpa_printf(MSG_DEBUG, "MLD: In authentication");
--		wpas_sme_set_mlo_links(wpa_s, bss);
+-		wpas_sme_set_mlo_links(wpa_s, bss, ssid);
 +	ret = wpa_bss_parse_basic_ml_element(wpa_s, bss, wpa_s->ap_mld_addr,NULL, ssid, NULL, &params);
 +
 +	if (params.mld) {
 +		if ((wpa_s->drv_flags2 & WPA_DRIVER_FLAGS2_MLO) &&
 +		    !ret && bss->valid_links) {
 +			wpa_printf(MSG_DEBUG, "MLD: In authentication");
-+			wpas_sme_set_mlo_links(wpa_s, bss);
++			wpas_sme_set_mlo_links(wpa_s, bss, ssid);
  
  #ifdef CONFIG_TESTING_OPTIONS
--		bss = wpas_ml_connect_pref(wpa_s, bss);
-+			bss = wpas_ml_connect_pref(wpa_s, bss);
+-		bss = wpas_ml_connect_pref(wpa_s, bss, ssid);
++			bss = wpas_ml_connect_pref(wpa_s, bss, ssid);
  
 -		if (wpa_s->conf->mld_force_single_link) {
 -			wpa_printf(MSG_DEBUG, "MLD: Force single link");
@@ -240,6 +240,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
 -		params.mld_link_id = wpa_s->mlo_assoc_link_id;
 -		params.ap_mld_addr = wpa_s->ap_mld_addr;
 -		wpas_ml_handle_removed_links(wpa_s, bss);
++			params.mld = true;
 +			params.mld_link_id = wpa_s->mlo_assoc_link_id;
 +			params.ap_mld_addr = wpa_s->ap_mld_addr;
 +			wpas_ml_handle_removed_links(wpa_s, bss);
@@ -257,14 +258,14 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  	skip_auth = wpa_s->conf->reassoc_same_bss_optim &&
 --- a/wpa_supplicant/driver_i.h
 +++ b/wpa_supplicant/driver_i.h
-@@ -1183,4 +1183,15 @@ static inline int wpa_drv_set_6gclient_t
+@@ -1255,4 +1255,15 @@ static inline int wpa_drv_set_6gclient_t
  	return wpa_s->driver->set_6gclient_type(wpa_s->drv_priv,
  						he_6ghz_reg_client_type);
  }
 +
 +static inline struct
 +hostapd_multi_hw_info *wpa_get_multi_hw_info(struct wpa_supplicant *wpa_s,
-+					     u8 *num_multi_hws) {
++					     unsigned int *num_multi_hws) {
 +	if (!wpa_s->driver->get_multi_hw_info)
 +		return NULL;
 +
@@ -283,18 +284,18 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  #include "nan_usd.h"
  #ifdef CONFIG_MESH
  #include "ap/ap_config.h"
-@@ -7180,8 +7181,9 @@ static int wpa_supplicant_init_iface(str
+@@ -7365,8 +7366,10 @@ static int wpa_supplicant_init_iface(str
  				     const struct wpa_interface *iface)
  {
  	struct wpa_driver_capa capa;
 +	struct hostapd_multi_hw_info *multi_hw_info;
  	int capa_res;
--	u8 dfs_domain;
-+	u8 dfs_domain, num_multi_hws = 0;
+ 	u8 dfs_domain;
++	unsigned int num_multi_hws = 0;
  
  	wpa_printf(MSG_DEBUG, "Initializing interface '%s' conf '%s' driver "
  		   "'%s' ctrl_interface '%s' bridge '%s'", iface->ifname,
-@@ -7354,6 +7356,32 @@ static int wpa_supplicant_init_iface(str
+@@ -7539,6 +7542,23 @@ static int wpa_supplicant_init_iface(str
  		wpa_s->support_6ghz = wpas_is_6ghz_supported(wpa_s, false);
  	}
  
@@ -304,34 +305,25 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
 +		wpa_s->num_multi_hws = num_multi_hws;
 +	}
 +
++	wpa_printf(MSG_DEBUG, "Multiple underlying hardwares info:");
 +
 +	for (int i = 0; i < num_multi_hws; i++) {
 +		struct hostapd_multi_hw_info *hw_info = &multi_hw_info[i];
-+		char str[1000];
-+		char *pos = str;
-+		char *end = pos + sizeof(str);
-+		int res;
 +
-+		for (int j = 0; j < hw_info->num_freqs; j++) {
-+			res = os_snprintf(pos, end - pos, "%d, ", hw_info->freqs[j]);
-+			if (os_snprintf_error(end - pos, res))
-+				break;
-+			pos += res;
-+		}
-+
-+
-+		*pos = '\0';
-+		wpa_printf(MSG_DEBUG, "    %d. hw_idx=%u, frequencies: %s", i + 1, hw_info->hw_idx, str);
++		wpa_printf(MSG_DEBUG,
++			   "  %d. hw_idx=%u, frequency range: %d-%d MHz",
++			   i + 1, hw_info->hw_idx, hw_info->start_freq,
++			   hw_info->end_freq);
 +	}
 +
  	capa_res = wpa_drv_get_capa(wpa_s, &capa);
  	if (capa_res == 0) {
  		wpa_s->drv_capa_known = 1;
-@@ -7659,6 +7687,9 @@ static void wpa_supplicant_deinit_iface(
+@@ -7845,6 +7865,9 @@ static void wpa_supplicant_deinit_iface(
  		wpa_s->conf = NULL;
  	}
  
-+	hostapd_free_multi_hw_info(wpa_s->multi_hw_info, wpa_s->num_multi_hws);
++	hostapd_free_multi_hw_info(wpa_s->multi_hw_info);
 +	wpa_s->multi_hw_info = NULL;
 +	wpa_s->num_multi_hws = 0;
  	os_free(wpa_s->ssids_from_scan_req);
@@ -339,7 +331,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
-@@ -1617,6 +1617,8 @@ struct wpa_supplicant {
+@@ -1632,6 +1632,8 @@ struct wpa_supplicant {
  	/* Minimum bandwidth the driver supports RU puncturing */
  	u8 ru_punct_supp_bw;
  	unsigned int ml_neigh_retries;

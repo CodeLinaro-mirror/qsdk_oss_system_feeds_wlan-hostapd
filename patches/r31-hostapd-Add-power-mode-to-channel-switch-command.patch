@@ -108,7 +108,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	settings->freq_params.vht_enabled = !!os_strstr(pos, " vht");
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1152,6 +1152,21 @@ void hostapd_event_sta_opmode_changed(st
+@@ -1204,6 +1204,21 @@ void hostapd_event_sta_opmode_changed(st
  	}
  }
  
@@ -130,7 +130,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  
  void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  			     int offset, int width, int cf1, int cf2,
-@@ -1351,6 +1366,14 @@ void hostapd_event_ch_switch(struct host
+@@ -1403,6 +1418,14 @@ void hostapd_event_ch_switch(struct host
  
  	if (hapd->csa_in_progress &&
  	    freq == hapd->cs_freq_params.freq) {
@@ -193,7 +193,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		/* Save CHAN_SWITCH VHT and HE config */
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2891,6 +2891,7 @@ struct beacon_data {
+@@ -2899,6 +2899,7 @@ struct beacon_data {
   * @counter_offset_beacon: Offset to the count field in beacon's tail
   * @counter_offset_presp: Offset to the count field in probe resp.
   * @punct_bitmap - Preamble puncturing bitmap
@@ -201,7 +201,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
   * @link_id: Link ID to determine the link for MLD; -1 for non-MLD
   * @ubpr: Unsolicited broadcast Probe Response frame data
   */
-@@ -2913,6 +2914,7 @@ struct csa_settings {
+@@ -2921,6 +2922,7 @@ struct csa_settings {
  
  	/* critical_update_flag - critical update flag*/
  	bool beacon_after_cu;

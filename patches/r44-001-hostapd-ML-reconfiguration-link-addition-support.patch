@@ -28,7 +28,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -5888,28 +5888,6 @@ hostapd_global_ctrl_iface_fst_detach(str
+@@ -6282,28 +6282,6 @@ hostapd_global_ctrl_iface_fst_detach(str
  #endif /* CONFIG_FST */
  
  
@@ -59,7 +59,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  					const char *param)
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2250,6 +2250,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2335,6 +2335,7 @@ int ieee802_11_build_ap_params(struct ho
  	u8 elemid_modified = 0;
  	struct hostapd_data *tx_bss;
  #endif /* NEED_AP_MLME */
@@ -67,7 +67,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  	os_memset(params, 0, sizeof(*params));
  	tx_bss = hostapd_mbssid_get_tx_bss(hapd);
-@@ -2409,17 +2410,28 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2496,17 +2497,28 @@ int ieee802_11_build_ap_params(struct ho
  					   tailpos-startpos, ELEMID_CU_PARAM_HTOP);
  #endif
  
@@ -108,7 +108,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	tailpos = hostapd_eid_ext_capab(hapd, tailpos, complete);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1542,6 +1542,7 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1543,6 +1543,7 @@ int hostapd_setup_bss(struct hostapd_dat
  	char force_ifname[IFNAMSIZ];
  	u8 if_addr[ETH_ALEN];
  	int flush_old_stations = 1;
@@ -116,7 +116,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  	if (!hostapd_mld_is_first_bss(hapd))
  		wpa_printf(MSG_DEBUG,
-@@ -1633,7 +1634,7 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1634,7 +1635,7 @@ int hostapd_setup_bss(struct hostapd_dat
  
  #ifdef CONFIG_IEEE80211BE
  setup_mld:
@@ -125,17 +125,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		wpa_printf(MSG_DEBUG,
  			   "MLD: Set link_id=%u, mld_addr=" MACSTR
  			   ", own_addr=" MACSTR,
-@@ -1642,6 +1643,9 @@ setup_mld:
- 
- 		if (hostapd_drv_link_add(hapd, hapd->mld_link_id,
- 					 hapd->own_addr)) {
-+			wpa_printf(MSG_ERROR,
-+				   "MLD: Failed to add link %d in MLD %s",
-+				   hapd->mld_link_id, hapd->conf->iface);
- 			return -1;
- 		}
- 		hostapd_mld_add_link(hapd);
-@@ -1874,6 +1878,13 @@ setup_mld:
+@@ -1879,6 +1880,13 @@ setup_mld:
  		return -1;
  	}
  
@@ -149,48 +139,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	if (start_beacon && hostapd_start_beacon(hapd, flush_old_stations) < 0)
  		return -1;
  
-@@ -1970,25 +1981,25 @@ static int start_ctrl_iface_bss(struct h
- 	    !hapd->iface->interfaces->ctrl_iface_init)
- 		return 0;
- 
--	if (hapd->iface->interfaces->ctrl_iface_init(hapd)) {
- #ifdef CONFIG_IEEE80211BE
--		os_memset(hapd->ctrl_sock_iface, '\0',
--				sizeof(hapd->ctrl_sock_iface));
--		os_strlcpy(hapd->ctrl_sock_iface, hapd->conf->iface,
--				sizeof(hapd->ctrl_sock_iface));
-+	os_memset(hapd->ctrl_sock_iface, '\0',
-+		  sizeof(hapd->ctrl_sock_iface));
-+	os_strlcpy(hapd->ctrl_sock_iface, hapd->conf->iface,
-+		   sizeof(hapd->ctrl_sock_iface));
- 
--		if (hapd->conf->mld_ap) {
--			char buf[128];
-+	if (hapd->conf->mld_ap) {
-+		char buf[128];
- 
--			os_memset(buf, '\0', sizeof(buf));
--			os_snprintf(buf, sizeof(buf), "%s_%s%d",
--					hapd->conf->iface, WPA_CTRL_IFACE_LINK_NAME,
--					hapd->mld_link_id);
--			os_memset(hapd->ctrl_sock_iface, '\0',
--					sizeof(hapd->ctrl_sock_iface));
--			os_strlcpy(hapd->ctrl_sock_iface, buf, sizeof(buf));
--		}
-+		os_memset(buf, '\0', sizeof(buf));
-+		os_snprintf(buf, sizeof(buf), "%s_%s%d",
-+			    hapd->conf->iface, WPA_CTRL_IFACE_LINK_NAME,
-+			    hapd->mld_link_id);
-+		os_memset(hapd->ctrl_sock_iface, '\0',
-+			  sizeof(hapd->ctrl_sock_iface));
-+		os_strlcpy(hapd->ctrl_sock_iface, buf, sizeof(buf));
-+	}
- #endif /* CONFIG_IEEE80211BE */
-+	if (hapd->iface->interfaces->ctrl_iface_init(hapd)) {
- 		wpa_printf(MSG_ERROR,
- 			   "Failed to setup control interface for %s",
- 			   hapd->conf->iface);
-@@ -3527,6 +3538,15 @@ static int ifname_in_use(struct hapd_int
+@@ -3536,6 +3544,15 @@ static int ifname_in_use(struct hapd_int
  }
  
  
@@ -206,7 +155,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  /**
   * hostapd_interface_init_bss - Read configuration file and init BSS data
   *
-@@ -3546,12 +3566,18 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3555,12 +3572,18 @@ hostapd_interface_init_bss(struct hapd_i
  	struct hostapd_data *hapd;
  	int k;
  	size_t i, bss_idx;
@@ -226,7 +175,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  			iface = interfaces->iface[i];
  			break;
  		}
-@@ -3560,16 +3586,12 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3569,16 +3592,12 @@ hostapd_interface_init_bss(struct hapd_i
  	wpa_printf(MSG_INFO, "Configuration file: %s (phy %s)%s",
  		   config_fname, phy, iface ? "" : " --> new PHY");
  	if (iface) {
@@ -244,7 +193,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		if (conf->num_bss > 1) {
  			wpa_printf(MSG_ERROR, "Multiple BSSes specified in BSS-config");
  			hostapd_config_free(conf);
-@@ -3577,12 +3599,23 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3586,12 +3605,23 @@ hostapd_interface_init_bss(struct hapd_i
  		}
  
  		ifname = conf->bss[0]->iface;
@@ -270,7 +219,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  		tmp_conf = os_realloc_array(
  			iface->conf->bss, iface->conf->num_bss + 1,
-@@ -3625,6 +3658,7 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3634,6 +3664,7 @@ hostapd_interface_init_bss(struct hapd_i
  		conf->bss[0] = NULL;
  		hostapd_config_free(conf);
  	} else {
@@ -278,7 +227,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		/* Add a new iface with the first BSS */
  		new_iface = iface = hostapd_init(interfaces, config_fname);
  		if (!iface)
-@@ -5435,6 +5469,28 @@ hostapd_interface_update_fils_ubpr(struc
+@@ -5489,6 +5520,28 @@ hostapd_interface_update_fils_ubpr(struc
  }
  
  
@@ -309,7 +258,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  					       u8 link_id)
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -949,6 +949,9 @@ unsigned int hostapd_mbssid_get_bss_inde
+@@ -957,6 +957,9 @@ unsigned int hostapd_mbssid_get_bss_inde
  struct hostapd_data * hostapd_mld_get_link_bss(struct hostapd_data *hapd,
  					       u8 link_id);
  int hostapd_link_remove(struct hostapd_data *hapd, u32 count);

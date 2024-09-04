@@ -18,7 +18,7 @@ Signed-off-by: Govindaraj Saminathan <quic_gsaminat@quicinc.com>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1941,59 +1941,71 @@ static void hostapd_no_ir_cleanup(struct
+@@ -1947,59 +1947,71 @@ static void hostapd_no_ir_cleanup(struct
  static int hostapd_no_ir_channel_list_updated(struct hostapd_iface *iface,
  					      void *ctx)
  {
@@ -110,7 +110,7 @@ Signed-off-by: Govindaraj Saminathan <quic_gsaminat@quicinc.com>
  			wpa_printf(MSG_DEBUG,
  				   "NO_IR: The current channel has NO_IR flag now, stop AP.");
  		} else {
-@@ -2010,20 +2022,20 @@ static int hostapd_no_ir_channel_list_up
+@@ -2017,20 +2029,20 @@ static int hostapd_no_ir_channel_list_up
  		if (all_no_ir) {
  			wpa_printf(MSG_DEBUG,
  				   "NO_IR: AP in NO_IR and all chan in the new chanlist are NO_IR. Ignore");
@@ -136,7 +136,7 @@ Signed-off-by: Govindaraj Saminathan <quic_gsaminat@quicinc.com>
  			}
  
  			/* If the last operating channel is NO_IR, trigger ACS.
-@@ -2034,13 +2046,15 @@ static int hostapd_no_ir_channel_list_up
+@@ -2041,13 +2053,15 @@ static int hostapd_no_ir_channel_list_up
  				if (acs_init(iface) != HOSTAPD_CHAN_ACS)
  					wpa_printf(MSG_ERROR,
  						   "NO_IR: Could not start ACS");

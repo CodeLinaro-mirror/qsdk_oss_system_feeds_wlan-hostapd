@@ -24,7 +24,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3212,6 +3212,30 @@ static void handle_auth(struct hostapd_d
+@@ -3303,6 +3303,30 @@ static void handle_auth(struct hostapd_d
  	    (!(sta->flags & WLAN_STA_MFP) || !ap_sta_is_authorized(sta)) &&
  	    !(hapd->conf->mesh & MESH_ENABLED) &&
  	    !(sta->added_unassoc) && auth_alg != WLAN_AUTH_PASN) {

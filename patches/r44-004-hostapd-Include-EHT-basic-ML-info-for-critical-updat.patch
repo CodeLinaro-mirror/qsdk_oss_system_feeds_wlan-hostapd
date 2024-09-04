@@ -16,7 +16,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2206,7 +2206,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2332,7 +2332,7 @@ int ieee802_11_build_ap_params(struct ho
  	u8 *pos, *tailpos, *tailend, *csa_pos;
  	bool complete = false;
  	u8 *startpos;
@@ -25,7 +25,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	struct hostapd_data *tx_bss;
  #endif /* NEED_AP_MLME */
  	struct hostapd_data *lhapd;
-@@ -2480,9 +2480,14 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2612,9 +2612,14 @@ int ieee802_11_build_ap_params(struct ho
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
@@ -43,7 +43,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		startpos = tailpos;
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -206,6 +206,7 @@ enum elemid_cu {
+@@ -223,6 +223,7 @@ enum elemid_cu {
  	ELEMID_CU_PARAM_WMM,
  	ELEMID_CU_PARAM_MU_EDCA,
  	ELEMID_CU_PARAM_SPATIAL_REUSE,
@@ -53,7 +53,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  };
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9151,7 +9151,7 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -9675,7 +9675,7 @@ size_t hostapd_eid_mbssid_len(struct hos
  }
  
  #ifdef CONFIG_IEEE80211BE
@@ -64,7 +64,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  {
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -280,7 +280,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -285,7 +285,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			u32 *elemid_modified_bmap);
  u16 hostapd_critical_update_capab(struct hostapd_data *hapd);
  bool hostapd_is_mld_ap(struct hostapd_data *hapd);

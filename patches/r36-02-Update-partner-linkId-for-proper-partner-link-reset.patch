@@ -38,7 +38,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3221,7 +3221,9 @@ static void handle_auth(struct hostapd_d
+@@ -3312,7 +3312,9 @@ static void handle_auth(struct hostapd_d
  
  				sta->mld_info.mld_sta = true;
  				sta->mld_assoc_link_id = link_id;
