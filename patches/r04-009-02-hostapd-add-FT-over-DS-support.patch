@@ -48,7 +48,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  static int hostapd_get_scs_final_value(struct sta_info *sta,
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -133,7 +133,7 @@ hostapd_drv_send_action_cancel_wait(stru
+@@ -132,7 +132,7 @@ hostapd_drv_send_action_cancel_wait(stru
  	hapd->driver->send_action_cancel_wait(hapd->drv_priv);
  }
  int hostapd_add_sta_node(struct hostapd_data *hapd, const u8 *addr,
@@ -69,7 +69,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  fail:
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -563,6 +563,17 @@ struct hostapd_sta_info {
+@@ -561,6 +561,17 @@ struct hostapd_sta_info {
  };
  
  #ifdef CONFIG_IEEE80211BE
@@ -87,7 +87,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  /**
   * struct hostapd_mld - hostapd per-mld data structure
   */
-@@ -580,6 +591,7 @@ struct hostapd_mld {
+@@ -578,6 +589,7 @@ struct hostapd_mld {
  
  	struct hostapd_data *fbss;
  	struct dl_list links; /* List head of all affiliated links */
@@ -147,7 +147,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  static u8 hostapd_max_bssid_indicator(struct hostapd_data *hapd)
  {
  	size_t num_bss_nontx;
-@@ -5383,6 +5412,96 @@ static struct sta_info * handle_mlo_tran
+@@ -5381,6 +5410,96 @@ static struct sta_info * handle_mlo_tran
  #endif /* CONFIG_IEEE80211BE */
  
  
@@ -244,7 +244,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  static void handle_assoc(struct hostapd_data *hapd,
  			 const struct ieee80211_mgmt *mgmt, size_t len,
  			 int reassoc, int rssi)
-@@ -5480,6 +5599,11 @@ static void handle_assoc(struct hostapd_
+@@ -5478,6 +5597,11 @@ static void handle_assoc(struct hostapd_
  #endif /* CONFIG_IEEE80211BE */
  
  #ifdef CONFIG_IEEE80211R_AP
@@ -370,7 +370,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  }
  
  
-@@ -4257,8 +4258,39 @@ static int wpa_ft_rrb_rx_request(struct
+@@ -4276,8 +4277,39 @@ static int wpa_ft_rrb_rx_request(struct
  	u8 *resp_ies;
  	size_t resp_ies_len;
  	int res;
@@ -393,18 +393,18 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +			wpa_printf(MSG_ERROR,
 +				   "ERROR!! %s MLD Mac extraction from ML-IE failure\n",
 +				   __func__);
-+		} else if (os_memcmp(mld_mac, sta_addr, ETH_ALEN) != 0) {
-+			wpa_printf(MSG_ERROR,
-+				   "ERROR!! %s MIMSATCH between sta_addr in FT-REQUEST fixed field and in the ML-IE "MACSTR" "MACSTR"\n",
-+				   __func__, MAC2STR(mld_mac), MAC2STR(sta_addr));
-+			return -1;
++		} else {
++			if (os_memcmp(mld_mac, sta_addr, ETH_ALEN) != 0) {
++				wpa_printf(MSG_ERROR,
++					   "ERROR!! %s MIMSATCH between sta_addr in FT-REQUEST fixed field and in the ML-IE "MACSTR" "MACSTR"\n",
++					   __func__, MAC2STR(mld_mac), MAC2STR(sta_addr));
++				return -1;
++			}
++			wpa_printf(MSG_MSGDUMP,
++				   "FT over DS: Received STA "MACSTR" "MACSTR"\n",
++				   MAC2STR(mld_mac), MAC2STR(sta_addr));
 +		}
-+		wpa_printf(MSG_MSGDUMP,
-+			   "FT over DS: Received STA "MACSTR" "MACSTR"\n",
-+			   MAC2STR(mld_mac), MAC2STR(sta_addr));
 +		is_ml = true;
-+	} else {
-+		is_ml = false;
 +	}
 +
 +	sm = wpa_ft_add_sta(wpa_auth, sta_addr, is_ml);
@@ -516,7 +516,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		return NULL;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -4623,7 +4623,7 @@ struct wpa_driver_ops {
+@@ -4612,7 +4612,7 @@ struct wpa_driver_ops {
  	 * This function adds the station node in the driver, when
  	 * the station gets added by FT-over-DS.
  	 */
