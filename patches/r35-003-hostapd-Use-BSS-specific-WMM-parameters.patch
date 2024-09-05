@@ -77,10 +77,10 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  					   "Failed to update beacons with WMM parameters");
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -176,6 +176,32 @@ void hostapd_config_defaults_bss(struct
- 	bss->pasn_comeback_after = 10;
+@@ -177,6 +177,32 @@ void hostapd_config_defaults_bss(struct
  	bss->pasn_noauth = 1;
  #endif /* CONFIG_PASN */
+ 	bss->force_disable_in_band_discovery = 1;
 +
 +	bss->wmm_override = false;
 +#define ecw2cw(ecw) ((1 << (ecw)) - 1)
@@ -110,18 +110,6 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  }
  
  
---- a/src/ap/ap_config.h
-+++ b/src/ap/ap_config.h
-@@ -988,6 +988,9 @@ struct hostapd_bss_config {
- 	bool mld_indicate_disabled;
- #endif /* CONFIG_TESTING_OPTIONS */
- #endif /* CONFIG_IEEE80211BE */
-+
-+	bool wmm_override;
-+	struct hostapd_wmm_ac_params wmm_ac_params[4];
- };
- 
- /**
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
 @@ -2375,7 +2375,6 @@ static void hostapd_event_update_muedca_
@@ -226,3 +214,15 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	}
  }
  
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -998,6 +998,9 @@ struct hostapd_bss_config {
+ 	 * 6GHz AP based on colocation.
+ 	 */
+ 	bool force_disable_in_band_discovery;
++
++	bool wmm_override;
++	struct hostapd_wmm_ac_params wmm_ac_params[4];
+ };
+ 
+ /**
