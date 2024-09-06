@@ -152,7 +152,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static void hostapd_event_update_cu_param(struct hostapd_data *hapd,
  					  struct cu_event *cu_event)
  {
-@@ -3091,6 +3190,17 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -3091,6 +3190,22 @@ void hostapd_wpa_event(void *ctx, enum w
  		hostapd_event_afc_update_complete(hapd,
  						  &data->afc_rsp_info);
  		break;
@@ -165,6 +165,11 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +	case EVENT_LINK_REMOVAL_COMPLETED:
 +		hostapd_update_link_removal_field(hapd, 0,
 +						  EVENT_LINK_REMOVAL_COMPLETED);
++		break;
++	case EVENT_LINK_RECONFIG:
++		link_hapd = switch_link_hapd(hapd, data->link_removal_event.link_id);
++		link_hapd->eht_mld_link_removal_count = data->link_removal_event.link_removal_count;
++		link_hapd->eht_mld_link_removal_inprogress = true;
 +		break;
 +#endif
  	default:
@@ -285,7 +290,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			int i;
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -7282,3 +7282,28 @@ void wpa_auth_set_ml_info(struct wpa_sta
+@@ -7292,3 +7292,28 @@ void wpa_auth_set_ml_info(struct wpa_sta
   	}
  #endif /* CONFIG_IEEE80211BE */
  }
@@ -316,7 +321,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +}
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
-@@ -651,7 +651,8 @@ void wpa_auth_ml_get_key_info(struct wpa
+@@ -653,7 +653,8 @@ void wpa_auth_ml_get_key_info(struct wpa
  
  void wpa_release_link_auth_ref(struct wpa_state_machine *sm,
  			       int release_link_id);

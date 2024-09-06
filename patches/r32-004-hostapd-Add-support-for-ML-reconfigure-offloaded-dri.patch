@@ -46,7 +46,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static void hostapd_ctrl_iface_send(struct hostapd_data *hapd, int level,
  				    enum wpa_msg_type type,
  				    const char *buf, size_t len);
-@@ -4378,8 +4383,21 @@ static int hostapd_ctrl_iface_link_remov
+@@ -4380,8 +4385,21 @@ static int hostapd_ctrl_iface_link_remov
  	int ret;
  	u32 count = atoi(cmd);
  
@@ -284,7 +284,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  #endif /* HOSTAPD_H */
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -799,75 +799,6 @@ out:
+@@ -798,75 +798,6 @@ out:
  }
  
  
@@ -360,7 +360,28 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static size_t hostapd_eid_eht_ml_len(struct mld_info *info,
  				     bool include_mld_id)
  {
-@@ -1569,3 +1500,105 @@ void hostapd_get_eht_240mhz_capab(struct
+@@ -913,7 +844,10 @@ u8 * hostapd_eid_eht_ml_beacon(struct ho
+ 			       u8 *eid, bool include_mld_id)
+ {
+ 	eid = hostapd_eid_eht_basic_ml_common(hapd, eid, info, include_mld_id);
+-	return hostapd_eid_eht_reconf_ml(hapd, eid);
++	if (hapd->iface->drv_flags2 & WPA_DRIVER_FLAG2_MLD_LINK_REMOVAL_OFFLOAD)
++		return eid;
++	else
++		return hostapd_eid_eht_reconf_ml(hapd, eid);
+ }
+ 
+ 
+@@ -927,7 +861,7 @@ u8 * hostapd_eid_eht_ml_assoc(struct hos
+ 	eid = hostapd_eid_eht_basic_ml_common(hapd, eid, &info->mld_info,
+ 					      false);
+ 	ap_sta_free_sta_profile(&info->mld_info);
+-	return hostapd_eid_eht_reconf_ml(hapd, eid);
++	return eid;
+ }
+ 
+ 
+@@ -1568,3 +1502,105 @@ void hostapd_get_eht_240mhz_capab(struct
  
  	os_memcpy(dest, src, len);
  }
@@ -581,7 +602,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	.register_frame = testing_nl80211_register_frame,
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -3484,7 +3484,8 @@ enum nl80211_attrs {
+@@ -3485,7 +3485,8 @@ enum nl80211_attrs {
  	NL80211_ATTR_CHANNEL_WIDTH_DEVICE,
  	NL80211_ATTR_CENTER_FREQ_DEVICE,
  	NL80211_ATTR_INTERFERENCE_TYPE,
