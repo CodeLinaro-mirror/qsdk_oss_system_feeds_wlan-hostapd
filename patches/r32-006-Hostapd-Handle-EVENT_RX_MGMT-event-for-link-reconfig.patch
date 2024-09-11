@@ -25,32 +25,32 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9536,8 +9536,11 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -9535,8 +9535,11 @@ static size_t hostapd_eid_mbssid_elem_le
+ 			ie_count++;
  
- #if 0           /* TODO: Revisit this */
  		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
 -		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP))
 +		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
- 			nontx_profile_len += hostapd_eid_eht_basic_ml_common_len(bss, NULL, true);
+ 			nontx_profile_len += hostapd_eid_eht_ml_beacon_len(bss, NULL, true);
 +			if (bss->eht_mld_link_removal_inprogress)
 +				nontx_profile_len += hostapd_eid_eht_ml_reconfig_len(bss);
 +		}
- #endif
+ 
  		if (ie_count)
  			nontx_profile_len += 4 + ie_count;
-@@ -9710,8 +9713,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9708,8 +9711,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 			non_inherit_ie[ie_count++] = WLAN_EID_RSNX;
  
- #if 0		/* TODO: Revisit */
  		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
 -		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP))
 +		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
- 			eid = hostapd_eid_eht_basic_ml_common(bss, eid, NULL, true);
+ 			eid = hostapd_eid_eht_ml_beacon(bss, NULL, eid, true);
 +			if (bss->eht_mld_link_removal_inprogress)
 +				eid = hostapd_eid_eht_reconf_ml(bss, eid);
 +		}
- #endif
  
  		if (ie_count) {
+ 			*eid++ = WLAN_EID_EXTENSION;
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
 @@ -1432,10 +1432,82 @@ mlme_event_mgmt_critical_update(struct i
