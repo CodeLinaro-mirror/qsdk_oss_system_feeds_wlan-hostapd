@@ -1,0 +1,89 @@
+From 9518716f3f3414c66c60589fb60adfa1d77c9c73 Mon Sep 17 00:00:00 2001
+From: Pavithra Ganesan <quic_pavigane@quicinc.com>
+Date: Wed, 11 Sep 2024 09:49:57 +0530
+Subject: [PATCH] wpa_supplicant: initate auth when all configured links of ml bss are found
+
+While establishing ML connection, if BSS entry of partner BSS
+is not found in scan result, supplicant proceeds to authenticate with links
+which are available is current scan result.
+
+Instead attempt to retry scan and find all configured links in mld so that
+supplicant will be able associate on all configured links.
+Currently the retry limit is set to 5 scans.
+
+Also added a check to verify if partner link BSS'es freq is part for configured
+freq list before considering the link for association.
+
+Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
+---
+ wpa_supplicant/bss.c | 28 +++++++++++++++++++++++++++-
+ wpa_supplicant/sme.c |  8 ++++++++
+ 2 files changed, 35 insertions(+), 1 deletion(-)
+
+--- a/wpa_supplicant/bss.c
++++ b/wpa_supplicant/bss.c
+@@ -1569,6 +1569,25 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_supplicant *wpa_s,
+ 		if (link_id >= MAX_NUM_MLD_LINKS)
+ 			return;
+ 
++		int partner_freq = ieee80211_chan_to_freq(NULL, ap_info->op_class, ap_info->channel);
++		int curr_freq = 0;
++		if (partner_freq && wpa_s->conf->freq_list && wpa_s->conf->freq_list[0]) {
++			int i = 0;
++			curr_freq = wpa_s->conf->freq_list[i];
++			while (curr_freq) {
++				i++;
++				if (curr_freq == partner_freq) {
++					wpa_printf(MSG_DEBUG, "ML Partner freq %d is part of our scan list", partner_freq);
++					break;
++				}
++				curr_freq = wpa_s->conf->freq_list[i];
++			}
++		}
++		if (wpa_s->conf->freq_list && wpa_s->conf->freq_list[0] && !curr_freq) {
++			wpa_printf(MSG_DEBUG, "ML Partner freq %d is not part of our scan list ignore this link", partner_freq);
++			goto cont;
++		}
++
+ 		if (*mld_params != mbssid_idx) {
+ 			wpa_printf(MSG_DEBUG,
+ 				   "MLD: Reported link not part of MLD");
+@@ -1599,7 +1618,7 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_supplicant *wpa_s,
+ 					RNR_TBTT_INFO_MLD_PARAM2_LINK_DISABLED;
+ 			}
+ 		}
+-
++cont:
+ 		pos += ap_info->tbtt_info_len;
+ 	}
+ }
+@@ -1788,6 +1807,12 @@ int wpa_bss_parse_basic_ml_element(struct wpa_supplicant *wpa_s,
+ 			   i, MAC2STR(bss->mld_links[i].bssid));
+ 	}
+ 
++	if(missing && wpa_s->ml_neigh_retries <= 5) {
++		wpa_printf(MSG_DEBUG,
++		   "MLD: Neighbor not found in scan, current neigh scan retry count %u", wpa_s->ml_neigh_retries);
++		goto out;
++	}
++
+ 	if (missing_links)
+ 		*missing_links = missing;
+ 
+--- a/wpa_supplicant/sme.c
++++ b/wpa_supplicant/sme.c
+@@ -587,6 +587,14 @@ static void sme_send_authentication(struct wpa_supplicant *wpa_s,
+ 		params.mld_link_id = wpa_s->mlo_assoc_link_id;
+ 		params.ap_mld_addr = wpa_s->ap_mld_addr;
+ 		wpas_ml_handle_removed_links(wpa_s, bss);
++	} else {
++		wpas_connect_work_done(wpa_s);
++		/* Tear down auth process and start scan again */
++		wpa_supplicant_cancel_scan(wpa_s);
++		wpa_supplicant_cancel_sched_scan(wpa_s);
++		wpa_s->ml_neigh_retries++;
++		wpa_supplicant_req_scan(wpa_s, 0, 0);
++		return;
+ 	}
+ 
+ 	skip_auth = wpa_s->conf->reassoc_same_bss_optim &&
