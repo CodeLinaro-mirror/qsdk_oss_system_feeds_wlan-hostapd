@@ -1735,7 +1735,7 @@ $mesh_ctrl_interface
 $user_mpm
 $disable_csa_dfs
 $saepwe
-#ppe_vp=$ppe_vp_type
+ppe_vp=$ppe_vp_type
 $freq_list
 network={
 	$scan_ssid
