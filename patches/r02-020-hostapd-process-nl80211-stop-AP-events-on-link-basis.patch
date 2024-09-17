@@ -23,7 +23,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -9678,7 +9678,7 @@ fail:
+@@ -9660,7 +9660,7 @@ fail:
  }
  
  
@@ -34,7 +34,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	struct i802_link *link;
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2452,10 +2452,36 @@ static void nl80211_tdls_oper_event(stru
+@@ -2450,10 +2450,41 @@ static void nl80211_tdls_oper_event(stru
  }
  
  
@@ -43,6 +43,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +static void nl80211_stop_ap(struct i802_bss *bss, struct nlattr **tb)
  {
 -	wpa_supplicant_event(drv->ctx, EVENT_INTERFACE_UNAVAILABLE, NULL);
++	struct wpa_driver_nl80211_data *drv = bss->drv;
 +	struct i802_link *mld_link = NULL;
 +	void *ctx = bss->ctx;
 +	int link_id = -1;
@@ -70,11 +71,15 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +		nl80211_remove_link(bss, link_id);
 +	}
 +
++	bss->ctx = bss->links[0].ctx;
++	if (drv->first_bss == bss && (bss->valid_links & (bss->valid_links - 1)))
++		drv->ctx = bss->ctx;
++
 +	wpa_supplicant_event(ctx, EVENT_INTERFACE_UNAVAILABLE, NULL);
  }
  
  
-@@ -4389,7 +4415,7 @@ static void do_process_drv_event(struct
+@@ -4383,7 +4414,7 @@ static void do_process_drv_event(struct
  		nl80211_radar_event(bss, tb);
  		break;
  	case NL80211_CMD_STOP_AP:
