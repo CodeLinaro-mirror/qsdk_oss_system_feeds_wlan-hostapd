@@ -334,7 +334,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 +		if (!mld_addr)
 +			continue;
 +
-+		if (os_memcmp(wpa_s->current_bss->bssid, mld_addr, ETH_ALEN) != 0) {
++		if (os_memcmp(wpa_s->bssid, mld_addr, ETH_ALEN) != 0) {
 +			/* Need to check any scan entry for current assoc bssid */
 +			continue;
 +		}
