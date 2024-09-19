@@ -160,7 +160,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  #include "drivers/driver.h"
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1611,7 +1611,7 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1696,7 +1696,7 @@ int hostapd_setup_bss(struct hostapd_dat
  				   conf->iface, addr, hapd,
  				   &hapd->drv_priv, force_ifname, if_addr,
  				   conf->bridge[0] ? conf->bridge : NULL,
@@ -179,7 +179,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  #ifdef CONFIG_MACSEC
  #include "pae/ieee802_1x_kay.h"
  #endif /* CONFIG_MACSEC */
-@@ -2767,6 +2768,7 @@ struct wpa_init_params {
+@@ -2772,6 +2773,7 @@ struct wpa_init_params {
  	size_t num_bridge;
  
  	u8 *own_addr; /* buffer for writing own MAC address */
@@ -187,7 +187,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  };
  
  
-@@ -3690,7 +3692,8 @@ struct wpa_driver_ops {
+@@ -3695,7 +3697,8 @@ struct wpa_driver_ops {
  	 * This function can be used instead of init() if the driver wrapper
  	 * uses global data.
  	 */
@@ -197,7 +197,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	/**
  	 * get_interfaces - Get information about available interfaces
-@@ -4101,7 +4104,8 @@ struct wpa_driver_ops {
+@@ -4106,7 +4109,8 @@ struct wpa_driver_ops {
  	int (*if_add)(void *priv, enum wpa_driver_if_type type,
  		      const char *ifname, const u8 *addr, void *bss_ctx,
  		      void **drv_priv, char *force_ifname, u8 *if_addr,
@@ -207,7 +207,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	/**
  	 * if_remove - Remove a virtual interface
-@@ -5525,6 +5529,13 @@ struct wpa_driver_ops {
+@@ -5530,6 +5534,13 @@ struct wpa_driver_ops {
  	 */
  	int (*ml_reconfig_link_remove)(void *priv, enum wpa_driver_if_type type,
  				        const struct driver_reconfig_link_removal_params *params);
@@ -375,7 +375,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		if (use_existing && ifidx == -ENFILE) {
  			added = 0;
  			ifidx = if_nametoindex(ifname);
-@@ -12119,6 +12137,66 @@ static bool is_cmd_with_nested_attrs(uns
+@@ -12123,6 +12141,66 @@ static bool is_cmd_with_nested_attrs(uns
  	}
  }
  
@@ -442,7 +442,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  static int nl80211_vendor_cmd(void *priv, unsigned int vendor_id,
  			      unsigned int subcmd, const u8 *data,
-@@ -14628,6 +14706,7 @@ static int wpa_driver_nl80211_can_share_
+@@ -14632,6 +14710,7 @@ static int wpa_driver_nl80211_can_share_
  	bss = drv->first_bss;
  	bss->drv = drv;
  	bss->ctx = ctx;
@@ -450,7 +450,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	os_strlcpy(bss->ifname, params->ifname, sizeof(bss->ifname));
  
-@@ -14663,7 +14742,7 @@ static int wpa_driver_nl80211_can_share_
+@@ -14667,7 +14746,7 @@ static int wpa_driver_nl80211_can_share_
  				      params->ifname, addr, ctx, drv_priv,
  				      force_ifname, if_addr,
  				      params->num_bridge && params->bridge[0] ? params->bridge[0] : NULL,
@@ -459,7 +459,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		wpa_printf(MSG_DEBUG, "nl80211: Failed to add BSS. Expect issues!");
  		goto free_all;
  	}
-@@ -14917,6 +14996,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -14921,6 +15000,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.can_share_drv = wpa_driver_nl80211_can_share_drv,
  	.set_scs = nl80211_set_scs,
  	.ml_reconfig_link_remove = driver_nl80211_ml_reconfig_link_removal,
@@ -561,11 +561,10 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	return -1;
  }
  
-@@ -1183,4 +1185,19 @@ static inline int wpa_drv_set_6gclient_t
- 	return wpa_s->driver->set_6gclient_type(wpa_s->drv_priv,
- 						he_6ghz_reg_client_type);
+@@ -1193,4 +1195,18 @@ hostapd_multi_hw_info *wpa_get_multi_hw_
+ 	return wpa_s->driver->get_multi_hw_info(wpa_s->drv_priv,
  }
-+
+ 
 +static inline int wpa_drv_mark_ppe_vp_type(struct wpa_supplicant *wpa_s,
 +					   int ppe_vp_type)
 +{
@@ -611,7 +610,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		wpa_priv_cmd_unregister(iface, &from);
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -5983,6 +5983,7 @@ int wpa_supplicant_driver_init(struct wp
+@@ -5984,6 +5984,7 @@ int wpa_supplicant_driver_init(struct wp
  	} else
  		wpa_supplicant_set_state(wpa_s, WPA_INACTIVE);
  
@@ -619,7 +618,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	return 0;
  }
  
-@@ -7115,7 +7116,8 @@ next_driver:
+@@ -7116,7 +7117,8 @@ next_driver:
  	if (wpa_supplicant_set_driver(wpa_s, driver) < 0)
  		return -1;
  
