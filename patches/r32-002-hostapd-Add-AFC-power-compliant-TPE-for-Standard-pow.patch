@@ -35,7 +35,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2136,6 +2137,11 @@ static u8 * hostapd_gen_fils_discovery(s
+@@ -2149,6 +2150,11 @@ static u8 * hostapd_gen_fils_discovery(s
                  if (hapd->iconf->he_6ghz_reg_pwr_type == HE_REG_INFO_6GHZ_AP_TYPE_INDOOR)
                          total_len += 3 + MAX_PSD_TPE_POWER_COUNT +
                                       1 + MAX_PSD_TPE_EXT_POWER_COUNT;
@@ -49,7 +49,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7429,6 +7429,12 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7429,6 +7429,13 @@ void ieee802_11_rx_from_unknown(struct h
  #define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI         2      /* dBm/MHz */
  #define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP         1      /* dBm/MHz */
  
@@ -58,11 +58,12 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +#define TPE_NUM_EIRP_POWER_EXT_SUPPORTED   1
 +#define MAX_NUM_20_MHZ_IN_CURR_BW	   16
 +#define EIRP_PWR_SCALE                     100
++#define PSD_SCALE                          100
 +
  #ifndef REG_DOM_SUPPORT_TX_POWER
  static u8 hostapd_get_6g_tx_power(struct hostapd_data *hapd, u8 ap_type, u8 tx_pwr_cat)
  {
-@@ -7516,7 +7522,7 @@ static u8 *hostapd_add_tpe_info(u8 *eid,
+@@ -7516,7 +7523,7 @@ static u8 *hostapd_add_tpe_info(u8 *eid,
  					   tx_pwr_ext_count);
  				return eid;
  			}
@@ -71,7 +72,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  			*length += tx_pwr_ext_count;
  		}
  	} else if (tx_pwr_intrpn == LOCAL_EIRP_PSD || tx_pwr_intrpn == REGULATORY_CLIENT_EIRP_PSD) {
-@@ -7538,6 +7544,45 @@ static u8 *hostapd_add_tpe_info(u8 *eid,
+@@ -7538,6 +7545,45 @@ static u8 *hostapd_add_tpe_info(u8 *eid,
  	return eid;
  }
  
@@ -106,7 +107,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +	for (i = 0; i < num_freq_objs; i++) {
 +		if (hostapd_is_freq_present_in_freq_obj(&afc_freq_info[i],
 +							chan_freq)) {
-+			afc_psd = afc_freq_info[i].max_psd;
++			afc_psd = afc_freq_info[i].max_psd / PSD_SCALE;
 +			break;
 +		}
 +	}
@@ -117,7 +118,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  static int get_chan_list(struct hostapd_data *hapd, int *non_11be_start_idx,
  			 int *chan_start_idx, int *non_11be_chan_count,
  			 int *total_chan_count, struct ieee_chan_data chan_data)
-@@ -7645,7 +7690,7 @@ static int get_psd_values(struct hostapd
+@@ -7650,7 +7696,7 @@ static int get_psd_values(struct hostapd
  			  int chan_start_idx, int non_11be_chan_count,
  			  int total_chan_count, u8 *tx_pwr_count,
  			  s8 *tx_pwr_array, u8 *tx_pwr_ext_count,
@@ -126,7 +127,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  {
  	struct hostapd_iface *iface = hapd->iface;
  	struct hostapd_hw_modes *mode = iface->current_mode;
-@@ -7653,6 +7698,7 @@ static int get_psd_values(struct hostapd
+@@ -7658,6 +7704,7 @@ static int get_psd_values(struct hostapd
  	u16 non_be_chan_index_map = 0;
  	int is_different_psd = 0, non11be_chan_pos = non_11be_start_idx - chan_start_idx;
  	s8 psd_pwr;
@@ -134,7 +135,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	int i = 0, j = 0;
  
  	if (!tx_pwr_array || ((total_chan_count - non_11be_chan_count) && !tx_pwr_ext_array))
-@@ -7664,7 +7710,18 @@ static int get_psd_values(struct hostapd
+@@ -7669,7 +7716,18 @@ static int get_psd_values(struct hostapd
  		return -1;
  	}
  
@@ -154,7 +155,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	for (i = non_11be_start_idx; i < non_11be_start_idx + non_11be_chan_count;
  	     i++, non11be_chan_pos++) {
  		if (i >= chan_data.num_channels) {
-@@ -7672,9 +7729,9 @@ static int get_psd_values(struct hostapd
+@@ -7677,9 +7735,9 @@ static int get_psd_values(struct hostapd
  			return -1;
  		}
  		non_be_chan_index_map |= BIT(non11be_chan_pos);
@@ -166,7 +167,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  			is_different_psd = 1;
  	}
  
-@@ -7706,7 +7763,7 @@ static int get_psd_values(struct hostapd
+@@ -7711,7 +7769,7 @@ static int get_psd_values(struct hostapd
  			 */
  			*tx_pwr_ext_array = RNR_20_MHZ_PSD_MAX_TXPOWER;
  		} else {
@@ -175,7 +176,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		}
  		tx_pwr_ext_array++;
  		*tx_pwr_ext_count += 1;
-@@ -7769,8 +7826,428 @@ static void free_ieee_ordered_chan_list(
+@@ -7774,8 +7832,428 @@ static void free_ieee_ordered_chan_list(
  	os_free(chan_data->channels);
  }
  
@@ -606,7 +607,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  {
  	s8 tx_pwr_ext_array[MAX_PSD_TPE_EXT_POWER_COUNT] = {0};
  	int non_11be_chan_count = 0, total_chan_count = 0;
-@@ -7792,7 +8269,7 @@ static u8 *hostapd_add_psd_tpe(struct ho
+@@ -7797,7 +8275,7 @@ static u8 *hostapd_add_psd_tpe(struct ho
  	if (get_psd_values(hapd, non_11be_start_idx, chan_start_idx,
  			   non_11be_chan_count, total_chan_count, &tx_pwr_count,
  			   tx_pwr_array, &tx_pwr_ext_count, tx_pwr_ext_array,
@@ -615,7 +616,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		wpa_printf(MSG_ERROR, "failed to get the PSD values");
  		goto free;
  	}
-@@ -7851,10 +8328,10 @@ u8 *hostapd_eid_txpower_envelope(struct
+@@ -7856,10 +8334,10 @@ u8 *hostapd_eid_txpower_envelope(struct
  						  REGULATORY_CLIENT_EIRP_PSD);
  		}
  
