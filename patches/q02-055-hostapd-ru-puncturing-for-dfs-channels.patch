@@ -153,7 +153,19 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  int hostapd_handle_dfs(struct hostapd_iface *iface);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4354,6 +4354,9 @@ static int hostapd_fill_csa_settings(str
+@@ -2524,6 +2524,11 @@ static int hostapd_setup_interface_compl
+ 		}
+ #endif /* NEED_AP_MLME */
+ 
++		if (iface->radar_bit_pattern) {
++			hapd->iconf->punct_bitmap |=
++				iface->radar_bit_pattern;
++		}
++
+ #ifdef CONFIG_MESH
+ 		if (iface->mconf != NULL) {
+ 			wpa_printf(MSG_DEBUG,
+@@ -4354,6 +4359,9 @@ static int hostapd_fill_csa_settings(str
  	u16 old_punct_bitmap;
  #endif /* CONFIG_IEEE80211BE */
  	u8 chan, bandwidth;
@@ -163,7 +175,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	os_memset(&old_freq, 0, sizeof(old_freq));
  	if (!iface || !iface->freq || hapd->csa_in_progress)
-@@ -4377,16 +4380,39 @@ static int hostapd_fill_csa_settings(str
+@@ -4377,16 +4385,39 @@ static int hostapd_fill_csa_settings(str
  		break;
  	}
  
@@ -205,7 +217,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			   settings->freq_params.vht_enabled,
  			   settings->freq_params.he_enabled,
  			   settings->freq_params.eht_enabled);
-@@ -4417,6 +4443,39 @@ static int hostapd_fill_csa_settings(str
+@@ -4417,6 +4448,39 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -245,7 +257,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	/* set channel switch parameters for csa ie */
  	hapd->cs_freq_params = settings->freq_params;
  	hapd->cs_count = settings->cs_count;
-@@ -4495,16 +4554,28 @@ int hostapd_switch_channel(struct hostap
+@@ -4495,16 +4559,28 @@ int hostapd_switch_channel(struct hostap
  			   struct csa_settings *settings)
  {
  	int ret;
@@ -392,7 +404,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5094,6 +5094,8 @@ static int hostapd_config_fill(struct ho
+@@ -5093,6 +5093,8 @@ static int hostapd_config_fill(struct ho
  #endif /* CONFIG_IEEE80211BE */
  	} else if (os_strcmp(buf, "disable_csa_dfs") == 0) {
  		conf->disable_csa_dfs = atoi(pos);
@@ -423,7 +435,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -589,6 +589,7 @@ out:
+@@ -593,6 +593,7 @@ out:
  		int ret;
  
  		hapd->conf->start_disabled = 0;
@@ -431,7 +443,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		hostapd_set_freq(hapd, conf->hw_mode, iface->freq,
  				 conf->channel,
  				 conf->enable_edmg,
-@@ -600,14 +601,7 @@ out:
+@@ -604,14 +605,7 @@ out:
  				 conf->secondary_channel,
  				 hostapd_get_oper_chwidth(conf),
  				 hostapd_get_oper_centr_freq_seg0_idx(conf),

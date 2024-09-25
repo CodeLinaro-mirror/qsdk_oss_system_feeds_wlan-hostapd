@@ -89,6 +89,9 @@ hostapd_append_wpa_key_mgmt() {
 		ft-sae-ext-key)
 			append wpa_key_mgmt "FT-SAE-EXT-KEY"
 		;;
+		dpp)
+			append wpa_key_mgmt "DPP"
+		;;
 	esac
 
 	[ "$fils" -gt 0 ] && {
@@ -402,6 +405,7 @@ hostapd_common_add_bss_config() {
 
 	config_add_int dpp
 	config_add_string dpp_csign dpp_connector dpp_netaccesskey dpp_ppkey dpp_connector_sign
+	config_add_int ssid_protection
 }
 
 hostapd_set_vlan_file() {
@@ -588,7 +592,7 @@ hostapd_set_bss_options() {
 		ppsk airtime_bss_weight airtime_bss_limit airtime_sta_weight \
 		multicast_to_unicast_all proxy_arp per_sta_vif \
 		eap_server eap_user_file ca_cert server_cert private_key private_key_passwd server_id \
-		vendor_elements fils ocv dpp
+		vendor_elements fils ocv dpp ssid_protection
 
 	json_get_values sae_groups sae_groups
 	json_get_values owe_groups owe_groups
@@ -1225,6 +1229,7 @@ hostapd_set_bss_options() {
 		[ -n "$dpp_ppkey" ] && append bss_conf " dpp_ppkey=$dpp_ppkey" "$N"
 		[ -n "$dpp_connector_sign" ] && append bss_conf "dpp_connector_sign=$dpp_connector_sign" "$N"
 	fi
+	[ -n "$ssid_protection" ] && append bss_conf "ssid_protection=$ssid_protection" "$N"
 
 	append "$var" "$bss_conf" "$N"
 	return 0
@@ -1344,7 +1349,7 @@ wpa_supplicant_set_fixed_freq() {
 	append network_data "frequency=$freq" "$N$T"
 	case "$htmode" in
 		NOHT) append network_data "disable_ht=1" "$N$T";;
-		HE20|HT20|VHT20) append network_data "disable_ht40=1" "$N$T";;
+		HE20|HT20|VHT20|EHT20) append network_data "disable_ht40=1" "$N$T";;
 		HT40*|VHT40|VHT80|VHT160|HE40|HE80|HE160) append network_data "ht40=1" "$N$T";;
 	esac
 	case "$htmode" in
@@ -1389,7 +1394,8 @@ wpa_supplicant_add_network() {
 		ieee80211w ieee80211r fils ocv \
 		multi_ap \
 		default_disabled dpp \
-		ppe_vp
+		ppe_vp \
+		ssid_protection
 
 	case "$auth_type" in
 		sae|owe|eap2|eap192|eap-eap192)
@@ -1702,6 +1708,7 @@ wpa_supplicant_add_network() {
 		[ -n "$dpp_connector_sign" ] && append network_data "dpp_connector_sign=$dpp_connector_sign" "$N"
 
 	fi
+	[ -n "$ssid_protection" ] && append network_data "ssid_protection=$ssid_protection" "$N$T"
 
 	local ppe_vp_type=
 	case "$ppe_vp" in
@@ -1731,7 +1738,7 @@ $mesh_ctrl_interface
 $user_mpm
 $disable_csa_dfs
 $saepwe
-#ppe_vp=$ppe_vp_type
+ppe_vp=$ppe_vp_type
 $freq_list
 network={
 	$scan_ssid

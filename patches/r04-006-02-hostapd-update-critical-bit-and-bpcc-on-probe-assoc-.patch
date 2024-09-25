@@ -54,7 +54,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +			for_each_mld_link(link_bss, bss) {
 +				if (bss == link_bss)
 +					continue;
-+				//hostapd_gen_per_sta_profiles(link_bss);
++				hostapd_gen_per_sta_profiles(link_bss);
 +			}
 +		}
  	}
@@ -134,7 +134,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +		for_each_mld_link(link_bss, hapd) {
 +			if (hapd == link_bss)
 +				continue;
-+			//hostapd_gen_per_sta_profiles(link_bss);
++			hostapd_gen_per_sta_profiles(link_bss);
 +		}
 +	}
  	return 0;
@@ -158,7 +158,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +			for_each_mld_link(link_bss, bss) {
 +				if (bss == link_bss)
 +					continue;
-+				//hostapd_gen_per_sta_profiles(link_bss);
++				hostapd_gen_per_sta_profiles(link_bss);
 +			}
 +		}
 +
@@ -190,7 +190,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	struct hostapd_mld *mld;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -353,6 +353,26 @@ u16 hostapd_own_capab_info(struct hostap
+@@ -353,6 +353,29 @@ u16 hostapd_own_capab_info(struct hostap
  }
  
  
@@ -200,7 +200,10 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +	struct hostapd_data *bss;
 +	size_t i;
 +
-+	if (hapd && hapd->conf->mld_ap && hapd->rx_cu_param.critical_flag)
++	if (!hapd)
++		return capab;
++
++	if (hapd->conf->mld_ap && hapd->rx_cu_param.critical_flag)
 +		capab |= WLAN_CAPABILITY_PBCC;
 +
 +	if (hapd->iconf && hapd->iconf->mbssid) {
@@ -217,7 +220,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  #ifdef CONFIG_WEP
  #ifndef CONFIG_NO_RC4
  static u16 auth_shared_key(struct hostapd_data *hapd, struct sta_info *sta,
-@@ -6266,6 +6286,43 @@ static void notify_mgmt_frame(struct hos
+@@ -6266,6 +6289,43 @@ static void notify_mgmt_frame(struct hos
  
  
  /**
@@ -261,7 +264,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
   * ieee802_11_mgmt - process incoming IEEE 802.11 management frames
   * @hapd: hostapd BSS data structure (the BSS to which the management frame was
   * sent to)
-@@ -6347,6 +6404,7 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -6347,6 +6407,7 @@ int ieee802_11_mgmt(struct hostapd_data
  
  	if (stype == WLAN_FC_STYPE_PROBE_REQ) {
  		handle_probe_req(hapd, mgmt, len, ssi_signal);
@@ -269,7 +272,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		return 1;
  	}
  
-@@ -6382,11 +6440,13 @@ int ieee802_11_mgmt(struct hostapd_data
+@@ -6382,11 +6443,13 @@ int ieee802_11_mgmt(struct hostapd_data
  	case WLAN_FC_STYPE_ASSOC_REQ:
  		wpa_printf(MSG_DEBUG, "mgmt::assoc_req");
  		handle_assoc(hapd, mgmt, len, 0, ssi_signal);
@@ -283,7 +286,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		ret = 1;
  		break;
  	case WLAN_FC_STYPE_DISASSOC:
-@@ -8153,22 +8213,33 @@ static bool hostapd_eid_rnr_bss(struct h
+@@ -8153,22 +8216,33 @@ static bool hostapd_eid_rnr_bss(struct h
  
  #ifdef CONFIG_IEEE80211BE
  	if (ap_mld) {
@@ -327,7 +330,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  #ifdef CONFIG_TESTING_OPTIONS
  		if (bss->conf->mld_indicate_disabled)
  			*eid |= RNR_TBTT_INFO_MLD_PARAM2_LINK_DISABLED;
-@@ -8574,6 +8645,9 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -8574,6 +8648,9 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		capab_info = hostapd_own_capab_info(bss);
  		*eid++ = WLAN_EID_NONTRANSMITTED_BSSID_CAPA;
  		*eid++ = sizeof(capab_info);

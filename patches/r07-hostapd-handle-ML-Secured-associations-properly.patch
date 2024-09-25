@@ -189,7 +189,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	if (!hostapd_is_mld_ap(hapd))
  		return 0;
  
-+	if (sta->mld_info.mld_sta) {
++	if (tx_link_status == WLAN_STATUS_SUCCESS && sta->mld_info.mld_sta) {
 +		u8 mld_link_id = hapd->mld_link_id;
 +
 +		mld_link_sta = sta->mld_assoc_link_id != mld_link_id;
