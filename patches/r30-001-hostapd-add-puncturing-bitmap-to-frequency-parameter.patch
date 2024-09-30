@@ -43,11 +43,13 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5147,6 +5147,10 @@ static int nl80211_put_freq_params(struc
+@@ -5147,6 +5147,12 @@ static int nl80211_put_freq_params(struc
  		     nla_put_u32(msg, NL80211_ATTR_CENTER_FREQ2,
  				 freq->center_freq2)))
  			return -ENOBUFS;
 +
++		wpa_printf(MSG_DEBUG, "  * punct_bitmap=%d",
++			   freq->punct_bitmap);
 +		if (freq->punct_bitmap &&
 +		    nla_put_u16(msg, NL80211_ATTR_RU_PUNCT_BITMAP, freq->punct_bitmap))
 +			return -ENOBUFS;
