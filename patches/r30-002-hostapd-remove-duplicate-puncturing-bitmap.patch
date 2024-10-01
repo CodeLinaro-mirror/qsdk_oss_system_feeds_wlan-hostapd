@@ -21,22 +21,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5581,14 +5581,6 @@ static int wpa_driver_nl80211_set_ap(voi
- 			goto fail;
- 	}
- 
--	if (params->punct_bitmap) {
--		wpa_printf(MSG_DEBUG, "nl80211: Puncturing bitmap=0x%04x",
--			   params->punct_bitmap);
--		if (nla_put_u32(msg, NL80211_ATTR_PUNCT_BITMAP,
--				params->punct_bitmap))
--			goto fail;
--	}
--
- #ifdef CONFIG_DRIVER_NL80211_QCA
- 	if (cmd == NL80211_CMD_NEW_BEACON && params->allowed_freqs)
- 		qca_set_allowed_ap_freqs(drv, params->allowed_freqs,
-@@ -12617,13 +12609,6 @@ static int nl80211_join_mesh(struct i802
+@@ -12617,13 +12617,6 @@ static int nl80211_join_mesh(struct i802
  	      nla_put_u32(msg, NL80211_ATTR_BEACON_TX_MODE, params->beacon_tx_mode)))
  		goto fail;
  
