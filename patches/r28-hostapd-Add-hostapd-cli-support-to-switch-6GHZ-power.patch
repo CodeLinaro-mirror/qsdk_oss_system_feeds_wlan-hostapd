@@ -35,7 +35,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2753,6 +2753,49 @@ static int hostapd_ctrl_check_freq_param
+@@ -2753,6 +2753,55 @@ static int hostapd_ctrl_check_freq_param
  #endif /* NEED_AP_MLME */
  
  
@@ -65,6 +65,12 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +		return -1;
 +	}
 +
++	if (he_6ghz_pwr_mode == HE_REG_INFO_6GHZ_AP_TYPE_SP &&
++	    !iface->is_afc_power_event_received) {
++		wpa_printf(MSG_ERROR, "Standard Power mode cant be set without AFC");
++		return -1;
++	}
++
 +	settings.pwr_mode = he_6ghz_pwr_mode;
 +	iface->power_mode_6ghz_before_change = he_6ghz_pwr_mode;
 +	wpa_printf(MSG_DEBUG, "Setting user selected 6 GHz power mode: %d\n",
@@ -85,7 +91,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
  					  char *pos)
  {
-@@ -4975,6 +5018,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4975,6 +5024,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "COLOR_CHANGE ", 13) == 0) {
  		if (hostapd_ctrl_iface_color_change(hapd->iface, buf + 13))
  			reply_len = -1;
@@ -160,7 +166,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  					   struct cca_settings *settings)
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2382,6 +2382,39 @@ static void hostapd_event_update_muedca_
+@@ -2390,6 +2390,39 @@ static void hostapd_event_update_muedca_
  			   "Failed to update beacons with MU-EDCA parameters");
  }
  
@@ -200,9 +206,9 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #ifdef CONFIG_OWE
  static int hostapd_notif_update_dh_ie(struct hostapd_data *hapd,
  				      const u8 *peer, const u8 *ie,
-@@ -2933,6 +2966,10 @@ void hostapd_wpa_event(void *ctx, enum w
- 			}
- 		}
+@@ -2973,6 +3006,10 @@ void hostapd_wpa_event(void *ctx, enum w
+ 			   hapd->conf->iface);
+ 		hostapd_event_color_change(hapd, true);
  		break;
 +	case EVENT_6GHZ_POWER_MODE_NOTIFY:
 +		hostapd_event_6ghz_power_mode(hapd,
