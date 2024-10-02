@@ -33,7 +33,17 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  enum dfs_channel_type {
  	DFS_ANY_CHANNEL,
-@@ -1669,14 +1670,48 @@ static int hostapd_dfs_start_channel_swi
+@@ -1141,7 +1142,8 @@ static int hostapd_dfs_request_channel_s
+ 				      cmode->vht_capab,
+ 				      &cmode->he_capab[ieee80211_mode],
+ 				      &cmode->eht_capab[ieee80211_mode],
+-				      hostapd_get_punct_bitmap(iface->bss[0]),
++				      hostapd_get_punct_bitmap(iface->bss[0]) |
++				      iface->radar_bit_pattern,
+ 				      iface->conf->he_6ghz_reg_pwr_type);
+ 
+ 	if (err) {
+@@ -1669,14 +1671,48 @@ static int hostapd_dfs_start_channel_swi
  						  oper_centr_freq_seg1_idx);
  }
  
@@ -84,7 +94,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	iface->radar_detected = true;
  
-@@ -1701,10 +1736,51 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1701,10 +1737,51 @@ int hostapd_dfs_radar_detected(struct ho
  	if (!hostapd_dfs_is_background_event(iface, freq)) {
  		/* Skip if reported radar event not overlapped our channels */
  		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
@@ -457,3 +467,15 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
  	 *
  	 * By default, use it if it is available, but this can be configured
+--- a/src/ap/ap_drv_ops.c
++++ b/src/ap/ap_drv_ops.c
+@@ -1012,7 +1012,8 @@ int hostapd_start_dfs_cac(struct hostapd
+ 				    cmode->vht_capab,
+ 				    &cmode->he_capab[IEEE80211_MODE_AP],
+ 				    &cmode->eht_capab[IEEE80211_MODE_AP],
+-				    hostapd_get_punct_bitmap(hapd),
++				    hostapd_get_punct_bitmap(hapd) |
++				    iface->radar_bit_pattern,
+ 				    hapd->iconf->he_6ghz_reg_pwr_type)) {
+ 		wpa_printf(MSG_ERROR, "Can't set freq params");
+ 		return -1;
