@@ -50,16 +50,17 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	len += ieee80211_eht_ppet_size(WPA_GET_LE16(&eht_cap->ppet[0]),
  				       eht_cap->phy_cap);
  
-@@ -160,7 +161,7 @@ u8 * hostapd_eid_eht_capab(struct hostap
+@@ -160,7 +161,8 @@ u8 * hostapd_eid_eht_capab(struct hostap
  	cap->mac_cap = host_to_le16(eht_cap->mac_cap);
  	os_memcpy(cap->phy_cap, eht_cap->phy_cap, EHT_PHY_CAPAB_LEN);
  
 -	if (!is_6ghz_op_class(hapd->iconf->op_class))
-+	if (hapd->iconf->eht_oper_chwidth != CONF_OPER_CHWIDTH_320MHZ)
++	if (!is_6ghz_op_class(hapd->iconf->op_class) ||
++	    (hapd->iconf->eht_oper_chwidth != CONF_OPER_CHWIDTH_320MHZ))
  		cap->phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &=
  			~EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK;
  	if (!hapd->iface->conf->eht_phy_capab.su_beamformer)
-@@ -193,7 +194,8 @@ u8 * hostapd_eid_eht_capab(struct hostap
+@@ -193,7 +195,8 @@ u8 * hostapd_eid_eht_capab(struct hostap
  						 hapd->iconf->op_class,
  						 hapd->iconf->he_oper_chwidth,
  						 mode->he_capab[opmode].phy_cap,
@@ -69,7 +70,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	if (mcs_nss_len) {
  		os_memcpy(pos, eht_cap->mcs, mcs_nss_len);
  		pos += mcs_nss_len;
-@@ -447,7 +449,8 @@ static bool check_valid_eht_mcs(struct h
+@@ -447,7 +450,8 @@ static bool check_valid_eht_mcs(struct h
  	if (ieee80211_eht_mcs_set_size(mode->mode, hapd->iconf->op_class,
  				       hapd->iconf->he_oper_chwidth,
  				       mode->he_capab[opmode].phy_cap,
@@ -79,7 +80,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	    EHT_PHYCAP_MCS_NSS_LEN_20MHZ_ONLY)
  		return check_valid_eht_mcs_nss(
  			hapd, ap_mcs, sta_mcs, 1,
-@@ -472,7 +475,8 @@ static bool check_valid_eht_mcs(struct h
+@@ -472,7 +476,8 @@ static bool check_valid_eht_mcs(struct h
  
  static bool ieee80211_invalid_eht_cap_size(enum hostapd_hw_mode mode,
  					   u8 opclass, const u8 *he_cap,
@@ -89,7 +90,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  {
  	const struct ieee80211_he_capabilities *he_capab;
  	struct ieee80211_eht_capabilities *cap;
-@@ -488,7 +492,7 @@ static bool ieee80211_invalid_eht_cap_si
+@@ -488,7 +493,7 @@ static bool ieee80211_invalid_eht_cap_si
  		return true;
  
  	cap_len += ieee80211_eht_mcs_set_size(mode, opclass, -1, he_phy_cap,
@@ -98,7 +99,7 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
  	if (len < cap_len)
  		return true;
  
-@@ -513,7 +517,8 @@ u16 copy_sta_eht_capab(struct hostapd_da
+@@ -513,7 +518,8 @@ u16 copy_sta_eht_capab(struct hostapd_da
  	    !eht_capab ||
  	    ieee80211_invalid_eht_cap_size(mode, hapd->iconf->op_class,
  					   he_capab, eht_capab,
