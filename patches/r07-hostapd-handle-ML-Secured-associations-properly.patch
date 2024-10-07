@@ -282,7 +282,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  	 * TODOs:
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -751,6 +751,9 @@ u8 * hostapd_eid_eht_basic_ml(struct hos
+@@ -753,6 +753,9 @@ u8 * hostapd_eid_eht_basic_ml(struct hos
  				ptr += slice_len;
  			}
  		}
@@ -348,7 +348,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  	int link_id;
 +	struct mld_link *link;
  
- 	if (!sm || link_id >= MAX_NUM_MLD_LINKS)
+ 	if (!sm || release_link_id >= MAX_NUM_MLD_LINKS)
  		return;
  
  	for_each_sm_auth(sm, link_id)

@@ -52,7 +52,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		switch (res) {
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1558,7 +1558,6 @@ setup_mld:
+@@ -1573,7 +1573,6 @@ setup_mld:
  	}
  	if (hostapd_init_wps(hapd, conf))
  		return -1;
@@ -60,7 +60,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #ifdef CONFIG_DPP
  	hapd->gas = gas_query_ap_init(hapd, hapd->msg_ctx);
  	if (!hapd->gas)
-@@ -1582,7 +1581,6 @@ setup_mld:
+@@ -1597,7 +1596,6 @@ setup_mld:
  		wpa_printf(MSG_ERROR, "Accounting initialization failed.");
  		return -1;
  	}
@@ -389,7 +389,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +{
 +	int link_id;
 +
-+	if (!sm || link_id >= MAX_NUM_MLD_LINKS)
++	if (!sm || release_link_id >= MAX_NUM_MLD_LINKS)
 +		return;
 +
 +	for_each_sm_auth(sm, link_id)
