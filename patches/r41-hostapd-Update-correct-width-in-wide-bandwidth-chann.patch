@@ -53,7 +53,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  		/* ccfs1 - the channel center frequency index of the 160 MHz channel */
  		ccfs1 = ccfs0;
  		/* ccfs0 - the channel center frequency index of the 80 MHz
-@@ -8494,12 +8500,34 @@ u8 *hostapd_eid_wide_bw_chan_switch(stru
+@@ -8494,12 +8500,35 @@ u8 *hostapd_eid_wide_bw_chan_switch(stru
  		break;
  	case 320:
  		bw = 4;
@@ -71,8 +71,9 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 +
 +	switch (chan_width) {
 +	case CONF_OPER_CHWIDTH_USE_HT:
-+		bw = 0;
-+		break;
++		/* Wide Bandwidth Channel Switch element is present only
++		 * when the new channel width is wider than 40 MHz*/
++		return eid;
 +	case CONF_OPER_CHWIDTH_80MHZ:
 +	case CONF_OPER_CHWIDTH_160MHZ:
 +		bw = 1;
@@ -88,7 +89,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	*eid++ = WLAN_EID_WIDE_BW_CHSWITCH;
  	/* Length of Wide Bandwidth Channel Switch element */
  	*eid++ = sizeof(struct ieee80211_wb_chsw_element);
-@@ -9868,7 +9896,7 @@ static void punct_update_legacy_bw_80(u8
+@@ -9868,7 +9897,7 @@ static void punct_update_legacy_bw_80(u8
  
  	switch (bitmap) {
  	case 0x6:
@@ -97,7 +98,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  		return;
  	case 0x8:
  	case 0x4:
-@@ -9889,7 +9917,7 @@ static void punct_update_legacy_bw_80(u8
+@@ -9889,7 +9918,7 @@ static void punct_update_legacy_bw_80(u8
  		sec_chan = pri_chan - 4;
  
  	if (bitmap & BIT((sec_chan - first_chan) / 4))
