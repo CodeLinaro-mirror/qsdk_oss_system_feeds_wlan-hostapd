@@ -23,11 +23,9 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  src/ap/wpa_auth_glue.c  |  4 ++--
  5 files changed, 41 insertions(+), 25 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 01376aa..4918358 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -798,7 +798,8 @@ static size_t hostapd_probe_resp_elems_len(struct hostapd_data *hapd,
+@@ -798,7 +798,8 @@ static size_t hostapd_probe_resp_elems_l
  
  		if (ml_elem_ap->conf->mld_ap) {
  			buflen += hostapd_eid_eht_ml_beacon_len(
@@ -37,7 +35,7 @@ index 01376aa..4918358 100644
  
  			/* For Max Channel Switch Time element during channel
  			 * switch */
-@@ -970,7 +971,7 @@ static u8 * hostapd_probe_resp_fill_elems(struct hostapd_data *hapd,
+@@ -970,7 +971,7 @@ static u8 * hostapd_probe_resp_fill_elem
  		if (ml_elem_ap->conf->mld_ap) {
  			pos = hostapd_eid_eht_ml_beacon(
  				ml_elem_ap, params->mld_info,
@@ -46,7 +44,7 @@ index 01376aa..4918358 100644
  
  			if (hapd->eht_mld_link_removal_inprogress)
  				pos = hostapd_eid_eht_reconf_ml(ml_elem_ap, pos);
-@@ -2624,7 +2625,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -2624,7 +2625,7 @@ int ieee802_11_build_ap_params(struct ho
  		if (hapd->conf->mld_ap) {
  			startpos = tailpos;
  			tailpos = hostapd_eid_eht_ml_beacon(hapd, NULL,
@@ -55,11 +53,9 @@ index 01376aa..4918358 100644
  			hostapd_eid_update_cu_info(hapd, &elemid_modified, startpos,
  						   tailpos-startpos, ELEMID_CU_PARAM_EXT_ML);
  		}
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 325dc2d..7f83068 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5291,7 +5291,8 @@ rsnxe_done:
+@@ -5293,7 +5293,8 @@ rsnxe_done:
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		if (hapd->conf->mld_ap && sta && sta->mld_info.mld_sta)
@@ -69,7 +65,7 @@ index 325dc2d..7f83068 100644
  		p = hostapd_eid_eht_capab(hapd, p, IEEE80211_MODE_AP);
  		p = hostapd_eid_eht_operation(hapd, p, IEEE80211_MODE_AP);
  		p = hostapd_eid_vendor_240mhz(hapd, p, IEEE80211_MODE_AP);
-@@ -9590,7 +9591,8 @@ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
+@@ -9595,7 +9596,8 @@ static size_t hostapd_eid_mbssid_elem_le
  
  		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
  		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
@@ -79,7 +75,7 @@ index 325dc2d..7f83068 100644
  			if (bss->eht_mld_link_removal_inprogress)
  				nontx_profile_len += hostapd_eid_eht_ml_reconfig_len(bss);
  		}
-@@ -9813,7 +9815,7 @@ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
+@@ -9818,7 +9820,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  
  		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
  		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
@@ -88,11 +84,9 @@ index 325dc2d..7f83068 100644
  			if (bss->eht_mld_link_removal_inprogress)
  				eid = hostapd_eid_eht_reconf_ml(bss, eid);
  		}
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index a18f7b7..889f9a9 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -104,15 +104,15 @@ void hostapd_get_eht_capab(struct hostapd_data *hapd,
+@@ -104,15 +104,15 @@ void hostapd_get_eht_capab(struct hostap
  			   size_t len);
  u8 * hostapd_eid_eht_ml_beacon(struct hostapd_data *hapd,
  			       struct mld_info *mld_info,
@@ -112,11 +106,9 @@ index a18f7b7..889f9a9 100644
  struct wpabuf * hostapd_ml_auth_resp(struct hostapd_data *hapd);
  const u8 * hostapd_process_ml_auth(struct hostapd_data *hapd,
  				   const struct ieee80211_mgmt *mgmt,
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index 9108b56..25e8827 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -561,7 +561,7 @@ void hostapd_get_eht_capab(struct hostapd_data *hapd,
+@@ -562,7 +562,7 @@ void hostapd_get_eht_capab(struct hostap
  
  static u8 * hostapd_eid_eht_basic_ml_common(struct hostapd_data *hapd,
  					    u8 *eid, struct mld_info *mld_info,
@@ -125,7 +117,7 @@ index 9108b56..25e8827 100644
  {
  	struct wpabuf *buf;
  	u16 control;
-@@ -674,12 +674,16 @@ static u8 * hostapd_eid_eht_basic_ml_common(struct hostapd_data *hapd,
+@@ -678,11 +678,16 @@ static u8 * hostapd_eid_eht_basic_ml_com
  		/*
  		 * control (2) + station info length (1) + MAC address (6) +
  		 * beacon interval (2) + TSF offset (8) + DTIM info (2) + BSS
@@ -133,18 +125,20 @@ index 9108b56..25e8827 100644
 +		 * parameters change counter (0 or 1) + station profile length.
  		 */
 -#define EHT_ML_STA_INFO_LEN 22
+-		size_t total_len = EHT_ML_STA_INFO_LEN +
+-			link->resp_sta_profile_len;
 +#define EHT_ML_STA_INFO_LEN 21
- 		size_t total_len = EHT_ML_STA_INFO_LEN +
- 			link->resp_sta_profile_len;
- 
++		size_t eht_ml_sta_info_len = EHT_ML_STA_INFO_LEN;
++
 +		/* BSS parameters change count (1) for (Re)Assoc response */
 +		if (type == WLAN_FC_STYPE_ASSOC_RESP || type == WLAN_FC_STYPE_REASSOC_RESP)
-+			total_len += 1;
++			eht_ml_sta_info_len += 1;
 +
++		size_t total_len = eht_ml_sta_info_len + link->resp_sta_profile_len;
+ 
  		/* Skip the local one */
  		if (link_id == hapd->mld_link_id || !link->valid)
- 			continue;
-@@ -705,8 +709,12 @@ static u8 * hostapd_eid_eht_basic_ml_common(struct hostapd_data *hapd,
+@@ -709,14 +714,18 @@ static u8 * hostapd_eid_eht_basic_ml_com
  			EHT_PER_STA_CTRL_COMPLETE_PROFILE_MSK |
  			EHT_PER_STA_CTRL_TSF_OFFSET_PRESENT_MSK |
  			EHT_PER_STA_CTRL_BEACON_INTERVAL_PRESENT_MSK |
@@ -159,7 +153,14 @@ index 9108b56..25e8827 100644
  		wpabuf_put_le16(buf, control);
  
  		/* STA Info */
-@@ -728,7 +736,8 @@ static u8 * hostapd_eid_eht_basic_ml_common(struct hostapd_data *hapd,
+ 
+ 		/* STA Info Length */
+-		wpabuf_put_u8(buf, EHT_ML_STA_INFO_LEN - 2);
++		wpabuf_put_u8(buf, eht_ml_sta_info_len - 2);
+ 		wpabuf_put_data(buf, link->local_addr, ETH_ALEN);
+ 		wpabuf_put_le16(buf, link_bss->iconf->beacon_int);
+ 
+@@ -732,7 +741,8 @@ static u8 * hostapd_eid_eht_basic_ml_com
  		wpabuf_put_u8(buf, link_bss->conf->dtim_period);
  
  		/* BSS Parameters Change Count */
@@ -169,7 +170,16 @@ index 9108b56..25e8827 100644
  
  		if (!link->resp_sta_profile)
  			continue;
-@@ -806,7 +815,7 @@ out:
+@@ -745,7 +755,7 @@ static u8 * hostapd_eid_eht_basic_ml_com
+ 			ptr = link->resp_sta_profile;
+ 			len = link->resp_sta_profile_len;
+ 
+-			slice_len = 255 - EHT_ML_STA_INFO_LEN;
++			slice_len = 255 - eht_ml_sta_info_len;
+ 
+ 			wpabuf_put_data(buf, ptr, slice_len);
+ 			len -= slice_len;
+@@ -810,7 +820,7 @@ out:
  
  
  static size_t hostapd_eid_eht_ml_len(struct mld_info *info,
@@ -178,7 +188,7 @@ index 9108b56..25e8827 100644
  {
  	size_t len = 0;
  	size_t eht_ml_len = 2 + EHT_ML_COMMON_INFO_LEN;
-@@ -826,6 +835,10 @@ static size_t hostapd_eid_eht_ml_len(struct mld_info *info,
+@@ -830,6 +840,10 @@ static size_t hostapd_eid_eht_ml_len(str
  
  		sta_len += link->resp_sta_profile_len;
  
@@ -189,7 +199,7 @@ index 9108b56..25e8827 100644
  		/* Element data and (fragmentation) headers */
  		eht_ml_len += sta_len;
  		eht_ml_len += 2 + sta_len / 255 * 2;
-@@ -848,9 +861,9 @@ static size_t hostapd_eid_eht_ml_len(struct mld_info *info,
+@@ -852,9 +866,9 @@ static size_t hostapd_eid_eht_ml_len(str
  
  u8 * hostapd_eid_eht_ml_beacon(struct hostapd_data *hapd,
  			       struct mld_info *info,
@@ -201,7 +211,7 @@ index 9108b56..25e8827 100644
  	if (hapd->iface->drv_flags2 & WPA_DRIVER_FLAG2_MLD_LINK_REMOVAL_OFFLOAD)
  		return eid;
  	else
-@@ -860,13 +873,13 @@ u8 * hostapd_eid_eht_ml_beacon(struct hostapd_data *hapd,
+@@ -864,13 +878,13 @@ u8 * hostapd_eid_eht_ml_beacon(struct ho
  
  
  u8 * hostapd_eid_eht_ml_assoc(struct hostapd_data *hapd, struct sta_info *info,
@@ -217,7 +227,7 @@ index 9108b56..25e8827 100644
  	ap_sta_free_sta_profile(&info->mld_info);
  	return eid;
  }
-@@ -874,9 +887,9 @@ u8 * hostapd_eid_eht_ml_assoc(struct hostapd_data *hapd, struct sta_info *info,
+@@ -878,9 +892,9 @@ u8 * hostapd_eid_eht_ml_assoc(struct hos
  
  size_t hostapd_eid_eht_ml_beacon_len(struct hostapd_data *hapd,
  				     struct mld_info *info,
@@ -229,11 +239,9 @@ index 9108b56..25e8827 100644
  }
  
  
-diff --git a/src/ap/wpa_auth_glue.c b/src/ap/wpa_auth_glue.c
-index 2c1edb2..45910d7 100644
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -1677,7 +1677,7 @@ static u8 *hostapd_wpa_ft_add_bmle(void *ctx, u8 *bmle_ie, u8 type, void *mle_da
+@@ -1677,7 +1677,7 @@ static u8 *hostapd_wpa_ft_add_bmle(void
  {
  	struct hostapd_data *hapd = ctx;
  
@@ -242,7 +250,7 @@ index 2c1edb2..45910d7 100644
  }
  
  
-@@ -1685,7 +1685,7 @@ static size_t hostapd_wpa_ft_add_bmle_len(void *ctx, u8 type, void *mle_data)
+@@ -1685,7 +1685,7 @@ static size_t hostapd_wpa_ft_add_bmle_le
  {
  	struct hostapd_data *hapd = ctx;
  
@@ -251,6 +259,3 @@ index 2c1edb2..45910d7 100644
  }
  
  
--- 
-2.34.1
-
