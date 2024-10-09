@@ -50,7 +50,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  		elen += EHT_OPER_DISABLED_SUBCHAN_BITMAP_SIZE;
  
  	*pos++ = WLAN_EID_EXTENSION;
-@@ -267,6 +267,12 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -267,6 +267,13 @@ u8 * hostapd_eid_eht_operation(struct ho
  	if (!seg0)
  		seg0 = hapd->iconf->channel;
  
@@ -58,12 +58,13 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 +	    && (hapd->iconf->punct_bitmap)) {
 +		chwidth = CONF_OPER_CHWIDTH_160MHZ;
 +		is_5g_240_punctured = true;
++		seg0 -= 16;
 +	}
 +
  	switch (chwidth) {
  	case CONF_OPER_CHWIDTH_320MHZ:
  		oper->oper_info.control |= EHT_OPER_CHANNEL_WIDTH_320MHZ;
-@@ -287,7 +293,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -287,7 +294,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  				oper->oper_info.ccfs0 = oper->oper_info.ccfs1 + 8;
  		}
  
@@ -72,7 +73,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
  			hapd->iconf->punct_bitmap = 0;
  			wpa_printf(MSG_ERROR,
-@@ -321,7 +327,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -321,7 +328,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  	oper->oper_info.ccfs0 = seg0;
  	oper->oper_info.ccfs1 = seg1;
  
