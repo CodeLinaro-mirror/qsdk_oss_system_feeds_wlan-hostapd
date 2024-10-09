@@ -258,6 +258,16 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  #ifdef CONFIG_WPS
  	if (sta &&
  	    ((sta->flags & WLAN_STA_WPS) ||
+@@ -6294,6 +6298,9 @@ static int handle_action(struct hostapd_
+ 				return 1;
+ 		}
+ 		break;
++	case WLAN_ACTION_ROBUST_AV_STREAMING:
++		hostapd_handle_scs(hapd, (const u8 *)mgmt, len);
++		return 1;
+ #ifndef CONFIG_NO_RRM
+ 	case WLAN_ACTION_RADIO_MEASUREMENT:
+ 		hostapd_handle_radio_measurement(hapd, (const u8 *) mgmt, len);
 --- a/src/ap/ieee802_11_shared.c
 +++ b/src/ap/ieee802_11_shared.c
 @@ -19,7 +19,9 @@
