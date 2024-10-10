@@ -93,20 +93,20 @@ Date:   Thu Dec 6 15:17:46 2018 +0800
 +{
 +	u8 rates[WLAN_SUPP_RATES_MAX];
 +	u8 i;
-+	u8 j = 0;
++	u8 j = -1;
 +
 +	for (i = 0; i < WLAN_SUPP_HT_RATES_MAX; i++) {
-+		if (mcs_set[i / 8] & (1 << (i % 8)))
-+			rates[j++] = i;
 +		if (j == WLAN_SUPP_RATES_MAX) {
 +			wpa_printf(MSG_INFO,
 +				   "HT extended rate set too large; using only %u rates",
 +				    j);
 +			break;
 +		}
++		if (mcs_set[i / 8] & (1 << (i % 8)))
++			rates[++j] = i;
 +	}
-+	if (j <= WLAN_SUPP_RATES_MAX)
-+		return rates[j - 1];
++	if (j > -1)
++		return rates[j];
 +
 +	return 0;
 +}
