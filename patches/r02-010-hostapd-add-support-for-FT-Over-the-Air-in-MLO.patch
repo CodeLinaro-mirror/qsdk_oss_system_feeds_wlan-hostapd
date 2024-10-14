@@ -249,6 +249,26 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  
  		if (sm->assoc_resp_ftie &&
  		    kde + kde_len - pos >= 2 + sm->assoc_resp_ftie[1]) {
+@@ -7462,3 +7491,19 @@ void wpa_auth_set_ml_info(struct wpa_sta
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ }
++
++void wpa_auth_reset_ml_link_info(struct wpa_state_machine *sm, u8 mld_assoc_link_id) {
++#ifdef CONFIG_IEEE80211BE
++	struct mld_link *link;
++	u8 link_id;
++
++	for_each_sm_auth(sm, link_id) {
++		if (link_id != mld_assoc_link_id) {
++			link = &sm->mld_links[link_id];
++			wpa_group_put(link->wpa_auth, link->wpa_auth->group);
++			link->wpa_auth = NULL;
++			link->valid = false;
++		}
++	}
++#endif /* CONFIG_IEEE80211BE */
++}
 --- a/src/ap/wpa_auth_ft.c
 +++ b/src/ap/wpa_auth_ft.c
 @@ -818,6 +818,7 @@ int wpa_write_ftie(struct wpa_auth_confi
@@ -1289,3 +1309,13 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  			       mic) < 0) {
  			add_note(wt, MSG_INFO, "FT: Failed to calculate MIC");
  			goto out;
+--- a/src/ap/wpa_auth.h
++++ b/src/ap/wpa_auth.h
+@@ -669,6 +669,7 @@ void wpa_auth_sta_radius_psk_resp(struct
+ 
+ void wpa_auth_set_ml_info(struct wpa_state_machine *sm,
+ 			  u8 mld_assoc_link_id, struct mld_info *info);
++void wpa_auth_reset_ml_link_info(struct wpa_state_machine *sm, u8 mld_assoc_link_id);
+ void wpa_auth_ml_get_key_info(struct wpa_authenticator *a,
+ 			      struct wpa_auth_ml_link_key_info *info,
+ 			      bool mgmt_frame_prot, bool beacon_prot,
