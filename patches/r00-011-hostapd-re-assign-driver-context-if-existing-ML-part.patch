@@ -63,7 +63,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		hapd->interface_added = 0;
  		if (hostapd_if_remove(hapd, WPA_IF_AP_BSS, hapd->conf->iface)) {
  			wpa_printf(MSG_WARNING,
-@@ -3235,25 +3238,26 @@ static void hostapd_cleanup_driver(const
+@@ -3239,25 +3242,26 @@ static void hostapd_cleanup_driver(const
  	ap_mld = !!iface->bss[0]->conf->mld_ap;
  #endif /* CONFIG_IEEE80211BE */
  
@@ -160,6 +160,15 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  
  	if (drv->hostapd || bss->static_ap)
  		nlmode = NL80211_IFTYPE_AP;
+@@ -7271,7 +7276,7 @@ static int wpa_driver_nl80211_associate(
+ 			goto fail;
+ 	}
+ 
+-	ret = send_and_recv_msgs_connect_handle(drv, msg, drv->first_bss, 1);
++	ret = send_and_recv_msgs_connect_handle(drv, msg, bss, 1);
+ 	msg = NULL;
+ 	if (ret) {
+ 		wpa_dbg(drv->ctx, MSG_DEBUG,
 @@ -8900,6 +8905,7 @@ static int wpa_driver_nl80211_if_remove(
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
