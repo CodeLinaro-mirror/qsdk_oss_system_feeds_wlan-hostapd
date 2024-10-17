@@ -40,10 +40,14 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  	if (!mode)
  		return eid;
-@@ -242,6 +241,16 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -242,6 +241,20 @@ u8 * hostapd_eid_eht_operation(struct ho
  	if (eht_oper_info_present)
  		elen += 3;
  
++	seg0 = hostapd_get_oper_centr_freq_seg0_idx(conf);
++	if (!seg0)
++		seg0 = hapd->iconf->channel;
++
 +	if (is_5ghz_freq(mode->channels->freq) && (chwidth == CONF_OPER_CHWIDTH_320MHZ)
 +	    && (hapd->iconf->punct_bitmap)) {
 +		chwidth = CONF_OPER_CHWIDTH_160MHZ;
@@ -57,7 +61,17 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  	if (punct_bitmap)
  		elen += EHT_OPER_DISABLED_SUBCHAN_BITMAP_SIZE;
  
-@@ -290,6 +299,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -263,9 +276,6 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 		return pos + elen;
+ 
+ 	oper->oper_params |= EHT_OPER_INFO_PRESENT;
+-	seg0 = hostapd_get_oper_centr_freq_seg0_idx(conf);
+-	if (!seg0)
+-		seg0 = hapd->iconf->channel;
+ 
+ 	switch (chwidth) {
+ 	case CONF_OPER_CHWIDTH_320MHZ:
+@@ -290,6 +300,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  		if (hapd->iconf->punct_bitmap &&
  		    hapd->iface->ru_punct_supp_bw == CONF_OPER_CHWIDTH_320MHZ) {
  			hapd->iconf->punct_bitmap = 0;
@@ -65,7 +79,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  			wpa_printf(MSG_ERROR,
  				   "Driver does not support RU puncturing for bandwidths less than 320 MHz. Setting bitmap to 0");
  		}
-@@ -314,6 +324,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -314,6 +325,7 @@ u8 * hostapd_eid_eht_operation(struct ho
  		break;
  	default:
  		hapd->iconf->punct_bitmap = 0;

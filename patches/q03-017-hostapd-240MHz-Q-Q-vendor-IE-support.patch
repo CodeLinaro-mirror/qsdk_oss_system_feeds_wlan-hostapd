@@ -213,9 +213,9 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  		cap->phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &=
  			~EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK;
  	if (!hapd->iface->conf->eht_phy_capab.su_beamformer)
-@@ -323,6 +322,70 @@ u8 * hostapd_eid_eht_operation(struct ho
- 	return pos;
+@@ -324,6 +323,72 @@ u8 * hostapd_eid_eht_operation(struct ho
  }
+ 
  
 +u8 * hostapd_eid_vendor_240mhz(struct hostapd_data *hapd, u8 *eid,
 +			       enum ieee80211_op_mode opmode)
@@ -234,14 +234,14 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 +	eht_cap = &mode->eht_capab[opmode];
 +
 +	if (!eht_cap->eht_supported)
-+		    return eid;
++		return eid;
 +	ccfs0 = hostapd_get_oper_centr_freq_seg0_idx(hapd->iconf);
 +	ccfs1 = ccfs0 - 16;
 +
 +	*pos++ = WLAN_EID_VENDOR_SPECIFIC;
 +	*pos++ = 6 + /* Element ID, Length, OUI, OUI Type */
-+		4 + /* QCN version Attribute size */
-+		sizeof(struct ieee80211_240mhz_vendor_oper);
++		 4 + /* QCN version Attribute size */
++		 sizeof(struct ieee80211_240mhz_vendor_oper);
 +	WPA_PUT_BE24(pos, OUI_QCN);
 +	pos += 3;
 +	*pos++ = 1; /* QCN_OUI_TYPE */
@@ -268,23 +268,25 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 +	eht_240_cap->phy_cap_320mhz |= eht_cap->phy_cap[EHT_PHYCAP_BEAMFORMEE_SS_320MHZ_IDX] &
 +				       EHT_PHYCAP_BEAMFORMEE_SS_320MHZ_MASK;
 +	eht_240_cap->phy_cap_320mhz |= (eht_cap->phy_cap[EHT_PHYCAP_NUM_SOUND_DIM_320MHZ_IDX] &
-+				       EHT_PHYCAP_NUM_SOUND_DIM_320MHZ_MASK) |
++				        EHT_PHYCAP_NUM_SOUND_DIM_320MHZ_MASK) |
 +				       (eht_cap->phy_cap[EHT_PHYCAP_NUM_SOUND_DIM_320MHZ_IDX_1] &
 +					EHT_PHYCAP_NUM_SOUND_DIM_320MHZ_MASK);
 +	eht_240_cap->phy_cap_320mhz |= eht_cap->phy_cap[EHT_PHYCAP_NON_OFDMA_UL_MUMIMO_320MHZ_IDX] &
 +				       EHT_PHYCAP_NON_OFDMA_UL_MUMIMO_320MHZ_MASK;
 +	eht_240_cap->phy_cap_320mhz |= eht_cap->phy_cap[EHT_PHYCAP_MU_CAPABILITY_IDX] &
-+					EHT_PHYCAP_MU_BEAMFORMER_MASK;
++				       EHT_PHYCAP_MU_BEAMFORMER_MASK;
 +
 +	memcpy(&eht_240_cap->mcs_map_320mhz, &eht_cap->mcs, EHT_PHYCAP_MCS_NSS_LEN_160MHZ);
 +	pos += sizeof(struct ieee80211_240mhz_vendor_oper);
 +
 +	return pos;
 +}
- 
++
++
  static bool check_valid_eht_mcs_nss(struct hostapd_data *hapd, const u8 *ap_mcs,
  				    const u8 *sta_mcs, u8 mcs_count, u8 map_len)
-@@ -1467,3 +1530,41 @@ out:
+ {
+@@ -1467,3 +1532,41 @@ out:
  
  	return WLAN_STATUS_SUCCESS;
  }
