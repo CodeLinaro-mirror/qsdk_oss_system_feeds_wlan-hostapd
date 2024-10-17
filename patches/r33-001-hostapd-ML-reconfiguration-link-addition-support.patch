@@ -26,11 +26,9 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  src/ap/hostapd.h     |   3 +
  4 files changed, 113 insertions(+), 73 deletions(-)
 
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index b01f6ce..33c18ba 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -5580,28 +5580,6 @@ hostapd_global_ctrl_iface_fst_detach(struct hapd_interfaces *interfaces,
+@@ -5611,28 +5611,6 @@ hostapd_global_ctrl_iface_fst_detach(str
  #endif /* CONFIG_FST */
  
  
@@ -59,19 +57,9 @@ index b01f6ce..33c18ba 100644
  static int hostapd_ctrl_iface_dup_param(struct hostapd_data *src_hapd,
  					struct hostapd_data *dst_hapd,
  					const char *param)
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 66802a1..2273cc0 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2232,6 +2232,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
- 	u8 *startpos;
- 	u8 elemid_modified = 0;
- #endif /* NEED_AP_MLME */
-+	struct hostapd_data *lhapd;
- 
- 	os_memset(params, 0, sizeof(*params));
- 
-@@ -2416,17 +2417,23 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -2445,17 +2445,23 @@ int ieee802_11_build_ap_params(struct ho
  				   tailpos-startpos, ELEMID_CU_PARAM_HTOP);
  #endif
  
@@ -105,11 +93,18 @@ index 66802a1..2273cc0 100644
  	}
  
  	tailpos = hostapd_eid_ext_capab(hapd, tailpos, complete);
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 9e27c15..5e0c1f7 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1456,7 +1456,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first,
+@@ -79,7 +79,7 @@ static void hostapd_interface_update_fil
+ static void hostapd_mld_ref_inc(struct hostapd_mld *mld);
+ static void hostapd_mld_ref_dec(struct hostapd_mld *mld);
+ #endif /* CONFIG_IEEE80211BE */
+-
++static int ifname_in_use(struct hapd_interfaces *interfaces, const char *ifname) __attribute__((unused));
+ int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
+ 			       int (*cb)(struct hostapd_iface *iface,
+ 					 void *ctx), void *ctx)
+@@ -1456,7 +1456,7 @@ static int hostapd_setup_bss(struct host
  	char force_ifname[IFNAMSIZ];
  	u8 if_addr[ETH_ALEN];
  	int flush_old_stations = 1;
@@ -118,7 +113,7 @@ index 9e27c15..5e0c1f7 100644
  
  #ifdef CONFIG_IEEE80211BE
  	if (!hostapd_mld_is_first_bss(hapd))
-@@ -1541,6 +1541,26 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first,
+@@ -1541,6 +1541,26 @@ static int hostapd_setup_bss(struct host
  	}
  
  setup_mld:
@@ -145,7 +140,7 @@ index 9e27c15..5e0c1f7 100644
  	 if (is_zero_ether_addr(conf->bssid))
  		 os_memcpy(conf->bssid, hapd->own_addr, ETH_ALEN);
  
-@@ -1758,24 +1778,12 @@ setup_mld:
+@@ -1760,24 +1780,12 @@ setup_mld:
  		return -1;
  	}
  
@@ -175,7 +170,7 @@ index 9e27c15..5e0c1f7 100644
  
  	if (start_beacon && hostapd_start_beacon(hapd, flush_old_stations) < 0)
  		return -1;
-@@ -1873,25 +1881,25 @@ static int start_ctrl_iface_bss(struct hostapd_data *hapd)
+@@ -1875,25 +1883,25 @@ static int start_ctrl_iface_bss(struct h
  	    !hapd->iface->interfaces->ctrl_iface_init)
  		return 0;
  
@@ -216,7 +211,7 @@ index 9e27c15..5e0c1f7 100644
  		wpa_printf(MSG_ERROR,
  			   "Failed to setup control interface for %s",
  			   hapd->conf->iface);
-@@ -3416,6 +3424,13 @@ static int ifname_in_use(struct hapd_interfaces *interfaces, const char *ifname)
+@@ -3422,6 +3430,13 @@ static int ifname_in_use(struct hapd_int
  	return 0;
  }
  
@@ -230,7 +225,7 @@ index 9e27c15..5e0c1f7 100644
  
  /**
   * hostapd_interface_init_bss - Read configuration file and init BSS data
-@@ -3436,12 +3451,18 @@ hostapd_interface_init_bss(struct hapd_interfaces *interfaces, const char *phy,
+@@ -3442,12 +3457,18 @@ hostapd_interface_init_bss(struct hapd_i
  	struct hostapd_data *hapd;
  	int k;
  	size_t i, bss_idx;
@@ -250,7 +245,7 @@ index 9e27c15..5e0c1f7 100644
  			iface = interfaces->iface[i];
  			break;
  		}
-@@ -3450,16 +3471,12 @@ hostapd_interface_init_bss(struct hapd_interfaces *interfaces, const char *phy,
+@@ -3456,16 +3477,12 @@ hostapd_interface_init_bss(struct hapd_i
  	wpa_printf(MSG_INFO, "Configuration file: %s (phy %s)%s",
  		   config_fname, phy, iface ? "" : " --> new PHY");
  	if (iface) {
@@ -268,7 +263,7 @@ index 9e27c15..5e0c1f7 100644
  		if (conf->num_bss > 1) {
  			wpa_printf(MSG_ERROR, "Multiple BSSes specified in BSS-config");
  			hostapd_config_free(conf);
-@@ -3467,12 +3484,23 @@ hostapd_interface_init_bss(struct hapd_interfaces *interfaces, const char *phy,
+@@ -3473,12 +3490,23 @@ hostapd_interface_init_bss(struct hapd_i
  		}
  
  		ifname = conf->bss[0]->iface;
@@ -294,7 +289,7 @@ index 9e27c15..5e0c1f7 100644
  
  		tmp_conf = os_realloc_array(
  			iface->conf->bss, iface->conf->num_bss + 1,
-@@ -3511,6 +3539,7 @@ hostapd_interface_init_bss(struct hapd_interfaces *interfaces, const char *phy,
+@@ -3517,6 +3545,7 @@ hostapd_interface_init_bss(struct hapd_i
  		conf->bss[0] = NULL;
  		hostapd_config_free(conf);
  	} else {
@@ -302,7 +297,7 @@ index 9e27c15..5e0c1f7 100644
  		/* Add a new iface with the first BSS */
  		new_iface = iface = hostapd_init(interfaces, config_fname);
  		if (!iface)
-@@ -5268,6 +5297,29 @@ hostapd_interface_update_fils_ubpr(struct hostapd_iface *iface, bool iface_enabl
+@@ -5273,6 +5302,29 @@ hostapd_interface_update_fils_ubpr(struc
  	return;
  }
  
@@ -332,11 +327,9 @@ index 9e27c15..5e0c1f7 100644
  #ifdef CONFIG_IEEE80211BE
  struct hostapd_data * hostapd_mld_get_link_bss(struct hostapd_data *hapd,
  					       u8 link_id)
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index e51e5b6..682a93e 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -934,4 +934,7 @@ bool hostapd_mld_is_first_bss(struct hostapd_data *hapd);
+@@ -934,4 +934,7 @@ bool hostapd_mld_is_first_bss(struct hos
  struct hostapd_data * hostapd_mld_get_first_bss(struct hostapd_data *hapd);
  void hostapd_bss_free(struct hostapd_data *hapd);
  int hostapd_link_remove(struct hostapd_data *hapd, u32 count);
@@ -344,6 +337,3 @@ index e51e5b6..682a93e 100644
 +hostapd_interfaces_get_hapd(struct hapd_interfaces *interfaces,
 +			    const char *ifname);
  #endif /* HOSTAPD_H */
--- 
-2.34.1
-

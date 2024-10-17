@@ -62,7 +62,7 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  	if (!is_punct_bitmap_valid(bw, (chan->freq - first_chan->freq) / 20,
  				   chan->punct_bitmap))
  		chan->punct_bitmap = 0;
-@@ -979,6 +999,11 @@ acs_find_ideal_chan_mode(struct hostapd_
+@@ -978,6 +998,11 @@ acs_find_ideal_chan_mode(struct hostapd_
  			factor = chan->interference_factor;
  		total_weight = 1;
  
@@ -161,11 +161,3 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  	default:
  		wpa_printf(MSG_INFO, "DFS chan_width %d not supported",
  			   chan_width);
-@@ -1387,6 +1408,7 @@ dfs_downgrade_bandwidth(struct hostapd_i
- 			enum dfs_channel_type *channel_type)
- {
- 	struct hostapd_channel_data *channel;
-+	int oper_chwidth;
- 
- 	for (;;) {
- 		channel = dfs_get_valid_channel(iface, secondary_channel,

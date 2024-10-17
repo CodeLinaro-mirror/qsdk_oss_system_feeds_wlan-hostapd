@@ -21,11 +21,9 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  src/ap/ieee802_1x.c | 13 +++++-
  3 files changed, 88 insertions(+), 37 deletions(-)
 
-diff --git a/src/ap/authsrv.c b/src/ap/authsrv.c
-index 0980679..59ef237 100644
 --- a/src/ap/authsrv.c
 +++ b/src/ap/authsrv.c
-@@ -250,15 +250,24 @@ static struct eap_config * authsrv_eap_config(struct hostapd_data *hapd)
+@@ -250,15 +250,24 @@ static struct eap_config * authsrv_eap_c
  int authsrv_init(struct hostapd_data *hapd)
  {
  #ifdef CONFIG_IEEE80211BE
@@ -53,11 +51,9 @@ index 0980679..59ef237 100644
  #endif /* EAP_SIM_DB */
  		return 0;
  	}
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index d416155..95db916 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1310,6 +1310,57 @@ static int hostapd_start_beacon(struct hostapd_data *hapd,
+@@ -1310,6 +1310,57 @@ static int hostapd_start_beacon(struct h
  	return 0;
  }
  
@@ -88,7 +84,7 @@ index d416155..95db916 100644
 +
 +		os_memset(&das_conf, 0, sizeof(das_conf));
 +		das_conf.port = conf->radius_das_port;
-+		das_conf.nas_identifier = conf->nas_identifier;
++		das_conf.nas_identifier = (const u8 *)conf->nas_identifier;
 +		das_conf.shared_secret = conf->radius_das_shared_secret;
 +		das_conf.shared_secret_len =
 +			conf->radius_das_shared_secret_len;
@@ -126,13 +122,13 @@ index d416155..95db916 100644
 +		if (hostapd_bss_radius_init(hapd))
  			return -1;
 -		}
+-
+-		if (conf->radius_das_port) {
+-			struct radius_das_conf das_conf;
 +#ifdef CONFIG_IEEE80211BE
 +	} else {
 +		h_hapd = hostapd_mld_get_first_bss(hapd);
  
--		if (conf->radius_das_port) {
--			struct radius_das_conf das_conf;
--
 -			os_memset(&das_conf, 0, sizeof(das_conf));
 -			das_conf.port = conf->radius_das_port;
 -			das_conf.nas_identifier = conf->nas_identifier;
@@ -173,7 +169,7 @@ index d416155..95db916 100644
  	}
  #endif /* CONFIG_IEEE80211BE */
  #endif /* CONFIG_NO_RADIUS */
-@@ -2024,7 +2056,6 @@ static int setup_interface(struct hostapd_iface *iface)
+@@ -2024,7 +2056,6 @@ static int setup_interface(struct hostap
  	 */
  	for (i = 1; i < iface->num_bss; i++) {
  		iface->bss[i]->driver = hapd->driver;
@@ -181,11 +177,9 @@ index d416155..95db916 100644
  	}
  
  	if (hostapd_validate_bssid_configuration(iface))
-diff --git a/src/ap/ieee802_1x.c b/src/ap/ieee802_1x.c
-index 176e19f..617cdae 100644
 --- a/src/ap/ieee802_1x.c
 +++ b/src/ap/ieee802_1x.c
-@@ -2541,11 +2541,22 @@ int ieee802_1x_init(struct hostapd_data *hapd)
+@@ -2541,11 +2541,22 @@ int ieee802_1x_init(struct hostapd_data
  	struct eapol_auth_cb cb;
  
  #ifdef CONFIG_IEEE80211BE
@@ -209,6 +203,3 @@ index 176e19f..617cdae 100644
  		return 0;
  	}
  #endif /* CONFIG_IEEE80211BE */
--- 
-2.34.1
-

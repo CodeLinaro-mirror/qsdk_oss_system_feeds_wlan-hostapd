@@ -19,11 +19,9 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  src/common/ieee802_11_defs.h |  11 ++++++
  7 files changed, 183 insertions(+)
 
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index 586e694..d6a1f93 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4350,6 +4350,32 @@ static int hostapd_ctrl_iface_driver_cmd(struct hostapd_data *hapd, char *cmd,
+@@ -4410,6 +4410,32 @@ static int hostapd_ctrl_iface_driver_cmd
  #endif /* ANDROID */
  
  
@@ -56,7 +54,7 @@ index 586e694..d6a1f93 100644
  static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
  					      char *buf, char *reply,
  					      int reply_size,
-@@ -4919,6 +4945,14 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
+@@ -4982,6 +5008,14 @@ static int hostapd_ctrl_iface_receive_pr
  		reply_len = hostapd_ctrl_iface_driver_cmd(hapd, buf + 7, reply,
  							  reply_size);
  #endif /* ANDROID */
@@ -71,12 +69,9 @@ index 586e694..d6a1f93 100644
  	} else {
  		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
  		reply_len = 16;
-
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index d764e98..7b0f24b 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -480,6 +480,61 @@ static int hostapd_broadcast_wep_set(struct hostapd_data *hapd)
+@@ -480,6 +480,61 @@ static int hostapd_broadcast_wep_set(str
  
  #endif /* CONFIG_WEP */
  
@@ -138,7 +133,7 @@ index d764e98..7b0f24b 100644
  void hostapd_free_hapd_data(struct hostapd_data *hapd)
  {
  	os_free(hapd->probereq_cb);
-@@ -612,6 +667,12 @@ void hostapd_free_hapd_data(struct hostapd_data *hapd)
+@@ -612,6 +667,12 @@ void hostapd_free_hapd_data(struct hosta
  
  #ifdef CONFIG_IEEE80211AX
  	eloop_cancel_timeout(hostapd_switch_color_timeout_handler, hapd, NULL);
@@ -151,8 +146,6 @@ index d764e98..7b0f24b 100644
  #endif /* CONFIG_IEEE80211AX */
  }
  
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index e815e45..aa63f42 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -540,6 +540,9 @@ struct hostapd_data {
@@ -165,98 +158,12 @@ index e815e45..aa63f42 100644
  #endif /* CONFIG_IEEE80211BE */
  	bool disable_cu;
  };
-@@ -915,4 +918,5 @@ int hostapd_mld_remove_link(struct hostapd_data *hapd);
+@@ -926,4 +929,5 @@ int hostapd_mld_remove_link(struct hosta
  bool hostapd_mld_is_first_bss(struct hostapd_data *hapd);
  struct hostapd_data * hostapd_mld_get_first_bss(struct hostapd_data *hapd);
  void hostapd_bss_free(struct hostapd_data *hapd);
 +int hostapd_link_remove(struct hostapd_data *hapd, u32 count);
  #endif /* HOSTAPD_H */
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index 294119d..0949d5a 100644
---- a/src/ap/ieee802_11_eht.c
-+++ b/src/ap/ieee802_11_eht.c
-@@ -930,6 +930,79 @@ out:
- }
- 
- 
-+static u8 * hostapd_eid_eht_reconf_ml(struct hostapd_data *hapd, u8 *eid)
-+{
-+#ifdef CONFIG_TESTING_OPTIONS
-+	struct hostapd_data *other_hapd;
-+	u16 control;
-+	u8 *pos = eid;
-+	unsigned int i;
-+
-+	wpa_printf(MSG_DEBUG, "MLD: Reconfiguration ML");
-+
-+	/* First check if the element needs to be added */
-+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
-+		other_hapd = hapd->iface->interfaces->iface[i]->bss[0];
-+
-+		wpa_printf(MSG_DEBUG, "MLD: Reconfiguration ML: %u",
-+			   other_hapd->eht_mld_link_removal_count);
-+
-+		if (other_hapd->eht_mld_link_removal_count)
-+			break;
-+	}
-+
-+	/* No link is going to be removed */
-+	if (i == hapd->iface->interfaces->count)
-+		return eid;
-+
-+	wpa_printf(MSG_DEBUG, "MLD: Reconfiguration ML: Adding element");
-+
-+	/* The length will be set at the end */
-+	*pos++ = WLAN_EID_EXTENSION;
-+	*pos++ = 0;
-+	*pos++ = WLAN_EID_EXT_MULTI_LINK;
-+
-+	/* Set the Multi-Link Control field */
-+	control = MULTI_LINK_CONTROL_TYPE_RECONF;
-+	WPA_PUT_LE16(pos, control);
-+	pos += 2;
-+
-+	/* Common Info doesn't include any information */
-+	*pos++ = 1;
-+
-+	/* Add the per station profiles */
-+	for (i = 0; i < hapd->iface->interfaces->count; i++) {
-+		other_hapd = hapd->iface->interfaces->iface[i]->bss[0];
-+		if (!other_hapd->eht_mld_link_removal_count)
-+			continue;
-+
-+		/* Subelement ID is 0 */
-+		*pos++ = 0;
-+		*pos++ = 5;
-+
-+		control = other_hapd->mld_link_id |
-+			EHT_PER_STA_RECONF_CTRL_AP_REMOVAL_TIMER;
-+
-+		WPA_PUT_LE16(pos, control);
-+		pos += 2;
-+
-+		/* STA profile length */
-+		*pos++ = 3;
-+
-+		WPA_PUT_LE16(pos, other_hapd->eht_mld_link_removal_count);
-+		pos += 2;
-+	}
-+
-+	eid[1] = pos - eid - 2;
-+
-+	wpa_hexdump(MSG_DEBUG, "MLD: Reconfiguration ML", eid, eid[1] + 2);
-+	return pos;
-+#else /* CONFIG_TESTING_OPTIONS */
-+	return eid;
-+#endif /* CONFIG_TESTING_OPTIONS */
-+}
-+
-+
- struct wpabuf * hostapd_ml_auth_resp(struct hostapd_data *hapd)
- {
- 	struct wpabuf *buf = wpabuf_alloc(12);
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index eb18db0..4a95e86 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -2749,6 +2749,17 @@ struct eht_ml_basic_common_info {
@@ -277,6 +184,3 @@ index eb18db0..4a95e86 100644
  /* IEEE P802.11be/D2.0, 9.4.2.312.2.4 - Per-STA Profile subelement format */
  struct ieee80211_eht_per_sta_profile {
  	le16 sta_control;
--- 
-2.34.1
-

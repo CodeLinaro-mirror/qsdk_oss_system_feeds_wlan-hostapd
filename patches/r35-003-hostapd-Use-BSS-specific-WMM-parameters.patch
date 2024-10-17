@@ -54,7 +54,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			if (ieee802_11_update_beacons(hapd->iface))
  				wpa_printf(MSG_DEBUG,
  					   "Failed to update beacons with WMM parameters");
-@@ -3130,6 +3125,9 @@ static int hostapd_ctrl_iface_wmm_param(
+@@ -3147,6 +3142,9 @@ static int hostapd_ctrl_iface_wmm_param(
  	bool changed = false;
  	struct hostapd_data *tx_hapd = hostapd_mbssid_get_tx_bss(hapd);
  
@@ -64,7 +64,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	if (os_strncmp(buf, "ac=", 3) == 0) {
  		tmp = buf + 3;
  		if (os_strncmp(tmp, "be", 2) == 0) {
-@@ -3157,8 +3155,8 @@ static int hostapd_ctrl_iface_wmm_param(
+@@ -3174,8 +3172,8 @@ static int hostapd_ctrl_iface_wmm_param(
  			wpa_printf(MSG_ERROR,
  					"CTRL: AIFS expects wmevalue (0-15)");
  			goto fail;
@@ -75,7 +75,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			changed = true;
  		}
  	}
-@@ -3175,8 +3173,8 @@ static int hostapd_ctrl_iface_wmm_param(
+@@ -3192,8 +3190,8 @@ static int hostapd_ctrl_iface_wmm_param(
  			wpa_printf(MSG_ERROR,
  					"CTRL: CWMIN can't be greater than CWMAX.");
  			goto fail;
@@ -86,7 +86,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			changed = true;
  		}
  	}
-@@ -3189,12 +3187,12 @@ static int hostapd_ctrl_iface_wmm_param(
+@@ -3206,12 +3204,12 @@ static int hostapd_ctrl_iface_wmm_param(
  			wpa_printf(MSG_ERROR,
  					"CTRL: CWMAX expects wmevalue (0-15)");
  			goto fail;
@@ -102,7 +102,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			changed = true;
  		}
  	}
-@@ -3207,8 +3205,8 @@ static int hostapd_ctrl_iface_wmm_param(
+@@ -3224,8 +3222,8 @@ static int hostapd_ctrl_iface_wmm_param(
  			wpa_printf(MSG_ERROR,
  					"CTRL: TXOP expects wmevalue (0-8192 in units of 32 microseconds)");
  			goto fail;
@@ -113,7 +113,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			changed = true;
  		}
  	}
-@@ -3221,8 +3219,8 @@ static int hostapd_ctrl_iface_wmm_param(
+@@ -3238,8 +3236,8 @@ static int hostapd_ctrl_iface_wmm_param(
  			wpa_printf(MSG_ERROR,
  					"CTRL: ACM expects wmevalue (0/1)");
  			goto fail;
@@ -124,7 +124,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			changed = true;
  		}
  	}
-@@ -3231,6 +3229,7 @@ static int hostapd_ctrl_iface_wmm_param(
+@@ -3248,6 +3246,7 @@ static int hostapd_ctrl_iface_wmm_param(
  		ieee802_11_set_beacon(tx_hapd);
  	return 0;
  fail:
@@ -134,7 +134,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -172,6 +172,41 @@ void hostapd_config_defaults_bss(struct
+@@ -172,6 +172,26 @@ void hostapd_config_defaults_bss(struct
  	bss->pasn_noauth = 1;
  #endif /* CONFIG_PASN */
  	bss->force_disable_in_band_discovery = 1;
@@ -153,21 +153,6 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 +	const struct hostapd_wmm_ac_params ac_vo = {
 +		aCWmin - 2, aCWmin - 1, 2, 1504 / 32, 0
 +	}; /* voice traffic */
-+	const struct hostapd_tx_queue_params txq_bk = {
-+		7, ecw2cw(aCWmin), ecw2cw(aCWmax), 0
-+	};
-+	const struct hostapd_tx_queue_params txq_be = {
-+		3, ecw2cw(aCWmin),
-+		4 * (ecw2cw(aCWmin) + 1) - 1, 0
-+	};
-+	const struct hostapd_tx_queue_params txq_vi = {
-+		1, (ecw2cw(aCWmin) + 1) / 2 - 1,
-+		ecw2cw(aCWmin), 30
-+	};
-+	const struct hostapd_tx_queue_params txq_vo = {
-+		1, (ecw2cw(aCWmin) + 1) / 4 - 1,
-+		(ecw2cw(aCWmin) + 1) / 2 - 1, 15
-+	};
 +#undef ecw2cw
 +	bss->wmm_ac_params[0] = ac_be;
 +	bss->wmm_ac_params[1] = ac_bk;
@@ -178,7 +163,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -967,6 +967,9 @@ struct hostapd_bss_config {
+@@ -973,6 +973,9 @@ struct hostapd_bss_config {
  	 */
  	bool force_disable_in_band_discovery;
  	enum qca_wlan_intf_offload_type ppe_vp_type;
@@ -190,7 +175,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  /**
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2030,7 +2030,6 @@ static void hostapd_event_update_muedca_
+@@ -2034,7 +2034,6 @@ static void hostapd_event_update_muedca_
  					       struct update_muedca *params)
  {
  	int i;
@@ -198,7 +183,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	/* Update current MU-EDCA parameters */
  	for (i = 0; i < 3; i++) {
-@@ -2048,9 +2047,6 @@ static void hostapd_event_update_muedca_
+@@ -2052,9 +2051,6 @@ static void hostapd_event_update_muedca_
  	 * if any STA is connected
  	 */
  	if (hapd->num_sta) {
@@ -235,7 +220,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	os_memcpy(edca, &hapd->iface->conf->he_mu_edca, sizeof(*edca));
  
 +	updated_count = edca->he_qos_info & 0xf;
-+	if (updated_count != hapd->parameter_set_count & 0xf) {
++	if (updated_count != (hapd->parameter_set_count & 0xf)) {
 +		updated_count = hapd->parameter_set_count & 0xf;
 +		edca->he_qos_info &= 0xf0;
 +		edca->he_qos_info |= updated_count;
