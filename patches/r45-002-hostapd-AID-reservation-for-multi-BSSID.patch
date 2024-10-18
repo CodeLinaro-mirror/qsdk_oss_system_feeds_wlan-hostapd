@@ -101,3 +101,36 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  	if (aid > 2007)
  		return -1;
  
+@@ -4777,7 +4777,7 @@ static int ieee80211_ml_process_link(str
+ 			status = WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 			goto out;
+ 		}
+-		hapd->sta_aid[(sta->aid - 1) / 32] |= BIT((sta->aid - 1) % 32);
++		hapd->sta_aid[sta->aid / 32] |= BIT(sta->aid % 32);
+ 		sta->listen_interval = origin_sta->listen_interval;
+ 		if (update_ht_state(hapd, sta) > 0)
+ 			ieee802_11_update_beacons(hapd->iface);
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -301,8 +301,8 @@ void ap_free_sta(struct hostapd_data *ha
+ 	ap_sta_list_del(hapd, sta);
+ 
+ 	if (sta->aid > 0)
+-		hapd->sta_aid[(sta->aid - 1) / 32] &=
+-			~BIT((sta->aid - 1) % 32);
++		hapd->sta_aid[sta->aid / 32] &=
++			~BIT(sta->aid % 32);
+ 
+ 	if (sta->wds_mld_uid > 0)
+ 		hapd->wds_sta_uid[(sta->wds_mld_uid - 1) / 32] &=
+--- a/src/ap/hostapd.h
++++ b/src/ap/hostapd.h
+@@ -262,7 +262,7 @@ struct hostapd_data {
+ 
+ 	/*
+ 	 * Bitfield for indicating which AIDs are allocated. Only AID values
+-	 * 1-2007 are used and as such, the bit at index 0 corresponds to AID
++	 * 1-2007 are used and as such, the bit at index 1 corresponds to AID
+ 	 * 1.
+ 	 */
+ #define AID_WORDS ((2008 + 31) / 32)
