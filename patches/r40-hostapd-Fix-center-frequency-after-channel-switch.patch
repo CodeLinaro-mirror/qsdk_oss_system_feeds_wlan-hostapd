@@ -22,14 +22,21 @@ Signed-off-by: Banka Sai Krishna <quic_banksaik@quicinc.com>
 
 --- a/src/ap/dfs.c
 +++ b/src/ap/dfs.c
-@@ -1403,6 +1403,10 @@ int hostapd_dfs_complete_cac(struct host
+@@ -1403,6 +1403,8 @@ int hostapd_dfs_complete_cac(struct host
  	}
  
  	if (success) {
 +		u8 seg0;
 +
-+		ieee80211_freq_to_chan(cf1, &seg0);
-+		hostapd_set_oper_centr_freq_seg0_idx(iface->conf, seg0);
  		/* Complete iface/ap configuration */
  		if (iface->drv_flags & WPA_DRIVER_FLAGS_DFS_OFFLOAD) {
  			/* Complete AP configuration for the first bring up. */
+@@ -1449,6 +1451,8 @@ int hostapd_dfs_complete_cac(struct host
+ 			 */
+ 			if (iface->state != HAPD_IFACE_ENABLED &&
+ 			    hostapd_is_dfs_chan_available(iface)) {
++				ieee80211_freq_to_chan(cf1, &seg0);
++				hostapd_set_oper_centr_freq_seg0_idx(iface->conf, seg0);
+ 				hostapd_setup_interface_complete(iface, 0);
+ 				iface->cac_started = 0;
+ 			}
