@@ -456,7 +456,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		if (use_existing && ifidx == -ENFILE) {
  			added = 0;
  			ifidx = if_nametoindex(ifname);
-@@ -11761,6 +11783,66 @@ static bool is_cmd_with_nested_attrs(uns
+@@ -11761,6 +11783,69 @@ static bool is_cmd_with_nested_attrs(uns
  	}
  }
  
@@ -502,6 +502,9 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
 +		goto fail;
 +
 +	attr = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA);
++	if (!attr)
++		goto fail;
++
 +	if (nla_put_u8(msg, QCA_WLAN_VENDOR_ATTR_CONFIG_INTF_OFFLOAD_TYPE,
 +		       ppe_vp_type))
 +		goto fail;
@@ -523,7 +526,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  static int nl80211_vendor_cmd(void *priv, unsigned int vendor_id,
  			      unsigned int subcmd, const u8 *data,
-@@ -14278,6 +14360,7 @@ static int wpa_driver_nl80211_can_share_
+@@ -14278,6 +14363,7 @@ static int wpa_driver_nl80211_can_share_
  	bss = drv->first_bss;
  	bss->drv = drv;
  	bss->ctx = ctx;
@@ -531,7 +534,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	os_strlcpy(bss->ifname, params->ifname, sizeof(bss->ifname));
  
-@@ -14313,7 +14396,7 @@ static int wpa_driver_nl80211_can_share_
+@@ -14313,7 +14399,7 @@ static int wpa_driver_nl80211_can_share_
  				      params->ifname, addr, ctx, drv_priv,
  				      force_ifname, if_addr,
  				      params->num_bridge && params->bridge[0] ? params->bridge[0] : NULL,
@@ -540,7 +543,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		wpa_printf(MSG_DEBUG, "nl80211: Failed to add BSS. Expect issues!");
  		goto free_all;
  	}
-@@ -14568,6 +14651,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -14568,6 +14654,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.get_drv_shared_status = wpa_driver_get_shared_status,
  	.can_share_drv = wpa_driver_nl80211_can_share_drv,
  	.set_scs = nl80211_set_scs,
