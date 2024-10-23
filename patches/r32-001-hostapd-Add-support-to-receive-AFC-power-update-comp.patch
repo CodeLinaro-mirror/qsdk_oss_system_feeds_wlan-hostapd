@@ -447,7 +447,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +			      u8 *count)
 +{
 +	struct nlattr *freq_info[QCA_WLAN_VENDOR_ATTR_AFC_FREQ_PSD_INFO_MAX + 1];
-+	u16 start_freq, end_freq;
++	u16 start_freq = 0, end_freq = 0;
 +
 +	if (nla_parse(freq_info, QCA_WLAN_VENDOR_ATTR_AFC_FREQ_PSD_INFO_MAX,
 +		      nla_data(nl), nla_len(nl), NULL)) {
