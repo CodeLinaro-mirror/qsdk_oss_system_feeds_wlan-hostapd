@@ -118,13 +118,13 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +{
 +	struct he_6ghz_pwr_mode_settings settings;
 +	unsigned int i, num_err =  0;
-+	int ret, err = 0;
++	int ret = 0, err = 0;
 +
 +	settings.pwr_mode =
 +		hapd->iface->power_mode_6ghz_before_change;
 +	for (i = 0; i < hapd->iface->num_bss; i++) {
 +		err = hostapd_drv_set_6ghz_pwr_mode(hapd->iface->bss[i], &settings);
-+		if (ret) {
++		if (err) {
 +			ret = err;
 +			num_err++;
 +		}
@@ -159,7 +159,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		ieee802_11_set_beacon(hapd);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4596,7 +4596,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4598,7 +4598,7 @@ static int hostapd_fill_csa_settings(str
  #ifdef CONFIG_IEEE80211BE
  	u16 old_punct_bitmap;
  #endif /* CONFIG_IEEE80211BE */
@@ -168,7 +168,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	u8 oper_centr_freq0_idx = 0;
  	u8 oper_centr_freq1_idx = 0;
  	int sec_channel_offset = settings->freq_params.sec_channel_offset;
-@@ -4670,6 +4670,8 @@ static int hostapd_fill_csa_settings(str
+@@ -4672,6 +4672,8 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -177,7 +177,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #ifdef CONFIG_IEEE80211BE
  	old_punct_bitmap = iface->conf->punct_bitmap;
  	iface->conf->punct_bitmap = settings->punct_bitmap;
-@@ -4730,6 +4732,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4732,6 +4734,7 @@ static int hostapd_fill_csa_settings(str
  	 hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
  	 hapd->parameter_set_count = 0;
  
@@ -187,7 +187,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		free_beacon_data(&settings->beacon_after);
 --- a/src/ap/interference.c
 +++ b/src/ap/interference.c
-@@ -499,6 +499,7 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -504,6 +504,7 @@ int hostapd_intf_awgn_detected(struct ho
  	settings.freq_params.vht_enabled = iface->conf->ieee80211ac;
  	settings.freq_params.he_enabled = iface->conf->ieee80211ax;
  	settings.freq_params.eht_enabled= iface->conf->ieee80211be;
