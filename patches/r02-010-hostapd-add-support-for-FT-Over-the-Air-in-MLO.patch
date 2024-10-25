@@ -1290,7 +1290,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		}
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -954,6 +954,7 @@ static const u8 * auth_skip_fixed_fields
+@@ -956,6 +956,7 @@ static const u8 * auth_skip_fixed_fields
  	 * (Presence of fields and elements in Authentications frames) */
  	switch (auth_alg) {
  	case WLAN_AUTH_OPEN:
@@ -1298,7 +1298,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		return pos;
  	case WLAN_AUTH_SAE:
  		if (auth_transaction == 1) {
-@@ -972,7 +973,6 @@ static const u8 * auth_skip_fixed_fields
+@@ -974,7 +975,6 @@ static const u8 * auth_skip_fixed_fields
  
  		return pos;
  	/* TODO: Support additional algorithms that can be used for MLO */
@@ -1447,7 +1447,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	p = hostapd_eid_ht_operation(hapd, p);
  
 +#ifdef CONFIG_IEEE80211R_AP
-+	if (phapd && hapd && (sta->auth_alg == WLAN_AUTH_FT)) {
++	if (phapd && (sta->auth_alg == WLAN_AUTH_FT)) {
 +		assoc_rsn_len = wpa_write_rsn_ie(&phapd->wpa_auth->conf,
 +						 assoc_rsne, sizeof(assoc_rsne),
 +						 sta->wpa_sm->pmk_r1_name);
