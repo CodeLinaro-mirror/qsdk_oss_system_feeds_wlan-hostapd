@@ -549,7 +549,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 -		critical_update |= NL80211_CU_ELEMID_ADDED;
 -		if (nla_put_u8(msg, NL80211_ATTR_SET_CRITICAL_UPDATE, critical_update))
 +		elems = nla_nest_start(msg, NL80211_ATTR_SET_CRITICAL_UPDATE);
-+		if (nla_put_u32(msg, NL80211_SET_CU_ATTR_ELEM_ADDED_BMAP, cu_bmap))
++		if (!elems || nla_put_u32(msg, NL80211_SET_CU_ATTR_ELEM_ADDED_BMAP, cu_bmap))
  			goto error;
 +		nla_nest_end(msg, elems);
  	}
