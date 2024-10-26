@@ -20,7 +20,20 @@ Signed-off-by: Monika Korada <quic_koramoni@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2762,6 +2762,8 @@ static int __ieee802_11_set_beacon(struc
+@@ -2725,8 +2725,11 @@ static int __ieee802_11_set_beacon(struc
+ 	struct hostapd_config *iconf = iface->conf;
+ 	struct hostapd_hw_modes *cmode = iface->current_mode;
+ 	struct wpabuf *beacon, *proberesp, *assocresp;
+-	int res, ret = -1, i;
++	int res, ret = -1;
++#ifdef CONFIG_DRIVER_NL80211_QCA
++	int i;
+ 	struct hostapd_hw_modes *mode;
++#endif
+ 
+ 	if (!hapd->drv_priv) {
+ 		wpa_printf(MSG_ERROR, "Interface is disabled");
+@@ -2805,6 +2808,8 @@ static int __ieee802_11_set_beacon(struc
  				    iconf->center_freq_device) == 0)
  		params.freq = &freq;
  
@@ -29,7 +42,7 @@ Signed-off-by: Monika Korada <quic_koramoni@quicinc.com>
  	for (i = 0; i < hapd->iface->num_hw_features; i++) {
  		mode = &hapd->iface->hw_features[i];
  
-@@ -2774,6 +2776,7 @@ static int __ieee802_11_set_beacon(struc
+@@ -2817,6 +2822,7 @@ static int __ieee802_11_set_beacon(struc
  						   iconf->acs_ch_list.num),
  						 true, &params.allowed_freqs);
  	}

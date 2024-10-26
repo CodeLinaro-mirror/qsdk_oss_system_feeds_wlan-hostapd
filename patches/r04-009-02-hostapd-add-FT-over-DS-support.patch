@@ -59,7 +59,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  int hostapd_sta_assoc(struct hostapd_data *hapd, const u8 *addr,
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3078,6 +3078,7 @@ static void hostapd_bss_setup_multi_link
+@@ -3086,6 +3086,7 @@ static void hostapd_bss_setup_multi_link
  	interfaces->mld = all_mld;
  	interfaces->mld[interfaces->mld_count] = mld;
  	interfaces->mld_count++;
@@ -123,7 +123,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  	sta = ap_get_sta(hapd, sa);
  	if (sta) {
-@@ -3322,6 +3334,23 @@ static void handle_auth(struct hostapd_d
+@@ -3323,6 +3335,23 @@ static void handle_auth(struct hostapd_d
  }
  
  
@@ -147,10 +147,11 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  static u8 hostapd_max_bssid_indicator(struct hostapd_data *hapd)
  {
  	size_t num_bss_nontx;
-@@ -5336,6 +5365,106 @@ void fils_hlp_timeout(void *eloop_ctx, v
+@@ -5344,6 +5373,103 @@ void fils_hlp_timeout(void *eloop_ctx, v
  #endif /* CONFIG_FILS */
  
  
++#ifdef CONFIG_IEEE80211R_AP
 +static const u8 *
 +hostapd_mlie_to_get_mld_addr_from_assoc(struct hostapd_data *hapd,
 +					const struct ieee80211_mgmt *mgmt,
@@ -159,9 +160,6 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +	struct ieee802_11_elems elems;
 +	const u8 *pos;
 +	int assoc_ies_len;
-+
-+	if (!hapd->mld->mld_addr)
-+		return NULL;
 +
 +	pos = reassoc ? mgmt->u.reassoc_req.variable : mgmt->u.assoc_req.variable;
 +	if (!pos)
@@ -187,7 +185,6 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +
 +	return get_basic_mle_mld_addr(elems.basic_mle, elems.basic_mle_len);
 +}
-+
 +
 +static struct sta_info *
 +get_sta_from_ft_ds_list(struct hostapd_data *hapd,
@@ -249,12 +246,12 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +
 +	return sta;
 +}
-+
++#endif /* CONFIG_IEEE80211R_AP */
 +
  static void handle_assoc(struct hostapd_data *hapd,
  			 const struct ieee80211_mgmt *mgmt, size_t len,
  			 int reassoc, int rssi)
-@@ -5409,6 +5538,11 @@ static void handle_assoc(struct hostapd_
+@@ -5417,6 +5543,11 @@ static void handle_assoc(struct hostapd_
  
  	sta = ap_get_sta(hapd, mgmt->sa);
  #ifdef CONFIG_IEEE80211R_AP
@@ -311,7 +308,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	struct sta_info *s;
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -119,6 +119,7 @@ struct sta_info {
+@@ -118,6 +118,7 @@ struct sta_info {
  	u8 supported_rates[WLAN_SUPP_RATES_MAX];
  	int supported_rates_len;
  	u8 qosinfo; /* Valid when WLAN_STA_WMM is set */
@@ -319,7 +316,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  #ifdef CONFIG_MESH
  	enum mesh_plink_state plink_state;
-@@ -394,6 +395,8 @@ int ap_for_each_sta(struct hostapd_data
+@@ -393,6 +394,8 @@ int ap_for_each_sta(struct hostapd_data
  		    int (*cb)(struct hostapd_data *hapd, struct sta_info *sta,
  			      void *ctx),
  		    void *ctx);
@@ -330,7 +327,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  void ap_sta_hash_add(struct hostapd_data *hapd, struct sta_info *sta);
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -825,6 +825,12 @@ int wpa_reconfig(struct wpa_authenticato
+@@ -824,6 +824,12 @@ int wpa_reconfig(struct wpa_authenticato
  }
  
  
@@ -343,7 +340,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  struct wpa_state_machine *
  wpa_auth_sta_init(struct wpa_authenticator *wpa_auth, const u8 *addr,
  		  const u8 *p2p_dev_addr)
-@@ -6159,6 +6165,15 @@ static void wpa_group_put(struct wpa_aut
+@@ -6154,6 +6160,15 @@ static void wpa_group_put(struct wpa_aut
  	wpa_group_free(wpa_auth, group);
  }
  
@@ -379,7 +376,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
  			    struct wpa_state_machine *sm);
  void wpa_auth_sta_no_wpa(struct wpa_state_machine *sm);
-@@ -647,5 +649,7 @@ void wpa_auth_ml_get_rsn_info(struct wpa
+@@ -648,5 +650,7 @@ void wpa_auth_ml_get_rsn_info(struct wpa
  void wpa_auth_ml_get_key_info(struct wpa_authenticator *a,
  			      struct wpa_auth_ml_link_key_info *info,
  			      bool mgmt_frame_prot, bool beacon_prot);

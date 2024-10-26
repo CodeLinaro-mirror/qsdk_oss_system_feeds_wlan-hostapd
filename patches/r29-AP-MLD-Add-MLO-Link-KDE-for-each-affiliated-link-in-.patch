@@ -18,7 +18,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -122,7 +122,9 @@ void wpa_release_link_auth_ref(struct wp
+@@ -121,7 +121,9 @@ void wpa_release_link_auth_ref(struct wp
  }
  
  struct wpa_get_link_auth_ctx {
@@ -29,7 +29,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  	struct wpa_authenticator *wpa_auth;
  };
  
-@@ -130,10 +132,34 @@ static int wpa_get_link_sta_auth(struct
+@@ -129,10 +131,34 @@ static int wpa_get_link_sta_auth(struct
  {
  	struct wpa_get_link_auth_ctx *ctx = data;
  
@@ -67,7 +67,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  }
  
  static int wpa_get_primary_wpa_auth_cb(struct wpa_authenticator *wpa_auth, void *data)
-@@ -4179,16 +4205,26 @@ static size_t wpa_auth_ml_kdes_len(struc
+@@ -4186,16 +4212,26 @@ static size_t wpa_auth_ml_kdes_len(struc
  
  	/* MLO Link KDE for each link */
  	for (link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
@@ -98,7 +98,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  	}
  
  	kde_len += wpa_auth_ml_group_kdes_len(sm);
-@@ -4197,7 +4233,6 @@ static size_t wpa_auth_ml_kdes_len(struc
+@@ -4204,12 +4240,14 @@ static size_t wpa_auth_ml_kdes_len(struc
  	return kde_len;
  }
  
@@ -106,14 +106,25 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  static u8 * wpa_auth_ml_kdes(struct wpa_state_machine *sm, u8 *pos)
  {
  #ifdef CONFIG_IEEE80211BE
-@@ -4212,42 +4247,50 @@ static u8 * wpa_auth_ml_kdes(struct wpa_
+ 	u8 link_id;
+-	u8 *start = pos, *len_pos;
++	u8 *start = pos;
++#ifdef CONFIG_IEEE80211R_AP
++	u8 *len_pos;
++#endif
+ 
+ 	if (sm->mld_assoc_link_id < 0)
+ 		return pos;
+@@ -4219,42 +4257,56 @@ static u8 * wpa_auth_ml_kdes(struct wpa_
  			  sm->own_mld_addr, ETH_ALEN, NULL, 0);
  
  	for (link_id = 0; link_id < MAX_NUM_MLD_LINKS; link_id++) {
 +		struct wpa_authenticator *wpa_auth;
 +		const u8 *rsne, *rsnxe;
 +		size_t rsne_len, rsnxe_len;
++#ifdef CONFIG_IEEE80211R_AP
  		u8 *rsne_start;
++#endif
  
 -		if (!sm->mld_links[link_id].valid)
 +		wpa_auth = wpa_get_link_auth(sm->wpa_auth, link_id);
@@ -135,7 +146,9 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 +			   rsne_len + rsnxe_len);
  
  		*pos++ = WLAN_EID_VENDOR_SPECIFIC;
++#ifdef CONFIG_IEEE80211R_AP
  		len_pos = pos;
++#endif
  		*pos++ = RSN_SELECTOR_LEN + 1 + ETH_ALEN +
 -			sm->mld_links[link_id].rsne_len +
 -			sm->mld_links[link_id].rsnxe_len;
@@ -158,18 +171,20 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 +		os_memcpy(pos, wpa_auth->addr, ETH_ALEN);
  		pos += ETH_ALEN;
  
++#ifdef CONFIG_IEEE80211R_AP
  		rsne_start = pos;
 -		if (sm->mld_links[link_id].rsne_len) {
 -			os_memcpy(pos, sm->mld_links[link_id].rsne,
 -				  sm->mld_links[link_id].rsne_len);
 -			pos += sm->mld_links[link_id].rsne_len;
++#endif
 +		if (rsne_len) {
 +			os_memcpy(pos, rsne, rsne_len);
 +			pos += rsne_len;
  		}
  
  #ifdef CONFIG_IEEE80211R_AP
-@@ -4269,10 +4312,9 @@ static u8 * wpa_auth_ml_kdes(struct wpa_
+@@ -4276,10 +4328,9 @@ static u8 * wpa_auth_ml_kdes(struct wpa_
  		}
  #endif /* CONFIG_IEEE80211R_AP */
  
@@ -183,7 +198,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  		}
  	}
  
-@@ -4283,7 +4325,6 @@ static u8 * wpa_auth_ml_kdes(struct wpa_
+@@ -4290,7 +4341,6 @@ static u8 * wpa_auth_ml_kdes(struct wpa_
  	return pos;
  }
  
@@ -191,7 +206,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
  {
  	u8 rsc[WPA_KEY_RSC_LEN], *_rsc, *gtk, *kde = NULL, *pos, stub_gtk[32];
-@@ -6956,6 +6997,8 @@ void wpa_auth_set_ml_info(struct wpa_sta
+@@ -6970,6 +7020,8 @@ void wpa_auth_set_ml_info(struct wpa_sta
          if (link_id != mld_assoc_link_id) {
                  sm->n_mld_affiliated_links++;
                  ctx.addr = link->local_addr;

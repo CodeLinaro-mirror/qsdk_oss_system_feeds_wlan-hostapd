@@ -109,7 +109,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	const u8 *pos, *end;
  	int sta_removed = 0;
  	bool success_status;
-+	u8 *dst = mgmt->sa;
++	const u8 *dst = mgmt->sa;
 +	u8 link_id = hapd->mld_link_id;
  
  	if (!groups)
@@ -117,7 +117,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
 +	if (hapd->conf->mld_ap && sta && sta->mld_info.mld_sta) {
 +		if (sta->unadded_sta) {
-+			dst = sta->mld_info.links[link_id].peer_addr;
++			dst = (const u8 *)sta->mld_info.links[link_id].peer_addr;
 +		}
 +	}
 +
@@ -176,7 +176,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	}
  
  	switch (auth_alg) {
-@@ -3318,7 +3357,13 @@ static void handle_auth(struct hostapd_d
+@@ -3316,7 +3355,13 @@ static void handle_auth(struct hostapd_d
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->conf->mld_ap && sta && sta->mld_info.mld_sta) {
@@ -191,7 +191,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		bssid = hapd->own_addr;
  	}
  #endif /* CONFIG_IEEE80211BE */
-@@ -3920,7 +3965,6 @@ end:
+@@ -3918,7 +3963,6 @@ end:
  
  #endif /* CONFIG_OWE */
  
@@ -199,7 +199,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  static bool check_sa_query(struct hostapd_data *hapd, struct sta_info *sta,
  			   int reassoc)
  {
-@@ -3948,6 +3992,27 @@ static bool check_sa_query(struct hostap
+@@ -3946,6 +3990,27 @@ static bool check_sa_query(struct hostap
  	return false;
  }
  
@@ -227,7 +227,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  static int __check_assoc_ies(struct hostapd_data *hapd, struct sta_info *sta,
  			     const u8 *ies, size_t ies_len,
-@@ -4139,6 +4204,9 @@ static int __check_assoc_ies(struct host
+@@ -4137,6 +4202,9 @@ static int __check_assoc_ies(struct host
  		if (check_sa_query(hapd, sta, reassoc))
  			return WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY;
  
@@ -237,7 +237,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		wpa_ie -= 2;
  		wpa_ie_len += 2;
  
-@@ -4152,6 +4220,7 @@ static int __check_assoc_ies(struct host
+@@ -4150,6 +4218,7 @@ static int __check_assoc_ies(struct host
  				   "Existing ML STA "MACSTR" on link %u is associating after "
  				   "SA query timeout on a different link %u", MAC2STR(sta->addr),
  				   sta->mld_assoc_link_id, link_id);
@@ -245,7 +245,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			wpa_auth_sta_deinit(sta->wpa_sm);
  			sta->wpa_sm = NULL;
  			sta->mld_assoc_link_id = link_id;
-@@ -4177,6 +4246,7 @@ static int __check_assoc_ies(struct host
+@@ -4175,6 +4244,7 @@ static int __check_assoc_ies(struct host
  							sta->addr,
  							p2p_dev_addr);
  
@@ -253,7 +253,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			if (!sta->wpa_sm) {
  				wpa_printf(MSG_WARNING,
  					   "Failed to initialize RSN state machine");
-@@ -4777,7 +4847,7 @@ static void hostapd_process_assoc_ml_inf
+@@ -4778,7 +4848,7 @@ static void hostapd_process_assoc_ml_inf
  			ap_sta_remove_link_sta(hapd, sta);
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->flags &= ~(WLAN_STA_ASSOC | WLAN_STA_AUTHORIZED);
@@ -301,7 +301,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	omit_rsnxe = !get_ie(pos, left, WLAN_EID_RSNX);
  
  	if (hostapd_get_aid(hapd, sta) < 0) {
-@@ -6625,10 +6703,13 @@ static void handle_auth_cb(struct hostap
+@@ -6624,10 +6702,13 @@ static void handle_auth_cb(struct hostap
  
  	sta = ap_get_sta(hapd, mgmt->da);
  	if (!sta) {
@@ -319,7 +319,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	}
  
  	if (len < IEEE80211_HDRLEN + sizeof(mgmt->u.auth)) {
-@@ -6796,9 +6877,12 @@ static void handle_assoc_cb(struct hosta
+@@ -6794,9 +6875,12 @@ static void handle_assoc_cb(struct hosta
  
  	sta = ap_get_sta(hapd, mgmt->da);
  	if (!sta) {
@@ -337,7 +337,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  #ifdef CONFIG_IEEE80211BE
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -1029,8 +1029,11 @@ sae_confirm_skip_fixed_fields(struct hos
+@@ -1030,8 +1030,11 @@ sae_confirm_skip_fixed_fields(struct hos
  	 */
  	sta = ap_get_sta(hapd, mgmt->sa);
  	if (!sta) {
@@ -353,15 +353,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	if (!sta->sae || sta->sae->state < SAE_COMMITTED || !sta->sae->tmp) {
 --- a/src/ap/ieee802_11_shared.c
 +++ b/src/ap/ieee802_11_shared.c
-@@ -232,6 +232,7 @@ void ieee802_11_sa_query_action(struct h
- 				size_t len)
- {
- 	struct sta_info *sta;
-+	struct sta_info *psta;
- 	int i;
- 	const u8 *sa = mgmt->sa;
- 	const u8 action_type = mgmt->u.action.u.sa_query_resp.action;
-@@ -335,6 +336,7 @@ void ieee802_11_sa_query_action(struct h
+@@ -335,6 +335,7 @@ void ieee802_11_sa_query_action(struct h
  		return;
  	}
  
@@ -487,7 +479,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 +
  void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
  {
- 	struct hostapd_data *vlan_bss = hapd;
+ 	int set_beacon = 0;
 @@ -556,6 +652,15 @@ void ap_handle_timer(void *eloop_ctx, vo
  	wpa_printf(MSG_DEBUG, "%s: %s: " MACSTR " flags=0x%x timeout_next=%d",
  		   hapd->conf->iface, __func__, MAC2STR(sta->addr), sta->flags,

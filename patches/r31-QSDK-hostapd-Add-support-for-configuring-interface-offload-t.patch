@@ -373,7 +373,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  					return -1;
 +			nl80211_vendor_cmd_if_offload_type((void *)drv,  OUI_QCA,
 +							   QCA_NL80211_VENDOR_SUBCMD_SET_WIFI_CONFIGURATION,
-+							   NULL, 0, 0, NULL, ifname,
++							   NULL, 0, 0, NULL, (char *)ifname,
 +							   ppe_vp_type, false);
  			return -ENFILE;
  		}
@@ -384,7 +384,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
 +	nl80211_vendor_cmd_if_offload_type((void *)drv,  OUI_QCA,
 +					   QCA_NL80211_VENDOR_SUBCMD_SET_WIFI_CONFIGURATION,
-+					   NULL, 0, 0, NULL, ifname,
++					   NULL, 0, 0, NULL, (char *)ifname,
 +					   ppe_vp_type, false);
  	return ret;
  }
@@ -456,7 +456,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		if (use_existing && ifidx == -ENFILE) {
  			added = 0;
  			ifidx = if_nametoindex(ifname);
-@@ -11762,6 +11784,66 @@ static bool is_cmd_with_nested_attrs(uns
+@@ -11761,6 +11783,66 @@ static bool is_cmd_with_nested_attrs(uns
  	}
  }
  
@@ -484,7 +484,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
 +	}
 +
 +	if (!drv)
-+		return NULL;
++		return -EINVAL;
 +
 +	ifidx = if_nametoindex(ifname);
 +
@@ -523,7 +523,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  static int nl80211_vendor_cmd(void *priv, unsigned int vendor_id,
  			      unsigned int subcmd, const u8 *data,
-@@ -14279,6 +14361,7 @@ static int wpa_driver_nl80211_can_share_
+@@ -14278,6 +14360,7 @@ static int wpa_driver_nl80211_can_share_
  	bss = drv->first_bss;
  	bss->drv = drv;
  	bss->ctx = ctx;
@@ -531,7 +531,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	os_strlcpy(bss->ifname, params->ifname, sizeof(bss->ifname));
  
-@@ -14314,7 +14397,7 @@ static int wpa_driver_nl80211_can_share_
+@@ -14313,7 +14396,7 @@ static int wpa_driver_nl80211_can_share_
  				      params->ifname, addr, ctx, drv_priv,
  				      force_ifname, if_addr,
  				      params->num_bridge && params->bridge[0] ? params->bridge[0] : NULL,
@@ -540,7 +540,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		wpa_printf(MSG_DEBUG, "nl80211: Failed to add BSS. Expect issues!");
  		goto free_all;
  	}
-@@ -14569,6 +14652,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -14568,6 +14651,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.get_drv_shared_status = wpa_driver_get_shared_status,
  	.can_share_drv = wpa_driver_nl80211_can_share_drv,
  	.set_scs = nl80211_set_scs,

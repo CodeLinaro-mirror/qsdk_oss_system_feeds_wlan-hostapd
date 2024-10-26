@@ -185,7 +185,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 @@ -4705,6 +4732,10 @@ static void hostapd_process_assoc_ml_inf
  {
  #ifdef CONFIG_IEEE80211BE
- 	unsigned int i, j;
+ 	unsigned int i;
 +	const u8 *mld_link_addr = NULL;
 +	bool mld_link_sta = false;
 +	u16 eml_cap = 0;
@@ -238,9 +238,9 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 +		}
 +	}
  	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
- 		struct hostapd_iface *iface = NULL;
  		struct hostapd_data *bss = NULL;
-@@ -4791,11 +4862,13 @@ static int add_associated_sta(struct hos
+ 		struct mld_link_info *link = &sta->mld_info.links[i];
+@@ -4790,11 +4861,13 @@ static int add_associated_sta(struct hos
  	bool mld_link_sta = false;
  	u16 eml_cap = 0;
  	u16 mld_cap = 0;
@@ -254,7 +254,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  		mld_link_sta = sta->mld_assoc_link_id != mld_link_id;
  		mld_link_addr = sta->mld_info.links[mld_link_id].peer_addr;
  
-@@ -4841,7 +4914,7 @@ static int add_associated_sta(struct hos
+@@ -4840,7 +4913,7 @@ static int add_associated_sta(struct hos
  		   wpa_auth_sta_ft_tk_already_set(sta->wpa_sm),
  		   wpa_auth_sta_fils_tk_already_set(sta->wpa_sm));
  
@@ -263,7 +263,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  	    (!(sta->flags & WLAN_STA_AUTHORIZED) ||
  	     (reassoc && sta->ft_over_ds && sta->auth_alg == WLAN_AUTH_FT) ||
  	     (!wpa_auth_sta_ft_tk_already_set(sta->wpa_sm) &&
-@@ -4905,7 +4978,7 @@ static int add_associated_sta(struct hos
+@@ -4904,7 +4977,7 @@ static int add_associated_sta(struct hos
  			       "Could not %s STA to kernel driver",
  			       set ? "set" : "add");
  
@@ -272,7 +272,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
-@@ -6627,6 +6700,7 @@ static void ieee80211_ml_link_sta_assoc_
+@@ -6625,6 +6698,7 @@ static void ieee80211_ml_link_sta_assoc_
  		ap_sta_set_authorized(hapd, sta, 1);
  
  	hostapd_set_sta_flags(hapd, sta);
@@ -342,7 +342,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  			      void *ctx),
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -106,15 +106,18 @@ void wpa_update_gkeydone(struct wpa_stat
+@@ -105,15 +105,18 @@ void wpa_update_gkeydone(struct wpa_stat
  void wpa_release_link_auth_ref(struct wpa_state_machine *sm, int release_link_id)
  {
  	int link_id;
@@ -364,7 +364,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  		}
  }
  
-@@ -318,6 +321,16 @@ int wpa_auth_for_each_auth(struct wpa_au
+@@ -317,6 +320,16 @@ int wpa_auth_for_each_auth(struct wpa_au
  }
  
  
@@ -381,7 +381,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  void wpa_auth_store_ptksa(struct wpa_authenticator *wpa_auth,
  			  const u8 *addr, int cipher,
  			  u32 life_time, const struct wpa_ptk *ptk)
-@@ -448,14 +461,14 @@ static void wpa_update_all_gtks(struct w
+@@ -447,14 +460,14 @@ static void wpa_update_all_gtks(struct w
  {
  	struct wpa_group *group, *next;
  	group = wpa_auth->group;
@@ -402,7 +402,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  }
  
  static int wpa_update_all_gtks_cb(struct wpa_authenticator *wpa_auth, void *ctx)
-@@ -945,8 +958,11 @@ static void wpa_free_sta_sm(struct wpa_s
+@@ -944,8 +957,11 @@ static void wpa_free_sta_sm(struct wpa_s
  	os_free(sm->wpa_ie);
  	os_free(sm->rsnxe);
  	for_each_sm_auth(sm, link_id) {
@@ -416,7 +416,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  	}
  	wpa_group_put(sm->wpa_auth, sm->group);
  #ifdef CONFIG_DPP2
-@@ -6866,95 +6882,79 @@ void wpa_auth_sta_radius_psk_resp(struct
+@@ -6865,95 +6881,79 @@ void wpa_auth_sta_radius_psk_resp(struct
  
  
  void wpa_auth_set_ml_info(struct wpa_state_machine *sm, const u8 *mld_addr,
