@@ -44,7 +44,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +{
 +#ifdef NEED_AP_MLME
 +	struct he_6ghz_pwr_mode_settings settings;
-+	int ret, he_6ghz_pwr_mode, err = 0;
++	int ret = 0, he_6ghz_pwr_mode, err = 0;
 +	unsigned int i, num_err = 0;
 +	char *end;
 +
@@ -98,7 +98,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
  					  char *pos)
  {
-@@ -4634,6 +4690,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4638,6 +4694,9 @@ static int hostapd_ctrl_iface_receive_pr
  	 } else if (os_strncmp(buf, "COLOR_CHANGE ", 12) == 0) {
  		 if (hostapd_ctrl_iface_color_change(hapd->iface, buf + 12))
  			 reply_len = -1;
@@ -226,7 +226,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		hostapd_event_update_muedca_params(hapd, &data->update_muedca);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2191,6 +2191,7 @@ static int setup_interface2(struct hosta
+@@ -2193,6 +2193,7 @@ static int setup_interface2(struct hosta
  {
  	iface->wait_channel_update = 0;
  	iface->is_no_ir = false;
@@ -234,7 +234,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  
  	if (hostapd_get_hw_features(iface)) {
  		/* Not all drivers support this yet, so continue without hw
-@@ -3001,6 +3002,7 @@ void hostapd_interface_deinit(struct hos
+@@ -3003,6 +3004,7 @@ void hostapd_interface_deinit(struct hos
  
  	eloop_cancel_timeout(channel_list_update_timeout, iface, NULL);
  	iface->wait_channel_update = 0;
