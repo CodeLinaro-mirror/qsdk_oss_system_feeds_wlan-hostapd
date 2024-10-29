@@ -137,25 +137,25 @@ Signed-off-by: Maharaja Kennadyrajan <quic_mkenna@quicinc.com>
 +	if (multi_hw_info != NULL) {
 +		wpa_s->multi_hw_info = multi_hw_info;
 +		wpa_s->num_multi_hws = num_multi_hws;
-+	}
 +
-+	for (int i = 0; i < num_multi_hws; i++) {
-+		struct hostapd_multi_hw_info *hw_info = &multi_hw_info[i];
-+		char str[1000];
-+		char *pos = str;
-+		char *end = pos + sizeof(str);
-+		int res;
++		for (int i = 0; i < num_multi_hws; i++) {
++			struct hostapd_multi_hw_info *hw_info = &multi_hw_info[i];
++			char str[1000];
++			char *pos = str;
++			char *end = pos + sizeof(str);
++			int res;
 +
-+		for (int j = 0; j < hw_info->num_freqs; j++) {
-+			res = os_snprintf(pos, end - pos, "%d, ", hw_info->freqs[j]);
-+			if (os_snprintf_error(end - pos, res))
-+				break;
-+			pos += res;
++			for (int j = 0; j < hw_info->num_freqs; j++) {
++				res = os_snprintf(pos, end - pos, "%d, ", hw_info->freqs[j]);
++				if (os_snprintf_error(end - pos, res))
++					break;
++				pos += res;
++			}
++
++			*pos = '\0';
++			wpa_printf(MSG_DEBUG, "    %d. hw_idx=%u, frequencies: %s",
++				   i + 1, hw_info->hw_idx, str);
 +		}
-+
-+		*pos = '\0';
-+		wpa_printf(MSG_DEBUG, "    %d. hw_idx=%u, frequencies: %s",
-+			   i + 1, hw_info->hw_idx, str);
 +	}
 +
  	capa_res = wpa_drv_get_capa(wpa_s, &capa);
@@ -173,7 +173,7 @@ Signed-off-by: Maharaja Kennadyrajan <quic_mkenna@quicinc.com>
  
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
-@@ -1544,6 +1544,8 @@ struct wpa_supplicant {
+@@ -1543,6 +1543,8 @@ struct wpa_supplicant {
  	/* Minimum bandwidth the driver supports RU puncturing */
  	u8 ru_punct_supp_bw;
  	unsigned int ml_neigh_retries;
