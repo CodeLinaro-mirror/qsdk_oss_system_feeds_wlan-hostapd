@@ -243,37 +243,47 @@ Signed-off-by: Naveen S <quic_naves@quicinc.com>
  	if (country_match(us_op_class_cc, country)) {
  		country_array = us_op_class;
 -		size = ARRAY_SIZE(us_op_class);
-+		size = get_country_op_class_size(us_op_class);
++		size = get_country_op_class_size(US_OP_CLASS);
  	} else if (country_match(eu_op_class_cc, country)) {
  		country_array = eu_op_class;
 -		size = ARRAY_SIZE(eu_op_class);
-+		size = get_country_op_class_size(eu_op_class);
++		size = get_country_op_class_size(EU_OP_CLASS);
  	} else if (country_match(jp_op_class_cc, country)) {
  		country_array = jp_op_class;
 -		size = ARRAY_SIZE(jp_op_class);
-+		size = get_country_op_class_size(jp_op_class);
++		size = get_country_op_class_size(JP_OP_CLASS);
  	} else if (country_match(cn_op_class_cc, country)) {
  		country_array = cn_op_class;
 -		size = ARRAY_SIZE(cn_op_class);
-+		size = get_country_op_class_size(cn_op_class);
++		size = get_country_op_class_size(CN_OP_CLASS);
  	} else {
  		/*
  		 * Countries that do not match any of the above countries use
-@@ -3455,3 +3453,11 @@ struct wpabuf * ieee802_11_defrag_mle(st
+@@ -3455,3 +3453,21 @@ struct wpabuf * ieee802_11_defrag_mle(st
  
  	return ieee802_11_defrag_data(data, len, true);
  }
 +
-+size_t get_country_op_class_size(struct country_op_class *op_class)
++size_t get_country_op_class_size(enum country_op_class_type type)
 +{
-+	if (op_class)
-+		return ARRAY_SIZE(op_class);
++	switch (type) {
++	case US_OP_CLASS:
++		return ARRAY_SIZE(us_op_class);
++	case EU_OP_CLASS:
++		return ARRAY_SIZE(eu_op_class);
++	case JP_OP_CLASS:
++		return ARRAY_SIZE(jp_op_class);
++	case CN_OP_CLASS:
++		return ARRAY_SIZE(cn_op_class);
++	default:
++		return 0;
++	}
 +
 +	return 0;
 +}
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -186,6 +186,41 @@ struct ieee802_11_elems {
+@@ -186,6 +186,48 @@ struct ieee802_11_elems {
  
  typedef enum { ParseOK = 0, ParseUnknown = 1, ParseFailed = -1 } ParseRes;
  
@@ -310,12 +320,19 @@ Signed-off-by: Naveen S <quic_naves@quicinc.com>
 +
 +extern struct country_op_class cn_op_class[];
 +
-+size_t get_country_op_class_size(struct country_op_class *op_class);
++enum country_op_class_type {
++	US_OP_CLASS,
++	EU_OP_CLASS,
++	JP_OP_CLASS,
++	CN_OP_CLASS,
++};
++
++size_t get_country_op_class_size(enum country_op_class_type type);
 +
  ParseRes ieee802_11_parse_elems(const u8 *start, size_t len,
  				struct ieee802_11_elems *elems,
  				int show_errors);
-@@ -228,6 +263,7 @@ int hostapd_config_tx_queue(struct hosta
+@@ -228,6 +270,7 @@ int hostapd_config_tx_queue(struct hosta
  			    const char *name, const char *val);
  enum hostapd_hw_mode ieee80211_freq_to_chan(int freq, u8 *channel);
  int ieee80211_chan_to_freq(const char *country, u8 op_class, u8 chan);
@@ -323,7 +340,7 @@ Signed-off-by: Naveen S <quic_naves@quicinc.com>
  enum hostapd_hw_mode
  ieee80211_freq_to_channel_ext(unsigned int freq, int sec_channel,
  			      enum oper_chan_width chanwidth,
-@@ -271,11 +307,6 @@ size_t mbo_add_ie(u8 *buf, size_t len, c
+@@ -271,11 +314,6 @@ size_t mbo_add_ie(u8 *buf, size_t len, c
  
  size_t add_multi_ap_ie(u8 *buf, size_t len, u8 value);
  
@@ -517,16 +534,16 @@ Signed-off-by: Naveen S <quic_naves@quicinc.com>
 +
 +		if (country_match(us_op_class_cc, country)) {
 +			country_array = us_op_class;
-+			size = get_country_op_class_size(us_op_class);
++			size = get_country_op_class_size(US_OP_CLASS);
 +		} else if (country_match(eu_op_class_cc, country)) {
 +			country_array = eu_op_class;
-+			size = get_country_op_class_size(eu_op_class);
++			size = get_country_op_class_size(EU_OP_CLASS);
 +		} else if (country_match(jp_op_class_cc, country)) {
 +			country_array = jp_op_class;
-+			size = get_country_op_class_size(jp_op_class);
++			size = get_country_op_class_size(JP_OP_CLASS);
 +		} else if (country_match(cn_op_class_cc, country)) {
 +			country_array = cn_op_class;
-+			size = get_country_op_class_size(cn_op_class);
++			size = get_country_op_class_size(CN_OP_CLASS);
 +		}
 +	} else {
 +		wpabuf_put_u8(buf, current);
