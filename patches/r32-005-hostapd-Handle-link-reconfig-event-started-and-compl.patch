@@ -46,7 +46,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_seqnum(const char *ifname, struct hostapd_data *hapd,
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2694,6 +2694,132 @@ static void hostapd_iface_disable(struct
+@@ -2694,6 +2694,114 @@ static void hostapd_iface_disable(struct
  	hapd->disabled = 1;
  }
  
@@ -56,7 +56,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +					      struct link_removal_event *ev,
 +					      enum wpa_event_type event)
 +{
-+	struct hostapd_data *phapd, *tx_hapd = NULL;
++	struct hostapd_data *phapd;
 +	struct hostapd_iface *iface, **tmp;
 +	unsigned int i;
 +	struct hapd_interfaces *interfaces;
@@ -145,31 +145,13 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +				if (phapd != hapd)
 +					break;
 +
-+			/* Save tx bss, if the link getting removed is from
-+			 * MBSSID
-+			 */
-+			if (hapd->iface->conf->mbssid != MBSSID_DISABLED) {
-+				tx_hapd = hostapd_mbssid_get_tx_bss(hapd);
-+				if (tx_hapd == hapd)
-+					tx_hapd = NULL;
-+			}
-+
 +			/* reconfigure GTK rekey primary auth */
 +			wpa_auth_reconfig_primary_auth(hapd->wpa_auth, phapd->wpa_auth);
 +
 +			hostapd_remove_bss(iface, i, true);
 +
-+			/* Refresh partner beacons */
-+			ieee802_11_set_beacon(phapd);
-+
-+			if (tx_hapd)
-+				ieee802_11_set_beacon(tx_hapd);
-+
-+			if (phapd->iface->conf->mbssid != MBSSID_DISABLED) {
-+				tx_hapd = hostapd_mbssid_get_tx_bss(phapd);
-+				if (tx_hapd != phapd)
-+					ieee802_11_set_beacon(tx_hapd);
-+			}
++			/* Refresh all the partner beacons */
++			hostapd_refresh_all_iface_beacons(phapd->iface);
 +		}
 +	}
 +}
@@ -179,7 +161,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static void hostapd_event_update_cu_param(struct hostapd_data *hapd,
  					  struct cu_event *cu_event)
  {
-@@ -3138,6 +3264,22 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -3138,6 +3246,22 @@ void hostapd_wpa_event(void *ctx, enum w
  		hostapd_event_afc_update_complete(hapd,
  						  &data->afc_rsp_info);
  		break;
@@ -261,7 +243,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	}
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -993,5 +993,8 @@ bool hostapd_is_usable_punct_bitmap(stru
+@@ -992,5 +992,8 @@ bool hostapd_is_usable_punct_bitmap(stru
  void hostapd_gen_per_sta_profiles(struct hostapd_data *hapd);
  size_t hostapd_eid_eht_ml_reconfig_len(struct hostapd_data *hapd);
  u8 * hostapd_eid_eht_reconf_ml(struct hostapd_data *hapd, u8 *eid);
@@ -317,8 +299,8 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			int i;
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -7519,3 +7519,28 @@ void wpa_auth_set_ml_info(struct wpa_sta
-  	}
+@@ -7542,3 +7542,28 @@ void wpa_auth_reset_ml_link_info(struct
+ 	}
  #endif /* CONFIG_IEEE80211BE */
  }
 +
@@ -348,7 +330,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +}
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
-@@ -684,7 +684,8 @@ void wpa_auth_ml_get_key_info(struct wpa
+@@ -685,7 +685,8 @@ void wpa_auth_ml_get_key_info(struct wpa
  
  void wpa_release_link_auth_ref(struct wpa_state_machine *sm,
  			       int release_link_id);
@@ -464,7 +446,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  #ifdef CONFIG_DRIVER_NL80211_QCA
  
  static void qca_nl80211_avoid_freq(struct wpa_driver_nl80211_data *drv,
-@@ -4878,6 +4918,12 @@ static void do_process_drv_event(struct
+@@ -4879,6 +4919,12 @@ static void do_process_drv_event(struct
  	case NL80211_CMD_AWGN_DETECT:
  		nl80211_awgn_event(bss, tb);
  		break;
