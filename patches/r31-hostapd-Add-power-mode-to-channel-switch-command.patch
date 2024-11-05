@@ -22,7 +22,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2824,6 +2824,11 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2831,6 +2831,11 @@ static int hostapd_ctrl_iface_chan_switc
  	if (iface->num_bss && iface->bss[0]->conf->mld_ap)
  		settings.link_id = iface->bss[0]->mld_link_id;
  #endif /* CONFIG_IEEE80211BE */
@@ -34,7 +34,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  
  	if (iface->num_hw_features > 1 &&
  	    !hostapd_ctrl_is_freq_in_cmode(iface->current_mode,
-@@ -2842,11 +2847,22 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2849,11 +2854,22 @@ static int hostapd_ctrl_iface_chan_switc
  		return ret;
  	}
  
@@ -57,7 +57,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		return ret;
  	}
  
-@@ -2890,6 +2906,9 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2897,6 +2913,9 @@ static int hostapd_ctrl_iface_chan_switc
  				   settings.freq_params.freq,
  				   settings.freq_params.sec_channel_offset,
  				   settings.freq_params.bandwidth);
@@ -67,7 +67,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  			return -1;
  		}
  
-@@ -2912,6 +2931,9 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2919,6 +2938,9 @@ static int hostapd_ctrl_iface_chan_switc
  		/* Perform CAC and switch channel */
  		iface->is_ch_switch_dfs = true;
  		hostapd_switch_channel_fallback(iface, &settings.freq_params);
@@ -77,7 +77,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		return 0;
  	}
  
-@@ -2935,6 +2957,9 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2942,6 +2964,9 @@ static int hostapd_ctrl_iface_chan_switc
  
  		err = hostapd_switch_channel(iface->bss[i], &settings);
  		if (err) {
@@ -120,29 +120,38 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	settings->freq_params.vht_enabled = !!os_strstr(pos, " vht");
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1204,6 +1204,21 @@ void hostapd_event_sta_opmode_changed(st
+@@ -1204,6 +1204,30 @@ void hostapd_event_sta_opmode_changed(st
  	}
  }
  
 +static int hostapd_switch_power_mode(struct hostapd_data *hapd)
 +{
 +	struct he_6ghz_pwr_mode_settings settings;
++	unsigned int i, num_err =  0;
++	int ret, err = 0;
 +
 +	settings.pwr_mode =
 +		hapd->iface->power_mode_6ghz_before_change;
 +	hapd->iface->power_mode_6ghz_before_change = -1;
-+	if (hostapd_drv_set_6ghz_pwr_mode(hapd, &settings)) {
-+		wpa_msg(hapd->msg_ctx, MSG_ERROR, AP_CSA_FINISHED
-+			"Power mode change failed");
-+		return -EINVAL;
++	for (i = 0; i < hapd->iface->num_bss; i++) {
++		err = hostapd_drv_set_6ghz_pwr_mode(hapd->iface->bss[i], &settings);
++		if (err) {
++			ret = err;
++			num_err++;
++		}
 +	}
 +
-+	return 0;
++	if (hapd->iface->num_bss != num_err)
++		return 0;
++
++	hapd->iface->power_mode_6ghz_before_change = -1;
++
++	return ret;
 +}
  
  void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  			     int offset, int width, int cf1, int cf2,
-@@ -1403,6 +1418,14 @@ void hostapd_event_ch_switch(struct host
+@@ -1403,6 +1427,14 @@ void hostapd_event_ch_switch(struct host
  
  	if (hapd->csa_in_progress &&
  	    freq == hapd->cs_freq_params.freq) {
@@ -223,7 +232,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11788,6 +11788,12 @@ static int nl80211_switch_channel(void *
+@@ -11798,6 +11798,12 @@ static int nl80211_switch_channel(void *
  	     nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID, settings->link_id)))
  		goto error;
  
