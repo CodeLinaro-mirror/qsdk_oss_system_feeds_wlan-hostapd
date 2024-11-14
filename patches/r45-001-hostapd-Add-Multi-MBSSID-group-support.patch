@@ -48,7 +48,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -612,6 +612,10 @@ ieee802_11_build_ap_params_mbssid(struct
+@@ -612,6 +612,10 @@ ieee802_11_build_ap_params_mbssid(struct hostapd_data *hapd,
  		params->mbssid.mbssid_tx_iface_linkid = -1;
  	len = hostapd_eid_mbssid_len(tx_bss, WLAN_FC_STYPE_BEACON, &elem_count,
  				     NULL, 0, &rnr_len);
@@ -59,6 +59,14 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  	if (!len || (iface->conf->mbssid == ENHANCED_MBSSID_ENABLED &&
  		     elem_count > iface->ema_max_periodicity))
  		goto fail;
+@@ -2516,6 +2520,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+ 				return -1;
+ 			}
+ 			complete = hapd->iconf->mbssid == MBSSID_ENABLED ||
++				   hapd->iconf->mbssid == MULTI_MBSSID_GROUP_ENABLED ||
+ 				   (hapd->iconf->mbssid == ENHANCED_MBSSID_ENABLED &&
+ 				    params->mbssid.mbssid_elem_count == 1);
+ 		}
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
 @@ -97,9 +97,12 @@ int hostapd_for_each_interface(struct ha
