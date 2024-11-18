@@ -742,7 +742,7 @@ hostapd_set_bss_options() {
 			# with WPS enabled, we got to be in unconfigured state.
 			wps_not_configured=1
 		;;
-		psk|sae|psk-sae)
+		psk|*sae*)
 			json_get_vars key wpa_psk_file
 			if [ "$auth_type" = "psk" ] && [ "$ppsk" -ne 0 ] ; then
 				json_get_vars auth_secret auth_port
@@ -848,7 +848,7 @@ hostapd_set_bss_options() {
 	esac
 
 	case "$auth_type" in
-		none|owe|psk|sae|psk-sae|wep)
+		none|owe|psk|*sae*|wep)
 			json_get_vars \
 			auth_server auth_port auth_secret \
 			ownip radius_client_addr
@@ -1044,7 +1044,7 @@ hostapd_set_bss_options() {
 			append bss_conf "rsn_preauth_interfaces=$network_bridge" "$N"
 		else
 			case "$auth_type" in
-			sae|psk-sae|owe)
+			*sae*|owe)
 				set_default auth_cache 1
 			;;
 			*)
@@ -1423,7 +1423,7 @@ wpa_supplicant_add_network() {
 		ssid_protection
 
 	case "$auth_type" in
-		sae|owe|eap2|eap192|eap-eap192)
+		sae*|ft-sae*|owe|eap2|eap192|eap-eap192)
 			set_default ieee80211w 2
 		;;
 		psk-sae)
@@ -1508,7 +1508,7 @@ wpa_supplicant_add_network() {
 		wps)
 			key_mgmt='WPS'
 		;;
-		psk|sae|psk-sae)
+		psk|*sae*)
 			local passphrase
 
 			if [ "$_w_mode" != "mesh" ]; then
@@ -1673,9 +1673,9 @@ wpa_supplicant_add_network() {
 		;;
 	esac
 
-	[ "$wpa_cipher" = GCMP ] && {
-		append network_data "pairwise=GCMP" "$N$T"
-		append network_data "group=GCMP" "$N$T"
+	[ -n "$wpa_cipher" ] && {
+		append network_data "pairwise=$wpa_cipher" "$N$T"
+		append network_data "group=$wpa_cipher" "$N$T"
 	}
 
 	[ "$mode" = mesh ] || {
