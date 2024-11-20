@@ -35,7 +35,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -2753,6 +2753,55 @@ static int hostapd_ctrl_check_freq_param
+@@ -2753,6 +2753,62 @@ static int hostapd_ctrl_check_freq_param
  #endif /* NEED_AP_MLME */
  
  
@@ -44,8 +44,8 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +{
 +#ifdef NEED_AP_MLME
 +	struct he_6ghz_pwr_mode_settings settings;
-+	struct hostapd_data *hapd = iface->bss[0];
-+	int ret, he_6ghz_pwr_mode;
++	int ret, he_6ghz_pwr_mode, err = 0;
++	unsigned int i, num_err = 0;
 +	char *end;
 +
 +	if (iface->power_mode_6ghz_before_change > -1) {
@@ -76,13 +76,20 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +	wpa_printf(MSG_DEBUG, "Setting user selected 6 GHz power mode: %d\n",
 +		   he_6ghz_pwr_mode);
 +
-+	ret = hostapd_drv_set_6ghz_pwr_mode(hapd, &settings);
-+	if (ret) {
-+		iface->power_mode_6ghz_before_change = -1;
-+		return -1;
++	for (i = 0; i < iface->num_bss; i++) {
++		err = hostapd_drv_set_6ghz_pwr_mode(iface->bss[i], &settings);
++		if (err) {
++			ret = err;
++			num_err++;
++		}
 +	}
 +
-+	return 0;
++	if (iface->num_bss != num_err)
++		return 0;
++
++	iface->power_mode_6ghz_before_change = -1;
++
++	return ret;
 +#else /* NEED_AP_MLME */
 +	return -1;
 +#endif /* NEED_AP_MLME */
@@ -91,7 +98,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  static int hostapd_ctrl_iface_chan_switch(struct hostapd_iface *iface,
  					  char *pos)
  {
-@@ -4975,6 +5024,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -4980,6 +5036,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "COLOR_CHANGE ", 13) == 0) {
  		if (hostapd_ctrl_iface_color_change(hapd->iface, buf + 13))
  			reply_len = -1;
@@ -237,7 +244,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #ifdef CONFIG_FST
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -767,6 +767,17 @@ struct hostapd_iface {
+@@ -766,6 +766,17 @@ struct hostapd_iface {
  	/* lowest observed noise floor in dBm */
  	s8 lowest_nf;
  
