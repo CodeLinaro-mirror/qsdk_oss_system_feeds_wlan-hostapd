@@ -477,3 +477,13 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
  const u8 * get_ie_ext(const u8 *ies, size_t len, u8 ext);
  const u8 * get_vendor_ie(const u8 *ies, size_t len, u32 vendor_type);
  
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -616,6 +616,7 @@ static void wpa_supplicant_cleanup(struc
+ 	eloop_cancel_timeout(wpas_network_reenabled, wpa_s, NULL);
+ 	eloop_cancel_timeout(wpas_clear_disabled_interface, wpa_s, NULL);
+ 	eloop_cancel_timeout(wpas_verify_ssid_beacon, wpa_s, NULL);
++	eloop_cancel_timeout(wpas_scan_for_rnr_entries, wpa_s, NULL);
+ 
+ 	wpas_wps_deinit(wpa_s);
+ 
