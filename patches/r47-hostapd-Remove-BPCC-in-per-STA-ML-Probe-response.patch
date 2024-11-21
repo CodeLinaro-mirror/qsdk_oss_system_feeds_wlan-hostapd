@@ -58,7 +58,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 @@ -5293,7 +5293,8 @@ rsnxe_done:
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
- 		if (hapd->conf->mld_ap && sta && sta->mld_info.mld_sta)
+ 		if (hapd->conf->mld_ap)
 -			p = hostapd_eid_eht_ml_assoc(hapd, sta, p);
 +			p = hostapd_eid_eht_ml_assoc(hapd, sta, p,
 +						     WLAN_FC_STYPE_ASSOC_RESP);
