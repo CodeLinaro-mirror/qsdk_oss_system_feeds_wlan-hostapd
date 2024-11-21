@@ -164,7 +164,7 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
  #endif /* BSS_H */
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -4249,6 +4249,49 @@ out:
+@@ -4249,6 +4249,51 @@ out:
  }
  
  
@@ -178,8 +178,10 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
 +	u8 link_count = 0, freq_count = 0;
 +
 +	/* If valid_links is not set, consider that all links are associated
++	 * Note: freq_list is not mandotary to present in station
++	 * configuration file.
 +	 */
-+	if (!valid_links)
++	if (!valid_links || !freq_list)
 +		return true;
 +
 +	freq = freq_list[i];
@@ -214,7 +216,7 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
  static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
  				       union wpa_event_data *data)
  {
-@@ -4578,6 +4621,17 @@ static void wpa_supplicant_event_assoc(s
+@@ -4578,6 +4623,17 @@ static void wpa_supplicant_event_assoc(s
  
  	if (wpa_s->current_ssid && wpa_s->current_ssid->enable_4addr_mode)
  		wpa_supplicant_set_4addr_mode(wpa_s);
