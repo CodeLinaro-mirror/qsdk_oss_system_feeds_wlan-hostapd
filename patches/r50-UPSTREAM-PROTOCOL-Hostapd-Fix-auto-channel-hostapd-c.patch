@@ -1,0 +1,76 @@
+From 318e00f8c9a4e6627bd44afc289da2d683da3309 Mon Sep 17 00:00:00 2001
+From: Karthik <quic_karm@quicinc.com>
+Date: Tue, 26 Nov 2024 15:59:07 +0530
+Subject: [PATCH] UPSTREAM:PROTOCOL: Hostapd: Fix auto channel hostapd crash
+
+AP is configured with auto channel in 2 GHz and 5 GHz bandwidth
+is more 20 MHz, Hostapd crashes due to the NULL pointer access in
+hostapd_event_get_survey().
+
+The ACS is activated for the 2.4 GHz band, initiating a scan with a 20-second
+timeout. The 2.4 GHz band updates the scan context accordingly.
+When the 5 GHz band is initialized, an HT40 scan is attempted due to the
+bandwidth exceeding 20 MHz. However, the driver returns a "Resource busy"
+message because of the ongoing ACS scan. An HT40 scan starts an eloop
+timer for a retry. The HT40 scan retry timer is triggered, and in the meantime,
+ACS scan results for the 2 GHz band are received. The HT40 scan is then
+prioritized, and the driver initiates a scan, updating the scan context
+for the 5 GHz band.
+
+When the ACS event survey is processed, it uses the updated scan context.
+During the survey event processing, the scan callback for the partner
+link (2.4 GHz ACS) is handled, which leads to a crash.
+
+Fix by intiating the HT scan after the ACS triggered scan is completed.
+
+Patch-depdendency: None
+
+Patch-work: None
+
+Feature: SCAN
+
+Signed-off-by: Karthik <quic_karm@quicinc.com>
+---
+ src/ap/hw_features.c | 30 ++++++++++++++++++++++++++++--
+ 1 file changed, 28 insertions(+), 2 deletions(-)
+
+diff --git a/src/ap/hw_features.c b/src/ap/hw_features.c
+index 22f442e..ef8119a 100644
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -522,6 +522,32 @@ static void ap_ht40_scan_retry(void *eloop_data, void *user_data)
+ 	struct wpa_driver_scan_params params;
+ 	int ret;
+ 
++#ifdef CONFIG_IEEE80211BE
++        struct hostapd_data *hapd;
++
++        if (iface->num_bss < 1 || !iface->bss || !iface->bss[0])
++                return;
++        hapd = iface->bss[0];
++
++        if (!hapd->iface->scan_cb && hapd->conf->mld_ap) {
++                /* Other links may be waiting for ACS scan result */
++                unsigned int i;
++
++                for (i = 0; i < hapd->iface->interfaces->count; i++) {
++                        struct hostapd_iface *h =
++                                hapd->iface->interfaces->iface[i];
++                        struct hostapd_data *h_hapd = h->bss[0];
++
++                        if (hostapd_is_ml_partner(hapd, h_hapd) &&
++                            h_hapd->iface->state == HAPD_IFACE_ACS) {
++                                wpa_printf(MSG_ERROR,
++                                           "ACS in Progress in Partner link - try to scan again");
++                                eloop_register_timeout(1, 0, ap_ht40_scan_retry, iface, NULL);
++                                return;
++                        }
++                }
++        }
++#endif /* CONFIG_IEEE80211BE */
+ 	os_memset(&params, 0, sizeof(params));
+ 	if (iface->current_mode->mode == HOSTAPD_MODE_IEEE80211G)
+ 		ieee80211n_scan_channels_2g4(iface, &params);
+-- 
+2.34.1
+
