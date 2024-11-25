@@ -444,7 +444,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 +	if (!sm_link->wpa_auth) {
 +		wpa_printf(MSG_ERROR, "Unable to find authenticator object for"
 +			   "ML STA "MACSTR" on link "MACSTR" link id %d",
-+			   MAC2STR(sm->wpa_auth->mld_addr), MAC2STR(sm_link->wpa_auth->mld_addr), link_id);
++			   MAC2STR(sm->wpa_auth->mld_addr), MAC2STR(sm_link->own_addr), link_id);
 +		return;
  	}
 +
