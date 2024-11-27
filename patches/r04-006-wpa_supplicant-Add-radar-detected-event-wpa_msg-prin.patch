@@ -23,16 +23,16 @@ Signed-off-by: Amith A <quic_amitajit@quicinc.com>
 
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2685,6 +2685,9 @@ static void nl80211_radar_event(struct i
+@@ -2699,6 +2699,9 @@ static void nl80211_radar_event(struct i
  	if (tb[NL80211_ATTR_RADAR_BITMAP])
  		data.dfs_event.radar_bitmap = nla_get_u16(tb[NL80211_ATTR_RADAR_BITMAP]);
  
 +	if (is_sta_interface(drv->nlmode))
 +		return nl80211_process_radar_event(bss, &data, event_type);
 +
- 	/* Finding a link match based on the frequency.
- 	 * If %NL80211_DRV_LINK_ID_NA is returned, then either match was
- 	 * not found or the bss could be operating as non-MLO.
+ 	wpa_printf(MSG_DEBUG, "nl80211: Checking suitable BSS for the DFS event");
+ 
+ 	/* It is possible to have the event without ifidx and wdev_id. For
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
 @@ -6543,9 +6543,12 @@ void supplicant_event(void *ctx, enum wp
