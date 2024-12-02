@@ -29,7 +29,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -8637,45 +8637,86 @@ static u8 * hostapd_eid_wb_channel_switc
+@@ -8638,45 +8638,86 @@ static u8 * hostapd_eid_wb_channel_switc
  					  u8 chan1, u8 chan2)
  {
  	u8 bw;
@@ -129,7 +129,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	*eid++ = chan1; /* New Channel Center Frequency Segment 0 */
  	*eid++ = chan2; /* New Channel Center Frequency Segment 1 */
  
-@@ -8757,7 +8798,7 @@ static u8 * hostapd_eid_bw_indication(st
+@@ -8758,7 +8799,7 @@ static u8 * hostapd_eid_bw_indication(st
  u8 * hostapd_eid_chsw_wrapper(struct hostapd_data *hapd, u8 *eid)
  {
  	u8 chan1 = 0, chan2 = 0;
@@ -138,24 +138,26 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	int freq1;
  
  	if (!hapd->cs_freq_params.channel ||
-@@ -8781,6 +8822,7 @@ u8 * hostapd_eid_chsw_wrapper(struct hos
+@@ -8779,6 +8820,7 @@ u8 * hostapd_eid_chsw_wrapper(struct hos
+ 				   &chan2) != HOSTAPD_MODE_IEEE80211A)
+ 		return eid;
+ 
++	start_pos = eid;
  	*eid++ = WLAN_EID_CHANNEL_SWITCH_WRAPPER;
  	eid_len_offset = eid++; /* Length of Channel Switch Wrapper element */
  
-+	start_pos = eid;
- 	eid = hostapd_eid_wb_channel_switch(hapd, eid, chan1, chan2);
- 
- #ifdef CONFIG_IEEE80211BE
-@@ -8790,6 +8832,9 @@ u8 * hostapd_eid_chsw_wrapper(struct hos
+@@ -8791,7 +8833,11 @@ u8 * hostapd_eid_chsw_wrapper(struct hos
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-+	if (eid == start_pos)
-+		return eid;
++	if (eid == start_pos + 2)
++		return start_pos;
 +
  	*eid_len_offset = (eid - eid_len_offset) - 1;
++
  	return eid;
  }
+ 
 --- a/src/common/hw_features_common.c
 +++ b/src/common/hw_features_common.c
 @@ -387,7 +387,7 @@ static void punct_update_legacy_bw_80(u8
