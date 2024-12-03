@@ -98,7 +98,18 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  		return ret;
  
  	if (freq_val >= 5900)
-@@ -195,8 +227,37 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
+@@ -188,6 +220,10 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
+ 	tmp_channel &= ~((8 << width) - 1);
+ 	center_idx = tmp_channel + center_ofs + (4 << width) - 1;
+ 
++	// Handle EHT240 in 5G
++	if (freq_val >= 5500 && freq_val <= 5730 && chanwidth == 9)
++		center_idx=130;
++
+ 	if (freq_val < 3000)
+ 		ucv_object_add(ret, "center_seg0_idx", ucv_int64_new(0));
+ 	else
+@@ -195,8 +231,37 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
  	center_idx = (center_idx - channel) * 5 + freq_val;
  	ucv_object_add(ret, "center_freq1", ucv_int64_new(center_idx));
  
@@ -140,7 +151,15 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	return ret;
 --- a/wpa_supplicant/ucode.c
 +++ b/wpa_supplicant/ucode.c
-@@ -275,6 +275,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -153,6 +153,7 @@ void wpas_ucode_event(struct wpa_supplic
+ 	if (event == EVENT_CH_SWITCH_STARTED) {
+ 		ucv_object_add(val, "csa_count", ucv_int64_new(data->ch_switch.count));
+ 		ucv_object_add(val, "frequency", ucv_int64_new(data->ch_switch.freq));
++		ucv_object_add(val, "chan_width", ucv_int64_new(data->ch_switch.ch_width));
+ 		ucv_object_add(val, "sec_chan_offset", ucv_int64_new(data->ch_switch.ch_offset));
+ 		ucv_object_add(val, "center_freq1", ucv_int64_new(data->ch_switch.cf1));
+ 		ucv_object_add(val, "center_freq2", ucv_int64_new(data->ch_switch.cf2));
+@@ -275,6 +276,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	uc_value_t *ret, *val;
  	uc_value_t *radio_id = uc_fn_arg(0);
  	int freq, hw_idx, i;
@@ -148,7 +167,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	struct wpa_mlo_signal_info mlo_si = {0};
  
  	if (!wpa_s)
-@@ -288,10 +289,8 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -288,10 +290,8 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	hw_idx = ucv_int64_get(radio_id);
  
  	if (wpa_s->wpa_state == WPA_COMPLETED && wpa_s->valid_links) {
@@ -159,7 +178,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  			if ( hw_idx == wpa_get_hw_idx_by_freq(wpa_s, freq )) {
  				ucv_object_add(ret, "frequency", ucv_int64_new(freq));
  				if (wpa_drv_mlo_signal_poll(wpa_s, &mlo_si) == 0) {
-@@ -299,11 +298,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -299,11 +299,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  						ucv_object_add(ret, "chan_width", ucv_int64_new(mlo_si.links[i].chanwidth));
  						ucv_object_add(ret, "center_freq1", ucv_int64_new(mlo_si.links[i].center_frq1));
  						ucv_object_add(ret, "center_freq2", ucv_int64_new(mlo_si.links[i].center_frq2));
@@ -171,7 +190,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  				}
  			}
  		}
-@@ -330,6 +325,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -330,6 +326,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  
  		ucv_object_add(ret, "sec_chan_offset", ucv_int64_new(sec_chan));
  		ucv_object_add(ret, "frequency", ucv_int64_new(bss->freq));
