@@ -151,7 +151,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	return ret;
 --- a/wpa_supplicant/ucode.c
 +++ b/wpa_supplicant/ucode.c
-@@ -153,6 +153,7 @@ void wpas_ucode_event(struct wpa_supplic
+@@ -158,6 +158,7 @@ void wpas_ucode_event(struct wpa_supplic
  	if (event == EVENT_CH_SWITCH_STARTED) {
  		ucv_object_add(val, "csa_count", ucv_int64_new(data->ch_switch.count));
  		ucv_object_add(val, "frequency", ucv_int64_new(data->ch_switch.freq));
@@ -159,15 +159,15 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  		ucv_object_add(val, "sec_chan_offset", ucv_int64_new(data->ch_switch.ch_offset));
  		ucv_object_add(val, "center_freq1", ucv_int64_new(data->ch_switch.cf1));
  		ucv_object_add(val, "center_freq2", ucv_int64_new(data->ch_switch.cf2));
-@@ -275,6 +276,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
- 	uc_value_t *ret, *val;
+@@ -281,6 +282,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	uc_value_t *radio_id = uc_fn_arg(0);
- 	int freq, hw_idx, i;
+ 	s8 hw_idx;
+ 	int freq, i;
 +	struct wpa_signal_info si = {0};
  	struct wpa_mlo_signal_info mlo_si = {0};
  
  	if (!wpa_s)
-@@ -288,10 +290,8 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -294,10 +296,8 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	hw_idx = ucv_int64_get(radio_id);
  
  	if (wpa_s->wpa_state == WPA_COMPLETED && wpa_s->valid_links) {
@@ -178,7 +178,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  			if ( hw_idx == wpa_get_hw_idx_by_freq(wpa_s, freq )) {
  				ucv_object_add(ret, "frequency", ucv_int64_new(freq));
  				if (wpa_drv_mlo_signal_poll(wpa_s, &mlo_si) == 0) {
-@@ -299,11 +299,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -305,11 +305,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  						ucv_object_add(ret, "chan_width", ucv_int64_new(mlo_si.links[i].chanwidth));
  						ucv_object_add(ret, "center_freq1", ucv_int64_new(mlo_si.links[i].center_frq1));
  						ucv_object_add(ret, "center_freq2", ucv_int64_new(mlo_si.links[i].center_frq2));
@@ -190,7 +190,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  				}
  			}
  		}
-@@ -330,6 +326,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -336,6 +332,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  
  		ucv_object_add(ret, "sec_chan_offset", ucv_int64_new(sec_chan));
  		ucv_object_add(ret, "frequency", ucv_int64_new(bss->freq));
