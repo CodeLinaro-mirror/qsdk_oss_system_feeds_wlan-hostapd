@@ -27,6 +27,8 @@ bit in state machine's ml info.
 Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 Signed-off-by: Vignesh C <quic_vignc@quicinc.com>
 Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
+Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
+Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 ---
  src/ap/ieee802_11.c     | 113 +++++++++++++++++++++++++------
  src/ap/ieee802_11_eht.c |   3 +
@@ -105,7 +107,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
  							sta->addr,
  							p2p_dev_addr);
-@@ -4290,14 +4313,16 @@ static int __check_assoc_ies(struct host
+@@ -4290,14 +4313,18 @@ static int __check_assoc_ies(struct host
  		}
  
  #ifdef CONFIG_IEEE80211BE
@@ -115,6 +117,8 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  				   "MLD: %s ML info in RSN Authenticator",
  				   init ? "Set" : "Reset");
 -			wpa_auth_set_ml_info(sta->wpa_sm,
++			sta->wpa_sm->n_mld_affiliated_links = 0;
++			wpa_auth_reset_ml_link_info(sta->wpa_sm, sta->mld_assoc_link_id);
 +			wpa_auth_set_ml_info(sta->wpa_sm, hapd->mld_link_id,
  					     sta->mld_assoc_link_id,
  					     info);
@@ -124,7 +128,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  #endif /* CONFIG_IEEE80211BE */
  
  		wpa_auth_set_auth_alg(sta->wpa_sm, sta->auth_alg);
-@@ -4765,8 +4790,10 @@ static int ieee80211_ml_process_link(str
+@@ -4765,8 +4792,11 @@ static int ieee80211_ml_process_link(str
  		goto out;
  	}
  
@@ -133,10 +137,20 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	sta->mld_assoc_link_id = origin_sta->mld_assoc_link_id;
 +	sta->sa_query_timed_out = origin_sta->sa_query_timed_out;
 +	sta->wpa_sm = origin_sta->wpa_sm;
++	ap_sta_set_mld(sta, true);
  
  	status = __check_assoc_ies(hapd, sta, NULL, 0, &elems, reassoc, true);
  	if (status != WLAN_STATUS_SUCCESS) {
-@@ -4801,12 +4828,6 @@ static int ieee80211_ml_process_link(str
+@@ -4774,8 +4804,6 @@ static int ieee80211_ml_process_link(str
+ 		goto out;
+ 	}
+ 
+-	ap_sta_set_mld(sta, true);
+-
+ 	os_memcpy(&sta->mld_info, &origin_sta->mld_info, sizeof(sta->mld_info));
+ 	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
+ 		struct mld_link_info *li = &sta->mld_info.links[i];
+@@ -4801,12 +4829,6 @@ static int ieee80211_ml_process_link(str
  			ieee802_11_update_beacons(hapd->iface);
  	}
  
@@ -149,7 +163,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	/*
  	 * Do not initialize the EAPOL state machine.
  	 * TODO: Maybe it is needed?
-@@ -4816,7 +4837,7 @@ static int ieee80211_ml_process_link(str
+@@ -4816,7 +4838,7 @@ static int ieee80211_ml_process_link(str
  	wpa_printf(MSG_DEBUG, "MLD: link=%u, association OK (aid=%u)",
  		   hapd->mld_link_id, sta->aid);
  
@@ -158,7 +172,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	sta->vlan_id = origin_sta->vlan_id;
  
  	/* TODO: What other processing is required? */
-@@ -4831,10 +4852,15 @@ out:
+@@ -4831,10 +4853,15 @@ out:
  		ieee80211_ml_build_assoc_resp(hapd, phapd, sta, link);
  
  	wpa_printf(MSG_DEBUG, "MLD: link: status=%u", status);
@@ -177,7 +191,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	}
  
  	return 0;
-@@ -4864,10 +4890,54 @@ int hostapd_process_assoc_ml_info(struct
+@@ -4864,10 +4891,54 @@ int hostapd_process_assoc_ml_info(struct
  {
  #ifdef CONFIG_IEEE80211BE
  	unsigned int i;
@@ -232,7 +246,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
  		struct hostapd_data *bss = NULL;
  		struct mld_link_info *link = &sta->mld_info.links[i];
-@@ -4997,7 +5067,7 @@ static int add_associated_sta(struct hos
+@@ -4997,7 +5068,7 @@ static int add_associated_sta(struct hos
  		   wpa_auth_sta_ft_tk_already_set(sta->wpa_sm),
  		   wpa_auth_sta_fils_tk_already_set(sta->wpa_sm));
  
@@ -241,7 +255,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	    (!(sta->flags & WLAN_STA_AUTHORIZED) ||
  	     (reassoc && sta->ft_over_ds && sta->auth_alg == WLAN_AUTH_FT) ||
  	     (!wpa_auth_sta_ft_tk_already_set(sta->wpa_sm) &&
-@@ -5061,7 +5131,7 @@ static int add_associated_sta(struct hos
+@@ -5061,7 +5132,7 @@ static int add_associated_sta(struct hos
  			       "Could not %s STA to kernel driver",
  			       set ? "set" : "add");
  
@@ -250,7 +264,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
-@@ -7044,6 +7114,7 @@ static void handle_assoc_cb(struct hosta
+@@ -7044,6 +7115,7 @@ static void handle_assoc_cb(struct hosta
  	}
  
  	hostapd_set_sta_flags(hapd, sta);
