@@ -12,7 +12,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2691,6 +2691,28 @@ static void hostapd_iface_disable(struct
+@@ -2705,6 +2705,30 @@ static void hostapd_iface_disable(struct
  
  
  #ifdef CONFIG_IEEE80211BE
@@ -34,6 +34,8 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		sta->mld_assoc_link_id = phapd->mld_link_id;
 +	}
 +
++	set_valid_for_each_partner_link_sta(hapd, sta, false);
++
 +	return 0;
 +}
 +
@@ -41,7 +43,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static void hostapd_update_link_removal_field(struct hostapd_data *hapd,
  					      struct link_removal_event *ev,
  					      enum wpa_event_type event)
-@@ -2769,6 +2791,8 @@ static void hostapd_update_link_removal_
+@@ -2801,6 +2825,8 @@ static void hostapd_update_link_removal_
  			/* reconfigure GTK rekey primary auth */
  			wpa_auth_reconfig_primary_auth(hapd->wpa_auth, phapd->wpa_auth);
  
@@ -49,10 +51,10 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +
  			hostapd_remove_bss(iface, i, true);
  
- 			/* Refresh partner beacons */
+ 			/* Refresh all the partner beacons */
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -7544,3 +7544,19 @@ void wpa_auth_reconfig_primary_auth(stru
+@@ -7567,3 +7567,19 @@ void wpa_auth_reconfig_primary_auth(stru
  			       wpa_rekey_gtk, wpa_pauth, NULL);
  #endif /* CONFIG_IEEE80211BE */
  }
@@ -74,7 +76,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +}
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
-@@ -686,6 +686,9 @@ void wpa_release_link_auth_ref(struct wp
+@@ -687,6 +687,9 @@ void wpa_release_link_auth_ref(struct wp
  			       int release_link_id);
  void wpa_auth_reconfig_primary_auth(struct wpa_authenticator *wpa_auth,
  				    struct wpa_authenticator *wpa_pauth);
@@ -86,7 +88,35 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if (sm->mld_links[link_id].valid &&			\
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -922,6 +922,55 @@ struct sta_info * ap_sta_add(struct host
+@@ -576,6 +576,27 @@ void hostapd_free_link_stas(struct hosta
+ 		ap_free_sta(hapd, prev);
+ 	}
+ }
++
++
++void set_valid_for_each_partner_link_sta(struct hostapd_data *hapd,
++					 struct sta_info *psta,
++					 int valid)
++{
++	struct sta_info *lsta;
++	struct hostapd_data *lhapd;
++
++	if (!psta->mld_info.mld_sta)
++		return;
++
++	for_each_mld_link(lhapd, hapd) {
++		if (lhapd == hapd)
++			continue;
++
++		lsta = ap_get_sta(lhapd, psta->addr);
++		if (lsta)
++			lsta->mld_info.links[hapd->mld_link_id].valid = valid;
++	}
++}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ 
+@@ -922,6 +943,55 @@ struct sta_info * ap_sta_add(struct host
  }
  
  
@@ -175,3 +205,11 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  int ap_for_each_sta(struct hostapd_data *hapd,
  		    int (*cb)(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -455,4 +478,7 @@ void ap_sta_free_sta_profile(struct mld_
+ 
+ void hostapd_free_link_stas(struct hostapd_data *hapd);
+ 
++void set_valid_for_each_partner_link_sta(struct hostapd_data *hapd,
++                                           struct sta_info *psta,
++                                           int valid);
+ #endif /* STA_INFO_H */
