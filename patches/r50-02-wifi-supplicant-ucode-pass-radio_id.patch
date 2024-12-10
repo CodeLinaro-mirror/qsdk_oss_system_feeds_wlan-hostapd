@@ -29,22 +29,25 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  }
 --- a/wpa_supplicant/ucode.c
 +++ b/wpa_supplicant/ucode.c
-@@ -13,6 +13,22 @@ static uc_resource_type_t *global_type,
+@@ -13,6 +13,25 @@ static uc_resource_type_t *global_type,
  static uc_value_t *global, *iface_registry;
  static uc_vm_t *vm;
  
 +void wpas_ucode_update_radio_id(const char *ifname, int id) {
 +	struct wpa_supplicant *wpa_s = NULL;
-+        for (wpa_s = wpa_global->ifaces; wpa_s; wpa_s = wpa_s->next)
-+                if (!strcmp(wpa_s->ifname, ifname))
-+                        break;
++	for (wpa_s = wpa_global->ifaces; wpa_s; wpa_s = wpa_s->next)
++		if (!strcmp(wpa_s->ifname, ifname))
++			break;
 +
-+        if (!wpa_s) {
-+		wpa_printf(MSG_ERROR, "%s: updated null nga", __func__);
++	if (!wpa_s) {
++		wpa_printf(MSG_ERROR, "%s: wpa_s data not found", __func__);
 +		return;
 +	}
 +
-+	wpa_s->ucode.radio_bitmap |= BIT(id);
++	if (id == -1)
++		wpa_s->ucode.radio_bitmap = 0;
++	else
++		wpa_s->ucode.radio_bitmap |= BIT(id);
 +	wpa_printf(MSG_INFO, "%s: updated radio_id %d for %s", __func__,
 +		   wpa_s->ucode.radio_bitmap, wpa_s->ifname);
 +}
@@ -52,7 +55,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  static uc_value_t *
  wpas_ucode_iface_get_uval(struct wpa_supplicant *wpa_s)
  {
-@@ -27,6 +43,15 @@ wpas_ucode_iface_get_uval(struct wpa_sup
+@@ -27,6 +46,15 @@ wpas_ucode_iface_get_uval(struct wpa_sup
  	return val;
  }
  
@@ -68,7 +71,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  static void
  wpas_ucode_update_interfaces(void)
  {
-@@ -77,6 +102,8 @@ void wpas_ucode_update_state(struct wpa_
+@@ -77,6 +105,8 @@ void wpas_ucode_update_state(struct wpa_
  	const char *state;
  	uc_value_t *val;
  
@@ -77,7 +80,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  	val = wpa_ucode_registry_get(iface_registry, wpa_s->ucode.idx);
  	if (!val)
  		return;
-@@ -86,9 +113,10 @@ void wpas_ucode_update_state(struct wpa_
+@@ -86,9 +116,10 @@ void wpas_ucode_update_state(struct wpa_
  
  	state = wpa_supplicant_state_txt(wpa_s->wpa_state);
  	uc_value_push(ucv_get(ucv_string_new(wpa_s->ifname)));
@@ -89,30 +92,29 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  	ucv_gc(vm);
  }
  
-@@ -96,6 +124,7 @@ void wpas_ucode_event(struct wpa_supplic
+@@ -96,6 +127,7 @@ void wpas_ucode_event(struct wpa_supplic
  {
  	const char *state;
  	uc_value_t *val;
-+	int hw_idx;
++	s8 hw_idx;
  
  	if (event != EVENT_CH_SWITCH_STARTED)
  		return;
-@@ -108,6 +137,14 @@ void wpas_ucode_event(struct wpa_supplic
+@@ -108,6 +140,13 @@ void wpas_ucode_event(struct wpa_supplic
  		return;
  
  	uc_value_push(ucv_get(ucv_string_new(wpa_s->ifname)));
-+	if (wpa_s->valid_links) {
-+		hw_idx = wpa_get_hw_idx_by_freq(wpa_s, data->ch_switch.freq);
-+		wpa_printf(MSG_INFO, "%s: updated hw_id as %d", __func__,hw_idx);
-+		uc_value_push(ucv_get(ucv_int64_new(hw_idx)));
-+	} else {
-+		wpa_printf(MSG_INFO, "%s: updated radio_id as %d", __func__,wpa_s->ucode.radio_bitmap);
-+		uc_value_push(ucv_get(ucv_int64_new(wpa_s->ucode.radio_bitmap)));
-+	}
++	hw_idx = wpa_get_hw_idx_by_freq(wpa_s, data->ch_switch.freq);
++	if (hw_idx == -1)
++		hw_idx = 0;
++
++	wpa_printf(MSG_INFO, "%s: updated hw_id as %d", __func__,hw_idx);
++	uc_value_push(ucv_get(ucv_int64_new(hw_idx)));
++
  	uc_value_push(ucv_get(val));
  	uc_value_push(ucv_get(ucv_string_new(event_to_string(event))));
  	val = ucv_object_new(vm);
-@@ -121,7 +158,7 @@ void wpas_ucode_event(struct wpa_supplic
+@@ -121,7 +160,7 @@ void wpas_ucode_event(struct wpa_supplic
  		ucv_object_add(val, "center_freq2", ucv_int64_new(data->ch_switch.cf2));
  	}
  
@@ -121,7 +123,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  	ucv_gc(vm);
  }
  
-@@ -141,12 +178,23 @@ uc_wpas_add_iface(uc_vm_t *vm, size_t na
+@@ -141,12 +180,23 @@ uc_wpas_add_iface(uc_vm_t *vm, size_t na
  	uc_value_t *bridge = ucv_object_get(info, "bridge", NULL);
  	uc_value_t *config = ucv_object_get(info, "config", NULL);
  	uc_value_t *ctrl = ucv_object_get(info, "ctrl", NULL);
@@ -145,7 +147,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  	iface = (struct wpa_interface){
  		.driver = "nl80211",
  		.ifname = ucv_string_get(ifname),
-@@ -174,9 +222,22 @@ uc_wpas_add_iface(uc_vm_t *vm, size_t na
+@@ -174,9 +224,22 @@ uc_wpas_add_iface(uc_vm_t *vm, size_t na
  	if (!iface.ifname || !iface.confname)
  		goto out;
  
@@ -168,7 +170,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  out:
  	return ucv_int64_new(ret);
  }
-@@ -212,6 +273,9 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -212,6 +275,9 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	struct wpa_supplicant *wpa_s = uc_fn_thisval("wpas.iface");
  	struct wpa_bss *bss;
  	uc_value_t *ret, *val;
@@ -178,7 +180,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  
  	if (!wpa_s)
  		return NULL;
-@@ -221,6 +285,31 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -221,6 +287,31 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	val = ucv_string_new(wpa_supplicant_state_txt(wpa_s->wpa_state));
  	ucv_object_add(ret, "state", ucv_get(val));
  
@@ -210,7 +212,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  	bss = wpa_s->current_bss;
  	if (bss) {
  		int sec_chan = 0;
-@@ -251,7 +340,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -251,7 +342,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  		ucv_object_add(ret, "frequency", ucv_int64_new(ifmsh->freq));
  	}
  #endif
@@ -249,7 +251,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  				       struct wpa_channel_info *ci)
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -9631,6 +9631,13 @@ int wpas_disable_mac_addr_randomization(
+@@ -9632,6 +9632,13 @@ int wpas_disable_mac_addr_randomization(
  	return 0;
  }
  
@@ -263,3 +265,12 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  
  int wpa_drv_signal_poll(struct wpa_supplicant *wpa_s,
  			struct wpa_signal_info *si)
+--- a/wpa_supplicant/bss.h
++++ b/wpa_supplicant/bss.h
+@@ -244,5 +244,6 @@ const u8 * wpa_bss_get_rsnxe(struct wpa_
+ 			     bool mlo);
+ const u8 * wpa_bss_get_ie_pos(const struct wpa_bss *bss, u8 ie, u8 idx);
+ u8 wpa_bss_get_mbssid_idx(const struct wpa_bss *bss);
++s8 wpa_get_hw_idx_by_freq(struct wpa_supplicant *wpa_s, int partner_freq);
+ 
+ #endif /* BSS_H */
