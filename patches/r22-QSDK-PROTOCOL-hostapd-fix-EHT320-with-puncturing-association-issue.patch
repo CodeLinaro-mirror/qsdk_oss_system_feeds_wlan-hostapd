@@ -1,7 +1,7 @@
 From 4f11f80f8e8f693694190dcfa744e08afc9eb6ec Mon Sep 17 00:00:00 2001
 From: Ajith C <quic_ajithc@quicinc.com>
 Date: Thu, 14 Mar 2024 15:19:01 +0530
-Subject: [PATCH] hostapd: Fix association issue with EHT320 and puncturing
+Subject: [PATCH] QSDK:PROTOCOL:hostapd: Fix association issue with EHT320 and puncturing
  bitmap
 
 Currently some specific STAs fails to associate with AP running
@@ -39,7 +39,7 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
 +	}
 +
  	eht_oper_info_present = chwidth == CONF_OPER_CHWIDTH_320MHZ ||
- 					   punct_bitmap;
+ 		punct_bitmap;
  
 @@ -259,9 +270,6 @@ u8 * hostapd_eid_eht_operation(struct ho
  		return pos + elen;
@@ -51,7 +51,8 @@ Signed-off-by: Ajith C <quic_ajithc@quicinc.com>
  
  	switch (chwidth) {
  	case CONF_OPER_CHWIDTH_320MHZ:
-@@ -294,6 +302,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+@@ -293,6 +301,7 @@ u8 * hostapd_eid_eht_operation(struct ho
+ 
  		break;
  	default:
 +		punct_bitmap = 0;

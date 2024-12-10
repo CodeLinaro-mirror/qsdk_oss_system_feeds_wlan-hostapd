@@ -46,10 +46,11 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		 * initialized before association, but for other modes,
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
-@@ -1632,6 +1632,7 @@ struct wpa_supplicant {
- 
- 	/* Minimum bandwidth the driver supports RU puncturing */
- 	u8 ru_punct_supp_bw;
+@@ -1629,6 +1629,8 @@ struct wpa_supplicant {
+ 	u64 first_beacon_tsf;
+ 	unsigned int beacons_checked;
+ 	unsigned int next_beacon_check;
++
 +	unsigned int ml_neigh_retries;
  };
  

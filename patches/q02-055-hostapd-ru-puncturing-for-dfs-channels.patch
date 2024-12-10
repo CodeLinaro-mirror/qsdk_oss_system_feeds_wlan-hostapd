@@ -338,9 +338,9 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	free_beacon_data(&settings->beacon_after);
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -765,6 +765,9 @@ struct hostapd_iface {
- 	/* Minimum bandwidth the driver supports RU puncturing */
- 	u8 ru_punct_supp_bw;
+@@ -762,6 +762,9 @@ struct hostapd_iface {
+ 	/* Maximum profile periodicity for enhanced MBSSID advertisement */
+ 	unsigned int ema_max_periodicity;
  
 +	/* Radar infected sub channel bit pattern */
 +	u16 radar_bit_pattern;
@@ -348,7 +348,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
  
-@@ -920,5 +923,6 @@ static inline bool hostapd_mld_is_first_
+@@ -917,5 +920,6 @@ static inline bool hostapd_mld_is_first_
  #endif /* CONFIG_IEEE80211BE */
  
  u16 hostapd_get_punct_bitmap(struct hostapd_data *hapd);

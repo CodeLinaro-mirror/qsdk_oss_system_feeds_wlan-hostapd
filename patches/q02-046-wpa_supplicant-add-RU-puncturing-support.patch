@@ -3,14 +3,12 @@ From: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 Date: Wed, 25 May 2022 11:32:01 +0530
 Subject: [PATCH] wpa_supplicant: add RU puncturing support
 
-Retrieve the driver support for RU puncturing which is advertised
-using the attribute NL80211_ATTR_RU_PUNCT_SUPP_BW.
 Value indicates the bandwidths in which puncturing is supported -
 80 MHz, 160 MHz or 320 MHz.
 Absence of the attribute or the value 0 means the driver does not
 support this feature.
 
-Add New option 'ru_punct_bitmap' to configure RU puncturing bitmap
+Add new option 'punct_bitmap' to configure RU puncturing bitmap
 and pass the configured bitmap to kernel via frequency params
 during join mesh if driver supports puncturing pattern for configured
 Bandwidth.
@@ -46,7 +44,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +#ifdef CONFIG_MESH
 +	if (iface->mconf != NULL) {
 +		wpa_printf(MSG_DEBUG,
-+			   "%s: Mesh RU bitmap will be validated in kernel while joining the mesh network",
++			   "%s: Mesh puncturing bitmap will be validated in kernel while joining the mesh network",
 +			   iface->bss[0]->conf->iface);
 +		return true;
 +	}
@@ -64,7 +62,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	 * lowest bit for the channel with the lowest frequency.
 +	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.
 +	 */
-+	u16 punct_bitmap;
++	u32 punct_bitmap;
 +
 +	/**
  	 * disable_eht - Disable EHT for this connection
@@ -74,15 +72,15 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  #define WPA_DRIVER_MESH_FLAG_AMPE	0x00000008
  	unsigned int flags;
  	bool handle_dfs;
-+	u16 punct_bitmap;
++	u32 punct_bitmap;
  	int mcast_rate;
  	int beacon_tx_mode;
  };
-@@ -2637,6 +2645,7 @@ struct hostapd_sta_add_params {
+@@ -2644,6 +2652,7 @@ struct hostapd_sta_add_params {
  	const u8 *supp_oper_classes;
  	size_t supp_oper_classes_len;
  	int support_p2p_ps;
-+	u16 punct_bitmap;
++	u32 punct_bitmap;
  
  	bool mld_link_sta;
  	s8 mld_link_id;
@@ -93,8 +91,8 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	}
  
 +	if (params->punct_bitmap) {
-+		wpa_printf(MSG_DEBUG, "  * eht ru puncturing bitmap=0x%x", params->punct_bitmap);
-+		if (nla_put_u16(msg, NL80211_ATTR_RU_PUNCT_BITMAP, params->punct_bitmap))
++		wpa_printf(MSG_DEBUG, "  * eht puncturing bitmap=0x%x", params->punct_bitmap);
++		if (nla_put_u32(msg, NL80211_ATTR_PUNCT_BITMAP, params->punct_bitmap))
 +			goto fail;
 +	}
 +
@@ -168,7 +166,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 +	 * puncturing bitmap - Each bit corresponds to a 20 MHz subchannel,
 +	 * lowest bit for the channel with the lowest frequency.
 +	 * Bit set to 1 indicates that the subchannel is punctured, otherwise active.*/
-+	u16 punct_bitmap;
++	u32 punct_bitmap;
 +
 +	/**
  	 * disable_eht - Disable EHT (IEEE 802.11be) for this network
@@ -194,15 +192,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	ret = wpa_drv_join_mesh(wpa_s, params);
  	if (ret)
  		wpa_msg(wpa_s, MSG_ERROR, "mesh join error=%d", ret);
-@@ -409,6 +410,7 @@ static int wpa_supplicant_mesh_init(stru
- 	ifmsh->num_bss = 1;
- 	ifmsh->enable_iface_cb = wpa_supplicant_mesh_enable_iface_cb;
- 	ifmsh->disable_iface_cb = wpa_supplicant_mesh_disable_iface_cb;
-+	ifmsh->ru_punct_supp_bw = wpa_s->ru_punct_supp_bw;
- 	ifmsh->bss = os_calloc(wpa_s->ifmsh->num_bss,
- 			       sizeof(struct hostapd_data *));
- 	if (!ifmsh->bss)
-@@ -488,6 +490,10 @@ static int wpa_supplicant_mesh_init(stru
+@@ -491,6 +492,10 @@ static int wpa_supplicant_mesh_init(stru
  		wpa_s->mesh_params->handle_dfs = true;
  	}
  
@@ -270,16 +260,6 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  	params.flags |= WPA_STA_WMM;
  	params.flags_mask |= WPA_STA_AUTHENTICATED;
  	params.mld_link_id = -1;
---- a/wpa_supplicant/wpa_supplicant.c
-+++ b/wpa_supplicant/wpa_supplicant.c
-@@ -7547,6 +7547,7 @@ static int wpa_supplicant_init_iface(str
- 		wpa_s->wmm_ac_supported = capa.wmm_ac_supported;
- #endif /* CONFIG_NO_WMM_AC */
- 		wpa_s->max_num_akms = capa.max_num_akms;
-+		wpa_s->ru_punct_supp_bw = capa.ru_punct_supp_bw;
- 
- 		if (capa.mac_addr_rand_scan_supported)
- 			wpa_s->mac_addr_rand_supported |= MAC_ADDR_RAND_SCAN;
 --- a/wpa_supplicant/wpa_supplicant.conf
 +++ b/wpa_supplicant/wpa_supplicant.conf
 @@ -1789,6 +1789,13 @@ fast_reauth=1
@@ -296,15 +276,3 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  # This value is used to configure the channel bonding feature.
  # Default value is 0.
  # Relevant only if enable_edmg is true
---- a/wpa_supplicant/wpa_supplicant_i.h
-+++ b/wpa_supplicant/wpa_supplicant_i.h
-@@ -1629,6 +1629,9 @@ struct wpa_supplicant {
- 	u64 first_beacon_tsf;
- 	unsigned int beacons_checked;
- 	unsigned int next_beacon_check;
-+
-+	/* Minimum bandwidth the driver supports RU puncturing */
-+	u8 ru_punct_supp_bw;
- };
- 
- 

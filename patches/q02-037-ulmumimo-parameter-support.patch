@@ -35,10 +35,10 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
  	} else if (os_strcmp(buf, "he_bss_color") == 0) {
  		conf->he_op.he_bss_color = atoi(pos) & 0x3f;
  		conf->he_op.he_bss_color_disabled = 0;
-@@ -5130,6 +5132,14 @@ static int hostapd_config_fill(struct ho
- 		conf->eht_phy_capab.mu_beamformer = atoi(pos);
- 	} else if (os_strcmp(buf, "eht_default_pe_duration") == 0) {
- 		conf->eht_default_pe_duration = atoi(pos);
+@@ -5153,6 +5155,14 @@ static int hostapd_config_fill(struct ho
+ 		}
+ 	} else if (os_strcmp(buf, "eht_bw320_offset") == 0) {
+ 		conf->eht_bw320_offset = atoi(pos);
 +	} else if (os_strcmp(buf, "eht_part_dl_mu_mimo") == 0) {
 +		conf->eht_phy_capab.partial_bw_dl_mu_mimo = atoi(pos);
 +	} else if (os_strcmp(buf, "eht_ulmumimo_80mhz") == 0) {
@@ -47,9 +47,9 @@ Signed-off-by: Sidhanta Sahu <quic_sidhanta@quicinc.com>
 +		conf->eht_phy_capab.non_ofdma_ulmumimo_160mhz = atoi(pos);
 +	} else if (os_strcmp(buf, "eht_ulmumimo_320mhz") == 0) {
 +		conf->eht_phy_capab.non_ofdma_ulmumimo_320mhz = atoi(pos);
- 	} else if (os_strcmp(buf, "punct_bitmap") == 0 || os_strcmp(buf, "ru_punct_bitmap") == 0) {
- 		if (get_u16(pos, line, &conf->punct_bitmap))
- 			return 1;
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	} else if (os_strcmp(buf, "eht_oper_puncturing_override") == 0) {
+ 		if (get_u16(pos, line, &bss->eht_oper_puncturing_override))
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
 @@ -869,6 +869,11 @@ wmm_ac_vo_acm=0

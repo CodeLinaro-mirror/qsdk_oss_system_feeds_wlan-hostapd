@@ -1,11 +1,11 @@
 From 99209a788622116daec19ca8af19cc5bd57e4976 Mon Sep 17 00:00:00 2001
 From: Amutha Ravikumar <quic_aravikum@quicinc.com>
 Date: Tue, 21 Nov 2023 17:02:11 +0530
-Subject: [PATCH] wpa_supplicant: fix mesh ru_punct_bitmap and channel
+Subject: [PATCH] wpa_supplicant: fix mesh punct_bitmap and channel
  bandwidth configuration issue
 
 ibss_mesh_setup_freq API was split into multiple APIs
-in upgraded hostapd code and also it missed ru_punct_bitmap
+in upgraded hostapd code and also it missed punct_bitmap
 and other channel bandwidth configuration changes done internally
 
 Reverted the changes and made ibss_mesh_setup_freq API to

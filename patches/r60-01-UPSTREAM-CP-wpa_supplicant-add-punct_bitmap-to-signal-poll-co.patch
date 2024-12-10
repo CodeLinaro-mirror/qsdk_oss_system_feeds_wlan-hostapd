@@ -25,7 +25,7 @@ index 51a2ad7ab25a..b074093584a5 100644
  	enum chan_width chanwidth;
  	int center_frq1;
  	int center_frq2;
-+	u16 punct_bitmap;
++	u32 punct_bitmap;
  };
  
  struct wpa_mlo_signal_info {

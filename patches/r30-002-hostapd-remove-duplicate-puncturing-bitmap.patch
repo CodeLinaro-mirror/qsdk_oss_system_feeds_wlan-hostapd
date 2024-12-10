@@ -56,7 +56,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	settings->freq_params.eht_enabled = !!os_strstr(pos, " eht");
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4948,6 +4948,7 @@ hostapd_switch_channel_fallback(struct h
+@@ -4934,6 +4934,7 @@ hostapd_switch_channel_fallback(struct h
  	iface->conf->bandwidth_device = freq_params->bandwidth_device;
  	iface->conf->center_freq_device = freq_params->center_freq_device;
  	iface->conf->bandwidth_device = freq_params->bandwidth_device;
@@ -64,26 +64,6 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  
  	/*
---- a/src/drivers/driver_nl80211_event.c
-+++ b/src/drivers/driver_nl80211_event.c
-@@ -4376,7 +4376,7 @@ static void do_process_drv_event(struct
- 				     tb[NL80211_ATTR_CHANNEL_WIDTH],
- 				     tb[NL80211_ATTR_CENTER_FREQ1],
- 				     tb[NL80211_ATTR_CENTER_FREQ2],
--				     tb[NL80211_ATTR_PUNCT_BITMAP],
-+				     tb[NL80211_ATTR_RU_PUNCT_BITMAP],
- 				     tb[NL80211_ATTR_CH_SWITCH_COUNT],
- 				     tb[NL80211_ATTR_CHANNEL_WIDTH_DEVICE],
- 				     tb[NL80211_ATTR_CENTER_FREQ_DEVICE],
-@@ -4391,7 +4391,7 @@ static void do_process_drv_event(struct
- 				     tb[NL80211_ATTR_CHANNEL_WIDTH],
- 				     tb[NL80211_ATTR_CENTER_FREQ1],
- 				     tb[NL80211_ATTR_CENTER_FREQ2],
--				     tb[NL80211_ATTR_PUNCT_BITMAP],
-+				     tb[NL80211_ATTR_RU_PUNCT_BITMAP],
- 				     NULL,
- 				     tb[NL80211_ATTR_CHANNEL_WIDTH_DEVICE],
- 				     tb[NL80211_ATTR_CENTER_FREQ_DEVICE],
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
 @@ -283,7 +283,7 @@ static int wpas_mesh_complete(struct wpa

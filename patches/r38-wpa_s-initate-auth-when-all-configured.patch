@@ -349,9 +349,9 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
-@@ -1632,6 +1632,8 @@ struct wpa_supplicant {
- 	/* Minimum bandwidth the driver supports RU puncturing */
- 	u8 ru_punct_supp_bw;
+@@ -1630,6 +1630,8 @@ struct wpa_supplicant {
+ 	unsigned int next_beacon_check;
+ 
  	unsigned int ml_neigh_retries;
 +	struct hostapd_multi_hw_info *multi_hw_info;
 +	u8 num_multi_hws;
