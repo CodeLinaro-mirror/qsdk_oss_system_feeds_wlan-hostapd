@@ -135,7 +135,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		tailpos = hostapd_eid_eht_capab(hapd, tailpos,
  						IEEE80211_MODE_AP);
 +		startpos = tailpos;
- 		tailpos = hostapd_eid_eht_operation(hapd, tailpos, IEEE80211_MODE_AP);
+ 		tailpos = hostapd_eid_eht_operation(hapd, tailpos);
 +		hostapd_eid_update_cu_info(hapd, &elemid_modified, startpos,
 +					   tailpos-startpos, ELEMID_CU_PARAM_EXT_EHTOP);
  		tailpos = hostapd_eid_vendor_240mhz(hapd, tailpos, IEEE80211_MODE_AP);
