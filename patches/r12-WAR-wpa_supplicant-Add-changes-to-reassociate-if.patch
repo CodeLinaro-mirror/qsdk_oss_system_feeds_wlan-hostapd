@@ -216,7 +216,7 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
  static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
  				       union wpa_event_data *data)
  {
-@@ -4578,6 +4623,17 @@ static void wpa_supplicant_event_assoc(s
+@@ -4578,6 +4623,18 @@ static void wpa_supplicant_event_assoc(s
  
  	if (wpa_s->current_ssid && wpa_s->current_ssid->enable_4addr_mode)
  		wpa_supplicant_set_4addr_mode(wpa_s);
@@ -225,8 +225,9 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
 +	 * otherwise trigger a scan request in background to re-associate
 +	 * to all the links after CAC/ACS timer is completed in AP MLD
 +	 */
-+	if (!is_all_links_associated(&wpa_s->conf->freq_list[0],
-+				     wpa_s->valid_links))
++	if ((!is_all_links_associated(&wpa_s->conf->freq_list[0],
++				     wpa_s->valid_links)) &&
++	    !wpa_s->current_ssid->disable_reconfig)
 +		eloop_register_timeout(5, 0,
 +				       wpas_scan_for_rnr_entries,
 +				       wpa_s, NULL);
@@ -489,3 +490,38 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
  
  	wpas_wps_deinit(wpa_s);
  
+--- a/wpa_supplicant/config.c
++++ b/wpa_supplicant/config.c
+@@ -2864,6 +2864,7 @@ static const struct parse_data ssid_fiel
+ 	{ INT_RANGE(enable_4addr_mode, 0, 1)},
+ 	{ INT_RANGE(max_idle, 0, 65535)},
+ 	{ INT_RANGE(ssid_protection, 0, 1)},
++	{ INT_RANGE(disable_reconfig, 0, 1)},
+ };
+ 
+ #undef OFFSET
+--- a/wpa_supplicant/config_file.c
++++ b/wpa_supplicant/config_file.c
+@@ -912,6 +912,7 @@ static void wpa_config_write_network(FIL
+ 	INT(enable_4addr_mode);
+ 	INT(max_idle);
+ 	INT(ssid_protection);
++	INT(disable_reconfig);
+ 
+ #undef STR
+ #undef INT
+--- a/wpa_supplicant/config_ssid.h
++++ b/wpa_supplicant/config_ssid.h
+@@ -1332,6 +1332,12 @@ struct wpa_ssid {
+ 	 * ssid_protection - Whether to use SSID protection in 4-way handshake
+ 	 */
+ 	bool ssid_protection;
++
++	/**
++	 * disable_reconfig - Whether to re-associate if a new link gets added
++	 * in assciated AP MLD
++	 */
++	bool disable_reconfig;
+ };
+ 
+ #endif /* CONFIG_SSID_H */
