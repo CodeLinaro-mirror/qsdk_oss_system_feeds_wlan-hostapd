@@ -120,7 +120,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	settings->freq_params.vht_enabled = !!os_strstr(pos, " vht");
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1204,6 +1204,30 @@ void hostapd_event_sta_opmode_changed(st
+@@ -1204,6 +1204,29 @@ void hostapd_event_sta_opmode_changed(st
  	}
  }
  
@@ -132,7 +132,6 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +
 +	settings.pwr_mode =
 +		hapd->iface->power_mode_6ghz_before_change;
-+	hapd->iface->power_mode_6ghz_before_change = -1;
 +	for (i = 0; i < hapd->iface->num_bss; i++) {
 +		err = hostapd_drv_set_6ghz_pwr_mode(hapd->iface->bss[i], &settings);
 +		if (err) {
@@ -151,7 +150,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  
  void hostapd_event_ch_switch(struct hostapd_data *hapd, int freq, int ht,
  			     int offset, int width, int cf1, int cf2,
-@@ -1403,6 +1427,14 @@ void hostapd_event_ch_switch(struct host
+@@ -1403,6 +1426,16 @@ void hostapd_event_ch_switch(struct host
  
  	if (hapd->csa_in_progress &&
  	    freq == hapd->cs_freq_params.freq) {
@@ -160,6 +159,8 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +			    hapd->iconf->he_6ghz_reg_pwr_type) {
 +				if (hostapd_switch_power_mode(hapd))
 +					wpa_printf(MSG_ERROR, "Power mode change failed");
++			} else {
++				hapd->iface->power_mode_6ghz_before_change = -1;
 +			}
 +		}
 +
@@ -168,7 +169,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		ieee802_11_set_beacon(hapd);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4594,7 +4594,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4580,7 +4580,7 @@ static int hostapd_fill_csa_settings(str
  #ifdef CONFIG_IEEE80211BE
  	u16 old_punct_bitmap;
  #endif /* CONFIG_IEEE80211BE */
@@ -177,7 +178,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	u8 oper_centr_freq0_idx = 0;
  	u8 oper_centr_freq1_idx = 0;
  	int sec_channel_offset = settings->freq_params.sec_channel_offset;
-@@ -4668,6 +4668,8 @@ static int hostapd_fill_csa_settings(str
+@@ -4654,6 +4654,8 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -186,7 +187,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #ifdef CONFIG_IEEE80211BE
  	old_punct_bitmap = iface->conf->punct_bitmap;
  	iface->conf->punct_bitmap = settings->punct_bitmap;
-@@ -4728,6 +4730,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4714,6 +4716,7 @@ static int hostapd_fill_csa_settings(str
  	 hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
  	 hapd->parameter_set_count = 0;
  
@@ -194,14 +195,6 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	ret = hostapd_build_beacon_data(hapd, &settings->beacon_csa);
  	if (ret) {
  		free_beacon_data(&settings->beacon_after);
-@@ -4763,6 +4766,7 @@ void hostapd_cleanup_cs_params(struct ho
- 	hapd->csa_in_progress = 0;
- 	hapd->cs_c_off_ecsa_beacon = 0;
- 	hapd->cs_c_off_ecsa_proberesp = 0;
-+	hapd->iface->power_mode_6ghz_before_change = -1;
- }
- 
- 
 --- a/src/ap/interference.c
 +++ b/src/ap/interference.c
 @@ -499,6 +499,7 @@ int hostapd_intf_awgn_detected(struct ho
