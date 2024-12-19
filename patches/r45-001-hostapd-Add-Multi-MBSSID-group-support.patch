@@ -48,7 +48,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -612,6 +612,10 @@ ieee802_11_build_ap_params_mbssid(struct hostapd_data *hapd,
+@@ -612,6 +612,10 @@ ieee802_11_build_ap_params_mbssid(struct
  		params->mbssid.mbssid_tx_iface_linkid = -1;
  	len = hostapd_eid_mbssid_len(tx_bss, WLAN_FC_STYPE_BEACON, &elem_count,
  				     NULL, 0, &rnr_len);
@@ -59,7 +59,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  	if (!len || (iface->conf->mbssid == ENHANCED_MBSSID_ENABLED &&
  		     elem_count > iface->ema_max_periodicity))
  		goto fail;
-@@ -2516,6 +2520,7 @@ int ieee802_11_build_ap_params(struct hostapd_data *hapd,
+@@ -2516,6 +2520,7 @@ int ieee802_11_build_ap_params(struct ho
  				return -1;
  			}
  			complete = hapd->iconf->mbssid == MBSSID_ENABLED ||
@@ -217,7 +217,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  		    }
  	    }
  
-@@ -3259,10 +3344,45 @@ static void hostapd_mld_ref_dec(struct h
+@@ -3245,10 +3330,45 @@ static void hostapd_mld_ref_dec(struct h
  
  #endif /* CONFIG_IEEE80211BE */
  
@@ -264,7 +264,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  	wpa_printf(MSG_DEBUG, "%s(%p)", __func__, iface);
  	for (j = 0; j < iface->num_bss; j++) {
  		if (!iface->bss)
-@@ -3273,8 +3393,25 @@ void hostapd_interface_free(struct hosta
+@@ -3259,8 +3379,25 @@ void hostapd_interface_free(struct hosta
  #endif /* CONFIG_IEEE80211BE */
  		wpa_printf(MSG_DEBUG, "%s: free hapd %p",
  			   __func__, iface->bss[j]);
@@ -290,7 +290,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  	hostapd_cleanup_iface(iface);
  }
  
-@@ -3377,6 +3514,66 @@ fail:
+@@ -3363,6 +3500,71 @@ fail:
  }
  
  
@@ -311,6 +311,11 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
 +		if (group->num_bss == iface->conf->group_size)
 +			continue;
 +		dl_list_add_tail(&group->bss_list, &hapd->mbssid_bss);
++		/* When a Tx BSS is removed and added again, the first
++		 * BSS added in the group should be set as Tx BSS
++		 */
++		if (group->txbss == NULL)
++			group->txbss = hapd;
 +		group->num_bss++;
 +		hapd->mbssid_group = group;
 +
@@ -357,7 +362,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  static void hostapd_cleanup_unused_mlds(struct hapd_interfaces *interfaces)
  {
  #ifdef CONFIG_IEEE80211BE
-@@ -3506,6 +3703,7 @@ struct hostapd_iface * hostapd_init(stru
+@@ -3492,6 +3694,7 @@ struct hostapd_iface * hostapd_init(stru
  		 */
  		hapd->mbssid_idx = i;
  		hostapd_bss_setup_multi_link(hapd, interfaces);
@@ -365,7 +370,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  	}
  
  	hapd_iface->is_ch_switch_dfs = false;
-@@ -3661,6 +3859,7 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3647,6 +3850,7 @@ hostapd_interface_init_bss(struct hapd_i
  		iface->bss[iface->num_bss] = hapd;
  		hapd->msg_ctx = hapd;
  		hostapd_bss_setup_multi_link(hapd, interfaces);
@@ -373,7 +378,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
  
  		bss_idx = iface->num_bss++;
-@@ -4070,6 +4269,7 @@ static int hostapd_data_alloc(struct hos
+@@ -4056,6 +4260,7 @@ static int hostapd_data_alloc(struct hos
  		}
  		hapd->msg_ctx = hapd;
  		hostapd_bss_setup_multi_link(hapd, hapd_iface->interfaces);
@@ -381,7 +386,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  	}
  
  	hapd_iface->conf = conf;
-@@ -4155,6 +4355,7 @@ int hostapd_add_iface(struct hapd_interf
+@@ -4141,6 +4346,7 @@ int hostapd_add_iface(struct hapd_interf
  #ifdef CONFIG_IEEE80211BE
  				hostapd_mld_ref_dec(hapd->mld);
  #endif /* CONFIG_IEEE80211BE */
@@ -389,7 +394,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  				os_free(hapd);
  				return -1;
  			}
-@@ -4249,6 +4450,7 @@ fail:
+@@ -4235,6 +4441,7 @@ fail:
  #ifdef CONFIG_IEEE80211BE
  				hostapd_mld_ref_dec(hapd->mld);
  #endif /* CONFIG_IEEE80211BE */
@@ -397,7 +402,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  				os_free(hapd);
  				hapd_iface->bss[i] = NULL;
  			}
-@@ -4295,7 +4497,7 @@ int hostapd_remove_bss(struct hostapd_if
+@@ -4281,7 +4488,7 @@ int hostapd_remove_bss(struct hostapd_if
  				hostapd_if_link_remove(hapd, WPA_IF_AP_BSS,
  						       hapd->conf->iface,
  						       hapd->mld_link_id);
@@ -417,7 +422,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  };
  
  
-@@ -842,6 +844,8 @@ struct hostapd_iface {
+@@ -841,6 +843,8 @@ struct hostapd_iface {
  	struct hostapd_multi_hw_info *multi_hw_info;
  	unsigned int num_multi_hws;
  	struct hostapd_multi_hw_info *current_hw_info;
@@ -437,7 +442,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  #endif /* HOSTAPD_H */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3462,29 +3462,6 @@ void hostap_ft_ds_ml_sta_timeout(void *e
+@@ -3451,29 +3451,6 @@ void hostap_ft_ds_ml_sta_timeout(void *e
  }
  
  
@@ -467,7 +472,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  static u32 hostapd_get_aid_word(struct hostapd_data *hapd,
  				struct sta_info *sta, int i)
  {
-@@ -8837,6 +8814,7 @@ bool hostapd_mbssid_mld_match(struct hos
+@@ -8951,6 +8928,7 @@ bool hostapd_mbssid_mld_match(struct hos
  {
  	int bss_idx = 0;
  	struct hostapd_data *bss;
@@ -475,7 +480,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
  	if (!ml_hapd->conf->mld_ap)
  		return false;
-@@ -8850,8 +8828,18 @@ bool hostapd_mbssid_mld_match(struct hos
+@@ -8964,8 +8942,18 @@ bool hostapd_mbssid_mld_match(struct hos
  			return false;
  	}
  
@@ -496,7 +501,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  		if (!bss)
  			continue;
  
-@@ -9524,7 +9512,7 @@ static size_t hostapd_mbssid_ext_capa(st
+@@ -9641,7 +9629,7 @@ static size_t hostapd_mbssid_ext_capa(st
  static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
  					  u32 frame_type, size_t *bss_index,
  					  const u8 *known_bss,
@@ -505,7 +510,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  {
  	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
  	size_t len, i, tx_xrate_len;
-@@ -9542,12 +9530,17 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -9659,12 +9647,17 @@ static size_t hostapd_eid_mbssid_elem_le
  	len = 1;
  	hostapd_eid_ext_supp_rates(tx_bss, NULL, &tx_xrate_len);
  
@@ -525,7 +530,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  		if (!bss || !bss->conf || !bss->started ||
  		    mbssid_known_bss(i, known_bss, known_bss_len))
  			continue;
-@@ -9629,6 +9622,9 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -9746,6 +9739,9 @@ size_t hostapd_eid_mbssid_len(struct hos
  			      size_t known_bss_len, size_t *rnr_len)
  {
  	size_t len = 0, bss_index = 1;
@@ -535,7 +540,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
  	if (!hapd->iconf->mbssid || hapd->iface->num_bss <= 1 ||
  	    (frame_type != WLAN_FC_STYPE_BEACON &&
-@@ -9644,12 +9640,17 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -9761,12 +9757,17 @@ size_t hostapd_eid_mbssid_len(struct hos
  		*elem_count = 0;
  	}
  
@@ -555,7 +560,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
  		if (frame_type == WLAN_FC_STYPE_BEACON)
  			*elem_count += 1;
-@@ -9703,7 +9704,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9820,7 +9821,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  				    u32 frame_type, u8 max_bssid_indicator,
  				    size_t *bss_index, u8 elem_count,
  				    const u8 *known_bss, size_t known_bss_len,
@@ -564,7 +569,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  {
  	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
  	size_t i, tx_xrate_len;
-@@ -9715,8 +9716,8 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9832,8 +9833,8 @@ static u8 * hostapd_eid_mbssid_elem(stru
  	eid_len_offset = eid++;
  	max_bssid_indicator_offset = eid++;
  
@@ -575,7 +580,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  		struct hostapd_bss_config *conf;
  		u8 *eid_len_pos, *nontx_bss_start = eid;
  		const u8 *auth, *rsn = NULL, *rsnx = NULL;
-@@ -9725,6 +9726,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9842,6 +9843,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		u16 capab_info;
  		u8 modified_flag = 0;
  
@@ -587,7 +592,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  		if (!bss || !bss->conf || !bss->started ||
  		    mbssid_known_bss(i, known_bss, known_bss_len))
  			continue;
-@@ -9860,6 +9866,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -9977,6 +9983,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  	size_t bss_index = 1, cur_len = 0;
  	u8 elem_index = 0, *rnr_start_eid = rnr_eid;
  	bool add_rnr;
@@ -595,7 +600,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
  	if (!hapd->iconf->mbssid || hapd->iface->num_bss <= 1 ||
  	    (frame_stype != WLAN_FC_STYPE_BEACON &&
-@@ -9876,7 +9883,12 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -9993,7 +10000,12 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  		frame_stype == WLAN_FC_STYPE_BEACON &&
  		rnr_eid && rnr_count && rnr_offset && rnr_len;
  
@@ -609,7 +614,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  		unsigned int rnr_start_count = bss_index;
  
  		if (frame_stype == WLAN_FC_STYPE_BEACON) {
-@@ -9893,7 +9905,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -10010,7 +10022,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  					      hostapd_max_bssid_indicator(hapd),
  					      &bss_index, elem_count,
  					      known_bss, known_bss_len,
