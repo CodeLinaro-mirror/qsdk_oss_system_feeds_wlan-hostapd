@@ -68,7 +68,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  		ret = hostapd_set_iface(hapd->iconf, hapd->conf, cmd, value);
  		if (ret)
  			return ret;
-@@ -2758,6 +2765,12 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2761,6 +2768,12 @@ static int hostapd_ctrl_iface_chan_switc
  			return -1;
  		}
  
@@ -81,7 +81,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  		settings.freq_params.channel = chan;
  
  		wpa_printf(MSG_DEBUG,
-@@ -2780,6 +2793,12 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2783,6 +2796,12 @@ static int hostapd_ctrl_iface_chan_switc
  		return hostapd_force_channel_switch(iface, &settings);
  	}
  
@@ -169,7 +169,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 @@ -37,5 +39,5 @@ int hostapd_dfs_start_cac(struct hostapd
  int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
  int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
- 			   int center_freq);
+ 			   int center_freq, u16 punct_bitmap);
 -
 +void hostapd_dfs_radar_handling_timeout(void *eloop_data, void *user_data);
  #endif /* DFS_H */

@@ -90,6 +90,20 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  
  	res = hostapd_start_dfs_cac(
  		iface, iface->conf->hw_mode, iface->freq, iface->conf->channel,
+@@ -1796,11 +1800,11 @@ int hostapd_handle_dfs_offload(struct ho
+ 
+ 
+ int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
+-			   int center_freq)
++			   int center_freq, u16 punct_bitmap)
+ {
+ 	struct hostapd_channel_data *chan;
+ 	struct hostapd_hw_modes *mode = iface->current_mode;
+-	int half_width;
++	int half_width, start_freq, chan_bit_pos;
+ 	int res = 0;
+ 	int i;
+ 
 @@ -1823,6 +1827,9 @@ int hostapd_is_dfs_overlap(struct hostap
  	case CHAN_WIDTH_160:
  		half_width = 80;
@@ -100,6 +114,20 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	default:
  		wpa_printf(MSG_WARNING, "DFS chanwidth %d not supported",
  			   width);
+@@ -1839,6 +1846,13 @@ int hostapd_is_dfs_overlap(struct hostap
+ 		    HOSTAPD_CHAN_DFS_AVAILABLE)
+ 			continue;
+ 
++		if (punct_bitmap) {
++			start_freq = center_freq - half_width;
++			chan_bit_pos = (chan->freq - start_freq) / 20;
++			if (punct_bitmap & BIT(chan_bit_pos))
++				continue;
++		}
++
+ 		if (center_freq - chan->freq < half_width &&
+ 		    chan->freq - center_freq < half_width)
+ 			res++;
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
 @@ -1004,8 +1004,7 @@ static bool hostapd_is_usable_punct_bitm
@@ -237,3 +265,36 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	u8 seg0 = hapd->iconf->vht_oper_centr_freq_seg0_idx;
  	u8 seg1 = hapd->iconf->vht_oper_centr_freq_seg1_idx;
  #ifdef CONFIG_IEEE80211BE
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -2738,14 +2738,17 @@ static int hostapd_ctrl_iface_chan_switc
+ 
+ 	if (settings.freq_params.center_freq1)
+ 		dfs_range += hostapd_is_dfs_overlap(
+-			iface, bandwidth, settings.freq_params.center_freq1);
++			iface, bandwidth, settings.freq_params.center_freq1,
++			settings.punct_bitmap);
+ 	else
+ 		dfs_range += hostapd_is_dfs_overlap(
+-			iface, bandwidth, settings.freq_params.freq);
++			iface, bandwidth, settings.freq_params.freq,
++			settings.punct_bitmap);
+ 
+ 	if (settings.freq_params.center_freq2)
+ 		dfs_range += hostapd_is_dfs_overlap(
+-			iface, bandwidth, settings.freq_params.center_freq2);
++			iface, bandwidth, settings.freq_params.center_freq2,
++			settings.punct_bitmap);
+ 
+ 	if (dfs_range) {
+ 		ret = ieee80211_freq_to_chan(settings.freq_params.freq, &chan);
+--- a/src/ap/dfs.h
++++ b/src/ap/dfs.h
+@@ -36,6 +36,6 @@ int hostapd_dfs_start_cac(struct hostapd
+ 			  int cf1, int cf2);
+ int hostapd_handle_dfs_offload(struct hostapd_iface *iface);
+ int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
+-			   int center_freq);
++			   int center_freq, u16 punct_bitmap);
+ 
+ #endif /* DFS_H */
