@@ -27,7 +27,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  #define IEEE80211_DFS_MIN_CAC_TIME_MS  60000
  
-@@ -1896,31 +1897,132 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1898,30 +1899,131 @@ int hostapd_dfs_radar_detected(struct ho
  			oper_centr_freq_seg0_idx, oper_centr_freq_seg1_idx);
  	}
  
@@ -39,7 +39,6 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 -
  	/* Switch channel with random channel selection for invalid puncturing pattern */
  	iface->radar_bit_pattern = 0;
- 	iface->conf->punct_bitmap = 0;
  
 -	if (hostapd_dfs_background_start_channel_switch(iface, freq) && radar_bitmap_oper) {
 -		if (!iface->conf->disable_csa_dfs) {
@@ -50,21 +49,24 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  			return hostapd_dfs_start_channel_switch(iface);
 -		} else if (!eloop_is_timeout_registered(hostapd_dfs_radar_handling_timeout,
 -			   iface, NULL)) {
-+		}
-+
+-			eloop_register_timeout(0, HAPD_DFS_RADAR_CH_SWITCH_WAIT_DUR,
+-					       hostapd_dfs_radar_handling_timeout,
+-					       iface, NULL);
+ 		}
+-	}
+ 
 +		if (radar_bitmap_oper) {
 +			if (!iface->conf->disable_csa_dfs) {
 +				/* Radar detected while operating, switch the channel. */
 +				return hostapd_dfs_start_channel_switch(iface);
 +			} else if (!eloop_is_timeout_registered(hostapd_dfs_radar_handling_timeout,
-+				   iface, NULL)) {
- 			eloop_register_timeout(0, HAPD_DFS_RADAR_CH_SWITCH_WAIT_DUR,
- 					       hostapd_dfs_radar_handling_timeout,
- 					       iface, NULL);
++								iface, NULL)) {
++				eloop_register_timeout(0, HAPD_DFS_RADAR_CH_SWITCH_WAIT_DUR,
++						       hostapd_dfs_radar_handling_timeout,
++						       iface, NULL);
 +			}
- 		}
- 	}
--
++		}
++	}
  	return 0;
  }
  
@@ -133,10 +135,10 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 +
 +	for (i = 0; i < n_chans; i++) {
 +		chan = &mode->channels[start_chan_idx + i];
-+ 
++
 +		if (!(chan->flag & HOSTAPD_CHAN_RADAR))
 +			continue;
-+ 
++
 +		if ((chan->flag & HOSTAPD_CHAN_DFS_MASK) == HOSTAPD_CHAN_DFS_AVAILABLE)
 +			continue;
 +		else if ((chan->flag & HOSTAPD_CHAN_DFS_MASK) == HOSTAPD_CHAN_DFS_USABLE)
@@ -172,7 +174,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  int hostapd_dfs_nop_finished(struct hostapd_iface *iface, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
-@@ -1953,9 +2055,11 @@ int hostapd_dfs_nop_finished(struct host
+@@ -1954,9 +2056,11 @@ int hostapd_dfs_nop_finished(struct host
  		/* Handle cases where all channels were initially unavailable */
  		hostapd_handle_dfs(iface);
  	} else if (dfs_use_radar_background(iface) &&
