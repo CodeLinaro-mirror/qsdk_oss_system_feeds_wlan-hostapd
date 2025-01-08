@@ -43,7 +43,15 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  				      iface->conf->he_6ghz_reg_pwr_type);
  
  	if (err) {
-@@ -1669,14 +1671,48 @@ static int hostapd_dfs_start_channel_swi
+@@ -1647,6 +1649,7 @@ static int hostapd_dfs_start_channel_swi
+ 		}
+ 
+ 		if (channel_type == DFS_ANY_CHANNEL) {
++			iface->conf->punct_bitmap = 0;
+ 			iface->freq = channel->freq;
+ 			iface->conf->channel = channel->chan;
+ 			iface->conf->secondary_channel = secondary_channel;
+@@ -1669,14 +1672,48 @@ static int hostapd_dfs_start_channel_swi
  						  oper_centr_freq_seg1_idx);
  }
  
@@ -94,7 +102,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	iface->radar_detected = true;
  
-@@ -1701,10 +1737,51 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1701,10 +1738,50 @@ int hostapd_dfs_radar_detected(struct ho
  	if (!hostapd_dfs_is_background_event(iface, freq)) {
  		/* Skip if reported radar event not overlapped our channels */
  		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
@@ -142,7 +150,6 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 +
 +	/* Switch channel with random channel selection for invalid puncturing pattern */
 +	iface->radar_bit_pattern = 0;
-+	iface->conf->punct_bitmap = 0;
 +
  	if (hostapd_dfs_background_start_channel_switch(iface, freq)) {
  		if (!iface->conf->disable_csa_dfs) {
@@ -175,7 +182,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  #ifdef CONFIG_MESH
  		if (iface->mconf != NULL) {
  			wpa_printf(MSG_DEBUG,
-@@ -4455,6 +4460,9 @@ static int hostapd_fill_csa_settings(str
+@@ -4447,6 +4452,9 @@ static int hostapd_fill_csa_settings(str
  	u16 old_punct_bitmap;
  #endif /* CONFIG_IEEE80211BE */
  	u8 chan, bandwidth;
@@ -185,7 +192,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	os_memset(&old_freq, 0, sizeof(old_freq));
  	if (!iface || !iface->freq || hapd->csa_in_progress)
-@@ -4478,16 +4486,39 @@ static int hostapd_fill_csa_settings(str
+@@ -4470,16 +4478,39 @@ static int hostapd_fill_csa_settings(str
  		break;
  	}
  
@@ -227,7 +234,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			   settings->freq_params.vht_enabled,
  			   settings->freq_params.he_enabled,
  			   settings->freq_params.eht_enabled);
-@@ -4518,6 +4549,39 @@ static int hostapd_fill_csa_settings(str
+@@ -4510,6 +4541,39 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -267,7 +274,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	/* set channel switch parameters for csa ie */
  	hapd->cs_freq_params = settings->freq_params;
  	hapd->cs_count = settings->cs_count;
-@@ -4596,16 +4660,28 @@ int hostapd_switch_channel(struct hostap
+@@ -4588,16 +4652,28 @@ int hostapd_switch_channel(struct hostap
  			   struct csa_settings *settings)
  {
  	int ret;
