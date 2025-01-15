@@ -77,7 +77,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  				   "Enable HT support (p2p_group=%d 11a=%d ht40_hw_capab=%d ssid->ht40=%d)",
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
-@@ -704,28 +704,28 @@ int wpa_supplicant_join_mesh(struct wpa_
+@@ -701,25 +701,28 @@ int wpa_supplicant_join_mesh(struct wpa_
  	if (wpa_s->mesh_vht_enabled) {
  		ssid->vht = 1;
  		ssid->vht_center_freq1 = params->freq.center_freq1;
@@ -95,9 +95,6 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 -			break;
 -		case 160:
 -			ssid->max_oper_chwidth = CONF_OPER_CHWIDTH_160MHZ;
--			break;
--		case 320:
--			ssid->max_oper_chwidth = CONF_OPER_CHWIDTH_320MHZ;
 -			break;
 -		default:
 -			ssid->max_oper_chwidth = CONF_OPER_CHWIDTH_USE_HT;
