@@ -345,7 +345,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	if (ht40 == -1) {
  		if (!(pri_chan->flag & HOSTAPD_CHAN_HT40MINUS))
-@@ -3124,95 +3140,157 @@ static void ibss_mesh_select_40mhz(struc
+@@ -3124,95 +3140,159 @@ static void ibss_mesh_select_40mhz(struc
  		wpa_scan_results_free(scan_res);
  	}
  
@@ -479,7 +479,8 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 -			if (freq->freq == bw160[j]) {
 -				chwidth = CONF_OPER_CHWIDTH_160MHZ;
 -				seg0 = channel + 14;
-+	     HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G) && (ssid->enable_160mhz_bw)) {
++	     HE_PHYCAP_CHANNEL_WIDTH_SET_160MHZ_IN_5G) && (ssid->max_oper_chwidth ==
++	     CONF_OPER_CHWIDTH_160MHZ)) {
 +		chan_80mhz = freq->channel + 16;
 +		for (j = 0; j < ARRAY_SIZE(bw_80_160); j+=2) {
 +			if (freq->freq >= bw_80_160[j] && freq->freq <= bw_80_160[j+1]) {
@@ -513,7 +514,8 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		}
  	}
  
-+	if ((ssid->enable_320mhz_bw) && (mode->eht_capab[ieee80211_mode].phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
++	if ((ssid->max_oper_chwidth == CONF_OPER_CHWIDTH_320MHZ) &&
++	     (mode->eht_capab[ieee80211_mode].phy_cap[EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_IDX] &
 +	     EHT_PHYCAP_320MHZ_IN_6GHZ_SUPPORT_MASK)) {
 +		if (is_6ghz) {
 +			for (i = 0; i < ARRAY_SIZE(bw_320); i+=2) {
@@ -564,7 +566,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  			for (i = channel; i < channel + 16; i += 4) {
  				struct hostapd_channel_data *chan;
-@@ -3221,12 +3299,10 @@ static bool ibss_mesh_select_80_160mhz(s
+@@ -3221,12 +3301,10 @@ static bool ibss_mesh_select_80_160mhz(s
  				if (!chan)
  					continue;
  
@@ -580,7 +582,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  				/* Found a suitable second segment for 80+80 */
  				chwidth = CONF_OPER_CHWIDTH_80P80MHZ;
-@@ -3249,100 +3325,44 @@ static bool ibss_mesh_select_80_160mhz(s
+@@ -3249,100 +3327,44 @@ static bool ibss_mesh_select_80_160mhz(s
  			vht_caps |= VHT_CAP_SUPP_CHAN_WIDTH_160MHZ;
  			seg0 = 114;
  		}
@@ -705,7 +707,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  }
  
  
-@@ -6736,13 +6756,13 @@ void fst_wpa_supplicant_fill_iface_obj(s
+@@ -6736,13 +6758,13 @@ void fst_wpa_supplicant_fill_iface_obj(s
  				       struct fst_wpa_obj *iface_obj)
  {
  	os_memset(iface_obj, 0, sizeof(*iface_obj));
@@ -724,7 +726,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	iface_obj->update_mb_ie     = wpas_fst_update_mb_ie_cb;
  	iface_obj->get_peer_first   = wpas_fst_get_peer_first;
  	iface_obj->get_peer_next    = wpas_fst_get_peer_next;
-@@ -7902,7 +7922,7 @@ extern void supplicant_event(void *ctx,
+@@ -7902,7 +7924,7 @@ extern void supplicant_event(void *ctx,
  			     union wpa_event_data *data);
  
  extern void supplicant_event_global(void *ctx, enum wpa_event_type event,
@@ -733,7 +735,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  /**
   * wpa_supplicant_add_iface - Add a new network interface
-@@ -8068,8 +8088,8 @@ const char * wpa_supplicant_get_eap_mode
+@@ -8068,8 +8090,8 @@ const char * wpa_supplicant_get_eap_mode
  {
  	const char *eapol_method;
  
