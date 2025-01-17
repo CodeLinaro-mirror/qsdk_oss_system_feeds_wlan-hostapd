@@ -15,18 +15,6 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  wpa_supplicant/ucode.h |  1 +
  3 files changed, 34 insertions(+), 2 deletions(-)
 
---- a/src/utils/ucode.c
-+++ b/src/utils/ucode.c
-@@ -195,6 +195,9 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
- 	center_idx = (center_idx - channel) * 5 + freq_val;
- 	ucv_object_add(ret, "center_freq1", ucv_int64_new(center_idx));
- 
-+	wpa_printf(MSG_INFO, "[debug] %s: op_c: %d, ch:%d, hw_mode:%d, mode:%s, sec_ch:%d\n freq:%d, center_seg0:%d \n",
-+		__func__, op_class, channel, hw_mode, modestr, sec_channel, freq_val, center_idx);
-+
- out:
- 	return ret;
- }
 --- a/wpa_supplicant/ucode.c
 +++ b/wpa_supplicant/ucode.c
 @@ -13,6 +13,27 @@ static uc_resource_type_t *global_type,

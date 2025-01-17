@@ -109,49 +109,47 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	if (freq_val < 3000)
  		ucv_object_add(ret, "center_seg0_idx", ucv_int64_new(0));
  	else
-@@ -195,8 +231,37 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
+@@ -195,6 +231,37 @@ uc_value_t *uc_wpa_freq_info(uc_vm_t *vm
  	center_idx = (center_idx - channel) * 5 + freq_val;
  	ucv_object_add(ret, "center_freq1", ucv_int64_new(center_idx));
  
--	wpa_printf(MSG_INFO, "[debug] %s: op_c: %d, ch:%d, hw_mode:%d, mode:%s, sec_ch:%d\n freq:%d, center_seg0:%d \n",
--		__func__, op_class, channel, hw_mode, modestr, sec_channel, freq_val, center_idx);
 +	if (!cf1 && !cf2)
 +		return ret;
 +
 +	switch (hw_mode) {
-+        case HOSTAPD_MODE_IEEE80211A:
-+                if (cf1 == 5935)
-+                        seg0_idx = (cf1 - 5925) / 5;
-+                else if (cf1 > 5950)
-+                        seg0_idx = (cf1 - 5950) / 5;
-+                else if (cf1 > 5000)
-+                        seg0_idx = (cf1 - 5000) / 5;
++		case HOSTAPD_MODE_IEEE80211A:
++			if (cf1 == 5935)
++				seg0_idx = (cf1 - 5925) / 5;
++			else if (cf1 > 5950)
++				seg0_idx = (cf1 - 5950) / 5;
++			else if (cf1 > 5000)
++				seg0_idx = (cf1 - 5000) / 5;
 +
-+                if (cf2 == 5935)
-+                        seg1_idx = (cf2 - 5925) / 5;
-+                else if (cf2 > 5950)
-+                        seg1_idx = (cf2 - 5950) / 5;
-+                else if (cf2 > 5000)
-+                        seg1_idx = (cf2 - 5000) / 5;
-+                break;
-+        default:
-+		if (cf1)
-+			ieee80211_freq_to_chan(cf1, &seg0_idx);
-+		if (cf2)
-+			ieee80211_freq_to_chan(cf2, &seg1_idx);
-+                break;
-+        }
-+
++			if (cf2 == 5935)
++				seg1_idx = (cf2 - 5925) / 5;
++			else if (cf2 > 5950)
++				seg1_idx = (cf2 - 5950) / 5;
++			else if (cf2 > 5000)
++				seg1_idx = (cf2 - 5000) / 5;
++		break;
++		default:
++			if (cf1)
++				ieee80211_freq_to_chan(cf1, &seg0_idx);
++			if (cf2)
++				ieee80211_freq_to_chan(cf2, &seg1_idx);
++		break;
++	}
 +	ucv_object_add(ret, "center_freq1", ucv_int64_new(cf1));
 +	ucv_object_add(ret, "center_freq2", ucv_int64_new(cf2));
 +	ucv_object_add(ret, "center_seg0_idx", ucv_int64_new(seg0_idx));
 +	ucv_object_add(ret, "center_seg1_idx", ucv_int64_new(seg1_idx));
- 
- out:
++
  	return ret;
+ }
+ 
 --- a/wpa_supplicant/ucode.c
 +++ b/wpa_supplicant/ucode.c
-@@ -158,6 +158,7 @@ void wpas_ucode_event(struct wpa_supplic
+@@ -155,6 +155,7 @@ void wpas_ucode_event(struct wpa_supplic
  	if (event == EVENT_CH_SWITCH_STARTED) {
  		ucv_object_add(val, "csa_count", ucv_int64_new(data->ch_switch.count));
  		ucv_object_add(val, "frequency", ucv_int64_new(data->ch_switch.freq));
@@ -159,7 +157,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  		ucv_object_add(val, "sec_chan_offset", ucv_int64_new(data->ch_switch.ch_offset));
  		ucv_object_add(val, "center_freq1", ucv_int64_new(data->ch_switch.cf1));
  		ucv_object_add(val, "center_freq2", ucv_int64_new(data->ch_switch.cf2));
-@@ -301,6 +302,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -291,6 +292,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	uc_value_t *radio_id = uc_fn_arg(0);
  	s8 hw_idx;
  	int freq, sec_chan, i;
@@ -167,7 +165,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	struct wpa_mlo_signal_info mlo_si = {0};
  
  	if (!wpa_s)
-@@ -314,10 +316,8 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -304,10 +306,8 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	hw_idx = ucv_int64_get(radio_id);
  
  	if (wpa_s->wpa_state == WPA_COMPLETED && wpa_s->valid_links) {
@@ -178,7 +176,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  			if ( hw_idx == wpa_get_hw_idx_by_freq(wpa_s, freq )) {
  				ucv_object_add(ret, "frequency", ucv_int64_new(freq));
  				sec_chan = wpas_get_sec_chan(wpa_s->links[i].bss);
-@@ -327,11 +327,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -317,11 +317,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  						ucv_object_add(ret, "chan_width", ucv_int64_new(mlo_si.links[i].chanwidth));
  						ucv_object_add(ret, "center_freq1", ucv_int64_new(mlo_si.links[i].center_frq1));
  						ucv_object_add(ret, "center_freq2", ucv_int64_new(mlo_si.links[i].center_frq2));
@@ -190,7 +188,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  				}
  			}
  		}
-@@ -343,6 +339,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -333,6 +329,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  		sec_chan = wpas_get_sec_chan(bss);
  		ucv_object_add(ret, "sec_chan_offset", ucv_int64_new(sec_chan));
  		ucv_object_add(ret, "frequency", ucv_int64_new(bss->freq));
@@ -210,7 +208,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  #ifdef CONFIG_MESH
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -3551,7 +3551,8 @@ int ieee802_11_set_beacon(struct hostapd
+@@ -3435,7 +3435,8 @@ int ieee802_11_set_beacon(struct hostapd
  				continue;
  #endif /* CONFIG_IEEE80211BE */
  

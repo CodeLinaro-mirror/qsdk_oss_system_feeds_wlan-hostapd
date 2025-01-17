@@ -97,7 +97,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	pos = hostapd_eid_rm_enabled_capab(hapd, pos, epos - pos);
  	pos = hostapd_get_mde(hapd, pos, epos - pos);
  
-@@ -2317,31 +2320,6 @@ static u8 * hostapd_fils_discovery(struc
+@@ -2199,31 +2202,6 @@ static u8 * hostapd_fils_discovery(struc
  #endif /* CONFIG_FILS */
  
  
@@ -129,7 +129,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  int ieee802_11_build_ap_params(struct hostapd_data *hapd,
  			       struct wpa_driver_ap_params *params)
  {
-@@ -2356,9 +2334,11 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2238,9 +2216,11 @@ int ieee802_11_build_ap_params(struct ho
  	bool complete = false;
  	u8 *startpos;
  	u8 elemid_modified = 0;
@@ -141,7 +141,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  #ifdef NEED_AP_MLME
  #define BEACON_HEAD_BUF_SIZE 256
-@@ -2512,8 +2492,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2394,8 +2374,9 @@ int ieee802_11_build_ap_params(struct ho
  	tailpos = hostapd_eid_ht_operation(hapd, tailpos);
  
  #ifdef CONFIG_IEEE80211BE
@@ -153,7 +153,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  #endif
  
  	if (hapd->iconf->mbssid && hapd->iconf->num_bss > 1) {
-@@ -2556,8 +2537,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2438,8 +2419,9 @@ int ieee802_11_build_ap_params(struct ho
  		startpos = tailpos;
  		tailpos = hostapd_eid_vht_operation(hapd, tailpos);
  #ifdef CONFIG_IEEE80211BE
@@ -165,7 +165,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  #endif
  		tailpos = hostapd_eid_txpower_envelope(hapd, tailpos);
  	}
-@@ -2594,8 +2576,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2476,8 +2458,9 @@ int ieee802_11_build_ap_params(struct ho
  		tailpos = hostapd_eid_he_operation(hapd, tailpos);
  
  #ifdef CONFIG_IEEE80211BE
@@ -177,7 +177,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  #endif
  		/* BSS Color Change Announcement element */
  		cca_pos = hostapd_eid_cca(hapd, tailpos);
-@@ -2606,14 +2589,16 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2488,14 +2471,16 @@ int ieee802_11_build_ap_params(struct ho
  		startpos = tailpos;
  		tailpos = hostapd_eid_spatial_reuse(hapd, tailpos);
  #ifdef CONFIG_IEEE80211BE
@@ -198,7 +198,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  #endif
  		tailpos = hostapd_eid_he_6ghz_band_cap(hapd, tailpos);
  	}
-@@ -2628,8 +2613,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2510,8 +2495,9 @@ int ieee802_11_build_ap_params(struct ho
  						IEEE80211_MODE_AP);
  		startpos = tailpos;
  		tailpos = hostapd_eid_eht_operation(hapd, tailpos);
@@ -210,7 +210,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  		tailpos = hostapd_eid_vendor_240mhz(hapd, tailpos, IEEE80211_MODE_AP);
  	}
  #endif /* CONFIG_IEEE80211BE */
-@@ -2647,8 +2633,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2529,8 +2515,9 @@ int ieee802_11_build_ap_params(struct ho
  	startpos = tailpos;
  	tailpos = hostapd_eid_wmm(hapd, tailpos);
  #ifdef CONFIG_IEEE80211BE
@@ -222,12 +222,12 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	tailpos = hostapd_add_scs_cap(tailpos, false, true);
  #endif
  #ifdef CONFIG_WPS
-@@ -2840,7 +2827,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2722,7 +2709,7 @@ int ieee802_11_build_ap_params(struct ho
  	params->beacon_tx_mode = hapd->conf->beacon_tx_mode;
  
  	if (hapd->conf->mld_ap && elemid_modified)
 -		params->elemid_modified = 1;
-+		params->elemid_modified_bmap = params->elemid_modified_bmap |= BIT(hostapd_mbssid_get_bss_index(tx_bss));;
++		params->elemid_modified_bmap |= BIT(hostapd_mbssid_get_bss_index(tx_bss));
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->conf->mld_ap && hapd->iconf->ieee80211be &&
@@ -246,7 +246,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  		for (i = 1; i < hapd->iface->num_bss; i++)
  			if (hapd->iface->bss[i] == hapd)
-@@ -4548,8 +4548,8 @@ static int hostapd_build_beacon_data(str
+@@ -4554,8 +4554,8 @@ static int hostapd_build_beacon_data(str
  		beacon->assocresp_ies_len = wpabuf_len(assocresp_extra);
  	}
  
@@ -257,7 +257,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	/* MBSSID elem */
  	if (!params.mbssid.mbssid_elem_len) {
-@@ -4830,9 +4830,11 @@ static int hostapd_fill_csa_settings(str
+@@ -4836,9 +4836,11 @@ static int hostapd_fill_csa_settings(str
  	iface->conf->punct_bitmap = settings->punct_bitmap;
  #endif /* CONFIG_IEEE80211BE */
  	ret = hostapd_build_beacon_data(hapd, &settings->beacon_after);
@@ -270,7 +270,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	/* change back the configuration */
  #ifdef CONFIG_IEEE80211BE
  	iface->conf->punct_bitmap = old_punct_bitmap;
-@@ -5221,6 +5223,8 @@ int hostapd_fill_cca_settings(struct hos
+@@ -5226,6 +5228,8 @@ int hostapd_fill_cca_settings(struct hos
  
  	hostapd_interface_update_fils_ubpr(iface, true);
  
@@ -281,7 +281,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -952,7 +952,7 @@ void fst_hostapd_fill_iface_obj(struct h
+@@ -950,7 +950,7 @@ void fst_hostapd_fill_iface_obj(struct h
  
  int hostapd_set_acl(struct hostapd_data *hapd);
  struct hostapd_data * hostapd_mbssid_get_tx_bss(struct hostapd_data *hapd);
@@ -292,7 +292,15 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  int hostapd_link_remove(struct hostapd_data *hapd, u32 count);
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9732,15 +9732,41 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -12,6 +12,7 @@
+ 
+ #include "utils/common.h"
+ #include "utils/eloop.h"
++#include "utils/crc32.h"
+ #include "crypto/crypto.h"
+ #include "crypto/sha256.h"
+ #include "crypto/sha384.h"
+@@ -9690,15 +9691,41 @@ size_t hostapd_eid_mbssid_len(struct hos
  	return len;
  }
  
@@ -330,21 +338,20 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  {
  	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
  	size_t i, tx_xrate_len;
--	u8 *eid_len_offset, *max_bssid_indicator_offset;
-+	u8 *eid_len_offset, *max_bssid_indicator_offset, *start_pos;
+ 	u8 *eid_len_offset, *max_bssid_indicator_offset;
 +	u8 *startpos;
  
  	hostapd_eid_ext_supp_rates(tx_bss, NULL, &tx_xrate_len);
  	*eid++ = WLAN_EID_MULTIPLE_BSSID;
-@@ -9755,6 +9781,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9713,6 +9740,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		u8 ie_count = 0, non_inherit_ie[4];
  		size_t auth_len = 0, xrate_len = 0;
  		u16 capab_info;
-+		u8 modified_flag = 0;
++		u16 modified_flag = 0;
  
  		if (!bss || !bss->conf || !bss->started ||
  		    mbssid_known_bss(i, known_bss, known_bss_len))
-@@ -9843,8 +9870,14 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9801,8 +9829,14 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		}
  
  		/* WMM IE */
@@ -359,7 +366,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			if (tx_bss->conf->wmm_enabled && !bss->conf->wmm_enabled)
  				non_inherit_ie[ie_count++] = WLAN_EID_VENDOR_SPECIFIC;
  		}
-@@ -9879,7 +9912,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -9837,7 +9871,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			unsigned int frame_stype, u8 elem_count,
  			u8 **elem_offset,
  			const u8 *known_bss, size_t known_bss_len, u8 *rnr_eid,
@@ -369,7 +376,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  {
  	size_t bss_index = 1, cur_len = 0;
  	u8 elem_index = 0, *rnr_start_eid = rnr_eid;
-@@ -9916,7 +9950,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -9874,7 +9909,8 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  		eid = hostapd_eid_mbssid_elem(hapd, eid, end, frame_stype,
  					      hostapd_max_bssid_indicator(hapd),
  					      &bss_index, elem_count,
@@ -381,7 +388,16 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			struct mbssid_ie_profiles skip_profiles = {
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -280,9 +280,13 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -9,6 +9,8 @@
+ #ifndef IEEE802_11_H
+ #define IEEE802_11_H
+ 
++#include "hostapd.h"
++
+ struct hostapd_iface;
+ struct hostapd_data;
+ struct sta_info;
+@@ -280,9 +282,13 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			unsigned int frame_stype, u8 elem_count,
  			u8 **elem_offset,
  			const u8 *known_bss, size_t known_bss_len, u8 *rnr_eid,
@@ -398,7 +414,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  			      struct sae_password_entry **pw_entry,
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1985,9 +1985,9 @@ struct wpa_driver_ap_params {
+@@ -1975,9 +1975,9 @@ struct wpa_driver_ap_params {
  	/* Unsolicited broadcast Probe Response data */
  	struct unsol_bcast_probe_resp ubpr;
  
@@ -411,7 +427,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	bool disable_cu;
  
  	/**
-@@ -2904,6 +2904,8 @@ struct wpa_channel_info {
+@@ -2894,6 +2894,8 @@ struct wpa_channel_info {
   * @proberesp_ies_len: Length of proberesp_ies in octets
   * @proberesp_ies_len: Length of proberesp_ies in octets
   * @probe_resp_len: Length of probe response template (@probe_resp)
@@ -420,7 +436,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
   */
  struct beacon_data {
  	u8 *head, *tail;
-@@ -2918,9 +2920,8 @@ struct beacon_data {
+@@ -2908,9 +2910,8 @@ struct beacon_data {
  	size_t assocresp_ies_len;
  	size_t probe_resp_len;
  
@@ -432,7 +448,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	struct mbssid_data mbssid;
  };
-@@ -2938,6 +2939,10 @@ struct beacon_data {
+@@ -2928,6 +2929,10 @@ struct beacon_data {
   * @power_mode: 6 GHz Power mode
   * @link_id: Link ID to determine the link for MLD; -1 for non-MLD
   * @ubpr: Unsolicited broadcast Probe Response frame data
@@ -443,7 +459,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
   */
  struct csa_settings {
  	u8 cs_count;
-@@ -2956,8 +2961,8 @@ struct csa_settings {
+@@ -2946,8 +2951,8 @@ struct csa_settings {
  
  	struct unsol_bcast_probe_resp ubpr;
  
@@ -453,7 +469,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	int power_mode;
  };
  
-@@ -2980,6 +2985,7 @@ struct he_6ghz_pwr_mode_settings {
+@@ -2970,6 +2975,7 @@ struct he_6ghz_pwr_mode_settings {
   * @counter_offset_presp: Offset to the count field in Probe Response frame
   * @ubpr: Unsolicited broadcast Probe Response frame data
   * @link_id: If >= 0 indicates the link of the AP MLD to configure
@@ -461,7 +477,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
   */
  struct cca_settings {
  	u8 cca_count;
-@@ -2994,6 +3000,7 @@ struct cca_settings {
+@@ -2984,6 +2990,7 @@ struct cca_settings {
  	struct unsol_bcast_probe_resp ubpr;
  
  	int link_id;
@@ -503,7 +519,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	}
  
  	if (params->punct_bitmap) {
-@@ -11774,10 +11776,11 @@ static int nl80211_switch_channel(void *
+@@ -11773,10 +11775,11 @@ static int nl80211_switch_channel(void *
  	struct nl_msg *msg;
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -516,7 +532,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	wpa_printf(MSG_DEBUG,
  		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d puncturing_bitmap=0x%04x link_id=%d%s%s%s)",
-@@ -11902,8 +11905,11 @@ static int nl80211_switch_channel(void *
+@@ -11901,8 +11904,11 @@ static int nl80211_switch_channel(void *
  		goto fail;
  
  	if (bss->valid_links) {
@@ -529,7 +545,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	}
  	nla_nest_end(msg, beacon_csa);
  
-@@ -11917,8 +11923,11 @@ static int nl80211_switch_channel(void *
+@@ -11916,8 +11922,11 @@ static int nl80211_switch_channel(void *
  		goto fail;
  
  	if (bss->valid_links) {
@@ -542,7 +558,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	}
  
  	ret = send_and_recv_cmd(drv, msg);
-@@ -11983,10 +11992,10 @@ static int nl80211_switch_color(void *pr
+@@ -11982,10 +11991,10 @@ static int nl80211_switch_color(void *pr
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
@@ -555,7 +571,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	wpa_printf(MSG_DEBUG,
  		   "nl80211: Color change request (cca_count=%u color=%d)",
-@@ -12066,9 +12075,10 @@ static int nl80211_switch_color(void *pr
+@@ -12065,9 +12074,10 @@ static int nl80211_switch_color(void *pr
  #endif /* CONFIG_IEEE80211BE */
  
  	if (bss->valid_links) {

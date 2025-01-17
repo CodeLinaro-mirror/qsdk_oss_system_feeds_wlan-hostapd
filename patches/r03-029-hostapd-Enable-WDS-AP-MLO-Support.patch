@@ -90,7 +90,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	int i, j = 32, aid;
-@@ -6799,6 +6847,12 @@ static void handle_assoc_cb(struct hosta
+@@ -6801,6 +6849,12 @@ static void handle_assoc_cb(struct hosta
  			   MAC2STR(sta->addr));
  		sta->pending_wds_enable = 0;
  		sta->flags |= WLAN_STA_WDS;
@@ -103,7 +103,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	}
  
  	/* WPS not supported on backhaul BSS. Disable 4addr mode on fronthaul */
-@@ -6809,12 +6863,18 @@ static void handle_assoc_cb(struct hosta
+@@ -6811,12 +6865,18 @@ static void handle_assoc_cb(struct hosta
  	     !(sta->flags & WLAN_STA_WPS))) {
  		int ret;
  		char ifname_wds[IFNAMSIZ + 1];
@@ -124,7 +124,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if (!ret)
  			hostapd_set_wds_encryption(hapd, sta, ifname_wds);
  	}
-@@ -7130,6 +7190,7 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7132,6 +7192,7 @@ void ieee802_11_rx_from_unknown(struct h
  				int wds)
  {
  	struct sta_info *sta;
@@ -132,7 +132,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	sta = ap_get_sta(hapd, src);
  	if (sta &&
-@@ -7138,6 +7199,19 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7140,6 +7201,19 @@ void ieee802_11_rx_from_unknown(struct h
  		if (!hapd->conf->wds_sta)
  			return;
  
@@ -152,7 +152,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if ((sta->flags & (WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK)) ==
  		    WLAN_STA_ASSOC_REQ_OK) {
  			wpa_printf(MSG_DEBUG,
-@@ -7154,10 +7228,15 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7156,10 +7230,15 @@ void ieee802_11_rx_from_unknown(struct h
  
  			wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for "
  				   "STA " MACSTR " (aid %u)",
@@ -182,19 +182,18 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  u16 copy_sta_vendor_vht(struct hostapd_data *hapd, struct sta_info *sta,
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -224,8 +224,10 @@ static void clear_wpa_sm_for_each_partne
- 
- void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
- {
--	struct hostapd_data *vlan_bss = hapd;
-+	struct hostapd_data *vlan_bss = hapd, *phapd;
+@@ -227,7 +227,10 @@ void ap_free_sta(struct hostapd_data *ha
+ #ifndef CONFIG_NO_VLAN
+ 	struct hostapd_data *vlan_bss = hapd;
+ #endif
++	struct hostapd_data *phapd;
  	int set_beacon = 0;
 +	struct sta_info *psta;
 +	bool remove = true;
  
  	accounting_sta_stop(hapd, sta);
  
-@@ -235,10 +237,31 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -237,10 +240,31 @@ void ap_free_sta(struct hostapd_data *ha
  
  	if ((sta->flags & WLAN_STA_WDS) ||
  	    (sta->flags & WLAN_STA_MULTI_AP &&
@@ -230,7 +229,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	if (sta->ipaddr)
  		hostapd_drv_br_delete_ip_neigh(hapd, 4, (u8 *) &sta->ipaddr);
-@@ -257,6 +280,10 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -259,6 +283,10 @@ void ap_free_sta(struct hostapd_data *ha
  		hapd->sta_aid[(sta->aid - 1) / 32] &=
  			~BIT((sta->aid - 1) % 32);
  
@@ -263,18 +262,17 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			if (nl80211_create_iface(drv, name,
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2740,7 +2740,10 @@ static void nl80211_spurious_frame(struc
+@@ -2744,6 +2744,9 @@ static void nl80211_spurious_frame(struc
  				   int wds)
  {
- 	struct wpa_driver_nl80211_data *drv = bss->drv;
-+	struct i802_link *mld_link;
  	union wpa_event_data event;
++	struct i802_link *mld_link;
 +	void *ctx = bss->ctx;
 +	int link_id = -1;
  
  	if (!tb[NL80211_ATTR_MAC])
  		return;
-@@ -2750,7 +2753,21 @@ static void nl80211_spurious_frame(struc
+@@ -2753,7 +2756,21 @@ static void nl80211_spurious_frame(struc
  	event.rx_from_unknown.addr = nla_data(tb[NL80211_ATTR_MAC]);
  	event.rx_from_unknown.wds = wds;
  
@@ -284,7 +282,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +
 +		if (!nl80211_link_valid(bss->valid_links, link_id)) {
 +			wpa_printf(MSG_DEBUG,
-+				   "ignoring unknown RX event from link_id:%d", link_id);
++					  "ignoring unknown RX event from link_id:%d", link_id);
 +			return;
 +		}
 +
@@ -293,7 +291,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		event.rx_from_unknown.bssid = mld_link->addr;
 +	}
 +
-+	wpa_supplicant_event(ctx, EVENT_RX_FROM_UNKNOWN, &event);
++   wpa_supplicant_event(ctx, EVENT_RX_FROM_UNKNOWN, &event);
  }
  
  

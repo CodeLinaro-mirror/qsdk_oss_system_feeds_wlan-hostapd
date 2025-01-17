@@ -25,7 +25,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9560,8 +9560,11 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -9605,8 +9605,11 @@ static size_t hostapd_eid_mbssid_elem_le
  			ie_count++;
  
  		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
@@ -38,7 +38,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  		if (ie_count)
  			nontx_profile_len += 4 + ie_count;
-@@ -9733,8 +9736,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -9778,8 +9781,11 @@ static u8 * hostapd_eid_mbssid_elem(stru
  			non_inherit_ie[ie_count++] = WLAN_EID_RSNX;
  
  		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
@@ -53,7 +53,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			*eid++ = WLAN_EID_EXTENSION;
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -1431,10 +1431,82 @@ mlme_event_mgmt_critical_update(struct i
+@@ -1445,10 +1445,80 @@ mlme_event_mgmt_critical_update(struct i
  }
  
  
@@ -68,7 +68,6 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +	struct nlattr *link[NL80211_CU_MLD_LINK_ATTR_MAX + 1];
 +	union wpa_event_data event;
 +	int mld_list_rem, link_list_rem;
-+	int link_id;
 +
 +	/* Link removal attribute policy */
 +	static struct nla_policy
@@ -93,15 +92,14 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +	nla_parse_nested(link_removal, NL80211_CU_ATTR_MAX,
 +			 rx_link_removal_params, link_removal_attr_policy);
 +
-+	if (!link_removal || !link_removal[NL80211_CU_ATTR_MLD_LIST]) {
++	if (!link_removal[NL80211_CU_ATTR_MLD_LIST]) {
 +		wpa_printf(MSG_DEBUG, "nl80211: Couldn't parse link_removal attribute\n");
 +		return;
 +	}
 +
 +	nla_for_each_nested(mld_list, link_removal[NL80211_CU_ATTR_MLD_LIST], mld_list_rem) {
 +		if (nla_parse_nested(mld, NL80211_CU_MLD_ATTR_MAX, mld_list,
-+				     mld_attr_policy) ||
-+		    !mld || !mld[NL80211_CU_MLD_ATTR_LINK_LIST])
++			mld_attr_policy) || !mld[NL80211_CU_MLD_ATTR_LINK_LIST])
 +			return;
 +
 +		if (mld[NL80211_CU_MLD_ATTR_LINK_LIST]) {
@@ -137,7 +135,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
  	const struct ieee80211_mgmt *mgmt;
-@@ -1476,6 +1548,10 @@ static void mlme_event_mgmt(struct i802_
+@@ -1490,6 +1560,10 @@ static void mlme_event_mgmt(struct i802_
  		|| (stype == WLAN_FC_STYPE_REASSOC_REQ)))
  		mlme_event_mgmt_critical_update(bss, rx_cu_param);
  
@@ -148,7 +146,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	event.rx_mgmt.ctx = bss->ctx;
  	event.rx_mgmt.link_id = link_id;
  
-@@ -1750,7 +1826,8 @@ static void mlme_event(struct i802_bss *
+@@ -1764,7 +1838,8 @@ static void mlme_event(struct i802_bss *
  		       struct nlattr *freq, struct nlattr *ack,
  		       struct nlattr *cookie, struct nlattr *sig,
  		       struct nlattr *wmm, struct nlattr *req_ie,
@@ -158,7 +156,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
  	u16 stype = 0, auth_type = 0;
-@@ -1849,7 +1926,8 @@ static void mlme_event(struct i802_bss *
+@@ -1863,7 +1938,8 @@ static void mlme_event(struct i802_bss *
  		break;
  	case NL80211_CMD_FRAME:
  		mlme_event_mgmt(bss, freq, sig, nla_data(frame),
@@ -168,7 +166,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		break;
  	case NL80211_CMD_FRAME_TX_STATUS:
  		mlme_event_mgmt_tx_status(bss, cookie, nla_data(frame),
-@@ -4755,7 +4833,7 @@ static void do_process_drv_event(struct
+@@ -4762,7 +4838,7 @@ static void do_process_drv_event(struct
  			   tb[NL80211_ATTR_RX_SIGNAL_DBM],
  			   tb[NL80211_ATTR_STA_WME],
  			   tb[NL80211_ATTR_REQ_IE], NULL,
@@ -177,7 +175,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		break;
  	case NL80211_CMD_CONNECT:
  	case NL80211_CMD_ROAM:
-@@ -5065,7 +5143,8 @@ int process_bss_event(struct nl_msg *msg
+@@ -5072,7 +5148,8 @@ int process_bss_event(struct nl_msg *msg
  			   tb[NL80211_ATTR_RX_SIGNAL_DBM],
  			   tb[NL80211_ATTR_STA_WME], NULL,
  			   tb[NL80211_ATTR_RXMGMT_CRITICAL_UPDATE],
@@ -189,7 +187,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		nl80211_spurious_frame(bss, tb, 0);
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -3535,6 +3535,7 @@ enum nl80211_attrs {
+@@ -3539,6 +3539,7 @@ enum nl80211_attrs {
  	NL80211_ATTR_INTERFERENCE_TYPE,
  	NL80211_ATTR_AP_REMOVAL_COUNT,
  	NL80211_ATTR_TSF,
@@ -197,7 +195,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	/* add attributes here, update the policy in nl80211.c */
  
-@@ -8464,6 +8465,7 @@ enum nl80211_cu_mld_link_attrs {
+@@ -8468,6 +8469,7 @@ enum nl80211_cu_mld_link_attrs {
  	NL80211_CU_MLD_LINK_ATTR_CRITICAL_FLAG,
  	NL80211_CU_MLD_LINK_ATTR_BPCC,
  	NL80211_CU_MLD_LINK_ATTR_SWITCH_COUNT,
@@ -232,5 +230,5 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		}
 +
  		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
- 		pos = hostapd_eid_eht_operation(hapd, pos, IEEE80211_MODE_AP);
+ 		pos = hostapd_eid_eht_operation(hapd, pos);
  		pos = hostapd_eid_vendor_240mhz(hapd, pos, IEEE80211_MODE_AP);

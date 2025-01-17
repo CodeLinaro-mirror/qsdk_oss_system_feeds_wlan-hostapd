@@ -19,11 +19,9 @@ Signed-off-by: Govindaraj Saminathan <quic_gsaminat@quicinc.com>
  src/common/ieee802_11_defs.h |  5 +++--
  2 files changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index e544a66..3eb0906 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -1309,6 +1309,12 @@ u16 hostapd_process_ml_assoc_req(struct hostapd_data *hapd,
+@@ -1309,6 +1309,12 @@ u16 hostapd_process_ml_assoc_req(struct
  		goto out;
  	}
  
@@ -33,10 +31,10 @@ index e544a66..3eb0906 100644
 +		wpa_printf(MSG_DEBUG, "MLD: EXT ML capabilities not present");
 +	}
 +
- 	wpa_printf(MSG_DEBUG, "MLD: expected_common_info_len=%lu",
- 		   common_info_len);
+ 	wpa_printf(MSG_DEBUG, "MLD: expected_common_info_len=%zu",
+ 			   common_info_len);
  
-@@ -1339,6 +1345,10 @@ u16 hostapd_process_ml_assoc_req(struct hostapd_data *hapd,
+@@ -1339,6 +1345,10 @@ u16 hostapd_process_ml_assoc_req(struct
  	info->common_info.mld_capa = WPA_GET_LE16(pos);
  	pos += 2;
  
@@ -47,8 +45,6 @@ index e544a66..3eb0906 100644
  	wpa_printf(MSG_DEBUG, "MLD: addr=" MACSTR ", eml=0x%x, mld=0x%x",
  		   MAC2STR(info->common_info.mld_addr),
  		   info->common_info.eml_capa, info->common_info.mld_capa);
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 0ecd7f1..ec54a43 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -2878,15 +2878,16 @@ struct ieee80211_eht_capabilities {
@@ -70,6 +66,3 @@ index 0ecd7f1..ec54a43 100644
  
  /*
   * STA Control field definitions of Per-STA Profile subelement in Basic
--- 
-2.34.1
-
