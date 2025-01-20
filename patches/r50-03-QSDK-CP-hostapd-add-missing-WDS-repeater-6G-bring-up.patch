@@ -4,6 +4,19 @@ Date: Sat, 16 Nov 2024 01:43:46 +0530
 Subject: [PATCH] QSDK:CP:hostapd: add missing WDS repeater 6G bring-up, CSA
  implementation
 
+Add frequency validation for new requested frequency during
+interface start and add missing WDS repeater 6 GHz bring-up, CSA
+implementation.
+
+In WDS STA (5 GHz + 6 GHz) + repeater AP (2 GHz + 5 GHz + 6 GHz)
+configured in MLO, some iterations of the STA connection result in
+connection to only one link. During this scenario, the interface start
+is called for all the disabled links of the AP with the associated
+link frequency, causing two vdevs to be created in the same MLD
+under the same radio. This commit adds frequency validation with the
+channels information present in that radio, for the new requested
+frequency during interface start.
+
 Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
 ---
  src/utils/ucode.c      | 95 ++++++++++++++++++++++++++++++++++--------
@@ -208,3 +221,79 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	}
  
  #ifdef CONFIG_MESH
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -2473,7 +2473,7 @@ static int hostapd_ctrl_register_frame(s
+ 
+ #ifdef NEED_AP_MLME
+ 
+-static bool
++bool
+ hostapd_ctrl_is_freq_in_cmode(struct hostapd_hw_modes *mode,
+ 			      struct hostapd_multi_hw_info *current_hw_info,
+ 			      int freq)
+--- a/src/ap/ctrl_iface_ap.h
++++ b/src/ap/ctrl_iface_ap.h
+@@ -62,5 +62,8 @@ int hostapd_ctrl_iface_acl_show_mac(stru
+ 				    char *buf, size_t buflen);
+ int hostapd_disassoc_accept_mac(struct hostapd_data *hapd);
+ int hostapd_disassoc_deny_mac(struct hostapd_data *hapd);
++bool hostapd_ctrl_is_freq_in_cmode(struct hostapd_hw_modes *mode,
++				   struct hostapd_multi_hw_info *current_hw_info,
++				   int freq);
+ u8 hostapd_maxnss(struct hostapd_data *hapd, struct sta_info *sta);
+ #endif /* CTRL_IFACE_AP_H */
+--- a/src/ap/ucode.c
++++ b/src/ap/ucode.c
+@@ -11,6 +11,7 @@
+ #include "acs.h"
+ #include <libubox/uloop.h>
+ #include "sta_info.h"
++#include "ctrl_iface_ap.h"
+ 
+ static uc_resource_type_t *global_type, *bss_type, *iface_type;
+ static struct hapd_interfaces *interfaces;
+@@ -578,7 +579,7 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+ 	struct hostapd_config *conf;
+ 	bool changed = false;
+ 	uint64_t intval;
+-	int i;
++	int i, freq;
+ 
+ 	if (!iface)
+ 		return NULL;
+@@ -608,6 +609,22 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+ 	     iface->state == HAPD_IFACE_DFS))
+ 		return ucv_boolean_new(true);
+ 
++	intval = ucv_int64_get(ucv_object_get(info, "frequency", NULL));
++	if (!errno) {
++		freq = (int)intval;
++		if (!hostapd_ctrl_is_freq_in_cmode(iface->current_mode,
++						   iface->current_hw_info,
++						   freq)) {
++			wpa_printf(MSG_ERROR, "Interface start requested with freq=%d but previous iface freq=%d\n",
++				   freq, iface->freq);
++			return NULL;
++		}
++	} else {
++		freq = 0;
++	}
++
++	iface->freq = freq;
++
+ 	intval = ucv_int64_get(ucv_object_get(info, "center_seg0_idx", NULL));
+ 	if (!errno)
+ 		hostapd_set_oper_centr_freq_seg0_idx(conf, intval);
+@@ -620,11 +637,6 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+ 	if (!errno)
+ 		hostapd_set_oper_chwidth(conf, intval);
+ 
+-	intval = ucv_int64_get(ucv_object_get(info, "frequency", NULL));
+-	if (!errno)
+-		iface->freq = intval;
+-	else
+-		iface->freq = 0;
+ 	conf->acs = 0;
+ 
+ out:
