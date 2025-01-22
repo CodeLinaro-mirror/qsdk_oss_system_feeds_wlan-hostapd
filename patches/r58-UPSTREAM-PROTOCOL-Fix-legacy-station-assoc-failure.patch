@@ -1,0 +1,129 @@
+From 4b5bcc3cd2d90a83c04bb0408dfef125ea306d7b Mon Sep 17 00:00:00 2001
+From: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
+Date: Wed, 22 Jan 2025 15:15:03 +0530
+Subject: [PATCH] UPSTREAM: PROTOCOL: Fix legacy station assoc failure
+
+Currently, when a station tries to associate as a multi-link (ML)
+connection but fails to connect successfully
+(station disassociated/deauthed and marked as not authorized),
+we maintain the station context until the maximum inactivity timer
+expires. If that particular station tries to re-associate as a legacy
+station on a different link (non-associated link), the association
+fails after EAPOL because we have not cleared the associated link
+context. The existing code clears the link station context during
+authentication only if the station is associated as a multi-link (ML)
+connection.
+
+To address this issue, clear the partner link for any station
+association, provided the partner link is not authorized. This change
+ensures that the station can successfully associate as a legacy
+station on a different link without encountering association failures.
+
+Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
+---
+ src/ap/ieee802_11.c    |  2 +-
+ src/ap/sta_info.c      | 21 ++++++++++++++-------
+ src/ap/sta_info.h      |  4 +++-
+ src/ap/wpa_auth_glue.c |  2 +-
+ 4 files changed, 19 insertions(+), 10 deletions(-)
+
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -4914,7 +4914,7 @@ int hostapd_process_assoc_ml_info(struct
+ 				   "ML STA was already created and we received assoc resp again (reassoc: %d)",
+ 				   reassoc);
+ 			/* cleanup all link sta in kernel and add later on ml processing */
+-			ap_sta_remove_link_sta(hapd, sta);
++			ap_sta_remove_link_sta(hapd, sta, 0);
+ 			hostapd_drv_sta_remove(hapd, sta->addr);
+ 			sta->flags &= ~(WLAN_STA_ASSOC | WLAN_STA_AUTHORIZED);
+ 
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -2020,10 +2020,14 @@ int ap_sta_pending_delayed_1x_auth_fail_
+ 
+ #ifdef CONFIG_IEEE80211BE
+ void ap_sta_remove_link_sta(struct hostapd_data *hapd,
+-			    struct sta_info *sta)
++			    struct sta_info *sta,
++			    int check_authorized)
+ {
+ 	struct hostapd_data *tmp_hapd;
+ 
++	if (!hostapd_is_mld_ap(hapd))
++		return;
++
+ 	for_each_mld_link(tmp_hapd, hapd) {
+ 		struct sta_info *tmp_sta;
+ 
+@@ -2035,9 +2039,18 @@ void ap_sta_remove_link_sta(struct hosta
+ 			if (tmp_sta == sta ||
+ 			    !ether_addr_equal(tmp_sta->addr, sta->addr))
+ 				continue;
++			/*
++			 * In case the AP is affiliated with an AP MLD is
++			 * authorized, Don't remove the link sta.
++			 */
++
++			if(check_authorized && ap_sta_is_authorized(tmp_sta))
++				continue;
+ 
+-			ap_free_sta(tmp_hapd, tmp_sta);
+-			break;
++			if (ap_sta_is_mld(tmp_hapd, tmp_sta)) {
++				ap_free_sta(tmp_hapd, tmp_sta);
++				break;
++			}
+ 		}
+ 	}
+ }
+@@ -2060,6 +2073,12 @@ int ap_sta_re_add(struct hostapd_data *h
+ 	 */
+ 
+ #ifdef CONFIG_IEEE80211BE
++	/*
++	 * In case the AP is affiliated with an AP MLD, we need to
++	 * remove the station from all relevant links/APs.
++	 */
++	ap_sta_remove_link_sta(hapd, sta, 1);
++
+ 	if (ap_sta_is_mld(hapd, sta)) {
+ 		u8 mld_link_id = hapd->mld_link_id;
+ 
+@@ -2067,12 +2086,6 @@ int ap_sta_re_add(struct hostapd_data *h
+ 		mld_link_addr = sta->mld_info.links[mld_link_id].peer_addr;
+ 		eml_cap = sta->mld_info.common_info.eml_capa;
+ 		mld_cap = sta->mld_info.common_info.mld_capa;
+-
+-		/*
+-		 * In case the AP is affiliated with an AP MLD, we need to
+-		 * remove the station from all relevant links/APs.
+-		 */
+-		ap_sta_remove_link_sta(hapd, sta);
+ 	}
+ #endif /* CONFIG_IEEE80211BE */
+ 
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
+@@ -381,7 +381,9 @@ int set_for_each_partner_link_sta(struct
+ 					    struct sta_info *sta,
+ 					    void *data));
+ 
+-void ap_sta_remove_link_sta(struct hostapd_data *hapd, struct sta_info *sta);
++void ap_sta_remove_link_sta(struct hostapd_data *hapd,
++			    struct sta_info *sta,
++			    int check_authorized);
+ void set_link_id_for_each_partner_link_sta(struct hostapd_data *hapd,
+ 					   struct sta_info *psta,
+ 					   int link_id);
+--- a/src/ap/wpa_auth_glue.c
++++ b/src/ap/wpa_auth_glue.c
+@@ -1264,7 +1264,7 @@ hostapd_wpa_auth_add_sta_ml(struct hosta
+ 		 */
+ 		wpa_printf(MSG_DEBUG, "Remove STA "MACSTR" to make source to"
+ 			   " target roaming", MAC2STR(sta_mld));
+-		ap_sta_remove_link_sta(hapd, sta_ml_obj);
++		ap_sta_remove_link_sta(hapd, sta_ml_obj, 0);
+ 		ap_free_sta(hapd, sta_ml_obj);
+ 		sta_ml_obj = NULL;
+ 	}
