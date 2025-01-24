@@ -297,3 +297,15 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	conf->acs = 0;
  
  out:
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -3551,7 +3551,8 @@ int ieee802_11_set_beacon(struct hostapd
+ 				continue;
+ #endif /* CONFIG_IEEE80211BE */
+ 
+-			if (other->bss[i] && other->bss[i]->started)
++			if (other->bss[i] && other->bss[i]->started &&
++			    other->bss[i]->beacon_set_done)
+ 				__ieee802_11_set_beacon(other->bss[i]);
+ 		}
+ 	}
