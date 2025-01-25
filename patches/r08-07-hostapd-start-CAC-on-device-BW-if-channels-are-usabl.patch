@@ -27,8 +27,8 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  #define IEEE80211_DFS_MIN_CAC_TIME_MS  60000
  
-@@ -1898,30 +1899,131 @@ int hostapd_dfs_radar_detected(struct ho
- 			oper_centr_freq_seg0_idx, oper_centr_freq_seg1_idx);
+@@ -1900,31 +1901,132 @@ int hostapd_dfs_radar_detected(struct ho
+ 			hostapd_get_punct_bitmap(iface->bss[0]));
  	}
  
 -	if (!radar_bitmap && iface->conf->disable_csa_dfs &&
@@ -39,6 +39,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 -
  	/* Switch channel with random channel selection for invalid puncturing pattern */
  	iface->radar_bit_pattern = 0;
+ 	iface->conf->punct_bitmap = cur_punct_bits;
  
 -	if (hostapd_dfs_background_start_channel_switch(iface, freq) && radar_bitmap_oper) {
 -		if (!iface->conf->disable_csa_dfs) {
@@ -174,7 +175,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
  int hostapd_dfs_nop_finished(struct hostapd_iface *iface, int freq,
  			     int ht_enabled, int chan_offset, int chan_width,
-@@ -1954,9 +2056,11 @@ int hostapd_dfs_nop_finished(struct host
+@@ -1957,9 +2059,11 @@ int hostapd_dfs_nop_finished(struct host
  		/* Handle cases where all channels were initially unavailable */
  		hostapd_handle_dfs(iface);
  	} else if (dfs_use_radar_background(iface) &&
@@ -191,7 +192,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 +++ b/src/ap/dfs.h
 @@ -50,4 +50,5 @@ int hostapd_handle_dfs_offload(struct ho
  int hostapd_is_dfs_overlap(struct hostapd_iface *iface, enum chan_width width,
- 			   int center_freq);
+ 			   int center_freq, u16 punct_bitmap);
  void hostapd_dfs_radar_handling_timeout(void *eloop_data, void *user_data);
 +void hostapd_start_device_cac_background(struct hostapd_iface *iface);
  #endif /* DFS_H */

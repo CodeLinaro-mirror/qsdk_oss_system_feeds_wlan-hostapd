@@ -25,7 +25,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1291,6 +1291,8 @@ struct hostapd_config {
+@@ -1288,6 +1288,8 @@ struct hostapd_config {
  
  	int use_ru_puncture_dfs;
  	int ccfs;
@@ -124,9 +124,9 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	if (res) {
  		wpa_printf(MSG_ERROR, "DFS start_dfs_cac() failed, %d", res);
 @@ -1155,7 +1156,9 @@ static int hostapd_dfs_request_channel_s
+ 				      &cmode->he_capab[ieee80211_mode],
  				      &cmode->eht_capab[ieee80211_mode],
- 				      hostapd_get_punct_bitmap(iface->bss[0]) |
- 				      iface->radar_bit_pattern,
+ 				      punct_bitmap | iface->radar_bit_pattern,
 -				      iface->conf->he_6ghz_reg_pwr_type);
 +				      iface->conf->he_6ghz_reg_pwr_type,
 +				      iface->conf->bandwidth_device,
@@ -154,7 +154,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	if (err) {
  		wpa_printf(MSG_ERROR, "DFS failed to calculate CSA freq params");
-@@ -1802,7 +1807,9 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1804,7 +1809,9 @@ int hostapd_dfs_radar_detected(struct ho
  						     hostapd_get_oper_chwidth(iface->conf),
  						     hostapd_get_oper_centr_freq_seg0_idx(iface->conf),
  						     hostapd_get_oper_centr_freq_seg1_idx(iface->conf),
@@ -187,7 +187,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  			wpa_printf(MSG_ERROR, "Could not set channel for "
  				   "kernel driver");
  			goto fail;
-@@ -4420,7 +4424,9 @@ static int hostapd_change_config_freq(st
+@@ -4412,7 +4416,9 @@ static int hostapd_change_config_freq(st
  				    mode ? &mode->eht_capab[IEEE80211_MODE_AP] :
  				    NULL,
  				    hostapd_get_punct_bitmap(hapd),
@@ -198,7 +198,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		return -1;
  
  	switch (params->bandwidth) {
-@@ -4840,6 +4846,11 @@ hostapd_switch_channel_fallback(struct h
+@@ -4832,6 +4838,11 @@ hostapd_switch_channel_fallback(struct h
  	iface->conf->ieee80211ac = freq_params->vht_enabled;
  	iface->conf->ieee80211ax = freq_params->he_enabled;
  	iface->conf->ieee80211be = freq_params->eht_enabled;
@@ -290,7 +290,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  };
  
  /**
-@@ -6916,6 +6928,8 @@ union wpa_event_data {
+@@ -6906,6 +6918,8 @@ union wpa_event_data {
  		int cf2;
  		int link_id;
  		u16 punct_bitmap;
@@ -312,7 +312,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		wpa_printf(MSG_ERROR, "Error updating mesh frequency params");
  		wpa_supplicant_mesh_deinit(wpa_s, true);
  		return -1;
-@@ -519,8 +521,11 @@ static int wpa_supplicant_mesh_init(stru
+@@ -516,8 +518,11 @@ static int wpa_supplicant_mesh_init(stru
  	}
  
  #ifdef CONFIG_IEEE80211BE
@@ -327,7 +327,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	ifmsh->conf = conf;
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -3356,7 +3356,9 @@ skip_to_6ghz:
+@@ -3358,7 +3358,9 @@ skip_to_6ghz:
  				    chwidth, seg0, seg1, vht_caps,
  				    &mode->he_capab[ieee80211_mode],
  				    &mode->eht_capab[ieee80211_mode], 0,
