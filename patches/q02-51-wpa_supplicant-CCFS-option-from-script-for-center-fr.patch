@@ -11,18 +11,18 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4653,6 +4653,8 @@ static int hostapd_config_fill(struct ho
+@@ -4651,6 +4651,8 @@ static int hostapd_config_fill(struct ho
+ 	} else if (os_strcmp(buf, "wowlan_triggers") == 0) {
+ 		os_free(bss->wowlan_triggers);
  		bss->wowlan_triggers = os_strdup(pos);
- 	} else if (os_strcmp(buf, "enable_320mhz_bw") == 0) {
- 		conf->enable_320mhz_bw = atoi(pos);
 +	} else if (os_strcmp(buf, "ccfs") == 0) {
 +		conf->ccfs = atoi(pos);
- 	} else if (os_strcmp(buf, "enable_160mhz_bw") == 0) {
- 		 conf->enable_160mhz_bw = atoi(pos);
  	} else if (os_strcmp(buf, "disable_40mhz_scan") == 0) {
+ 		 conf->disable_40mhz_scan = atoi(pos);
+ #ifdef CONFIG_FST
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1289,6 +1289,7 @@ struct hostapd_config {
+@@ -1287,6 +1287,7 @@ struct hostapd_config {
  	bool ht_vht_twt_responder;
  
  	int use_ru_puncture_dfs;
@@ -32,7 +32,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1430,6 +1430,12 @@ struct wpa_driver_associate_params {
+@@ -1420,6 +1420,12 @@ struct wpa_driver_associate_params {
  	u16 punct_bitmap;
  
  	/**
@@ -47,8 +47,8 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	int disable_eht;
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2859,6 +2859,7 @@ static const struct parse_data ssid_fiel
- 	{ INT_RANGE(enable_320mhz_bw, 0, 1)},
+@@ -2857,6 +2857,7 @@ static const struct parse_data ssid_fiel
+ 	{ INT_RANGE(beacon_tx_mode, 1, 2)},
  	{ INT(punct_bitmap) },
  	{ INT_RANGE(use_ru_puncture_dfs, 0, 1) },
 +	{ INT(ccfs) },
@@ -57,7 +57,7 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	{ INT_RANGE(max_idle, 0, 65535)},
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1296,6 +1296,12 @@ struct wpa_ssid {
+@@ -1286,6 +1286,12 @@ struct wpa_ssid {
  	int use_ru_puncture_dfs;
  
  	/**
@@ -72,9 +72,9 @@ Signed-off-by: Ramya Gnanasekar <quic_rgnanase@quicinc.com>
  	 * By default, use it if it is available, but this can be configured
 --- a/wpa_supplicant/config_file.c
 +++ b/wpa_supplicant/config_file.c
-@@ -908,6 +908,7 @@ static void wpa_config_write_network(FIL
+@@ -907,6 +907,7 @@ static void wpa_config_write_network(FIL
+ 	INT(disable_40mhz_scan);
  	INT(beacon_tx_mode);
- 	INT(enable_160mhz_bw);
  	INT(punct_bitmap);
 +	INT(ccfs);
  	INT(enable_4addr_mode);

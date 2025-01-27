@@ -43,7 +43,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5173,6 +5173,8 @@ static int hostapd_config_fill(struct ho
+@@ -5169,6 +5169,8 @@ static int hostapd_config_fill(struct ho
  		bss->mld_indicate_disabled = atoi(pos);
  #endif /* CONFIG_TESTING_OPTIONS */
  #endif /* CONFIG_IEEE80211BE */
@@ -109,10 +109,10 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1265,6 +1265,7 @@ struct hostapd_config {
+@@ -1263,6 +1263,7 @@ struct hostapd_config {
+ #define CH_SWITCH_EHT_ENABLED BIT(0)
  #define CH_SWITCH_EHT_DISABLED BIT(1)
  	unsigned int ch_switch_eht_config;
- 	int enable_320mhz_bw;
 +	int disable_csa_dfs;
  
  	enum mbssid {
@@ -175,7 +175,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  #endif /* DFS_H */
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -1869,7 +1869,17 @@ static int __ap_ctrl_iface_chanswitch(st
+@@ -1864,7 +1864,17 @@ static int __ap_ctrl_iface_chanswitch(st
  int ap_ctrl_iface_chanswitch(struct wpa_supplicant *wpa_s, const char *pos)
  {
  	struct csa_settings settings;
@@ -224,7 +224,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  		wpa_printf(MSG_DEBUG, "CTRL_IFACE: Could not find network "
 --- a/wpa_supplicant/mesh.c
 +++ b/wpa_supplicant/mesh.c
-@@ -554,6 +554,8 @@ static int wpa_supplicant_mesh_init(stru
+@@ -551,6 +551,8 @@ static int wpa_supplicant_mesh_init(stru
  		conf->basic_rates[rate_len] = -1;
  	}
  
@@ -235,9 +235,9 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  	 * to the other primary channel, problems exist with this in mesh
 --- a/wpa_supplicant/wpa_supplicant.conf
 +++ b/wpa_supplicant/wpa_supplicant.conf
-@@ -1790,6 +1790,10 @@ fast_reauth=1
- #Set 1 to enable 160MHz in Mesh mode
- #enable_160mhz_bw=1
+@@ -1785,6 +1785,10 @@ fast_reauth=1
+ # Enable EDMG capability in STA/AP mode, default value is false
+ #enable_edmg=1
  
 +# disable_csa_dfs option can be used to skip the channel switch in wpa_supplicant
 +# during radar detection
@@ -248,7 +248,7 @@ Signed-off-by: Shivani Tambatkar <quic_stambatk@quicinc.com>
  # Relevant only if enable_edmg is true
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -5711,6 +5711,7 @@ static const struct global_parse_data gl
+@@ -5709,6 +5709,7 @@ static const struct global_parse_data gl
  #endif /* CONFIG_PASN */
  	{ INT_RANGE(he_6ghz_reg_client_type, 1, 2),
  	  CFG_CHANGED_HE_6GHZ_CLIENT_TYPE},
