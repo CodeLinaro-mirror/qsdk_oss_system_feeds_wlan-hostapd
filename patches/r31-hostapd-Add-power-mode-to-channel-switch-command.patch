@@ -128,7 +128,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +{
 +	struct he_6ghz_pwr_mode_settings settings;
 +	unsigned int i, num_err =  0;
-+	int ret, err = 0;
++	int ret = 0, err = 0;
 +
 +	settings.pwr_mode =
 +		hapd->iface->power_mode_6ghz_before_change;
@@ -169,7 +169,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		ieee802_11_set_beacon(hapd);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4580,7 +4580,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4586,7 +4586,7 @@ static int hostapd_fill_csa_settings(str
  #ifdef CONFIG_IEEE80211BE
  	u16 old_punct_bitmap;
  #endif /* CONFIG_IEEE80211BE */
@@ -178,7 +178,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	u8 oper_centr_freq0_idx = 0;
  	u8 oper_centr_freq1_idx = 0;
  	int sec_channel_offset = settings->freq_params.sec_channel_offset;
-@@ -4654,6 +4654,8 @@ static int hostapd_fill_csa_settings(str
+@@ -4660,6 +4660,8 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -187,7 +187,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #ifdef CONFIG_IEEE80211BE
  	old_punct_bitmap = iface->conf->punct_bitmap;
  	iface->conf->punct_bitmap = settings->punct_bitmap;
-@@ -4714,6 +4716,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4720,6 +4722,7 @@ static int hostapd_fill_csa_settings(str
  	 hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
  	 hapd->parameter_set_count = 0;
  
