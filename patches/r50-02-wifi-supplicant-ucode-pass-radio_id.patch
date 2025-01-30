@@ -6,6 +6,8 @@ Subject: [PATCH] QSDK: CP: wifi: supplicant: ucode: pass radio_id
 Pass radio id reference for state and event callbacks so that the
 corresponding radio would be invoked for hostapd notify in ucode.
 
+Patch-dependency: None
+
 Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
 Co-developed-by: Nagarajan Maran <quic_nmaran@quicinc.com>
 Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
@@ -210,7 +212,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  
  	if (!wpa_s)
  		return NULL;
-@@ -221,24 +311,36 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -221,24 +311,42 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  	val = ucv_string_new(wpa_supplicant_state_txt(wpa_s->wpa_state));
  	ucv_object_add(ret, "state", ucv_get(val));
  
@@ -258,11 +260,17 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  
 +	bss = wpa_s->current_bss;
 +	if (bss) {
++		if (wpa_s->num_multi_hws &&
++		    hw_idx != wpa_get_hw_idx_by_freq(wpa_s, bss->freq)) {
++			wpa_printf(MSG_ERROR, "%s hw_idx=%hhd is not compatible with freq=%d \n",
++				   __func__, hw_idx, bss->freq);
++			goto out;
++		}
 +		sec_chan = wpas_get_sec_chan(bss);
  		ucv_object_add(ret, "sec_chan_offset", ucv_int64_new(sec_chan));
  		ucv_object_add(ret, "frequency", ucv_int64_new(bss->freq));
  	}
-@@ -251,7 +353,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -251,7 +359,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  		ucv_object_add(ret, "frequency", ucv_int64_new(ifmsh->freq));
  	}
  #endif
