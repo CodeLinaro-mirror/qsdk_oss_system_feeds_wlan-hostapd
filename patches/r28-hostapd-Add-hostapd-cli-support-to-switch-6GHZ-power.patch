@@ -44,7 +44,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +{
 +#ifdef NEED_AP_MLME
 +	struct he_6ghz_pwr_mode_settings settings;
-+	int ret, he_6ghz_pwr_mode, err = 0;
++	int ret = 0, he_6ghz_pwr_mode, err = 0;
 +	unsigned int i, num_err = 0;
 +	char *end;
 +
@@ -431,7 +431,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  #endif /* CONFIG_IEEE80211AX */
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -3479,9 +3479,40 @@ static void qca_nl80211_pasn_auth(struct
+@@ -3486,9 +3486,40 @@ static void qca_nl80211_pasn_auth(struct
  }
  
  #endif /* CONFIG_PASN */
@@ -473,7 +473,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  
  static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
  				     u32 subcmd, u8 *data, size_t len)
-@@ -3528,6 +3559,9 @@ static void nl80211_vendor_event_qca(str
+@@ -3535,6 +3566,9 @@ static void nl80211_vendor_event_qca(str
  		qca_nl80211_link_reconfig_event(drv, data, len);
  		break;
  #endif /* CONFIG_DRIVER_NL80211_QCA */
