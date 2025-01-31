@@ -44,7 +44,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
 +{
 +#ifdef NEED_AP_MLME
 +	struct he_6ghz_pwr_mode_settings settings;
-+	int ret, he_6ghz_pwr_mode, err = 0;
++	int ret = 0, he_6ghz_pwr_mode, err = 0;
 +	unsigned int i, num_err = 0;
 +	char *end;
 +
