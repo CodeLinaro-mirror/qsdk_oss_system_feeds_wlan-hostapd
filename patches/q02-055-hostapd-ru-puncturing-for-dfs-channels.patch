@@ -62,7 +62,15 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  }
  
  
-@@ -1647,6 +1650,7 @@ static int hostapd_dfs_start_channel_swi
+@@ -1505,6 +1508,7 @@ static int hostapd_dfs_start_channel_swi
+ 
+ 	/* Radar detected during active CAC */
+ 	iface->cac_started = 0;
++	iface->conf->punct_bitmap = 0;
+ 	channel = dfs_get_valid_channel(iface, &secondary_channel,
+ 					&oper_centr_freq_seg0_idx,
+ 					&oper_centr_freq_seg1_idx,
+@@ -1647,6 +1651,7 @@ static int hostapd_dfs_start_channel_swi
  		}
  
  		if (channel_type == DFS_ANY_CHANNEL) {
@@ -70,7 +78,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			iface->freq = channel->freq;
  			iface->conf->channel = channel->chan;
  			iface->conf->secondary_channel = secondary_channel;
-@@ -1666,17 +1670,51 @@ static int hostapd_dfs_start_channel_swi
+@@ -1666,17 +1671,51 @@ static int hostapd_dfs_start_channel_swi
  						  secondary_channel,
  						  current_vht_oper_chwidth,
  						  oper_centr_freq_seg0_idx,
@@ -125,7 +133,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	iface->radar_detected = true;
  
-@@ -1701,10 +1739,52 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1701,10 +1740,52 @@ int hostapd_dfs_radar_detected(struct ho
  	if (!hostapd_dfs_is_background_event(iface, freq)) {
  		/* Skip if reported radar event not overlapped our channels */
  		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
