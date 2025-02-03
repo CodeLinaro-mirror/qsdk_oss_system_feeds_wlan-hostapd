@@ -17,7 +17,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -1822,124 +1822,44 @@ void sta_track_del(struct hostapd_sta_in
+@@ -1822,127 +1822,47 @@ void sta_track_del(struct hostapd_sta_in
  
  #ifdef CONFIG_FILS
  
@@ -161,7 +161,11 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 -
  static u16 hostapd_fils_discovery_cap(struct hostapd_data *hapd)
  {
- 	u16 cap_info, phy_index;
+-	u16 cap_info, phy_index;
++	u16 cap_info, phy_index = FD_CAP_PHY_INDEX_HT;
+ 	u8 chwidth = FD_CAP_BSS_CHWIDTH_20, he_mcs_nss_size = 4;
+ 	struct hostapd_hw_modes *mode = hapd->iface->current_mode;
+ 
 @@ -1951,6 +1871,15 @@ static u16 hostapd_fils_discovery_cap(st
  		cap_info |= FD_CAP_PRIVACY;
  

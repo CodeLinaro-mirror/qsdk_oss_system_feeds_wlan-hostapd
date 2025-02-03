@@ -371,6 +371,15 @@ Signed-off-by: Naveen S <quic_naves@quicinc.com>
  			return NOT_ALLOWED;
  		res2 = allow_channel(mode, op_class, channel + 4, NULL);
  	} else if (is_6ghz_op_class(op_class) && bw == BW40) {
+@@ -331,7 +332,7 @@ static int wpas_op_class_supported(struc
+ 	int chan;
+ 	size_t i;
+ 	struct hostapd_hw_modes *mode;
+-	int found;
++	int found = 0;
+ 	int z;
+ 	int freq2 = 0;
+ 	int freq5 = 0;
 @@ -352,7 +353,7 @@ static int wpas_op_class_supported(struc
  				break; /* end of list */
  			if (is_6ghz_freq(f))
