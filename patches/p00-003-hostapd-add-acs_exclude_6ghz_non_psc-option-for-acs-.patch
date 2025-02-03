@@ -721,7 +721,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  		return;
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -4706,6 +4706,8 @@ struct wpa_driver_ops {
+@@ -4701,6 +4701,8 @@ struct wpa_driver_ops {
  	 * @priv: Private driver interface data
  	 * @freq: If set, survey data for the specified frequency is only
  	 *	being requested. If not set, all survey data is requested.
@@ -730,7 +730,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	 * Returns: 0 on success, -1 on failure
  	 *
  	 * Use this to retrieve:
-@@ -4724,7 +4726,7 @@ struct wpa_driver_ops {
+@@ -4719,7 +4721,7 @@ struct wpa_driver_ops {
  	 * for each survey. The min_nf of the channel is updated for each
  	 * survey.
  	 */
@@ -785,7 +785,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	if (survey_results->freq_filter &&
  	    survey_results->freq_filter != surveyed_freq) {
  		wpa_printf(MSG_EXCESSIVE, "nl80211: Ignoring survey data for freq %d MHz",
-@@ -10455,7 +10468,8 @@ static int survey_handler(struct nl_msg
+@@ -10455,21 +10468,24 @@ static int survey_handler(struct nl_msg
  }
  
  
@@ -795,8 +795,10 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  {
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-@@ -10465,11 +10479,14 @@ static int wpa_driver_nl80211_get_survey
- 	struct survey_results *survey_results;
+ 	struct nl_msg *msg;
+ 	int err;
+ 	union wpa_event_data data;
+-	struct survey_results *survey_results;
  	void *ctx = (bss->scan_link && bss->scan_link->ctx) ?
  		bss->scan_link->ctx : bss->ctx;
 +	struct nl80211_get_survey_arg arg;
@@ -812,7 +814,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  
  	msg = nl80211_drv_msg(drv, NLM_F_DUMP, NL80211_CMD_GET_SURVEY);
  	if (!msg)
-@@ -10481,7 +10498,7 @@ static int wpa_driver_nl80211_get_survey
+@@ -10481,7 +10497,7 @@ static int wpa_driver_nl80211_get_survey
  	do {
  		wpa_printf(MSG_DEBUG, "nl80211: Fetch survey data");
  		err = send_and_recv_resp(drv, msg, survey_handler,
@@ -821,7 +823,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
  	} while (err > 0);
  
  	if (err)
-@@ -10489,7 +10506,7 @@ static int wpa_driver_nl80211_get_survey
+@@ -10489,7 +10505,7 @@ static int wpa_driver_nl80211_get_survey
  	else
  		wpa_supplicant_event(ctx, EVENT_SURVEY, &data);
  

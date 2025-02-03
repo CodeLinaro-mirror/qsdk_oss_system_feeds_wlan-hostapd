@@ -46,7 +46,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_seqnum(const char *ifname, struct hostapd_data *hapd,
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2694,6 +2694,114 @@ static void hostapd_iface_disable(struct
+@@ -2700,6 +2700,114 @@ static void hostapd_iface_disable(struct
  	hapd->disabled = 1;
  }
  
@@ -161,7 +161,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static void hostapd_event_update_cu_param(struct hostapd_data *hapd,
  					  struct cu_event *cu_event)
  {
-@@ -3138,6 +3246,22 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -3143,6 +3251,22 @@ void hostapd_wpa_event(void *ctx, enum w
  		hostapd_event_afc_update_complete(hapd,
  						  &data->afc_rsp_info);
  		break;
@@ -243,7 +243,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	}
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -992,5 +992,8 @@ bool hostapd_is_usable_punct_bitmap(stru
+@@ -990,5 +990,8 @@ bool hostapd_is_usable_punct_bitmap(stru
  void hostapd_gen_per_sta_profiles(struct hostapd_data *hapd);
  size_t hostapd_eid_eht_ml_reconfig_len(struct hostapd_data *hapd);
  u8 * hostapd_eid_eht_reconf_ml(struct hostapd_data *hapd, u8 *eid);
@@ -351,7 +351,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if (sm->mld_links[link_id].valid &&			\
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -6264,6 +6264,28 @@ enum wpa_event_type {
+@@ -6254,6 +6254,28 @@ enum wpa_event_type {
  	 * EVENT_AFC_POWER_UPDATE_COMPLETE_NOTIFY - Notify AFC data is processed
  	 */
  	EVENT_AFC_POWER_UPDATE_COMPLETE_NOTIFY,
@@ -380,7 +380,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  };
  
  
-@@ -7302,6 +7324,14 @@ union wpa_event_data {
+@@ -7291,6 +7313,14 @@ union wpa_event_data {
  		u8 link_id;
  	} cu_event;
  
@@ -397,10 +397,10 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  /**
 --- a/src/drivers/driver_common.c
 +++ b/src/drivers/driver_common.c
-@@ -105,6 +105,8 @@ const char * event_to_string(enum wpa_ev
- 	E2S(MLD_INTERFACE_FREED);
+@@ -106,6 +106,8 @@ const char * event_to_string(enum wpa_ev
  	E2S(RX_CRITICAL_UPDATE);
  	E2S(6GHZ_POWER_MODE_NOTIFY);
+ 	E2S(AFC_POWER_UPDATE_COMPLETE_NOTIFY);
 +	E2S(LINK_REMOVAL_STARTED);
 +	E2S(LINK_REMOVAL_COMPLETED);
  	}
@@ -408,13 +408,12 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	return "UNKNOWN";
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2874,6 +2874,46 @@ static void nl80211_spurious_frame(struc
+@@ -2881,6 +2881,45 @@ static void nl80211_spurious_frame(struc
  }
  
  
 +static void nl80211_link_removal_event(struct i802_bss *bss, struct nlattr **tb, bool started)
 +{
-+	struct wpa_driver_nl80211_data *drv = bss->drv;
 +	union wpa_event_data data;
 +	struct i802_link *mld_link = bss->flink;
 +	void *ctx = bss->ctx;
@@ -455,7 +454,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  #ifdef CONFIG_DRIVER_NL80211_QCA
  
  static void qca_nl80211_avoid_freq(struct wpa_driver_nl80211_data *drv,
-@@ -4879,6 +4919,12 @@ static void do_process_drv_event(struct
+@@ -4887,6 +4926,12 @@ static void do_process_drv_event(struct
  	case NL80211_CMD_AWGN_DETECT:
  		nl80211_awgn_event(bss, tb);
  		break;

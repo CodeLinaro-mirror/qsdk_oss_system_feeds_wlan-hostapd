@@ -103,11 +103,3 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  	default:
  		wpa_printf(MSG_INFO, "DFS chan_width %d not supported",
  			   chan_width);
-@@ -1408,6 +1429,7 @@ dfs_downgrade_bandwidth(struct hostapd_i
- 			enum dfs_channel_type *channel_type)
- {
- 	struct hostapd_channel_data *channel;
-+	int oper_chwidth;
- 
- 	for (;;) {
- 		channel = dfs_get_valid_channel(iface, secondary_channel,

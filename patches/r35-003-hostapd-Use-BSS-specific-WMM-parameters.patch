@@ -77,7 +77,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  					   "Failed to update beacons with WMM parameters");
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -178,6 +178,32 @@ void hostapd_config_defaults_bss(struct
+@@ -178,6 +178,23 @@ void hostapd_config_defaults_bss(struct
  	bss->pasn_noauth = 1;
  #endif /* CONFIG_PASN */
  	bss->force_disable_in_band_discovery = 1;
@@ -93,15 +93,6 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 +		{ aCWmin - 1, aCWmin, 2, 3008 / 32, 0 };
 +	const struct hostapd_wmm_ac_params ac_vo = /* voice traffic */
 +		{ aCWmin - 2, aCWmin - 1, 2, 1504 / 32, 0 };
-+	const struct hostapd_tx_queue_params txq_bk =
-+		{ 7, ecw2cw(aCWmin), ecw2cw(aCWmax), 0 };
-+	const struct hostapd_tx_queue_params txq_be =
-+		{ 3, ecw2cw(aCWmin), 4 * (ecw2cw(aCWmin) + 1) - 1, 0};
-+	const struct hostapd_tx_queue_params txq_vi =
-+		{ 1, (ecw2cw(aCWmin) + 1) / 2 - 1, ecw2cw(aCWmin), 30};
-+	const struct hostapd_tx_queue_params txq_vo =
-+		{ 1, (ecw2cw(aCWmin) + 1) / 4 - 1,
-+		  (ecw2cw(aCWmin) + 1) / 2 - 1, 15};
 +#undef ecw2cw
 +	bss->wmm_ac_params[0] = ac_be;
 +	bss->wmm_ac_params[1] = ac_bk;
@@ -124,7 +115,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  /**
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2383,7 +2383,6 @@ static void hostapd_event_update_muedca_
+@@ -2389,7 +2389,6 @@ static void hostapd_event_update_muedca_
  					       struct update_muedca *params)
  {
  	int i;
@@ -132,7 +123,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	/* Update current MU-EDCA parameters */
  	for (i = 0; i < 3; i++) {
-@@ -2400,12 +2399,8 @@ static void hostapd_event_update_muedca_
+@@ -2406,12 +2405,8 @@ static void hostapd_event_update_muedca_
  	/* Increment Parameter Set Update Count for MU-EDCA and WME EDCA only
  	 * if any STA is connected
  	 */
@@ -148,7 +139,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	if (ieee802_11_update_beacons(hapd->iface))
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -573,6 +573,7 @@ struct hostapd_data {
+@@ -571,6 +571,7 @@ struct hostapd_data {
  	u64 scan_cookie; /* Scan instance identifier for the ongoing HT40 scan
  			  */
  	bool disable_cu;
@@ -158,7 +149,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
 --- a/src/ap/ieee802_11_he.c
 +++ b/src/ap/ieee802_11_he.c
-@@ -306,7 +306,7 @@ u8 * hostapd_eid_he_mu_edca_parameter_se
+@@ -305,7 +305,7 @@ u8 * hostapd_eid_he_mu_edca_parameter_se
  {
  	struct ieee80211_he_mu_edca_parameter_set *edca;
  	struct hostapd_wmm_ac_params wmmp[WMM_AC_NUM];
@@ -167,12 +158,12 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	size_t i;
  
  	 /* Updating WME Parameter Set Count to avoid mismatch */
-@@ -331,6 +331,13 @@ u8 * hostapd_eid_he_mu_edca_parameter_se
+@@ -330,6 +330,13 @@ u8 * hostapd_eid_he_mu_edca_parameter_se
  	edca = (struct ieee80211_he_mu_edca_parameter_set *) pos;
  	os_memcpy(edca, &hapd->iface->conf->he_mu_edca, sizeof(*edca));
  
 +	updated_count = edca->he_qos_info & 0xf;
-+	if (updated_count != hapd->parameter_set_count & 0xf) {
++	if (updated_count != (hapd->parameter_set_count & 0xf)) {
 +		updated_count = hapd->parameter_set_count & 0xf;
 +		edca->he_qos_info &= 0xf0;
 +		edca->he_qos_info |= updated_count;

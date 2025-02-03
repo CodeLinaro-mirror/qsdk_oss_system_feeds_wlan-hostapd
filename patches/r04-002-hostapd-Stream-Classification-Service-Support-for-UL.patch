@@ -215,7 +215,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  #ifdef CONFIG_WPS
  	if (hapd->conf->wps_state && hapd->wps_probe_resp_ie) {
  		os_memcpy(pos, wpabuf_head(hapd->wps_probe_resp_ie),
-@@ -2362,6 +2367,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2244,6 +2249,7 @@ int ieee802_11_build_ap_params(struct ho
  	tail_len += hostapd_get_rsne_override_len(hapd);
  	tail_len += hostapd_get_rsne_override_2_len(hapd);
  	tail_len += hostapd_get_rsnxe_override_len(hapd);
@@ -223,7 +223,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  	tailpos = tail = os_malloc(tail_len);
  	if (head == NULL || tail == NULL) {
-@@ -2552,7 +2558,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2434,7 +2440,9 @@ int ieee802_11_build_ap_params(struct ho
  
  	/* Wi-Fi Alliance WMM */
  	tailpos = hostapd_eid_wmm(hapd, tailpos);
@@ -247,7 +247,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  #ifdef CONFIG_FILS
  static struct wpabuf *
-@@ -5204,7 +5206,9 @@ rsnxe_done:
+@@ -5261,7 +5263,9 @@ rsnxe_done:
  
  	if (sta && (sta->flags & WLAN_STA_WMM))
  		p = hostapd_eid_wmm(hapd, p);
@@ -258,7 +258,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  #ifdef CONFIG_WPS
  	if (sta &&
  	    ((sta->flags & WLAN_STA_WPS) ||
-@@ -6294,6 +6298,9 @@ static int handle_action(struct hostapd_
+@@ -6351,6 +6355,9 @@ static int handle_action(struct hostapd_
  				return 1;
  		}
  		break;
@@ -827,7 +827,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
 +	const struct ieee80211_mgmt *mgmt = (const struct ieee80211_mgmt *) buf;
 +
 +	if (len < IEEE80211_HDRLEN + 3) {
-+		wpa_printf(MSG_ERROR, "%s SCS frame length error, len %lu from",  __func__, len);
++		wpa_printf(MSG_ERROR, "%s SCS frame length error, len %zu from",  __func__, len);
 +		return;
 +	}
 +
@@ -1113,15 +1113,15 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  static void ap_sta_remove_in_other_bss(struct hostapd_data *hapd,
  				       struct sta_info *sta);
-@@ -227,6 +230,7 @@ void ap_free_sta(struct hostapd_data *ha
- 	struct hostapd_data *vlan_bss = hapd;
- 	int set_beacon = 0;
+@@ -232,6 +235,7 @@ void ap_free_sta(struct hostapd_data *ha
+ 	struct sta_info *psta;
+ 	bool remove = true;
  
 +	hostapd_free_all_scs(hapd, sta);
  	accounting_sta_stop(hapd, sta);
  
  	/* just in case */
-@@ -892,6 +896,7 @@ static int ap_sta_remove(struct hostapd_
+@@ -910,6 +914,7 @@ static int ap_sta_remove(struct hostapd_
  
  	wpa_printf(MSG_DEBUG, "%s: Removing STA " MACSTR " from kernel driver",
  		   hapd->conf->iface, MAC2STR(sta->addr));
@@ -1193,7 +1193,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  			} u;
  		} STRUCT_PACKED action;
  	} u;
-@@ -2742,6 +2748,9 @@ struct ieee80211_eht_operation {
+@@ -2740,6 +2746,9 @@ struct ieee80211_eht_operation {
  					 EHT_PHYCAP_MU_BEAMFORMER_160MHZ | \
  					 EHT_PHYCAP_MU_BEAMFORMER_320MHZ)
  
@@ -1240,7 +1240,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  /**
   * struct hostapd_channel_data - Channel information
   */
-@@ -5483,6 +5495,10 @@ struct wpa_driver_ops {
+@@ -5473,6 +5485,10 @@ struct wpa_driver_ops {
  	 */
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
@@ -1271,7 +1271,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  	/* Vendor-specific */
  	if (nl80211_register_action_frame(bss, (u8 *) "\x7f", 1) < 0)
  		ret = -1;
-@@ -12273,7 +12277,6 @@ fail:
+@@ -12272,7 +12276,6 @@ fail:
  	return -1;
  }
  
@@ -1279,7 +1279,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  static int nl80211_add_sta_node(void *priv, const u8 *addr, u16 auth_alg)
  {
  	struct i802_bss *bss = priv;
-@@ -14872,6 +14875,63 @@ free_all:
+@@ -14871,6 +14874,63 @@ free_all:
  }
  #endif /* CONFIG_IEEE80211BE */
  
@@ -1343,7 +1343,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -15036,6 +15096,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15035,6 +15095,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.is_drv_shared = nl80211_is_drv_shared,
  	.link_sta_remove = wpa_driver_nl80211_link_sta_remove,
  	.can_share_drv = wpa_driver_nl80211_can_share_drv,

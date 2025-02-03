@@ -28,7 +28,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -6282,28 +6282,6 @@ hostapd_global_ctrl_iface_fst_detach(str
+@@ -6308,28 +6308,6 @@ hostapd_global_ctrl_iface_fst_detach(str
  #endif /* CONFIG_FST */
  
  
@@ -59,15 +59,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  					const char *param)
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2335,6 +2335,7 @@ int ieee802_11_build_ap_params(struct ho
- 	u8 elemid_modified = 0;
- 	struct hostapd_data *tx_bss;
- #endif /* NEED_AP_MLME */
-+	struct hostapd_data *lhapd;
- 
- 	os_memset(params, 0, sizeof(*params));
- 	tx_bss = hostapd_mbssid_get_tx_bss(hapd);
-@@ -2496,17 +2497,28 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2378,17 +2378,28 @@ int ieee802_11_build_ap_params(struct ho
  					   tailpos-startpos, ELEMID_CU_PARAM_HTOP);
  #endif
  
@@ -139,23 +131,34 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	if (start_beacon && hostapd_start_beacon(hapd, flush_old_stations) < 0)
  		return -1;
  
-@@ -3536,6 +3544,15 @@ static int ifname_in_use(struct hapd_int
+@@ -3518,21 +3526,12 @@ fail:
+ 	return NULL;
  }
  
- 
+-
+-static int ifname_in_use(struct hapd_interfaces *interfaces, const char *ifname)
 +bool hostapd_is_existing_interface(struct hostapd_iface *iface,
 +				   struct hostapd_config *new_conf)
-+{
+ {
+-	size_t i, j;
+-
+-	for (i = 0; i < interfaces->count; i++) {
+-		struct hostapd_iface *iface = interfaces->iface[i];
+-		for (j = 0; j < iface->num_bss; j++) {
+-			struct hostapd_data *hapd = iface->bss[j];
+-			if (os_strcmp(ifname, hapd->conf->iface) == 0)
+-				return 1;
+-		}
+-	}
+-
+-	return 0;
 +	return (iface->conf->hw_mode == new_conf->hw_mode &&
 +		((iface->conf->channel &&
 +		iface->conf->channel == new_conf->channel)));
-+}
-+
-+
- /**
-  * hostapd_interface_init_bss - Read configuration file and init BSS data
-  *
-@@ -3555,12 +3572,18 @@ hostapd_interface_init_bss(struct hapd_i
+ }
+ 
+ 
+@@ -3555,12 +3554,18 @@ hostapd_interface_init_bss(struct hapd_i
  	struct hostapd_data *hapd;
  	int k;
  	size_t i, bss_idx;
@@ -175,7 +178,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  			iface = interfaces->iface[i];
  			break;
  		}
-@@ -3569,16 +3592,12 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3569,16 +3574,12 @@ hostapd_interface_init_bss(struct hapd_i
  	wpa_printf(MSG_INFO, "Configuration file: %s (phy %s)%s",
  		   config_fname, phy, iface ? "" : " --> new PHY");
  	if (iface) {
@@ -193,7 +196,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		if (conf->num_bss > 1) {
  			wpa_printf(MSG_ERROR, "Multiple BSSes specified in BSS-config");
  			hostapd_config_free(conf);
-@@ -3586,12 +3605,23 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3586,12 +3587,23 @@ hostapd_interface_init_bss(struct hapd_i
  		}
  
  		ifname = conf->bss[0]->iface;
@@ -219,7 +222,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  		tmp_conf = os_realloc_array(
  			iface->conf->bss, iface->conf->num_bss + 1,
-@@ -3634,6 +3664,7 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3634,6 +3646,7 @@ hostapd_interface_init_bss(struct hapd_i
  		conf->bss[0] = NULL;
  		hostapd_config_free(conf);
  	} else {
@@ -227,7 +230,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		/* Add a new iface with the first BSS */
  		new_iface = iface = hostapd_init(interfaces, config_fname);
  		if (!iface)
-@@ -5489,6 +5520,28 @@ hostapd_interface_update_fils_ubpr(struc
+@@ -5481,6 +5494,28 @@ hostapd_interface_update_fils_ubpr(struc
  }
  
  
@@ -258,7 +261,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  					       u8 link_id)
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -957,6 +957,9 @@ unsigned int hostapd_mbssid_get_bss_inde
+@@ -954,6 +954,9 @@ unsigned int hostapd_mbssid_get_bss_inde
  struct hostapd_data * hostapd_mld_get_link_bss(struct hostapd_data *hapd,
  					       u8 link_id);
  int hostapd_link_remove(struct hostapd_data *hapd, u32 count);

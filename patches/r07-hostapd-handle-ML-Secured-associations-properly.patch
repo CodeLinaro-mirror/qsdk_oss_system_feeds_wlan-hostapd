@@ -102,7 +102,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 +#endif /* CONFIG_IEEE80211BE */
 +		if (!sta->wpa_sm) {
 +#ifdef CONFIG_IEEE80211BE
-+			struct mld_info *info = &sta->mld_info;
++			info = &sta->mld_info;
 +#endif /* CONFIG_IEEE80211BE */
  			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
  							sta->addr,
@@ -239,7 +239,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 +					    eml_cap, mld_cap)) {
 +				hostapd_logger(hapd, sta->addr,HOSTAPD_MODULE_IEEE80211,HOSTAPD_LEVEL_NOTICE,
 +					       "Could not add STA to kernel driver");
-+				return;
++				return -1;
 +			}
 +		}
 +	}
@@ -264,7 +264,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
-@@ -7044,6 +7115,7 @@ static void handle_assoc_cb(struct hosta
+@@ -7041,6 +7112,7 @@ static void handle_assoc_cb(struct hosta
  	}
  
  	hostapd_set_sta_flags(hapd, sta);
@@ -274,7 +274,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  		wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for STA "
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -740,6 +740,9 @@ static u8 * hostapd_eid_eht_basic_ml_com
+@@ -727,6 +727,9 @@ static u8 * hostapd_eid_eht_basic_ml_com
  				ptr += slice_len;
  			}
  		}
@@ -500,7 +500,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  void wpa_auth_ml_get_key_info(struct wpa_authenticator *a,
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -1888,8 +1888,8 @@ int ap_sta_pending_delayed_1x_auth_fail_
+@@ -1891,8 +1891,8 @@ int ap_sta_pending_delayed_1x_auth_fail_
  
  
  #ifdef CONFIG_IEEE80211BE
