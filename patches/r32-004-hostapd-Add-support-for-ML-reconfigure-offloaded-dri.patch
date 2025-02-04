@@ -139,7 +139,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_seqnum(const char *ifname, struct hostapd_data *hapd,
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -455,8 +455,88 @@ static void hostapd_link_remove_timeout_
+@@ -455,8 +455,91 @@ static void hostapd_link_remove_timeout_
  }
  
  
@@ -154,6 +154,9 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +
 +	params.ml_reconfig_elem_len = hostapd_eid_eht_ml_reconfig_len(hapd);
 +	params.ml_reconfig_elem = os_zalloc(params.ml_reconfig_elem_len);
++
++	if (!params.ml_reconfig_elem)
++		return -1;
 +
 +	hostapd_eid_eht_reconf_ml(hapd, params.ml_reconfig_elem);
 +
@@ -228,7 +231,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	if (!hapd->conf->mld_ap)
  		return -1;
  
-@@ -466,6 +546,35 @@ int hostapd_link_remove(struct hostapd_d
+@@ -466,6 +549,35 @@ int hostapd_link_remove(struct hostapd_d
  
  	hapd->eht_mld_link_removal_count = count;
  
