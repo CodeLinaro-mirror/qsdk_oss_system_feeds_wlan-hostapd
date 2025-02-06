@@ -227,7 +227,7 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
 +	 */
 +	if ((!is_all_links_associated(&wpa_s->conf->freq_list[0],
 +				     wpa_s->valid_links)) &&
-+	    !wpa_s->current_ssid->disable_reconfig)
++	    wpa_s->current_ssid && !wpa_s->current_ssid->disable_reconfig)
 +		eloop_register_timeout(5, 0,
 +				       wpas_scan_for_rnr_entries,
 +				       wpa_s, NULL);
