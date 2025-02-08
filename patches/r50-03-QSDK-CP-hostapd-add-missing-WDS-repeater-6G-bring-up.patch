@@ -206,6 +206,24 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	}
  
  #ifdef CONFIG_MESH
+@@ -351,6 +358,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+ 
+ 		ucv_object_add(ret, "sec_chan_offset", ucv_int64_new(ifmsh->conf->secondary_channel));
+ 		ucv_object_add(ret, "frequency", ucv_int64_new(ifmsh->freq));
++		if (wpa_s->wpa_state == WPA_COMPLETED &&
++		    wpa_drv_signal_poll(wpa_s, &si) == 0) {
++			if (si.chanwidth != CHAN_WIDTH_UNKNOWN) {
++				ucv_object_add(ret, "chan_width",
++					       ucv_int64_new(si.chanwidth));
++				ucv_object_add(ret, "center_freq1",
++					       ucv_int64_new(si.center_frq1));
++				ucv_object_add(ret, "center_freq2",
++					       ucv_int64_new(si.center_frq2));
++			}
++		}
+ 	}
+ #endif
+ out:
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
 @@ -3435,7 +3435,8 @@ int ieee802_11_set_beacon(struct hostapd
