@@ -46,7 +46,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_seqnum(const char *ifname, struct hostapd_data *hapd,
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2700,6 +2700,114 @@ static void hostapd_iface_disable(struct
+@@ -2704,6 +2704,109 @@ static void hostapd_iface_disable(struct
  	hapd->disabled = 1;
  }
  
@@ -100,12 +100,12 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		iface = hapd->iface;
 +		interfaces = iface->interfaces;
 +
-+		if (iface->num_bss == 1) {
-+			/* Save one of the partner bss to update the beacon */
-+			for_each_mld_link(phapd, hapd)
-+				if (phapd != hapd)
-+					break;
++		/* Save one of the partner bss to update the beacon */
++		for_each_mld_link(phapd, hapd)
++			if (phapd != hapd)
++				break;
 +
++		if (iface->num_bss == 1) {
 +			/* reconfigure GTK rekey primary auth */
 +			wpa_auth_reconfig_primary_auth(hapd->wpa_auth, phapd->wpa_auth);
 +
@@ -140,19 +140,14 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +				return;
 +			}
 +
-+			/* Save one of the partner bss to update the beacon */
-+			for_each_mld_link(phapd, hapd)
-+				if (phapd != hapd)
-+					break;
-+
 +			/* reconfigure GTK rekey primary auth */
 +			wpa_auth_reconfig_primary_auth(hapd->wpa_auth, phapd->wpa_auth);
 +
 +			hostapd_remove_bss(iface, i, true);
-+
-+			/* Refresh all the partner beacons */
-+			hostapd_refresh_all_iface_beacons(phapd->iface);
 +		}
++
++		/* Refresh all the partner beacons */
++		hostapd_refresh_all_iface_beacons(phapd->iface);
 +	}
 +}
 +#endif /* CONFIG_IEEE80211BE */
@@ -161,7 +156,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static void hostapd_event_update_cu_param(struct hostapd_data *hapd,
  					  struct cu_event *cu_event)
  {
-@@ -3143,6 +3251,22 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -3147,6 +3250,22 @@ void hostapd_wpa_event(void *ctx, enum w
  		hostapd_event_afc_update_complete(hapd,
  						  &data->afc_rsp_info);
  		break;
@@ -186,7 +181,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		break;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -740,6 +740,8 @@ void hostapd_free_hapd_data(struct hosta
+@@ -743,6 +743,8 @@ void hostapd_free_hapd_data(struct hosta
  	eloop_cancel_timeout(hostapd_switch_color_timeout_handler, hapd, NULL);
  #ifdef CONFIG_IEEE80211BE
  	eloop_cancel_timeout(hostapd_link_remove_timeout_handler, hapd, NULL);
@@ -195,7 +190,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  #endif /* CONFIG_IEEE80211BE */
  
  #endif /* CONFIG_IEEE80211AX */
-@@ -3771,7 +3773,7 @@ static void hostapd_deinit_driver(const
+@@ -3774,7 +3776,7 @@ static void hostapd_deinit_driver(const
  }
  
  
@@ -204,7 +199,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  {
  	size_t j;
  
-@@ -4223,7 +4225,8 @@ fail:
+@@ -4226,7 +4228,8 @@ fail:
  }
  
  
@@ -214,7 +209,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  {
  	size_t i;
  
-@@ -4241,6 +4244,17 @@ static int hostapd_remove_bss(struct hos
+@@ -4244,6 +4247,17 @@ static int hostapd_remove_bss(struct hos
  #ifdef CONFIG_IEEE80211BE
  		hostapd_mld_ref_dec(hapd->mld);
  #endif /* CONFIG_IEEE80211BE */
@@ -232,7 +227,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		os_free(hapd);
  
  		iface->num_bss--;
-@@ -4294,7 +4308,7 @@ int hostapd_remove_iface(struct hapd_int
+@@ -4297,7 +4311,7 @@ int hostapd_remove_iface(struct hapd_int
  				hapd_iface->driver_ap_teardown =
  					!(hapd_iface->drv_flags &
  					  WPA_DRIVER_FLAGS_AP_TEARDOWN_SUPPORT);
@@ -308,7 +303,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			int i;
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -7542,3 +7542,28 @@ void wpa_auth_reset_ml_link_info(struct
+@@ -7549,3 +7549,28 @@ void wpa_auth_reset_ml_link_info(struct
  	}
  #endif /* CONFIG_IEEE80211BE */
  }
@@ -408,7 +403,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	return "UNKNOWN";
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2881,6 +2881,45 @@ static void nl80211_spurious_frame(struc
+@@ -2884,6 +2884,45 @@ static void nl80211_spurious_frame(struc
  }
  
  
@@ -454,7 +449,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  #ifdef CONFIG_DRIVER_NL80211_QCA
  
  static void qca_nl80211_avoid_freq(struct wpa_driver_nl80211_data *drv,
-@@ -4887,6 +4926,12 @@ static void do_process_drv_event(struct
+@@ -4890,6 +4929,12 @@ static void do_process_drv_event(struct
  	case NL80211_CMD_AWGN_DETECT:
  		nl80211_awgn_event(bss, tb);
  		break;
