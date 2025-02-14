@@ -206,7 +206,7 @@ Signed-off-by: Karthik M <<quic_karm@quicinc.com>
 +			freq_count++;
 +	}
 +
-+	if (freq_count == link_count)
++	if (freq_count <= link_count)
 +		return true;
 +
 +	return false;
