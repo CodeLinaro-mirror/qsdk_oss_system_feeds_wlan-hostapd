@@ -25,11 +25,9 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  wpa_supplicant/wpa_supplicant_i.h |   1 +
  5 files changed, 186 insertions(+), 72 deletions(-)
 
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index 759546e..11e9ac0 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -3645,6 +3645,16 @@ const u8 * get_basic_mle_mld_addr(const u8 *buf, size_t len)
+@@ -3645,6 +3645,16 @@ const u8 * get_basic_mle_mld_addr(const
  	return &buf[mld_addr_pos];
  }
  
@@ -46,11 +44,9 @@ index 759546e..11e9ac0 100644
  size_t get_country_op_class_size(enum country_op_class_type type)
  {
  	switch (type) {
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index d56db05..86fd8c0 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -425,6 +425,7 @@ int ieee802_edmg_is_allowed(struct ieee80211_edmg_config allowed,
+@@ -425,6 +425,7 @@ int ieee802_edmg_is_allowed(struct ieee8
  struct wpabuf * ieee802_11_defrag(const u8 *data, size_t len, bool ext_elem);
  const u8 * get_ml_ie(const u8 *ies, size_t len, u8 type);
  const u8 * get_basic_mle_mld_addr(const u8 *buf, size_t len);
@@ -58,11 +54,9 @@ index d56db05..86fd8c0 100644
  
  /**
   * struct hostapd_multi_mbssid_group: hostapd per group MBSSID info
-diff --git a/wpa_supplicant/events.c b/wpa_supplicant/events.c
-index 279531d..b375f48 100644
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -6331,6 +6331,15 @@ void supplicant_event(void *ctx, enum wpa_event_type event,
+@@ -6331,6 +6331,15 @@ void supplicant_event(void *ctx, enum wp
  			break;
  		}
  
@@ -78,8 +72,6 @@ index 279531d..b375f48 100644
  		if (!(data && data->scan_info.external_scan) &&
  		    os_reltime_initialized(&wpa_s->scan_start_time)) {
  			struct os_reltime now, diff;
-diff --git a/wpa_supplicant/scan.c b/wpa_supplicant/scan.c
-index 1daaff8..ef304c7 100644
 --- a/wpa_supplicant/scan.c
 +++ b/wpa_supplicant/scan.c
 @@ -23,6 +23,7 @@
@@ -90,7 +82,7 @@ index 1daaff8..ef304c7 100644
  
  static struct wpabuf * wpa_supplicant_extra_ies(struct wpa_supplicant *wpa_s);
  
-@@ -3837,15 +3838,53 @@ void wpas_scan_restart_sched_scan(struct wpa_supplicant *wpa_s)
+@@ -3837,15 +3838,52 @@ void wpas_scan_restart_sched_scan(struct
  	wpa_supplicant_cancel_sched_scan(wpa_s);
  }
  
@@ -126,7 +118,7 @@ index 1daaff8..ef304c7 100644
 +	const u8 *rnr_ie, *ssid, *pos, *ml_ie;
  	u8 rnr_ie_len, i = 0, mbssid_idx = 0;
  	struct wpa_bss *bss;
- 	u32 changes;
+-	u32 changes;
 -	u8 ret = true;
 +	u8 link_id, ret = true;
 +	u16 non_assoc_links = 0;
@@ -146,7 +138,7 @@ index 1daaff8..ef304c7 100644
  
  	bss = wpa_bss_get_bssid(wpa_s, res->bssid);
  	if (!bss) {
-@@ -3866,85 +3905,139 @@ static bool wpa_bss_update_scan_rnr_res(struct wpa_supplicant *wpa_s,
+@@ -3866,85 +3904,139 @@ static bool wpa_bss_update_scan_rnr_res(
  		return ret;
  	}
  
@@ -219,17 +211,12 @@ index 1daaff8..ef304c7 100644
 +				pos += (tbtt_count * ap_info->tbtt_info_len);
 +				continue;
 +			}
- 
--				while (tbtt_count--) {
--					u16 mld_id = *(data + 13);
--					u8 link_id = *(data + 14) & 0xF;
++
 +			while (tbtt_count--) {
 +				const u8 *bssid = data + 1;
 +				u16 mld_id = *(data + 13);
 +				u8 link_id = *(data + 14) & 0xF;
- 
--					if (wpa_s->valid_links & BIT(link_id))
--						/*Existing link_id IE */
++
 +				if (wpa_s->valid_links & BIT(link_id))
 +					/*Existing link_id IE */
 +					goto cont;
@@ -242,9 +229,14 @@ index 1daaff8..ef304c7 100644
 +				} else {
 +					struct wpa_scan_results *scan_res;
 +					int partner_freq = ieee80211_chan_to_freq(NULL, ap_info->op_class, ap_info->channel);
-+
+ 
+-				while (tbtt_count--) {
+-					u16 mld_id = *(data + 13);
+-					u8 link_id = *(data + 14) & 0xF;
 +					hw_idx = wpa_get_hw_idx_by_freq(wpa_s, partner_freq);
-+
+ 
+-					if (wpa_s->valid_links & BIT(link_id))
+-						/*Existing link_id IE */
 +					if (hw_idx < 0)
  						goto cont;
  
@@ -336,7 +328,7 @@ index 1daaff8..ef304c7 100644
 +		wpa_s->missing_link_scan = true;
 +		os_memset(&scan, 0, sizeof(scan));
 +		scan.num_ssids = 1;
-+		if (bss->ssid) {
++		if (bss) {
 +			scan.ssids[0].ssid = bss->ssid;
 +			scan.ssids[0].ssid_len = bss->ssid_len;
 +		}
@@ -356,8 +348,6 @@ index 1daaff8..ef304c7 100644
  		}
  	}
  
-diff --git a/wpa_supplicant/wpa_supplicant_i.h b/wpa_supplicant/wpa_supplicant_i.h
-index e8d7b89..b61de4d 100644
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
 @@ -1592,6 +1592,7 @@ struct wpa_supplicant {
@@ -368,6 +358,3 @@ index e8d7b89..b61de4d 100644
  
  #ifdef CONFIG_PASN
  	struct pasn_data pasn;
--- 
-2.34.1
-
