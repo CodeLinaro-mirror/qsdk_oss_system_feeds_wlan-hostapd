@@ -1,6 +1,6 @@
-From 0e4c9063e7fcc15fdb94a894fbb63eb9f5fe1e1e Mon Sep 17 00:00:00 2001
+From 0e8492264003dd4294b498bbfc98f1381dea33bb Mon Sep 17 00:00:00 2001
 From: Arunpandi Kannan <quic_arunpand@quicinc.com>
-Date: Thu, 14 Mar 2024 09:38:38 +0530
+Date: Tue, 11 Feb 2025 17:04:18 +0530
 Subject: [PATCH] hostapd: TPE 11AX changes and support for 11BE TPE
 
 Changes added as per IEEE P802.11be/D4.1 section 9.4.2.160
@@ -26,15 +26,17 @@ channel to minimum possible power value.
 
 Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 ---
- src/ap/beacon.c              |  19 +-
- src/ap/ieee802_11.c          | 411 +++++++++++++++++++++++++++++------
- src/common/ieee802_11_defs.h |   8 +-
+ src/ap/beacon.c              |  16 +-
+ src/ap/ieee802_11.c          | 427 +++++++++++++++++++++++++++++------
+ src/common/ieee802_11_defs.h |   9 +
  src/drivers/driver.h         |   4 +
- 4 files changed, 374 insertions(+), 68 deletions(-)
+ 4 files changed, 383 insertions(+), 73 deletions(-)
 
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index cdaef79..e9d9287 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -695,10 +695,13 @@ static size_t he_elem_len(struct hostapd
+@@ -695,10 +695,13 @@ static size_t he_elem_len(struct hostapd_data *hapd)
  	if (is_6ghz_op_class(hapd->iconf->op_class)) {
  		len += sizeof(struct ieee80211_he_6ghz_oper_info) +
  			3 + sizeof(struct ieee80211_he_6ghz_band_cap);
@@ -49,7 +51,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  
  		/* An additional Transmit Power Envelope element for
  		 * default client with unit interpretation of regulatory
-@@ -2046,6 +2049,17 @@ static u8 * hostapd_gen_fils_discovery(s
+@@ -2046,6 +2049,17 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
  	buf_len = pos - buf;
  	total_len += buf_len;
  
@@ -67,6 +69,8 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  	/* he_elem_len() may return too large a value for FD frame, but that is
  	 * fine here since this is used as the maximum length of the buffer. */
  	total_len += he_elem_len(hapd);
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 2975faf..6904960 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
 @@ -19,6 +19,7 @@
@@ -77,7 +81,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  #include "common/wpa_ctrl.h"
  #include "common/sae.h"
  #include "common/dpp.h"
-@@ -7602,14 +7603,30 @@ static u8 hostapd_get_6g_tx_power(struct
+@@ -7606,14 +7607,30 @@ static u8 hostapd_get_6g_tx_power(struct hostapd_data *hapd, u8 ap_type, u8 tx_p
  }
  #endif
  
@@ -112,7 +116,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  
  	/*
  	 * Transmit Power Information field
-@@ -7619,24 +7636,325 @@ static u8 * hostapd_add_tpe_info(u8 *eid
+@@ -7623,24 +7640,325 @@ static u8 * hostapd_add_tpe_info(u8 *eid, u8 tx_pwr_count,
  	 */
  	*eid++ = tx_pwr_count | (tx_pwr_intrpn << 3) | (tx_pwr_cat << 6);
  
@@ -319,10 +323,10 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 +		}
 +		if (punct_bitmap & BIT(j)) {
 +			/* Punctured channel. set power value to
-+			 * RNR_20_MHZ_PSD_MAX_TXPOWER (127) which
-+			 * indicates "no maximum transmit power is specified"
++			 * RNR_20_MHZ_PSD_NO_POWER (-128) which
++			 * indicates "no transmit power is specified"
 +			 */
-+			*tx_pwr_ext_array = RNR_20_MHZ_PSD_MAX_TXPOWER;
++			*tx_pwr_ext_array = RNR_20_MHZ_PSD_NO_POWER;
 +		} else {
 +			*tx_pwr_ext_array = chan_data.channels[i].psd_values[pwr_mode] * 2;
 +		}
@@ -395,8 +399,9 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 +	int non_11be_start_idx = 0, chan_start_idx = 0;
 +	s8 tx_pwr_array[MAX_PSD_TPE_POWER_COUNT] = {0};
 +	u8 tx_pwr_count = 0, tx_pwr_ext_count = 0;
-+	struct hostapd_iface *iface = hapd->iface;
-+	struct hostapd_hw_modes *mode = iface->current_mode;
+ 	struct hostapd_iface *iface = hapd->iface;
+-	struct hostapd_config *iconf = iface->conf;
+ 	struct hostapd_hw_modes *mode = iface->current_mode;
 +	struct ieee_chan_data chan_data;
 +
 +	if (set_ieee_order_chan_list(mode, &chan_data))
@@ -433,9 +438,8 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 +{
 +	s8 eirp_tx_pwr_array[MAX_TPE_EIRP_NUM_POWER_SUPPORTED];
 +	u8 channel, tx_pwr_count, local_pwr_constraint, pwr_mode;
- 	struct hostapd_iface *iface = hapd->iface;
--	struct hostapd_config *iconf = iface->conf;
- 	struct hostapd_hw_modes *mode = iface->current_mode;
++	struct hostapd_iface *iface = hapd->iface;
++	struct hostapd_hw_modes *mode = iface->current_mode;
 +	struct hostapd_config *iconf = iface->conf;
  	struct hostapd_channel_data *chan;
 +	s8 max_tx_power, tx_pwr;
@@ -447,7 +451,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  
  	if (!mode)
  		return eid;
-@@ -7644,15 +7962,6 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7648,15 +7966,6 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
  	if (ieee80211_freq_to_chan(iface->freq, &channel) == NUM_HOSTAPD_MODES)
  		return eid;
  
@@ -463,7 +467,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  #ifdef CONFIG_IEEE80211AX
  	/* IEEE Std 802.11ax-2021, Annex E.2.7 (6 GHz band in the United
  	 * States): An AP that is an Indoor Access Point per regulatory rules
-@@ -7664,66 +7973,37 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7668,66 +7977,37 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
  	 *	Unit interpretation = Regulatory client EIRP PSD
  	 */
  	if (is_6ghz_op_class(iconf->op_class)) {
@@ -548,7 +552,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  	switch (hostapd_get_oper_chwidth(iconf)) {
  	case CONF_OPER_CHWIDTH_USE_HT:
  		if (iconf->secondary_channel == 0) {
-@@ -7795,9 +8075,12 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7799,9 +8079,12 @@ u8 * hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
  	else
  		tx_pwr = max_tx_power;
  
@@ -564,6 +568,8 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  }
  
  
+diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
+index 4c6d79d..f36ce6b 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
 @@ -2186,8 +2186,14 @@ enum max_tx_pwr_interpretation {
@@ -581,6 +587,18 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  #define RRM_CAPABILITIES_IE_LEN 5
  
  /* IEEE Std 802.11-2020, 9.6.6.4 - Link Measurement Request frame format */
+@@ -2652,6 +2658,9 @@ struct ieee80211_he_mu_edca_parameter_set {
+ #define RNR_BSS_PARAM_MEMBER_CO_LOCATED_ESS         BIT(4)
+ #define RNR_BSS_PARAM_UNSOLIC_PROBE_RESP_ACTIVE     BIT(5)
+ #define RNR_BSS_PARAM_CO_LOCATED                    BIT(6)
++/* Maximum transmit power in Y/2 dBm (-127..126); setting -128 indicates
++ * no power is configured for that corresponding 20 MHz channel */
++#define RNR_20_MHZ_PSD_NO_POWER			   -128
+ /* Maximum transmit power in Y/2 dBm (-127..126); 127 indicates no maximum
+  * transmit power is specified for the corresponding 20 MHz channel. */
+ #define RNR_20_MHZ_PSD_MAX_TXPOWER                  127
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 69ab6b8..85935f2 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
 @@ -261,6 +261,10 @@ struct ieee80211_edmg_config {
@@ -594,3 +612,6 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  /**
   * struct hostapd_hw_modes - Supported hardware mode information
   */
+-- 
+2.34.1
+

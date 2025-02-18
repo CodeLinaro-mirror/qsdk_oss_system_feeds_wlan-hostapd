@@ -57,7 +57,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		return ret;
  	}
  
-@@ -2897,6 +2913,9 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2900,6 +2916,9 @@ static int hostapd_ctrl_iface_chan_switc
  				   settings.freq_params.freq,
  				   settings.freq_params.sec_channel_offset,
  				   settings.freq_params.bandwidth);
@@ -67,7 +67,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  			return -1;
  		}
  
-@@ -2919,6 +2938,9 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2922,6 +2941,9 @@ static int hostapd_ctrl_iface_chan_switc
  		/* Perform CAC and switch channel */
  		iface->is_ch_switch_dfs = true;
  		hostapd_switch_channel_fallback(iface, &settings.freq_params);
@@ -77,7 +77,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		return 0;
  	}
  
-@@ -2942,6 +2964,9 @@ static int hostapd_ctrl_iface_chan_switc
+@@ -2945,6 +2967,9 @@ static int hostapd_ctrl_iface_chan_switc
  
  		err = hostapd_switch_channel(iface->bss[i], &settings);
  		if (err) {
@@ -89,7 +89,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		}
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1355,6 +1355,7 @@ int hostapd_parse_csa_settings(const cha
+@@ -1353,6 +1353,7 @@ int hostapd_parse_csa_settings(const cha
  
  	os_memset(settings, 0, sizeof(*settings));
  	settings->cs_count = strtol(pos, &end, 10);
@@ -97,7 +97,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	if (pos == end) {
  		wpa_printf(MSG_ERROR, "chanswitch: invalid cs_count provided");
  		return -1;
-@@ -1391,6 +1392,20 @@ int hostapd_parse_csa_settings(const cha
+@@ -1389,6 +1390,20 @@ int hostapd_parse_csa_settings(const cha
  	SET_CSA_SETTING_EXT(punct_bitmap);
  	SET_CSA_SETTING(bandwidth_device);
  	SET_CSA_SETTING(center_freq_device);
@@ -178,16 +178,18 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  	u8 oper_centr_freq0_idx = 0;
  	u8 oper_centr_freq1_idx = 0;
  	int sec_channel_offset = settings->freq_params.sec_channel_offset;
-@@ -4660,6 +4660,8 @@ static int hostapd_fill_csa_settings(str
+@@ -4660,6 +4660,10 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
 +	old_reg_6ghz_power_mode = iface->conf->he_6ghz_reg_pwr_type;
-+	iface->conf->he_6ghz_reg_pwr_type = settings->power_mode;
++	if (settings->power_mode >= 0)
++		iface->conf->he_6ghz_reg_pwr_type = settings->power_mode;
++
  #ifdef CONFIG_IEEE80211BE
  	old_punct_bitmap = iface->conf->punct_bitmap;
  	iface->conf->punct_bitmap = settings->punct_bitmap;
-@@ -4720,6 +4722,7 @@ static int hostapd_fill_csa_settings(str
+@@ -4720,6 +4724,7 @@ static int hostapd_fill_csa_settings(str
  	 hapd->iface->conf->he_mu_edca.he_qos_info &= 0xfff0;
  	 hapd->parameter_set_count = 0;
  
@@ -207,7 +209,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  		/* Save CHAN_SWITCH VHT and HE config */
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2899,6 +2899,7 @@ struct beacon_data {
+@@ -2889,6 +2889,7 @@ struct beacon_data {
   * @counter_offset_beacon: Offset to the count field in beacon's tail
   * @counter_offset_presp: Offset to the count field in probe resp.
   * @punct_bitmap - Preamble puncturing bitmap
@@ -215,7 +217,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
   * @link_id: Link ID to determine the link for MLD; -1 for non-MLD
   * @ubpr: Unsolicited broadcast Probe Response frame data
   */
-@@ -2921,6 +2922,7 @@ struct csa_settings {
+@@ -2911,6 +2912,7 @@ struct csa_settings {
  
  	/* critical_update_flag - critical update flag*/
  	bool beacon_after_cu;
@@ -225,7 +227,7 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11798,6 +11798,12 @@ static int nl80211_switch_channel(void *
+@@ -11797,6 +11797,12 @@ static int nl80211_switch_channel(void *
  	     nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID, settings->link_id)))
  		goto error;
  
