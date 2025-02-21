@@ -28,11 +28,9 @@ Signed-off-by: Aloka Dixit <aloka.dixit@oss.qualcomm.com>
  wpa_supplicant/ucode.c | 4 ++++
  1 file changed, 4 insertions(+)
 
-diff --git a/wpa_supplicant/ucode.c b/wpa_supplicant/ucode.c
-index 09a31795aa61..a10843530439 100644
 --- a/wpa_supplicant/ucode.c
 +++ b/wpa_supplicant/ucode.c
-@@ -162,6 +162,8 @@ void wpas_ucode_event(struct wpa_supplicant *wpa_s, int event, union wpa_event_d
+@@ -159,6 +159,8 @@ void wpas_ucode_event(struct wpa_supplic
  		ucv_object_add(val, "sec_chan_offset", ucv_int64_new(data->ch_switch.ch_offset));
  		ucv_object_add(val, "center_freq1", ucv_int64_new(data->ch_switch.cf1));
  		ucv_object_add(val, "center_freq2", ucv_int64_new(data->ch_switch.cf2));
@@ -41,7 +39,7 @@ index 09a31795aa61..a10843530439 100644
  	}
  
  	ucv_put(wpa_ucode_call(5));
-@@ -305,6 +307,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t nargs)
+@@ -317,6 +319,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  						ucv_object_add(ret, "chan_width", ucv_int64_new(mlo_si.links[i].chanwidth));
  						ucv_object_add(ret, "center_freq1", ucv_int64_new(mlo_si.links[i].center_frq1));
  						ucv_object_add(ret, "center_freq2", ucv_int64_new(mlo_si.links[i].center_frq2));
@@ -49,7 +47,7 @@ index 09a31795aa61..a10843530439 100644
  					}
  				}
  			}
-@@ -341,6 +344,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t nargs)
+@@ -344,6 +347,7 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  					       ucv_int64_new(si.center_frq1));
  				ucv_object_add(ret, "center_freq2",
  					       ucv_int64_new(si.center_frq2));
@@ -57,6 +55,12 @@ index 09a31795aa61..a10843530439 100644
  			}
  		}
  	}
--- 
-2.34.1
-
+@@ -363,6 +367,8 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+ 					       ucv_int64_new(si.center_frq1));
+ 				ucv_object_add(ret, "center_freq2",
+ 					       ucv_int64_new(si.center_frq2));
++				ucv_object_add(ret, "punct_bitmap",
++					       ucv_int64_new(si.punct_bitmap));
+ 			}
+ 		}
+ 	}
