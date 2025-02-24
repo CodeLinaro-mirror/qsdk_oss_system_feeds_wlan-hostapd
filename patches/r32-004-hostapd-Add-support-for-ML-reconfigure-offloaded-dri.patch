@@ -384,7 +384,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  }
  
  
-@@ -1580,3 +1514,105 @@ void hostapd_get_eht_240mhz_capab(struct
+@@ -1580,3 +1514,109 @@ void hostapd_get_eht_240mhz_capab(struct
  
  	os_memcpy(dest, src, len);
  }
@@ -397,7 +397,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +#define ML_RECONFIG_FIXED_IE_LEN 19
 +size_t hostapd_eid_eht_ml_reconfig_len(struct hostapd_data *hapd)
 +{
-+	size_t len;
++	size_t len, sta_prof_len = 0;
 +	struct hostapd_data *link_bss;
 +
 +	/* Include WLAN_EID_EXT_MULTI_LINK (1) */
@@ -417,24 +417,28 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +			continue;
 +
 +		/* Sub-Element field */
-+		len += 2;
++		sta_prof_len += 2;
 +
 +		/* Per-STA profile */
 +
 +		/*STA-Control(2) field - only AP removal timer */
-+		len += 2;
++		sta_prof_len += 2;
 +
 +		/* STA-Info(3) */
 +
 +		/* STA-Info length */
-+		len += 1;
++		sta_prof_len += 1;
 +
 +		/* STA-Info AP removal timer */
-+		len += 2;
++		sta_prof_len += 2;
 +	}
 +
++	/* If no Sta profile is present, element itself is not needed */
++	if (!sta_prof_len)
++		return 0;
++
 +	/*WLAN_EID_EXTENSION (1) + length (1) */
-+	return len + 2;
++	return len + sta_prof_len + 2;
 +}
 +
 +
@@ -595,7 +599,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static void nl80211_remove_links(struct i802_bss *bss)
  {
  	int ret;
-@@ -15254,6 +15314,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15253,6 +15313,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.link_sta_remove = wpa_driver_nl80211_link_sta_remove,
  	.can_share_drv = wpa_driver_nl80211_can_share_drv,
  	.set_scs = nl80211_set_scs,
