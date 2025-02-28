@@ -122,8 +122,8 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		       "[blocktx] [ht|vht|he|eht]\n");
  		return -1;
  	}
-@@ -1770,7 +1771,8 @@ static const struct hostapd_cli_cmd host
- 	  "<channel_width> = 0 - 20 MHz, 1 - 40 MHz, 2 - 80 MHz, 3 - 160 MHz" },
+@@ -1758,7 +1759,8 @@ static const struct hostapd_cli_cmd host
+ 	  "<addr> = send QoS Map Configure frame" },
  	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
  	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"
 -	  "  [center_freq2=] [bandwidth=] [blocktx] [ht|vht]\n"
@@ -134,10 +134,10 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	{ "color_change", hostapd_cli_cmd_color_change, NULL,
 --- a/src/ap/ctrl_iface_ap.c
 +++ b/src/ap/ctrl_iface_ap.c
-@@ -1389,6 +1389,8 @@ int hostapd_parse_csa_settings(const cha
+@@ -1405,6 +1405,8 @@ int hostapd_parse_csa_settings(const cha
  	SET_CSA_SETTING(bandwidth);
  	SET_CSA_SETTING(sec_channel_offset);
- 	SET_CSA_SETTING_EXT(punct_bitmap);
+ 	SET_CSA_SETTING(punct_bitmap);
 +	SET_CSA_SETTING(bandwidth_device);
 +	SET_CSA_SETTING(center_freq_device);
  	settings->freq_params.ht_enabled = !!os_strstr(pos, " ht");

@@ -25,8 +25,8 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1288,6 +1288,8 @@ struct hostapd_config {
- 
+@@ -1295,6 +1295,8 @@ struct hostapd_config {
+ 	bool peer_to_peer_twt;
  	int use_ru_puncture_dfs;
  	int ccfs;
 +	int bandwidth_device;
@@ -36,7 +36,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -711,7 +711,8 @@ int hostapd_set_freq(struct hostapd_data
+@@ -718,7 +718,8 @@ int hostapd_set_freq(struct hostapd_data
  		     int ht_enabled, int vht_enabled,
  		     int he_enabled, bool eht_enabled,
  		     int sec_channel_offset, int oper_chwidth,
@@ -46,7 +46,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  {
  	struct hostapd_freq_params data;
  	struct hostapd_hw_modes *cmode = hapd->iface->current_mode;
-@@ -727,7 +728,8 @@ int hostapd_set_freq(struct hostapd_data
+@@ -734,7 +735,8 @@ int hostapd_set_freq(struct hostapd_data
  				    cmode ?
  				    &cmode->eht_capab[IEEE80211_MODE_AP] :
  				    NULL, hostapd_get_punct_bitmap(hapd),
@@ -56,7 +56,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		return -1;
  
  	if (hapd->driver == NULL)
-@@ -1061,7 +1063,8 @@ int hostapd_start_dfs_cac(struct hostapd
+@@ -1128,7 +1130,8 @@ int hostapd_start_dfs_cac(struct hostapd
  			  int he_enabled, bool eht_enabled,
  			  int sec_channel_offset, int oper_chwidth,
  			  int center_segment0, int center_segment1,
@@ -66,7 +66,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  {
  	struct hostapd_data *hapd = iface->bss[0];
  	struct hostapd_freq_params data;
-@@ -1088,7 +1091,8 @@ int hostapd_start_dfs_cac(struct hostapd
+@@ -1155,7 +1158,8 @@ int hostapd_start_dfs_cac(struct hostapd
  				    &cmode->eht_capab[IEEE80211_MODE_AP],
  				    hostapd_get_punct_bitmap(hapd) |
  				    iface->radar_bit_pattern,
@@ -78,7 +78,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	}
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -80,7 +80,8 @@ int hostapd_set_freq(struct hostapd_data
+@@ -81,7 +81,8 @@ int hostapd_set_freq(struct hostapd_data
  		     int freq, int channel, int edmg, u8 edmg_channel,
  		     int ht_enabled, int vht_enabled, int he_enabled,
  		     bool eht_enabled, int sec_channel_offset, int oper_chwidth,
@@ -88,7 +88,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  int hostapd_set_rts(struct hostapd_data *hapd, int rts);
  int hostapd_set_frag(struct hostapd_data *hapd, int frag);
  int hostapd_sta_set_flags(struct hostapd_data *hapd, u8 *addr,
-@@ -145,7 +146,8 @@ int hostapd_start_dfs_cac(struct hostapd
+@@ -151,7 +152,8 @@ int hostapd_start_dfs_cac(struct hostapd
  			  int he_enabled, bool eht_enabled,
  			  int sec_channel_offset, int oper_chwidth,
  			  int center_segment0, int center_segment1,
@@ -100,7 +100,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  			     u16 reason_code, const u8 *ie, size_t ielen);
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2944,7 +2944,9 @@ static int __ieee802_11_set_beacon(struc
+@@ -2894,7 +2894,9 @@ static int __ieee802_11_set_beacon(struc
  				    &cmode->he_capab[IEEE80211_MODE_AP],
  				    &cmode->eht_capab[IEEE80211_MODE_AP],
  				    hostapd_get_punct_bitmap(hapd),
@@ -154,7 +154,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  
  	if (err) {
  		wpa_printf(MSG_ERROR, "DFS failed to calculate CSA freq params");
-@@ -1804,7 +1809,9 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1785,7 +1790,9 @@ int hostapd_dfs_radar_detected(struct ho
  						     hostapd_get_oper_chwidth(iface->conf),
  						     hostapd_get_oper_centr_freq_seg0_idx(iface->conf),
  						     hostapd_get_oper_centr_freq_seg1_idx(iface->conf),
@@ -167,7 +167,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		return hostapd_dfs_request_channel_switch(
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -354,6 +354,8 @@ int hostapd_reload_config(struct hostapd
+@@ -357,6 +357,8 @@ int hostapd_reload_config(struct hostapd
  			hapd->iconf,
  			hostapd_get_oper_centr_freq_seg1_idx(oldconf));
  		hapd->conf = newconf->bss[j];
@@ -176,7 +176,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		hostapd_reload_bss(hapd);
  	}
  
-@@ -2640,7 +2642,9 @@ static int hostapd_setup_interface_compl
+@@ -2656,7 +2658,9 @@ static int hostapd_setup_interface_compl
  				     hostapd_get_oper_centr_freq_seg0_idx(
  					     hapd->iconf),
  				     hostapd_get_oper_centr_freq_seg1_idx(
@@ -187,7 +187,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  			wpa_printf(MSG_ERROR, "Could not set channel for "
  				   "kernel driver");
  			goto fail;
-@@ -4412,7 +4416,9 @@ static int hostapd_change_config_freq(st
+@@ -4458,7 +4462,9 @@ static int hostapd_change_config_freq(st
  				    mode ? &mode->eht_capab[IEEE80211_MODE_AP] :
  				    NULL,
  				    hostapd_get_punct_bitmap(hapd),
@@ -198,21 +198,18 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		return -1;
  
  	switch (params->bandwidth) {
-@@ -4832,6 +4838,11 @@ hostapd_switch_channel_fallback(struct h
+@@ -4872,6 +4878,8 @@ hostapd_switch_channel_fallback(struct h
  	iface->conf->ieee80211ac = freq_params->vht_enabled;
  	iface->conf->ieee80211ax = freq_params->he_enabled;
  	iface->conf->ieee80211be = freq_params->eht_enabled;
 +	iface->conf->bandwidth_device = freq_params->bandwidth_device;
-+	iface->conf->bandwidth_device = freq_params->bandwidth_device;
 +	iface->conf->center_freq_device = freq_params->center_freq_device;
-+	iface->conf->bandwidth_device = freq_params->bandwidth_device;
-+
  
  	/*
  	 * Resetting operating class to avoid referring previous values
 --- a/src/ap/ubus.c
 +++ b/src/ap/ubus.c
-@@ -770,7 +770,9 @@ hostapd_switch_chan(struct ubus_context
+@@ -756,7 +756,9 @@ hostapd_switch_chan(struct ubus_context
  				mode ? &mode->eht_capab[IEEE80211_MODE_AP] :
  				NULL,
  				hostapd_get_punct_bitmap(hapd),
@@ -225,7 +222,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		struct hostapd_data *bss = hapd->iface->bss[i];
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -605,7 +605,9 @@ out:
+@@ -604,7 +604,9 @@ out:
  				 conf->secondary_channel,
  				 hostapd_get_oper_chwidth(conf),
  				 hostapd_get_oper_centr_freq_seg0_idx(conf),
@@ -238,7 +235,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	}
 --- a/src/common/hw_features_common.c
 +++ b/src/common/hw_features_common.c
-@@ -489,7 +489,8 @@ int hostapd_set_freq_params(struct hosta
+@@ -487,7 +487,8 @@ int hostapd_set_freq_params(struct hosta
  			    struct he_capabilities *he_cap,
  			    struct eht_capabilities *eht_cap,
  			    u16 punct_bitmap,
@@ -248,10 +245,10 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  {
  	enum oper_chan_width oper_chwidth_legacy;
  	u8 seg0_legacy, seg1_legacy;
-@@ -509,6 +510,8 @@ int hostapd_set_freq_params(struct hosta
- 	data->sec_channel_offset = sec_channel_offset;
+@@ -508,6 +509,8 @@ int hostapd_set_freq_params(struct hosta
  	data->center_freq1 = freq + sec_channel_offset * 10;
  	data->center_freq2 = 0;
+ 	data->punct_bitmap = punct_bitmap;
 +	data->bandwidth_device = bandwidth_device;
 +	data->center_freq_device = center_freq_device;
  	if (oper_chwidth == CONF_OPER_CHWIDTH_80MHZ)
@@ -271,7 +268,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  int ieee80211ac_cap_check(u32 hw, u32 conf);
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -930,6 +930,18 @@ struct hostapd_freq_params {
+@@ -938,6 +938,18 @@ struct hostapd_freq_params {
  	 * link_id: If >=0 indicates the link of the AP MLD to configure
  	 */
  	int link_id;
@@ -290,7 +287,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  };
  
  /**
-@@ -6906,6 +6918,8 @@ union wpa_event_data {
+@@ -6985,6 +6997,8 @@ union wpa_event_data {
  		int cf2;
  		int link_id;
  		u16 punct_bitmap;
@@ -312,7 +309,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  		wpa_printf(MSG_ERROR, "Error updating mesh frequency params");
  		wpa_supplicant_mesh_deinit(wpa_s, true);
  		return -1;
-@@ -516,8 +518,11 @@ static int wpa_supplicant_mesh_init(stru
+@@ -518,8 +520,11 @@ static int wpa_supplicant_mesh_init(stru
  	}
  
  #ifdef CONFIG_IEEE80211BE
@@ -327,7 +324,7 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
  	ifmsh->conf = conf;
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -3358,7 +3358,9 @@ skip_to_6ghz:
+@@ -3503,7 +3503,9 @@ skip_80mhz:
  				    chwidth, seg0, seg1, vht_caps,
  				    &mode->he_capab[ieee80211_mode],
  				    &mode->eht_capab[ieee80211_mode], 0,
@@ -335,6 +332,6 @@ Signed-off-by: Aloka Dixit <quic_alokad@quicinc.com>
 +				    freq->he_6ghz_reg_pwr_type,
 +				    freq->bandwidth_device,
 +				    freq->center_freq_device) != 0)
- 		return;
+ 		return false;
  
- 	memcpy(freq, &vht_freq, sizeof(vht_freq));
+ 	*freq = vht_freq;

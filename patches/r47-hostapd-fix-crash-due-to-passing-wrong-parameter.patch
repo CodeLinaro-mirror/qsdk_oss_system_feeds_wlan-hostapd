@@ -17,20 +17,15 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11281,10 +11281,10 @@ static int driver_nl80211_link_remove(vo
- {
+@@ -11306,6 +11306,7 @@ static int driver_nl80211_link_remove(vo
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-+	void *hapd = bss->ctx;
  	int ret;
++	void *hapd = bss->ctx;
  
--	if (type != WPA_IF_AP_BSS ||
--	    !nl80211_link_valid(bss->valid_links, link_id))
-+	if (type != WPA_IF_AP_BSS)
+ 	if (type != WPA_IF_AP_BSS)
  		return -1;
- 
- 	wpa_printf(MSG_DEBUG,
-@@ -11306,7 +11306,7 @@ static int driver_nl80211_link_remove(vo
+@@ -11329,7 +11330,7 @@ static int driver_nl80211_link_remove(vo
  			return ret;
  
  		/* Notify that the MLD interface is removed */

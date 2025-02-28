@@ -31,7 +31,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9569,6 +9569,13 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -9737,6 +9737,13 @@ static size_t hostapd_eid_mbssid_elem_le
  				nontx_profile_len += hostapd_eid_eht_ml_reconfig_len(bss);
  		}
  
@@ -43,18 +43,18 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 +		}
 +
  		if (ie_count)
- 			nontx_profile_len += 4 + ie_count;
+ 			nontx_profile_len += 4 + ie_count + 1;
  
-@@ -9655,7 +9662,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
- 		struct hostapd_bss_config *conf;
+@@ -9826,7 +9833,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 		struct hostapd_bss_config *tx_conf = tx_bss->conf;
  		u8 *eid_len_pos, *nontx_bss_start = eid;
  		const u8 *auth, *rsn = NULL, *rsnx = NULL;
 -		u8 ie_count = 0, non_inherit_ie[3];
 +		u8 ie_count = 0, non_inherit_ie[4];
- 		size_t auth_len = 0, xrate_len = 0;
+ 		size_t auth_len = 0, xrate_len;
  		u16 capab_info;
- 
-@@ -9745,6 +9752,12 @@ static u8 * hostapd_eid_mbssid_elem(stru
+ 		u8 mbssindex = i;
+@@ -9922,6 +9929,12 @@ static u8 * hostapd_eid_mbssid_elem(stru
  				eid = hostapd_eid_eht_reconf_ml(bss, eid);
  		}
  

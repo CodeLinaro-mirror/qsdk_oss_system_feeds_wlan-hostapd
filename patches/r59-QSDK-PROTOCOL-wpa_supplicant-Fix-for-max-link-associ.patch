@@ -27,7 +27,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -3645,6 +3645,16 @@ const u8 * get_basic_mle_mld_addr(const
+@@ -3652,6 +3652,16 @@ const u8 * get_basic_mle_mld_addr(const
  	return &buf[mld_addr_pos];
  }
  
@@ -46,7 +46,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  	switch (type) {
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -425,6 +425,7 @@ int ieee802_edmg_is_allowed(struct ieee8
+@@ -426,6 +426,7 @@ int ieee802_edmg_is_allowed(struct ieee8
  struct wpabuf * ieee802_11_defrag(const u8 *data, size_t len, bool ext_elem);
  const u8 * get_ml_ie(const u8 *ies, size_t len, u8 type);
  const u8 * get_basic_mle_mld_addr(const u8 *buf, size_t len);
@@ -56,7 +56,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
   * struct hostapd_multi_mbssid_group: hostapd per group MBSSID info
 --- a/wpa_supplicant/events.c
 +++ b/wpa_supplicant/events.c
-@@ -6331,6 +6331,15 @@ void supplicant_event(void *ctx, enum wp
+@@ -6338,6 +6338,15 @@ void supplicant_event(void *ctx, enum wp
  			break;
  		}
  
@@ -82,7 +82,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  
  static struct wpabuf * wpa_supplicant_extra_ies(struct wpa_supplicant *wpa_s);
  
-@@ -3837,15 +3838,53 @@ void wpas_scan_restart_sched_scan(struct
+@@ -3849,15 +3850,53 @@ void wpas_scan_restart_sched_scan(struct
  	wpa_supplicant_cancel_sched_scan(wpa_s);
  }
  
@@ -138,7 +138,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  
  	bss = wpa_bss_get_bssid(wpa_s, res->bssid);
  	if (!bss) {
-@@ -3866,88 +3905,147 @@ static bool wpa_bss_update_scan_rnr_res(
+@@ -3878,88 +3917,147 @@ static bool wpa_bss_update_scan_rnr_res(
  		return ret;
  	}
  
@@ -358,7 +358,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  }
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
-@@ -1592,6 +1592,7 @@ struct wpa_supplicant {
+@@ -1588,6 +1588,7 @@ struct wpa_supplicant {
  	bool supp_pbc_active; /* Set for interface when PBC is triggered */
  	bool wps_overlap;
  	bool scan_in_progress_6ghz; /* Set upon a 6 GHz scan being triggered */
@@ -368,7 +368,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  	struct pasn_data pasn;
 --- a/wpa_supplicant/bss.c
 +++ b/wpa_supplicant/bss.c
-@@ -663,8 +663,13 @@ u32 wpa_bss_compare_res(const struct wpa
+@@ -726,8 +726,13 @@ u32 wpa_bss_compare_res(const struct wpa
  		changes |= WPA_BSS_MODE_CHANGED_FLAG;
  
  	if (old->ie_len == new_res->ie_len &&
@@ -383,6 +383,15 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  	changes |= WPA_BSS_IES_CHANGED_FLAG;
  
  	if (!are_ies_equal(old, new_res, WPA_IE_VENDOR_TYPE))
+@@ -1775,7 +1780,7 @@ wpa_bss_parse_ml_rnr_ap_info(struct wpa_
+ 					*associated_hw_bmap |= BIT(hw_idx);
+ 				} else {
+ 					wpa_printf(MSG_DEBUG, "ML Partner freq %d is already part of this hw_idx: %d", partner_freq, hw_idx);
+-					goto cont;
++					continue;
+ 				}
+ 			}
+ 			if (!neigh_bss) {
 --- a/wpa_supplicant/bss.h
 +++ b/wpa_supplicant/bss.h
 @@ -29,6 +29,7 @@ struct wpa_scan_res;

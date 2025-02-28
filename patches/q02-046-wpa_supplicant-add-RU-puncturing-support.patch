@@ -178,7 +178,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
  		wpa_s->mgmt_group_cipher = wpa_s->mesh_rsn->mgmt_group_cipher;
  	}
  
-+	params->punct_bitmap = ifmsh->conf->punct_bitmap;
++	params->freq.punct_bitmap = ifmsh->conf->punct_bitmap;
  	params->ies = ifmsh->mconf->rsn_ie;
  	params->ie_len = ifmsh->mconf->rsn_ie_len;
  	params->basic_rates = ifmsh->basic_rates;
@@ -188,7 +188,7 @@ Signed-off-by: Rameshkumar Sundaram <quic_ramess@quicinc.com>
 -	wpa_msg(wpa_s, MSG_INFO, "joining mesh %s",
 -		wpa_ssid_txt(ssid->ssid, ssid->ssid_len));
 +	wpa_msg(wpa_s, MSG_INFO, "joining mesh %s punct_bitmap:%d ",
-+		wpa_ssid_txt(ssid->ssid, ssid->ssid_len), params->punct_bitmap);
++		wpa_ssid_txt(ssid->ssid, ssid->ssid_len), params->freq.punct_bitmap);
  	ret = wpa_drv_join_mesh(wpa_s, params);
  	if (ret)
  		wpa_msg(wpa_s, MSG_ERROR, "mesh join error=%d", ret);

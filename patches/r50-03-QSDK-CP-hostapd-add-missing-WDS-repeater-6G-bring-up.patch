@@ -167,7 +167,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  				}
  			}
  		}
-@@ -333,6 +329,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -339,6 +335,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  		sec_chan = wpas_get_sec_chan(bss);
  		ucv_object_add(ret, "sec_chan_offset", ucv_int64_new(sec_chan));
  		ucv_object_add(ret, "frequency", ucv_int64_new(bss->freq));
@@ -185,7 +185,7 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	}
  
  #ifdef CONFIG_MESH
-@@ -351,6 +358,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
+@@ -347,6 +354,17 @@ uc_wpas_iface_status(uc_vm_t *vm, size_t
  
  		ucv_object_add(ret, "sec_chan_offset", ucv_int64_new(ifmsh->conf->secondary_channel));
  		ucv_object_add(ret, "frequency", ucv_int64_new(ifmsh->freq));
@@ -203,21 +203,9 @@ Signed-off-by: Sathishkumar Muruganandam <quic_murugana@quicinc.com>
  	}
  #endif
  out:
---- a/src/ap/beacon.c
-+++ b/src/ap/beacon.c
-@@ -3435,7 +3435,8 @@ int ieee802_11_set_beacon(struct hostapd
- 				continue;
- #endif /* CONFIG_IEEE80211BE */
- 
--			if (other->bss[i] && other->bss[i]->started)
-+			if (other->bss[i] && other->bss[i]->started &&
-+			    other->bss[i]->beacon_set_done)
- 				__ieee802_11_set_beacon(other->bss[i]);
- 		}
- 	}
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -602,7 +602,13 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+@@ -617,7 +617,13 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
  	UPDATE_VAL(op_class, "op_class");
  	UPDATE_VAL(hw_mode, "hw_mode");
  	UPDATE_VAL(channel, "channel");

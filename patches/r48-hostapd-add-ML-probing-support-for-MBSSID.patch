@@ -38,7 +38,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -760,6 +760,7 @@ static size_t hostapd_probe_resp_elems_l
+@@ -757,6 +757,7 @@ static size_t hostapd_probe_resp_elems_l
  					   struct probe_resp_params *params)
  {
  	size_t buflen = 0;
@@ -46,7 +46,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  #ifdef CONFIG_WPS
  	if (hapd->wps_probe_resp_ie)
-@@ -788,26 +789,38 @@ static size_t hostapd_probe_resp_elems_l
+@@ -785,26 +786,38 @@ static size_t hostapd_probe_resp_elems_l
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
@@ -60,11 +60,11 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
 -		if (ml_elem_ap->conf->mld_ap) {
 +		if (params->mld_ap && params->mld_ap->conf->mld_ap) {
- 			buflen += hostapd_eid_eht_ml_beacon_len(
--				ml_elem_ap, params->mld_info, !!params->mld_ap,
++			buflen += hostapd_eid_eht_ml_beacon_len(
 +				params->mld_ap, params->mld_info, true,
 +				WLAN_FC_STYPE_PROBE_RESP);
-+			buflen += hostapd_eid_eht_ml_beacon_len(
+ 			buflen += hostapd_eid_eht_ml_beacon_len(
+-				ml_elem_ap, params->mld_info, !!params->mld_ap,
 +				hapd, NULL, false,
  				WLAN_FC_STYPE_PROBE_RESP);
  
@@ -91,7 +91,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		/* QCN Vendor IE for 240MHz */
  		if (is_5ghz_freq(hapd->iface->freq))
  			buflen += (6 + 2 + 4 +
-@@ -817,7 +830,7 @@ static size_t hostapd_probe_resp_elems_l
+@@ -814,7 +827,7 @@ static size_t hostapd_probe_resp_elems_l
  	/* TODO: hanlde ML probe len */
  #endif /* CONFIG_IEEE80211BE */
  
@@ -100,7 +100,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  					 params->known_bss,
  					 params->known_bss_len, NULL);
  	buflen += hostapd_eid_rnr_len(hapd, WLAN_FC_STYPE_PROBE_RESP, true);
-@@ -839,6 +852,7 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -836,6 +849,7 @@ static u8 * hostapd_probe_resp_fill_elem
  {
  	u8 *csa_pos;
  	u8 *epos;
@@ -108,7 +108,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  	epos = pos + len;
  
-@@ -875,7 +889,7 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -872,7 +886,7 @@ static u8 * hostapd_probe_resp_fill_elem
  
  	pos = hostapd_get_rsne(hapd, pos, epos - pos);
  	pos = hostapd_eid_bss_load(hapd, pos, epos - pos);
@@ -117,7 +117,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  				 NULL, params->known_bss, params->known_bss_len,
  				 NULL, NULL, NULL, 0, NULL);
  	pos = hostapd_eid_rm_enabled_capab(hapd, pos, epos - pos);
-@@ -965,17 +979,23 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -962,17 +976,23 @@ static u8 * hostapd_probe_resp_fill_elem
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
@@ -150,17 +150,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
  		pos = hostapd_eid_eht_operation(hapd, pos);
-@@ -1056,8 +1076,8 @@ static void hostapd_gen_probe_resp(struc
- {
- 	u8 *pos;
- 	size_t buflen;
--	struct hostapd_data *hapd_probed = hapd;
- 
-+	struct hostapd_data *hapd_probed = params->mld_ap? params->mld_ap : hapd;
- 	hapd = hostapd_mbssid_get_tx_bss(hapd);
- 
- #define MAX_PROBERESP_LEN 768
-@@ -1120,19 +1140,23 @@ static void hostapd_fill_probe_resp_ml_p
+@@ -1116,19 +1136,23 @@ static void hostapd_fill_probe_resp_ml_p
  		   "MLD: Got ML probe request with AP MLD ID %d for links %04x",
  		   mld_id, links);
  
@@ -193,7 +183,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  		/* Never duplicate main Probe Response frame body */
  		if (link == hapd)
  			continue;
-@@ -1150,7 +1174,7 @@ static void hostapd_fill_probe_resp_ml_p
+@@ -1146,7 +1170,7 @@ static void hostapd_fill_probe_resp_ml_p
  			   mld_link_id, link_info->resp_sta_profile_len);
  	}
  
@@ -204,7 +194,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			   mld_id);
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9906,14 +9906,15 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -10100,14 +10100,15 @@ static size_t hostapd_eid_mbssid_elem_le
  }
  
  
@@ -222,7 +212,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  	if (!hapd->iconf->mbssid || hapd->iface->num_bss <= 1 ||
  	    (frame_type != WLAN_FC_STYPE_BEACON &&
-@@ -9937,7 +9938,7 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -10131,7 +10132,7 @@ size_t hostapd_eid_mbssid_len(struct hos
  	while (bss_index < num_bss) {
  		size_t rnr_count = bss_index;
  
@@ -231,7 +221,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  						   &bss_index, known_bss,
  						   known_bss_len, num_bss);
  
-@@ -10145,7 +10146,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -10348,7 +10349,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  }
  
  
@@ -240,7 +230,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  			unsigned int frame_stype, u8 elem_count,
  			u8 **elem_offset,
  			const u8 *known_bss, size_t known_bss_len, u8 *rnr_eid,
-@@ -10156,6 +10157,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -10359,6 +10360,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  	u8 elem_index = 0, *rnr_start_eid = rnr_eid;
  	bool add_rnr;
  	size_t num_bss;
@@ -248,7 +238,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  
  	if (!hapd->iconf->mbssid || hapd->iface->num_bss <= 1 ||
  	    (frame_stype != WLAN_FC_STYPE_BEACON &&
-@@ -10190,7 +10192,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -10393,7 +10395,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			elem_offset[elem_index] = eid;
  			elem_index = elem_index + 1;
  		}
@@ -293,7 +283,7 @@ Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
  	if (hapd->wpa_auth)
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -956,6 +956,9 @@ void fst_hostapd_fill_iface_obj(struct h
+@@ -955,6 +955,9 @@ void fst_hostapd_fill_iface_obj(struct h
  int hostapd_set_acl(struct hostapd_data *hapd);
  struct hostapd_data * hostapd_mbssid_get_tx_bss(struct hostapd_data *hapd);
  unsigned int hostapd_mbssid_get_bss_index(struct hostapd_data *hapd);

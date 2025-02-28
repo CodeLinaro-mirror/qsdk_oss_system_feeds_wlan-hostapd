@@ -16,7 +16,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2332,7 +2332,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2269,7 +2269,7 @@ int ieee802_11_build_ap_params(struct ho
  	u8 *pos, *tailpos, *tailend, *csa_pos;
  	bool complete = false;
  	u8 *startpos;
@@ -24,8 +24,8 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 +	u16 elemid_modified = 0;
  	struct hostapd_data *tx_bss;
  #endif /* NEED_AP_MLME */
- 	struct hostapd_data *lhapd;
-@@ -2617,9 +2617,14 @@ int ieee802_11_build_ap_params(struct ho
+ 
+@@ -2553,9 +2553,14 @@ int ieee802_11_build_ap_params(struct ho
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
@@ -53,7 +53,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  };
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9275,7 +9275,7 @@ static bool hostapd_eid_rnr_bss(struct h
+@@ -9574,7 +9574,7 @@ static bool hostapd_eid_rnr_bss(struct h
  				struct mbssid_ie_profiles *skip_profiles,
  				size_t i, u8 *tbtt_count, size_t *len,
  				u8 **pos, u8 **tbtt_count_pos, u8 tbtt_info_len,
@@ -62,7 +62,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  {
  	struct hostapd_iface *iface = hapd->iface;
  	struct hostapd_data *bss = iface->bss[i];
-@@ -9335,7 +9335,7 @@ static bool hostapd_eid_rnr_bss(struct h
+@@ -9634,7 +9634,7 @@ static bool hostapd_eid_rnr_bss(struct h
  
  #ifdef CONFIG_IEEE80211BE
  	if (ap_mld) {
@@ -71,7 +71,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  		/* If BSS is not a partner of the reporting_hapd
  		 *  a) MLD ID advertised shall be 255.
-@@ -9344,6 +9344,9 @@ static bool hostapd_eid_rnr_bss(struct h
+@@ -9643,6 +9643,9 @@ static bool hostapd_eid_rnr_bss(struct h
  		/* If atleast one of the MLD params is Unknown, set Unknown for all
  		 * mld params.
  		 */
@@ -81,7 +81,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		if ((match_idx == 0xff) || (bss->mld_link_id == 0xf) ||
  				(param_ch == 0xff)) {
  			*eid++ = 0xff;
-@@ -9381,7 +9384,7 @@ static u8 * hostapd_eid_rnr_iface(struct
+@@ -9680,7 +9683,7 @@ static u8 * hostapd_eid_rnr_iface(struct
  				  struct hostapd_data *reporting_hapd,
  				  u8 *eid, size_t *current_len,
  				  struct mbssid_ie_profiles *skip_profiles,
@@ -90,7 +90,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  {
  	struct hostapd_iface *iface = hapd->iface;
  	size_t i, start;
-@@ -9430,7 +9433,7 @@ repeat_rnr:
+@@ -9729,7 +9732,7 @@ repeat_rnr:
  						skip_profiles, i,
  						&tbtt_count, &len, &eid,
  						&tbtt_count_pos, tbtt_info_len,
@@ -99,16 +99,16 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  				break;
  		}
  
-@@ -9461,7 +9464,7 @@ repeat_rnr:
+@@ -9760,7 +9763,7 @@ repeat_rnr:
  
  
- u8 * hostapd_eid_rnr_colocation(struct hostapd_data *hapd, u8 *eid,
--				size_t *current_len)
-+				size_t *current_len, u32 type)
+ static u8 * hostapd_eid_rnr_colocation(struct hostapd_data *hapd, u8 *eid,
+-				       size_t *current_len)
++				       size_t *current_len, u32 type)
  {
  	struct hostapd_iface *iface;
  	size_t i;
-@@ -9478,7 +9481,7 @@ u8 * hostapd_eid_rnr_colocation(struct h
+@@ -9777,7 +9780,7 @@ static u8 * hostapd_eid_rnr_colocation(s
  			continue;
  
  		eid = hostapd_eid_rnr_iface(iface->bss[0], hapd, eid,
@@ -117,7 +117,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	}
  
  	return eid;
-@@ -9508,7 +9511,7 @@ u8 * hostapd_eid_rnr_mlo(struct hostapd_
+@@ -9807,7 +9810,7 @@ static u8 * hostapd_eid_rnr_mlo(struct h
  			continue;
  
  		eid = hostapd_eid_rnr_iface(iface->bss[0], hapd, eid,
@@ -126,7 +126,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -9531,17 +9534,17 @@ u8 * hostapd_eid_rnr(struct hostapd_data
+@@ -9830,17 +9833,17 @@ u8 * hostapd_eid_rnr(struct hostapd_data
  	case WLAN_FC_STYPE_PROBE_RESP:
  		if (mode == COLOCATED_LOWER_BAND)
  			eid = hostapd_eid_rnr_colocation(hapd, eid,
@@ -147,16 +147,16 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		break;
  	default:
  		return eid_start;
-@@ -9746,7 +9749,7 @@ size_t hostapd_eid_mbssid_len(struct hos
+@@ -10048,7 +10051,7 @@ size_t hostapd_eid_mbssid_len(struct hos
  }
  
  #ifdef CONFIG_IEEE80211BE
 -void hostapd_eid_update_cu_info(struct hostapd_data *hapd, u8 *elemid_modified,
 +void hostapd_eid_update_cu_info(struct hostapd_data *hapd, u16 *elemid_modified,
- 				       const u8 *eid_pos, size_t eid_len,
- 				       enum elemid_cu eid_cu)
+ 				const u8 *eid_pos, size_t eid_len,
+ 				enum elemid_cu eid_cu)
  {
-@@ -9975,7 +9978,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -10286,7 +10289,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			cur_len = 0;
  			rnr_eid = hostapd_eid_rnr_iface(
  				hapd, hostapd_mbssid_get_tx_bss(hapd),
@@ -165,7 +165,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  			rnr_eid = hostapd_eid_rnr_mlo(
  				hostapd_mbssid_get_tx_bss(hapd), frame_stype,
  				rnr_eid, &skip_profiles, &cur_len);
-@@ -9992,7 +9995,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -10303,7 +10306,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			rnr_eid = hostapd_eid_nr_db(hapd, rnr_eid, &cur_len);
  		if (get_colocation_mode(hapd) == COLOCATED_LOWER_BAND)
  			rnr_eid = hostapd_eid_rnr_colocation(hapd, rnr_eid,
@@ -176,7 +176,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	return eid;
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -284,7 +284,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
+@@ -288,7 +288,7 @@ u8 * hostapd_eid_mbssid(struct hostapd_d
  			u32 *elemid_modified_bmap);
  u16 hostapd_critical_update_capab(struct hostapd_data *hapd);
  bool hostapd_is_mld_ap(struct hostapd_data *hapd);
@@ -187,7 +187,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  const char * sae_get_password(struct hostapd_data *hapd,
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -608,7 +608,10 @@ static u8 * hostapd_eid_eht_basic_ml_com
+@@ -604,7 +604,10 @@ static u8 * hostapd_eid_eht_basic_ml_com
  	wpabuf_put_u8(buf, hapd->mld_link_id);
  
  	/* BSS Parameters Change Count */

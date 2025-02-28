@@ -62,7 +62,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  }
  
  
-@@ -1505,6 +1508,7 @@ static int hostapd_dfs_start_channel_swi
+@@ -1504,6 +1507,7 @@ static int hostapd_dfs_start_channel_swi
  
  	/* Radar detected during active CAC */
  	iface->cac_started = 0;
@@ -70,7 +70,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	channel = dfs_get_valid_channel(iface, &secondary_channel,
  					&oper_centr_freq_seg0_idx,
  					&oper_centr_freq_seg1_idx,
-@@ -1647,6 +1651,7 @@ static int hostapd_dfs_start_channel_swi
+@@ -1646,6 +1650,7 @@ static int hostapd_dfs_start_channel_swi
  		}
  
  		if (channel_type == DFS_ANY_CHANNEL) {
@@ -78,7 +78,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			iface->freq = channel->freq;
  			iface->conf->channel = channel->chan;
  			iface->conf->secondary_channel = secondary_channel;
-@@ -1666,17 +1671,51 @@ static int hostapd_dfs_start_channel_swi
+@@ -1665,17 +1670,51 @@ static int hostapd_dfs_start_channel_swi
  						  secondary_channel,
  						  current_vht_oper_chwidth,
  						  oper_centr_freq_seg0_idx,
@@ -133,7 +133,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	iface->radar_detected = true;
  
-@@ -1701,10 +1740,52 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1700,10 +1739,52 @@ int hostapd_dfs_radar_detected(struct ho
  	if (!hostapd_dfs_is_background_event(iface, freq)) {
  		/* Skip if reported radar event not overlapped our channels */
  		if (!dfs_are_channels_overlapped(iface, freq, chan_width,
@@ -203,7 +203,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  int hostapd_handle_dfs(struct hostapd_iface *iface);
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -2610,6 +2610,11 @@ static int hostapd_setup_interface_compl
+@@ -2628,6 +2628,11 @@ static int hostapd_setup_interface_compl
  		}
  #endif /* NEED_AP_MLME */
  
@@ -215,9 +215,9 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  #ifdef CONFIG_MESH
  		if (iface->mconf != NULL) {
  			wpa_printf(MSG_DEBUG,
-@@ -4447,6 +4452,9 @@ static int hostapd_fill_csa_settings(str
- 	u16 old_punct_bitmap;
- #endif /* CONFIG_IEEE80211BE */
+@@ -4504,6 +4509,9 @@ static int hostapd_fill_csa_settings(str
+ 	struct hostapd_freq_params old_freq;
+ 	int ret;
  	u8 chan, bandwidth;
 +	u8 oper_centr_freq0_idx = 0;
 +	u8 oper_centr_freq1_idx = 0;
@@ -225,7 +225,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
  	os_memset(&old_freq, 0, sizeof(old_freq));
  	if (!iface || !iface->freq || hapd->csa_in_progress)
-@@ -4470,16 +4478,39 @@ static int hostapd_fill_csa_settings(str
+@@ -4527,16 +4535,39 @@ static int hostapd_fill_csa_settings(str
  		break;
  	}
  
@@ -237,7 +237,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
 +		ieee80211_freq_to_chan(settings->freq_params.center_freq2,
 +				       &oper_centr_freq1_idx);
 +
-+		punct_update_legacy_bw(settings->punct_bitmap,
++		punct_update_legacy_bw(settings->freq_params.punct_bitmap,
 +				   iface->conf->channel,
 +				   &chan_op_bw,
 +				   &oper_centr_freq0_idx,
@@ -267,7 +267,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			   settings->freq_params.vht_enabled,
  			   settings->freq_params.he_enabled,
  			   settings->freq_params.eht_enabled);
-@@ -4510,6 +4541,39 @@ static int hostapd_fill_csa_settings(str
+@@ -4560,6 +4591,39 @@ static int hostapd_fill_csa_settings(str
  	if (ret)
  		return ret;
  
@@ -307,7 +307,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	/* set channel switch parameters for csa ie */
  	hapd->cs_freq_params = settings->freq_params;
  	hapd->cs_count = settings->cs_count;
-@@ -4588,16 +4652,28 @@ int hostapd_switch_channel(struct hostap
+@@ -4638,16 +4702,28 @@ int hostapd_switch_channel(struct hostap
  			   struct csa_settings *settings)
  {
  	int ret;
@@ -348,16 +348,17 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	int (*enable_iface_cb)(struct hostapd_iface *iface);
  	int (*disable_iface_cb)(struct hostapd_iface *iface);
  
-@@ -917,5 +920,6 @@ static inline bool hostapd_mld_is_first_
+@@ -922,6 +925,7 @@ static inline bool hostapd_mld_is_first_
  #endif /* CONFIG_IEEE80211BE */
  
  u16 hostapd_get_punct_bitmap(struct hostapd_data *hapd);
 +bool hostapd_is_usable_punct_bitmap(struct hostapd_iface *iface);
  
- #endif /* HOSTAPD_H */
+ static inline bool ap_pmf_enabled(struct hostapd_bss_config *conf)
+ {
 --- a/src/ap/hw_features.c
 +++ b/src/ap/hw_features.c
-@@ -1000,7 +1000,7 @@ static int hostapd_is_usable_edmg(struct
+@@ -989,7 +989,7 @@ static int hostapd_is_usable_edmg(struct
  }
  
  
@@ -368,50 +369,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	struct hostapd_config *conf = iface->conf;
 --- a/src/common/hw_features_common.c
 +++ b/src/common/hw_features_common.c
-@@ -432,6 +432,29 @@ static void punct_update_legacy_bw_160(u
- }
- 
- 
-+static void punct_update_legacy_bw_320(u16 bitmap, u8 pri,
-+                                   enum oper_chan_width *width, u8 *seg0)
-+{
-+        if (pri < *seg0) {
-+                *seg0 -= 16;
-+                if (bitmap & 0x00FF) {
-+                        *width = 1;
-+                        punct_update_legacy_bw_160(bitmap & 0xFF,
-+                                               pri, width,
-+                                               seg0);
-+                }
-+        } else {
-+                *seg0 += 16;
-+                if (bitmap & 0xFF00) {
-+                        *width = 1;
-+                        punct_update_legacy_bw_160((bitmap & 0xFF00) >> 8,
-+                                               pri, width,
-+                                               seg0);
-+                }
-+        }
-+}
-+
-+
- void punct_update_legacy_bw(u16 bitmap, u8 pri, enum oper_chan_width *width,
- 			    u8 *seg0, u8 *seg1)
- {
-@@ -446,7 +469,11 @@ void punct_update_legacy_bw(u16 bitmap,
- 		punct_update_legacy_bw_160(bitmap & 0xFF, pri, width, seg0);
- 	}
- 
--	/* TODO: 320 MHz */
-+	/* 320 MHz */
-+	if ((*width) == 9 && (bitmap & 0xFFFF)) {
-+		*width = 2;
-+		punct_update_legacy_bw_320(bitmap & 0xFFFF, pri, width, seg0);
-+	}
- }
- 
- 
-@@ -1001,12 +1028,17 @@ bool is_punct_bitmap_valid(u16 bw, u16 p
+@@ -1027,12 +1027,17 @@ bool is_punct_bitmap_valid(u16 bw, u16 p
  
  	switch (bw) {
  	case 80:
@@ -431,11 +389,10 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  		count = ARRAY_SIZE(punct_bitmap_160);
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1283,6 +1283,8 @@ struct hostapd_config {
+@@ -1272,6 +1272,7 @@ struct hostapd_config {
  
- 	/* Whether to enable TWT responder in HT and VHT modes */
- 	bool ht_vht_twt_responder;
-+
+ 	bool channel_usage;
+ 	bool peer_to_peer_twt;
 +	int use_ru_puncture_dfs;
  };
  
@@ -454,7 +411,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5173,6 +5173,8 @@ static int hostapd_config_fill(struct ho
+@@ -4929,6 +4929,8 @@ static int hostapd_config_fill(struct ho
  #endif /* CONFIG_IEEE80211BE */
  	} else if (os_strcmp(buf, "disable_csa_dfs") == 0) {
  		conf->disable_csa_dfs = atoi(pos);
@@ -465,7 +422,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  			   "Line %d: unknown configuration item '%s'",
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -2856,6 +2856,7 @@ static const struct parse_data ssid_fiel
+@@ -2862,6 +2862,7 @@ static const struct parse_data ssid_fiel
  	{ INT_RANGE(disable_40mhz_scan, 0, 1)},
  	{ INT_RANGE(beacon_tx_mode, 1, 2)},
  	{ INT(punct_bitmap) },
@@ -475,7 +432,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	{ INT_RANGE(max_idle, 0, 65535)},
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -429,6 +429,7 @@ int wpa_supplicant_conf_ap_ht(struct wpa
+@@ -438,6 +438,7 @@ int wpa_supplicant_conf_ap_ht(struct wpa
  				conf->ieee80211be = 1;
  #ifdef CONFIG_IEEE80211BE
  				conf->punct_bitmap = ssid->punct_bitmap;
@@ -485,8 +442,8 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
-@@ -593,6 +593,7 @@ out:
- 		int ret;
+@@ -592,6 +592,7 @@ out:
+ 		struct hostapd_data *hapd = iface->bss[i];
  
  		hapd->conf->start_disabled = 0;
 +
@@ -495,8 +452,8 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  				 conf->enable_edmg,
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -1281,6 +1281,11 @@ struct wpa_ssid {
- 	u16 punct_bitmap;
+@@ -1317,6 +1317,11 @@ struct wpa_ssid {
+ 	u32 punct_bitmap;
  
  	/**
 +	 * Enable dfs punctuing - set it 1 to enable dfs sub channel puncturing
@@ -509,7 +466,7 @@ Signed-off-by: Ramasamy Kaliappan <quic_rkaliapp@quicinc.com>
  	 * By default, use it if it is available, but this can be configured
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -1012,7 +1012,8 @@ int hostapd_start_dfs_cac(struct hostapd
+@@ -1082,7 +1082,8 @@ int hostapd_start_dfs_cac(struct hostapd
  				    cmode->vht_capab,
  				    &cmode->he_capab[IEEE80211_MODE_AP],
  				    &cmode->eht_capab[IEEE80211_MODE_AP],

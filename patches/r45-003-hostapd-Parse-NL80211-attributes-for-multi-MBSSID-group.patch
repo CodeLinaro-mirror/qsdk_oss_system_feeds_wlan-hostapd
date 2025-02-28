@@ -32,7 +32,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
 
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -324,6 +324,11 @@ setup_mld:
+@@ -355,6 +355,11 @@ setup_mld:
  
  		iface->mbssid_max_interfaces = capa.mbssid_max_interfaces;
  		iface->ema_max_periodicity = capa.ema_max_periodicity;
@@ -46,7 +46,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  #ifdef CONFIG_IEEE80211BE
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2848,7 +2848,32 @@ static int __ieee802_11_set_beacon(struc
+@@ -2873,7 +2873,32 @@ static int __ieee802_11_set_beacon(struc
  
  	if (hostapd_build_ap_extra_ies(hapd, &beacon, &proberesp, &assocresp) <
  	    0)
@@ -80,7 +80,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
  	params.beacon_ies = beacon;
  	params.proberesp_ies = proberesp;
-@@ -2937,12 +2962,13 @@ static int __ieee802_11_set_beacon(struc
+@@ -2962,12 +2987,13 @@ static int __ieee802_11_set_beacon(struc
  #endif /* CONFIG_DRIVER_NL80211_QCA */
  
  	res = hostapd_drv_set_ap(hapd, &params);
@@ -98,7 +98,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  }
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4881,6 +4881,31 @@ static int hostapd_build_beacon_data(str
+@@ -4909,6 +4909,31 @@ int hostapd_build_beacon_data(struct hos
  		}
  	}
  
@@ -132,13 +132,14 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  	/* if the function fails, the caller should not free beacon data */
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -2639,6 +2639,11 @@ struct wpa_driver_capa {
- 	unsigned int mbssid_max_interfaces;
- 	/* Maximum profile periodicity for enhanced MBSSID advertisement */
- 	unsigned int ema_max_periodicity;
+@@ -2646,6 +2646,12 @@ struct wpa_driver_capa {
+ 	/* Maximum number of bytes of extra IE(s) that can be added to Probe
+ 	 * Request frames */
+ 	size_t max_probe_req_ie_len;
 +
 +	/* Maximum number of Muli-MBSSID groups supported by driver */
 +	u8  mbssid_max_ngroups;
++
 +	/* Maximum supported beacon size */
 +	unsigned int max_beacon_size;
  };
@@ -146,23 +147,23 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11698,7 +11698,9 @@ static int wpa_driver_nl80211_status(voi
- 				  "capa.max_sched_scan_plan_interval=%u\n"
+@@ -11709,7 +11709,9 @@ static int wpa_driver_nl80211_status(voi
  				  "capa.max_sched_scan_plan_iterations=%u\n"
  				  "capa.mbssid_max_interfaces=%u\n"
--				  "capa.ema_max_periodicity=%u\n",
-+				  "capa.ema_max_periodicity=%u\n"
+ 				  "capa.ema_max_periodicity=%u\n"
+-				  "capa.max_probe_req_ie_len=%zu\n",
++				  "capa.max_probe_req_ie_len=%zu\n"
 +				  "capa.mbssid_max_ngroups=%u\n"
 +				  "capa.max_beacon_size=%u\n",
  				  drv->capa.key_mgmt,
  				  drv->capa.enc,
  				  drv->capa.auth,
-@@ -11723,7 +11725,9 @@ static int wpa_driver_nl80211_status(voi
- 				  drv->capa.max_sched_scan_plan_interval,
+@@ -11735,7 +11737,9 @@ static int wpa_driver_nl80211_status(voi
  				  drv->capa.max_sched_scan_plan_iterations,
  				  drv->capa.mbssid_max_interfaces,
--				  drv->capa.ema_max_periodicity);
-+				  drv->capa.ema_max_periodicity,
+ 				  drv->capa.ema_max_periodicity,
+-				  drv->capa.max_probe_req_ie_len);
++				  drv->capa.max_probe_req_ie_len,
 +				  drv->capa.mbssid_max_ngroups,
 +				  drv->capa.max_beacon_size);
  		if (os_snprintf_error(end - pos, res))
@@ -170,7 +171,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  		pos += res;
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -943,9 +943,17 @@ static void wiphy_info_mbssid(struct wpa
+@@ -947,9 +947,17 @@ static void wiphy_info_mbssid(struct wpa
  		cap->ema_max_periodicity =
  			nla_get_u8(config[NL80211_MBSSID_CONFIG_ATTR_MAX_EMA_PROFILE_PERIODICITY]);
  
@@ -192,7 +193,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -8213,6 +8213,16 @@ enum nl80211_sar_specs_attrs {
+@@ -8264,6 +8264,16 @@ enum nl80211_sar_specs_attrs {
   * 	is an MLD. The link id must be valid in the wdev of given Transmitting interface
   * 	index.
   *
@@ -209,7 +210,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
   * @__NL80211_MBSSID_CONFIG_ATTR_LAST: Internal
   * @NL80211_MBSSID_CONFIG_ATTR_MAX: highest attribute
   */
-@@ -8225,6 +8235,8 @@ enum nl80211_mbssid_config_attributes {
+@@ -8276,6 +8286,8 @@ enum nl80211_mbssid_config_attributes {
  	NL80211_MBSSID_CONFIG_ATTR_TX_IFINDEX,
  	NL80211_MBSSID_CONFIG_ATTR_EMA,
  	NL80211_MBSSID_CONFIG_ATTR_TX_LINK_ID,
