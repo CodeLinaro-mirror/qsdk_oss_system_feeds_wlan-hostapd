@@ -19,7 +19,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5972,7 +5972,8 @@ static void handle_assoc(struct hostapd_
+@@ -6115,7 +6115,8 @@ static void handle_assoc(struct hostapd_
  	resp = check_assoc_ies(hapd, sta, pos, left, reassoc);
  	if (resp != WLAN_STATUS_SUCCESS)
  		goto fail;
