@@ -82,7 +82,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  
  static struct wpabuf * wpa_supplicant_extra_ies(struct wpa_supplicant *wpa_s);
  
-@@ -3837,15 +3838,52 @@ void wpas_scan_restart_sched_scan(struct
+@@ -3837,15 +3838,53 @@ void wpas_scan_restart_sched_scan(struct
  	wpa_supplicant_cancel_sched_scan(wpa_s);
  }
  
@@ -118,13 +118,13 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 +	const u8 *rnr_ie, *ssid, *pos, *ml_ie;
  	u8 rnr_ie_len, i = 0, mbssid_idx = 0;
  	struct wpa_bss *bss;
--	u32 changes;
--	u8 ret = true;
 +	u8 link_id, ret = true;
 +	u16 non_assoc_links = 0;
 +	int freqs[MAX_NUM_MLD_LINKS], j = 0;
 +	s8 hw_idx;
 +	u16 associated_hw_bmap = 0;
+ 	u32 changes;
+-	u8 ret = true;
 +
 +	if (wpa_s->missing_link_scan)
 +		return ret;
@@ -138,12 +138,13 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  
  	bss = wpa_bss_get_bssid(wpa_s, res->bssid);
  	if (!bss) {
-@@ -3866,85 +3904,139 @@ static bool wpa_bss_update_scan_rnr_res(
+@@ -3866,88 +3905,147 @@ static bool wpa_bss_update_scan_rnr_res(
  		return ret;
  	}
  
 -	/* Res now will have matching ssid, check if the rnr has
 -	 * changed.
+-	 */
 +	ml_ie = wpa_scan_get_ml_ie(res,
 +				   MULTI_LINK_CONTROL_TYPE_BASIC);
 +	link_id = get_link_id(ml_ie);
@@ -159,14 +160,7 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 +			non_assoc_links |= BIT(link_id);
 +	}
 +
-+	bss = wpa_bss_update(wpa_s, bss, res, fetch_time, true);
-+	mbssid_idx = wpa_bss_get_mbssid_idx(bss);
-+	i = 0;
-+	/* NOTE: Any changes in rnr ie len calculation or fetching the ap info
-+	 * from rnr ie must be reflected in wpa_bss_update_scan_rnr_res API as
-+	 * it uses similar logic for WAR
- 	 */
--	changes = wpa_bss_compare_res(bss, res);
+ 	changes = wpa_bss_compare_res(bss, res);
 -	if (changes & WPA_BSS_IES_CHANGED_FLAG) {
 -		bss = wpa_bss_update(wpa_s, bss, res, fetch_time, true);
 -		mbssid_idx = wpa_bss_get_mbssid_idx(bss);
@@ -193,6 +187,13 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 -					pos += (tbtt_count * ap_info->tbtt_info_len);
 -					continue;
 -				}
++	bss = wpa_bss_update(wpa_s, bss, res, fetch_time, true);
++	mbssid_idx = wpa_bss_get_mbssid_idx(bss);
++	i = 0;
++	/* NOTE: Any changes in rnr ie len calculation or fetching the ap info
++	 * from rnr ie must be reflected in wpa_bss_update_scan_rnr_res API as
++	 * it uses similar logic for WAR
++	 */
 +	while ((rnr_ie = wpa_bss_get_ie_pos(bss, WLAN_EID_REDUCED_NEIGHBOR_REPORT, i++))) {
 +		rnr_ie_len = rnr_ie[1];
 +		pos = rnr_ie + 2;
@@ -211,7 +212,10 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 +				pos += (tbtt_count * ap_info->tbtt_info_len);
 +				continue;
 +			}
-+
+ 
+-				while (tbtt_count--) {
+-					u16 mld_id = *(data + 13);
+-					u8 link_id = *(data + 14) & 0xF;
 +			while (tbtt_count--) {
 +				const u8 *bssid = data + 1;
 +				u16 mld_id = *(data + 13);
@@ -230,13 +234,10 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 +					struct wpa_scan_results *scan_res;
 +					int partner_freq = ieee80211_chan_to_freq(NULL, ap_info->op_class, ap_info->channel);
  
--				while (tbtt_count--) {
--					u16 mld_id = *(data + 13);
--					u8 link_id = *(data + 14) & 0xF;
-+					hw_idx = wpa_get_hw_idx_by_freq(wpa_s, partner_freq);
- 
 -					if (wpa_s->valid_links & BIT(link_id))
 -						/*Existing link_id IE */
++					hw_idx = wpa_get_hw_idx_by_freq(wpa_s, partner_freq);
++
 +					if (hw_idx < 0)
  						goto cont;
  
@@ -306,25 +307,23 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 +
 +			rnr_ie_len -= (data - ap_info->data);
 +			pos += (data - ap_info->data);
-+		}
-+	}
-+
+ 		}
+ 	}
+ 
 +	freqs[j] = 0;
 +
-+	if (!non_assoc_links)
-+		return ret;
-+
-+	if (!freqs[0]) {
-+		wpa_s->own_disconnect_req = 1;
-+		wpa_supplicant_deauthenticate(wpa_s,
-+				WLAN_REASON_DEAUTH_LEAVING);
-+		wpa_printf(MSG_INFO, "Match found and triggering deauthenticate\n");
-+		ret = false;
-+		goto exit;
-+	} else if (wpa_s->driver->scan2 && !wpa_s->missing_link_scan) {
++	/* Trigger scan if,
++	 * 1 - Only beacon len is changed but there is no RNR IE present
++	 * 2 - if partner RNR is set but the partner beacon is not
++	 *     available in the scan res.  [Freqs is set]
++	 *
++	 * Trigger deauth if, RNR in associated beacon is updated with
++	 * affiliated AP information.
++	 */
++	if ((changes & WPA_BSS_BEACON_LEN_CHANGED_FLAG || freqs[0]) &&
++	    (wpa_s->driver->scan2 && !wpa_s->missing_link_scan)) {
 +		struct wpa_driver_scan_params scan;
 +		int ret;
-+
 +		wpa_s->missing_link_scan = true;
 +		os_memset(&scan, 0, sizeof(scan));
 +		scan.num_ssids = 1;
@@ -333,11 +332,12 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 +			scan.ssids[0].ssid_len = bss->ssid_len;
 +		}
 +
-+		scan.freqs = freqs;
++		if (freqs[0])
++			scan.freqs = freqs;
++
 +		ret = wpa_drv_scan(wpa_s, &scan);
 +
 +		if (ret) {
-+			wpa_printf(MSG_DEBUG, "Scan request failed");
 +			if (wpa_s->wpa_state == WPA_SCANNING)
 +				wpa_supplicant_set_state(wpa_s,
 +							 wpa_s->scan_prev_wpa_state);
@@ -345,9 +345,17 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
 +				wpa_s->scan_res_handler = NULL;
 +		} else {
 +			wpa_s->curr_scan_cookie = scan.scan_cookie;
- 		}
- 	}
- 
++		}
++	} else if (non_assoc_links) {
++		wpa_s->own_disconnect_req = 1;
++		wpa_supplicant_deauthenticate(wpa_s,
++				WLAN_REASON_DEAUTH_LEAVING);
++		wpa_printf(MSG_INFO, "Match found and triggering deauthenticate\n");
++		ret = false;
++	}
+ exit:
+ 	return ret;
+ }
 --- a/wpa_supplicant/wpa_supplicant_i.h
 +++ b/wpa_supplicant/wpa_supplicant_i.h
 @@ -1592,6 +1592,7 @@ struct wpa_supplicant {
@@ -358,3 +366,30 @@ Signed-off-by: Aaradhana Sahu <quic_aarasahu@quicinc.com>
  
  #ifdef CONFIG_PASN
  	struct pasn_data pasn;
+--- a/wpa_supplicant/bss.c
++++ b/wpa_supplicant/bss.c
+@@ -663,8 +663,13 @@ u32 wpa_bss_compare_res(const struct wpa
+ 		changes |= WPA_BSS_MODE_CHANGED_FLAG;
+ 
+ 	if (old->ie_len == new_res->ie_len &&
+-	    os_memcmp(wpa_bss_ie_ptr(old), new_res + 1, old->ie_len) == 0)
++	    os_memcmp(wpa_bss_ie_ptr(old), new_res + 1, old->ie_len) == 0) {
++		if (old->beacon_ie_len < new_res->beacon_ie_len)
++			changes |= WPA_BSS_BEACON_LEN_CHANGED_FLAG;
++
+ 		return changes;
++	}
++
+ 	changes |= WPA_BSS_IES_CHANGED_FLAG;
+ 
+ 	if (!are_ies_equal(old, new_res, WPA_IE_VENDOR_TYPE))
+--- a/wpa_supplicant/bss.h
++++ b/wpa_supplicant/bss.h
+@@ -29,6 +29,7 @@ struct wpa_scan_res;
+ #define WPA_BSS_WPS_CHANGED_FLAG	BIT(6)
+ #define WPA_BSS_RATES_CHANGED_FLAG	BIT(7)
+ #define WPA_BSS_IES_CHANGED_FLAG	BIT(8)
++#define WPA_BSS_BEACON_LEN_CHANGED_FLAG	BIT(9)
+ 
+ struct wpa_bss_anqp_elem {
+ 	struct dl_list list;
