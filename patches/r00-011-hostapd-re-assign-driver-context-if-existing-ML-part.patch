@@ -86,7 +86,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 +	ap_mld = !!iface->bss[0]->conf->mld_ap;
 +#endif /* CONFIG_IEEE80211BE */
 +
-+	if (driver->is_drv_shared &&
++	if (!driver->is_drv_shared ||
 +	    !driver->is_drv_shared(drv_priv, iface->bss[0]->mld_link_id)) {
  		driver->hapd_deinit(drv_priv);
  		hostapd_mld_interface_freed(iface->bss[0]);
@@ -216,7 +216,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		} else {
  			wpa_printf(MSG_DEBUG, "nl80211: No second BSS to reassign context to");
  		}
-@@ -14695,6 +14723,120 @@ wpa_driver_get_multi_hw_info(void *priv,
+@@ -14694,6 +14722,120 @@ wpa_driver_get_multi_hw_info(void *priv,
  }
  
  
@@ -337,7 +337,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -14858,6 +15000,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -14857,6 +14999,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.link_remove = driver_nl80211_link_remove,
  	.is_drv_shared = nl80211_is_drv_shared,
  	.link_sta_remove = wpa_driver_nl80211_link_sta_remove,
@@ -347,7 +347,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	.register_frame = testing_nl80211_register_frame,
 --- a/src/drivers/driver_nl80211_capa.c
 +++ b/src/drivers/driver_nl80211_capa.c
-@@ -2916,3 +2916,45 @@ nl80211_get_multi_hw_info(struct i802_bs
+@@ -2914,3 +2914,45 @@ nl80211_get_multi_hw_info(struct i802_bs
  
  	return NULL;
  }
@@ -413,7 +413,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  #endif /* DRIVER_NL80211_H */
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5333,6 +5333,21 @@ struct wpa_driver_ops {
+@@ -5323,6 +5323,21 @@ struct wpa_driver_ops {
  	 */
  	int (*link_add)(void *priv, u8 link_id, const u8 *addr, void *bss_ctx);
  
