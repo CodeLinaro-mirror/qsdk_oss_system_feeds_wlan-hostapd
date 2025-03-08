@@ -172,8 +172,8 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		break;
 +	case EVENT_LINK_RECONFIG:
 +		link_hapd = switch_link_hapd(hapd, data->link_removal_event.link_id);
-+		link_hapd->eht_mld_link_removal_count = data->link_removal_event.link_removal_count;
-+		link_hapd->eht_mld_link_removal_inprogress = true;
++		if (link_hapd->eht_mld_link_removal_inprogress)
++			link_hapd->eht_mld_link_removal_count = data->link_removal_event.link_removal_count;
 +		break;
 +#endif
  	default:
