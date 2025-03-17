@@ -22,11 +22,9 @@ Signed-off-by: Dhanavandhana Kannan <quic_dhanavan1@quicinc.com>
  src/ap/ieee802_11.c | 18 ++++++++++++++++++
  1 file changed, 18 insertions(+)
 
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 5222cd3..90eb39c 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7046,6 +7046,22 @@ static void hostapd_ml_handle_assoc_cb(struct hostapd_data *hapd,
+@@ -7048,6 +7048,25 @@ static void hostapd_ml_handle_assoc_cb(s
  #endif /* CONFIG_IEEE80211BE */
  }
  
@@ -35,21 +33,24 @@ index 5222cd3..90eb39c 100644
 +{
 +	struct sta_info *psta;
 +	struct hostapd_data *phapd;
++	u16 aid = sta->wds_mld_uid;
 +
 +	if (ap_sta_is_mld(hapd, sta)) {
 +		for_each_mld_link(phapd, hapd) {
 +			if (phapd == hapd)
 +				continue;
 +			psta = ap_get_sta(phapd, sta->addr);
-+			if (psta)
++			if (psta) {
++				psta->wds_mld_uid = aid;
 +				psta->flags |= WLAN_STA_WDS;
++			}
 +		}
 +	}
 +}
  
  static void handle_assoc_cb(struct hostapd_data *hapd,
  			    const struct ieee80211_mgmt *mgmt,
-@@ -7158,6 +7174,7 @@ static void handle_assoc_cb(struct hostapd_data *hapd,
+@@ -7160,6 +7179,7 @@ static void handle_assoc_cb(struct hosta
  			   MAC2STR(sta->addr));
  		sta->pending_wds_enable = 0;
  		sta->flags |= WLAN_STA_WDS;
@@ -57,7 +58,7 @@ index 5222cd3..90eb39c 100644
  		if (hapd->conf->mld_ap && hostapd_get_wds_mld_sta_uid(hapd, sta) < 0) {
  			wpa_printf(MSG_DEBUG, "No room for uid"
  				   "to enable 4-address WDS mode for STA "
-@@ -7546,6 +7563,7 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
+@@ -7548,6 +7568,7 @@ void ieee802_11_rx_from_unknown(struct h
  					"mode for STA with id %u flags 0x%x", aid, sta->flags);
  
  			sta->flags |= WLAN_STA_WDS;
@@ -65,6 +66,3 @@ index 5222cd3..90eb39c 100644
  			ret = hostapd_set_wds_sta(hapd, ifname_wds,
  						  sta->addr, aid, 1);
  			if (!ret)
--- 
-2.34.1
-
