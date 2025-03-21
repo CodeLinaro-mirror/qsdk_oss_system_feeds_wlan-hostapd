@@ -105,7 +105,7 @@ Signed-off-by: saleemuddin shaik <quic_saleemud@quicinc.com>
 +		op_classes++;
 +		}
 +
-+		len += os_snprintf(buf + len, buflen - len, "uniibands supported=");
++		len += os_snprintf(buf + len, buflen - len, "\nuniibands supported=");
 +		for (int i=0; (i < 8) && (uniibands[i] != 0); i++) {
 +			switch(uniibands[i]) {
 +			case BAND_UNII_1:
