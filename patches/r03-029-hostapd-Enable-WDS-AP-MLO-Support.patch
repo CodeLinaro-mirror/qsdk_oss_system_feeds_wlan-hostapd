@@ -35,7 +35,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	void *drv_priv;
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3446,6 +3446,54 @@ static u32 hostapd_get_aid_word(struct h
+@@ -3429,6 +3429,54 @@ static u32 hostapd_get_aid_word(struct h
  }
  
  
@@ -90,7 +90,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_aid(struct hostapd_data *hapd, struct sta_info *sta)
  {
  	int i, j = 32, aid;
-@@ -6801,6 +6849,12 @@ static void handle_assoc_cb(struct hosta
+@@ -6906,6 +6954,12 @@ static void handle_assoc_cb(struct hosta
  			   MAC2STR(sta->addr));
  		sta->pending_wds_enable = 0;
  		sta->flags |= WLAN_STA_WDS;
@@ -103,7 +103,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	}
  
  	/* WPS not supported on backhaul BSS. Disable 4addr mode on fronthaul */
-@@ -6811,12 +6865,18 @@ static void handle_assoc_cb(struct hosta
+@@ -6916,12 +6970,18 @@ static void handle_assoc_cb(struct hosta
  	     !(sta->flags & WLAN_STA_WPS))) {
  		int ret;
  		char ifname_wds[IFNAMSIZ + 1];
@@ -124,7 +124,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if (!ret)
  			hostapd_set_wds_encryption(hapd, sta, ifname_wds);
  	}
-@@ -7132,6 +7192,7 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7237,6 +7297,7 @@ void ieee802_11_rx_from_unknown(struct h
  				int wds)
  {
  	struct sta_info *sta;
@@ -132,7 +132,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	sta = ap_get_sta(hapd, src);
  	if (sta &&
-@@ -7140,6 +7201,19 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7245,6 +7306,19 @@ void ieee802_11_rx_from_unknown(struct h
  		if (!hapd->conf->wds_sta)
  			return;
  
@@ -152,7 +152,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if ((sta->flags & (WLAN_STA_ASSOC | WLAN_STA_ASSOC_REQ_OK)) ==
  		    WLAN_STA_ASSOC_REQ_OK) {
  			wpa_printf(MSG_DEBUG,
-@@ -7156,10 +7230,15 @@ void ieee802_11_rx_from_unknown(struct h
+@@ -7261,10 +7335,15 @@ void ieee802_11_rx_from_unknown(struct h
  
  			wpa_printf(MSG_DEBUG, "Enable 4-address WDS mode for "
  				   "STA " MACSTR " (aid %u)",
@@ -242,7 +242,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		sta->nonerp_set = 0;
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -92,6 +92,7 @@ struct sta_info {
+@@ -93,6 +93,7 @@ struct sta_info {
  	be32 ipaddr;
  	struct dl_list ip6addr; /* list head for struct ip6addr */
  	u16 aid; /* STA's unique AID (1 .. 2007) or 0 if not yet assigned */
@@ -252,7 +252,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	u16 capability;
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -8670,6 +8670,7 @@ static int i802_set_wds_sta(void *priv,
+@@ -8693,6 +8693,7 @@ static int i802_set_wds_sta(void *priv,
  
  	wpa_printf(MSG_DEBUG, "nl80211: Set WDS STA addr=" MACSTR
  		   " aid=%d val=%d name=%s", MAC2STR(addr), aid, val, name);
@@ -262,9 +262,11 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			if (nl80211_create_iface(drv, name,
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2744,6 +2744,9 @@ static void nl80211_spurious_frame(struc
+@@ -2747,8 +2747,10 @@ process_awgn_event:
+ static void nl80211_spurious_frame(struct i802_bss *bss, struct nlattr **tb,
  				   int wds)
  {
+-	struct wpa_driver_nl80211_data *drv = bss->drv;
  	union wpa_event_data event;
 +	struct i802_link *mld_link;
 +	void *ctx = bss->ctx;
@@ -272,7 +274,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
  	if (!tb[NL80211_ATTR_MAC])
  		return;
-@@ -2753,7 +2756,21 @@ static void nl80211_spurious_frame(struc
+@@ -2758,7 +2760,20 @@ static void nl80211_spurious_frame(struc
  	event.rx_from_unknown.addr = nla_data(tb[NL80211_ATTR_MAC]);
  	event.rx_from_unknown.wds = wds;
  
@@ -290,8 +292,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		ctx = mld_link->ctx;
 +		event.rx_from_unknown.bssid = mld_link->addr;
 +	}
-+
-+   wpa_supplicant_event(ctx, EVENT_RX_FROM_UNKNOWN, &event);
++	wpa_supplicant_event(ctx, EVENT_RX_FROM_UNKNOWN, &event);
  }
  
  

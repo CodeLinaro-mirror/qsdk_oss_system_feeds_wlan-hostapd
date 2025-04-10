@@ -25,10 +25,10 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -5188,6 +5188,8 @@ static int hostapd_config_fill(struct ho
- 		}
- 	} else if (os_strcmp(buf, "eht_bw320_offset") == 0) {
- 		conf->eht_bw320_offset = atoi(pos);
+@@ -5198,6 +5198,8 @@ static int hostapd_config_fill(struct ho
+ 		conf->eht_phy_capab.non_ofdma_ulmumimo_160mhz = atoi(pos);
+ 	} else if (os_strcmp(buf, "eht_ulmumimo_320mhz") == 0) {
+ 		conf->eht_phy_capab.non_ofdma_ulmumimo_320mhz = atoi(pos);
 +	} else if (os_strcmp(buf, "ml_reconf_enabled") == 0) {
 +		conf->ml_reconf_enabled = atoi(pos);
  #ifdef CONFIG_TESTING_OPTIONS
@@ -36,7 +36,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		if (get_u16(pos, line, &bss->eht_oper_puncturing_override))
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -1127,6 +1127,10 @@ wmm_ac_vo_acm=0
+@@ -1139,6 +1139,10 @@ wmm_ac_vo_acm=0
  # advertising in management frame.
  #disable_eml_cap=1
  
@@ -49,7 +49,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  # Require IEEE 802.1X authorization
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -1637,6 +1637,22 @@ int hostapd_config_check(struct hostapd_
+@@ -1642,6 +1642,22 @@ int hostapd_config_check(struct hostapd_
  	if (full_config)
  		hostapd_set_and_check_bw320_offset(conf,
  						   conf->eht_bw320_offset);
@@ -74,7 +74,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  	if (full_config && conf->mbssid && !conf->ieee80211ax) {
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1272,6 +1272,7 @@ struct hostapd_config {
+@@ -1274,6 +1274,7 @@ struct hostapd_config {
  	struct eht_phy_capabilities_info eht_phy_capab;
  	u16 punct_bitmap; /* a bitmap of disabled 20 MHz channels */
  	u8 punct_acs_threshold;
@@ -84,7 +84,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  #endif /* CONFIG_IEEE80211BE */
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3604,6 +3604,16 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3608,6 +3608,16 @@ hostapd_interface_init_bss(struct hapd_i
  			return NULL;
  		}
  
@@ -103,24 +103,23 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  			wpa_printf(MSG_ERROR,
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -3470,7 +3470,13 @@ static u8 hostapd_max_bssid_indicator(st
- 	if (!hapd->iconf->mbssid || hapd->iface->num_bss <= 1)
- 		return 0;
+@@ -3442,8 +3442,13 @@ static u8 hostapd_max_bssid_indicator(st
  
--	num_bss_nontx = hapd->iface->num_bss - 1;
+ 	if (hapd->iface->conf->mbssid_max > 0)
+ 		num_bss_nontx = hapd->iface->conf->mbssid_max - 1;
 +#ifdef CONFIG_IEEE80211BE
-+	if (hapd->iconf->ml_reconf_enabled)
++	else if (hapd->iconf->ml_reconf_enabled)
 +		num_bss_nontx = ML_RECONF_MAX_MBSSID_PROFILES - 1;
-+	else
 +#endif
-+		num_bss_nontx = hapd->iface->num_bss - 1;
+ 	else
+ 		num_bss_nontx = hapd->iface->conf->num_bss - 1;
 +
  	while (num_bss_nontx > 0) {
  		max_bssid_ind++;
  		num_bss_nontx >>= 1;
 --- a/src/common/defs.h
 +++ b/src/common/defs.h
-@@ -527,6 +527,7 @@ enum frame_encryption {
+@@ -539,6 +539,7 @@ enum frame_encryption {
  	FRAME_ENCRYPTED = 1
  };
  

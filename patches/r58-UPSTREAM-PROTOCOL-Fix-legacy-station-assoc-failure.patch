@@ -20,16 +20,26 @@ ensures that the station can successfully associate as a legacy
 station on a different link without encountering association failures.
 
 Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
+Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 ---
- src/ap/ieee802_11.c    |  2 +-
- src/ap/sta_info.c      | 21 ++++++++++++++-------
- src/ap/sta_info.h      |  4 +++-
- src/ap/wpa_auth_glue.c |  2 +-
- 4 files changed, 19 insertions(+), 10 deletions(-)
+ src/ap/ieee802_11.c    |  4 ++--
+ src/ap/sta_info.c      | 33 +++++++++++++++++++++++----------
+ src/ap/sta_info.h      |  7 +++++--
+ src/ap/wpa_auth_glue.c |  4 ++--
+ 4 files changed, 32 insertions(+), 16 deletions(-)
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4914,7 +4914,7 @@ int hostapd_process_assoc_ml_info(struct
+@@ -3497,7 +3497,7 @@ static void handle_auth(struct hostapd_d
+ 	    (!(sta->flags & WLAN_STA_MFP) || !ap_sta_is_authorized(sta)) &&
+ 	    !(hapd->conf->mesh & MESH_ENABLED) &&
+ 	    !(sta->added_unassoc) && auth_alg != WLAN_AUTH_PASN) {
+-		if (ap_sta_re_add(hapd, sta) < 0) {
++		if (ap_sta_re_add(hapd, sta, 1) < 0) {
+ 			resp = WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA;
+ 			goto fail;
+ 		}
+@@ -5148,7 +5148,7 @@ int hostapd_process_assoc_ml_info(struct
  				   "ML STA was already created and we received assoc resp again (reassoc: %d)",
  				   reassoc);
  			/* cleanup all link sta in kernel and add later on ml processing */
@@ -40,7 +50,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -2020,10 +2020,14 @@ int ap_sta_pending_delayed_1x_auth_fail_
+@@ -2075,10 +2075,14 @@ int ap_sta_pending_delayed_1x_auth_fail_
  
  #ifdef CONFIG_IEEE80211BE
  void ap_sta_remove_link_sta(struct hostapd_data *hapd,
@@ -56,7 +66,7 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  	for_each_mld_link(tmp_hapd, hapd) {
  		struct sta_info *tmp_sta;
  
-@@ -2035,9 +2039,18 @@ void ap_sta_remove_link_sta(struct hosta
+@@ -2090,16 +2094,25 @@ void ap_sta_remove_link_sta(struct hosta
  			if (tmp_sta == sta ||
  			    !ether_addr_equal(tmp_sta->addr, sta->addr))
  				continue;
@@ -77,7 +87,15 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  		}
  	}
  }
-@@ -2060,6 +2073,12 @@ int ap_sta_re_add(struct hostapd_data *h
+ #endif /* CONFIG_IEEE80211BE */
+ 
+ 
+-int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta)
++int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta, int check_authorized)
+ {
+ 	const u8 *mld_link_addr = NULL;
+ 	bool mld_link_sta = false;
+@@ -2114,18 +2127,18 @@ int ap_sta_re_add(struct hostapd_data *h
  	 */
  
  #ifdef CONFIG_IEEE80211BE
@@ -85,15 +103,14 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 +	 * In case the AP is affiliated with an AP MLD, we need to
 +	 * remove the station from all relevant links/APs.
 +	 */
-+	ap_sta_remove_link_sta(hapd, sta, 1);
++	ap_sta_remove_link_sta(hapd, sta, check_authorized);
 +
  	if (ap_sta_is_mld(hapd, sta)) {
  		u8 mld_link_id = hapd->mld_link_id;
  
-@@ -2067,12 +2086,6 @@ int ap_sta_re_add(struct hostapd_data *h
+ 		mld_link_sta = sta->mld_assoc_link_id != mld_link_id;
  		mld_link_addr = sta->mld_info.links[mld_link_id].peer_addr;
  		eml_cap = sta->mld_info.common_info.eml_capa;
- 		mld_cap = sta->mld_info.common_info.mld_capa;
 -
 -		/*
 -		 * In case the AP is affiliated with an AP MLD, we need to
@@ -105,20 +122,37 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -381,7 +381,9 @@ int set_for_each_partner_link_sta(struct
+@@ -381,7 +381,6 @@ int set_for_each_partner_link_sta(struct
  					    struct sta_info *sta,
  					    void *data));
  
 -void ap_sta_remove_link_sta(struct hostapd_data *hapd, struct sta_info *sta);
-+void ap_sta_remove_link_sta(struct hostapd_data *hapd,
-+			    struct sta_info *sta,
-+			    int check_authorized);
  void set_link_id_for_each_partner_link_sta(struct hostapd_data *hapd,
  					   struct sta_info *psta,
  					   int link_id);
+@@ -454,7 +453,8 @@ void ap_sta_delayed_1x_auth_fail_disconn
+ 					    unsigned timeout);
+ int ap_sta_pending_delayed_1x_auth_fail_disconnect(struct hostapd_data *hapd,
+ 						   struct sta_info *sta);
+-int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta);
++int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta,
++		  int check_authorized);
+ 
+ void ap_free_sta_pasn(struct hostapd_data *hapd, struct sta_info *sta);
+ 
+@@ -478,7 +478,8 @@ static inline void ap_sta_set_mld(struct
+ 
+ #ifdef CONFIG_IEEE80211BE
+ void ap_sta_remove_link_sta(struct hostapd_data *hapd,
+-                            struct sta_info *sta);
++			    struct sta_info *sta,
++			    int check_authorized);
+ #endif
+ void ap_sta_free_sta_profile(struct mld_info *info);
+ 
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -1264,7 +1264,7 @@ hostapd_wpa_auth_add_sta_ml(struct hosta
+@@ -1255,7 +1255,7 @@ hostapd_wpa_auth_add_sta_ml(struct hosta
  		 */
  		wpa_printf(MSG_DEBUG, "Remove STA "MACSTR" to make source to"
  			   " target roaming", MAC2STR(sta_mld));
@@ -127,3 +161,12 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
  		ap_free_sta(hapd, sta_ml_obj);
  		sta_ml_obj = NULL;
  	}
+@@ -1369,7 +1369,7 @@ static int hostapd_wpa_auth_add_sta_ft(v
+ 		 * previous association. */
+ 		wpa_printf(MSG_DEBUG,
+ 			   "FT: Remove and re-add driver STA entry after successful FT authentication");
+-		return ap_sta_re_add(hapd, sta);
++		return ap_sta_re_add(hapd, sta, 0);
+ 	}
+ 
+ 	return 0;

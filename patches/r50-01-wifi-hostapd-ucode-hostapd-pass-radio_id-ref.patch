@@ -23,7 +23,7 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  {
  	uc_value_t *ifs = ucv_object_new(vm);
  	uc_value_t *if_bss = ucv_array_new(vm);
-@@ -72,31 +72,76 @@ hostapd_ucode_update_interfaces(void)
+@@ -72,30 +72,80 @@ hostapd_ucode_update_interfaces(void)
  
  	for (i = 0; i < interfaces->count; i++) {
  		struct hostapd_iface *iface = interfaces->iface[i];
@@ -92,17 +92,23 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
 +	id = ucv_int64_get(radio_id);
 +	ifname = ucv_string_get(iface_name);
  	data = strdup(ucv_string_get(iface));
+-	ret = hostapd_add_iface(interfaces, data);
+-	free(data);
 +
-+	wpa_printf(MSG_INFO, "%s:  add interface %d: %s", __func__, id, ifname);
- 	ret = hostapd_add_iface(interfaces, data);
- 	free(data);
- 
++	if (data) {
++		ret = hostapd_add_iface(interfaces, data);
++		wpa_printf(MSG_INFO, "%s:  add interface %d: %s, ret:%d",
++			   __func__, id, ifname, ret);
++		free(data);
++	} else {
++		return ucv_int64_new(-1);
++	}
++
 +	hostapd_ucode_update_radio_id(ifname, id);
-+
+ 
  	hostapd_ucode_update_interfaces();
  
- 	return ucv_int64_new(ret);
-@@ -106,12 +151,25 @@ static uc_value_t *
+@@ -106,12 +156,25 @@ static uc_value_t *
  uc_hostapd_remove_iface(uc_vm_t *vm, size_t nargs)
  {
  	uc_value_t *iface = uc_fn_arg(0);
@@ -130,7 +136,7 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  
  	return NULL;
  }
-@@ -259,6 +317,7 @@ uc_hostapd_bss_set_config(uc_vm_t *vm, s
+@@ -259,6 +322,7 @@ uc_hostapd_bss_set_config(uc_vm_t *vm, s
  	conf->bss[idx] = old_bss;
  
  	hostapd_setup_bss(hapd, hapd == iface->bss[0], true);
@@ -138,7 +144,7 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  	hostapd_ucode_update_interfaces();
  
  done:
-@@ -327,6 +386,7 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
+@@ -327,6 +391,7 @@ uc_hostapd_bss_delete(uc_vm_t *vm, size_
  	os_free(hapd);
  
  	hostapd_ucode_update_interfaces();
@@ -146,6 +152,38 @@ Signed-off-by: Harshitha Prem <quic_hprem@quicinc.com>
  	ucv_gc(vm);
  
  	return NULL;
+@@ -371,12 +436,19 @@ uc_hostapd_iface_add_bss(uc_vm_t *vm, si
+ 
+ 	iface->bss = os_realloc_array(iface->bss, iface->num_bss + 1,
+ 				      sizeof(*iface->bss));
+-	iface->bss[iface->num_bss++] = hapd;
++	if (iface->bss)
++		iface->bss[iface->num_bss++] = hapd;
++	else
++		goto deinit_ctrl;
+ 
+ 	iface->conf->bss = os_realloc_array(iface->conf->bss,
+ 					    iface->conf->num_bss + 1,
+ 					    sizeof(*iface->conf->bss));
+-	iface->conf->bss[iface->conf->num_bss] = bss;
++	if (iface->conf->bss)
++		iface->conf->bss[iface->conf->num_bss] = bss;
++	else
++		goto deinit_ctrl;
++
+ 	conf->bss[idx] = NULL;
+ 	ret = hostapd_ucode_bss_get_uval(hapd);
+ 	hostapd_ucode_update_interfaces();
+@@ -539,6 +611,9 @@ uc_hostapd_iface_start(uc_vm_t *vm, size
+ 	} while(0)
+ 
+ 	conf = iface->conf;
++	if (!conf)
++		return NULL;
++
+ 	UPDATE_VAL(op_class, "op_class");
+ 	UPDATE_VAL(hw_mode, "hw_mode");
+ 	UPDATE_VAL(channel, "channel");
 --- a/src/ap/ucode.h
 +++ b/src/ap/ucode.h
 @@ -14,6 +14,7 @@ struct hostapd_ucode_bss {

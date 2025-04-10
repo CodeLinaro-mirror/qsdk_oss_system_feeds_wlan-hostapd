@@ -15,19 +15,17 @@ Signed-off-by: Karthik M <quic_karm@quicinc.com>
  src/drivers/driver_nl80211.c | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index a889c9f..7cc8d51 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -11272,6 +11272,7 @@ static int driver_nl80211_link_remove(void *priv, enum wpa_driver_if_type type,
- {
+@@ -11306,6 +11306,7 @@ static int driver_nl80211_link_remove(vo
  	struct i802_bss *bss = priv;
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-+	void *hapd = bss->ctx;
  	int ret;
++	void *hapd = bss->ctx;
  
- 	if (type != WPA_IF_AP_BSS ||
-@@ -11297,7 +11298,7 @@ static int driver_nl80211_link_remove(void *priv, enum wpa_driver_if_type type,
+ 	if (type != WPA_IF_AP_BSS)
+ 		return -1;
+@@ -11329,7 +11330,7 @@ static int driver_nl80211_link_remove(vo
  			return ret;
  
  		/* Notify that the MLD interface is removed */
@@ -36,6 +34,3 @@ index a889c9f..7cc8d51 100644
  	}
  
  	return 0;
--- 
-2.34.1
-

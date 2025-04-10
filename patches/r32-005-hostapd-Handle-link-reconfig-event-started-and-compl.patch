@@ -33,7 +33,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -71,8 +71,10 @@ int hostapd_if_remove(struct hostapd_dat
+@@ -72,8 +72,10 @@ int hostapd_if_remove(struct hostapd_dat
  int hostapd_if_link_remove(struct hostapd_data *hapd,
  			   enum wpa_driver_if_type type,
  			   const char *ifname, u8 link_id);
@@ -46,7 +46,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  int hostapd_get_seqnum(const char *ifname, struct hostapd_data *hapd,
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2700,6 +2700,114 @@ static void hostapd_iface_disable(struct
+@@ -2728,6 +2728,109 @@ static void hostapd_iface_disable(struct
  	hapd->disabled = 1;
  }
  
@@ -100,12 +100,12 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		iface = hapd->iface;
 +		interfaces = iface->interfaces;
 +
-+		if (iface->num_bss == 1) {
-+			/* Save one of the partner bss to update the beacon */
-+			for_each_mld_link(phapd, hapd)
-+				if (phapd != hapd)
-+					break;
++		/* Save one of the partner bss to update the beacon */
++		for_each_mld_link(phapd, hapd)
++			if (phapd != hapd)
++				break;
 +
++		if (iface->num_bss == 1) {
 +			/* reconfigure GTK rekey primary auth */
 +			wpa_auth_reconfig_primary_auth(hapd->wpa_auth, phapd->wpa_auth);
 +
@@ -140,19 +140,14 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +				return;
 +			}
 +
-+			/* Save one of the partner bss to update the beacon */
-+			for_each_mld_link(phapd, hapd)
-+				if (phapd != hapd)
-+					break;
-+
 +			/* reconfigure GTK rekey primary auth */
 +			wpa_auth_reconfig_primary_auth(hapd->wpa_auth, phapd->wpa_auth);
 +
 +			hostapd_remove_bss(iface, i, true);
-+
-+			/* Refresh all the partner beacons */
-+			hostapd_refresh_all_iface_beacons(phapd->iface);
 +		}
++
++		/* Refresh all the partner beacons */
++		hostapd_refresh_all_iface_beacons(phapd->iface);
 +	}
 +}
 +#endif /* CONFIG_IEEE80211BE */
@@ -161,7 +156,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  static void hostapd_event_update_cu_param(struct hostapd_data *hapd,
  					  struct cu_event *cu_event)
  {
-@@ -3143,6 +3251,22 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -3171,6 +3274,22 @@ void hostapd_wpa_event(void *ctx, enum w
  		hostapd_event_afc_update_complete(hapd,
  						  &data->afc_rsp_info);
  		break;
@@ -177,8 +172,8 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		break;
 +	case EVENT_LINK_RECONFIG:
 +		link_hapd = switch_link_hapd(hapd, data->link_removal_event.link_id);
-+		link_hapd->eht_mld_link_removal_count = data->link_removal_event.link_removal_count;
-+		link_hapd->eht_mld_link_removal_inprogress = true;
++		if (link_hapd->eht_mld_link_removal_inprogress)
++			link_hapd->eht_mld_link_removal_count = data->link_removal_event.link_removal_count;
 +		break;
 +#endif
  	default:
@@ -186,7 +181,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		break;
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -740,6 +740,8 @@ void hostapd_free_hapd_data(struct hosta
+@@ -747,6 +747,8 @@ void hostapd_free_hapd_data(struct hosta
  	eloop_cancel_timeout(hostapd_switch_color_timeout_handler, hapd, NULL);
  #ifdef CONFIG_IEEE80211BE
  	eloop_cancel_timeout(hostapd_link_remove_timeout_handler, hapd, NULL);
@@ -195,7 +190,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  #endif /* CONFIG_IEEE80211BE */
  
  #endif /* CONFIG_IEEE80211AX */
-@@ -3771,7 +3773,7 @@ static void hostapd_deinit_driver(const
+@@ -3786,7 +3788,7 @@ static void hostapd_deinit_driver(const
  }
  
  
@@ -204,7 +199,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  {
  	size_t j;
  
-@@ -4223,7 +4225,8 @@ fail:
+@@ -4235,7 +4237,8 @@ fail:
  }
  
  
@@ -214,7 +209,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  {
  	size_t i;
  
-@@ -4241,6 +4244,17 @@ static int hostapd_remove_bss(struct hos
+@@ -4253,6 +4256,17 @@ static int hostapd_remove_bss(struct hos
  #ifdef CONFIG_IEEE80211BE
  		hostapd_mld_ref_dec(hapd->mld);
  #endif /* CONFIG_IEEE80211BE */
@@ -232,7 +227,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		os_free(hapd);
  
  		iface->num_bss--;
-@@ -4294,7 +4308,7 @@ int hostapd_remove_iface(struct hapd_int
+@@ -4306,7 +4320,7 @@ int hostapd_remove_iface(struct hapd_int
  				hapd_iface->driver_ap_teardown =
  					!(hapd_iface->drv_flags &
  					  WPA_DRIVER_FLAGS_AP_TEARDOWN_SUPPORT);
@@ -243,7 +238,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	}
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -990,5 +990,8 @@ bool hostapd_is_usable_punct_bitmap(stru
+@@ -992,6 +992,9 @@ bool hostapd_is_usable_punct_bitmap(stru
  void hostapd_gen_per_sta_profiles(struct hostapd_data *hapd);
  size_t hostapd_eid_eht_ml_reconfig_len(struct hostapd_data *hapd);
  u8 * hostapd_eid_eht_reconf_ml(struct hostapd_data *hapd, u8 *eid);
@@ -251,7 +246,8 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +		       bool is_link_remove);
 +void hostapd_refresh_all_iface_beacons(struct hostapd_iface *hapd_iface);
  
- #endif /* HOSTAPD_H */
+ static inline bool ap_pmf_enabled(struct hostapd_bss_config *conf)
+ {
 --- a/src/ap/wnm_ap.c
 +++ b/src/ap/wnm_ap.c
 @@ -51,7 +51,7 @@ static const u8 * wnm_ap_get_own_addr(st
@@ -308,7 +304,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			int i;
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -7542,3 +7542,28 @@ void wpa_auth_reset_ml_link_info(struct
+@@ -7667,3 +7667,28 @@ void wpa_auth_reset_ml_link_info(struct
  	}
  #endif /* CONFIG_IEEE80211BE */
  }
@@ -339,7 +335,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 +}
 --- a/src/ap/wpa_auth.h
 +++ b/src/ap/wpa_auth.h
-@@ -685,7 +685,8 @@ void wpa_auth_ml_get_key_info(struct wpa
+@@ -691,7 +691,8 @@ void wpa_auth_ml_get_key_info(struct wpa
  
  void wpa_release_link_auth_ref(struct wpa_state_machine *sm,
  			       int release_link_id);
@@ -351,7 +347,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if (sm->mld_links[link_id].valid &&			\
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -6254,6 +6254,28 @@ enum wpa_event_type {
+@@ -6324,6 +6324,28 @@ enum wpa_event_type {
  	 * EVENT_AFC_POWER_UPDATE_COMPLETE_NOTIFY - Notify AFC data is processed
  	 */
  	EVENT_AFC_POWER_UPDATE_COMPLETE_NOTIFY,
@@ -380,7 +376,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  };
  
  
-@@ -7291,6 +7313,14 @@ union wpa_event_data {
+@@ -7361,6 +7383,14 @@ union wpa_event_data {
  		u8 link_id;
  	} cu_event;
  
@@ -408,7 +404,32 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  	return "UNKNOWN";
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2881,6 +2881,45 @@ static void nl80211_spurious_frame(struc
+@@ -184,15 +184,19 @@ static const char * nl80211_command_to_s
+ 	C2S(NL80211_CMD_ADD_LINK_STA)
+ 	C2S(NL80211_CMD_MODIFY_LINK_STA)
+ 	C2S(NL80211_CMD_REMOVE_LINK_STA)
++        C2S(NL80211_CMD_SET_HW_TIMESTAMP)
++        C2S(NL80211_CMD_LINKS_REMOVED)
++        C2S(NL80211_CMD_SET_TID_TO_LINK_MAPPING)
++        C2S(NL80211_CMD_ASSOC_MLO_RECONF)
++        C2S(NL80211_CMD_EPCS_CFG)
++
++	/* Yet to upstream */
+ 	C2S(NL80211_CMD_UPDATE_HE_MUEDCA_PARAMS)
+-	C2S(NL80211_CMD_SET_HW_TIMESTAMP)
+ 	C2S(NL80211_CMD_AWGN_DETECT)
+-	C2S(NL80211_CMD_LINKS_REMOVED)
+-	C2S(NL80211_CMD_SET_TID_TO_LINK_MAPPING)
+-	C2S(NL80211_CMD_ASSOC_MLO_RECONF)
+-	C2S(NL80211_CMD_EPCS_CFG)
+ 	C2S(NL80211_CMD_STOP_BGRADAR_DETECT)
+ 	C2S(NL80211_CMD_INTERFERENCE_DETECT)
++	C2S(NL80211_CMD_LINK_REMOVAL_STARTED)
++	C2S(NL80211_CMD_LINK_REMOVAL_COMPLETED)
+ 	C2S(__NL80211_CMD_AFTER_LAST)
+ 	}
+ #undef C2S
+@@ -2889,6 +2893,45 @@ static void nl80211_spurious_frame(struc
  }
  
  
@@ -454,7 +475,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  #ifdef CONFIG_DRIVER_NL80211_QCA
  
  static void qca_nl80211_avoid_freq(struct wpa_driver_nl80211_data *drv,
-@@ -4887,6 +4926,12 @@ static void do_process_drv_event(struct
+@@ -4895,6 +4938,12 @@ static void do_process_drv_event(struct
  	case NL80211_CMD_AWGN_DETECT:
  		nl80211_awgn_event(bss, tb);
  		break;
@@ -469,7 +490,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  			"(cmd=%d)", cmd);
 --- a/src/drivers/nl80211_copy.h
 +++ b/src/drivers/nl80211_copy.h
-@@ -1606,6 +1606,10 @@ enum nl80211_commands {
+@@ -1616,6 +1616,10 @@ enum nl80211_commands {
  	 */
  	NL80211_CMD_INTERFERENCE_DETECT,
  

@@ -18,7 +18,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
 
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -370,7 +370,14 @@ int hostapd_vlan_if_add(struct hostapd_d
+@@ -374,7 +374,14 @@ int hostapd_vlan_if_add(struct hostapd_d
  {
  	char force_ifname[IFNAMSIZ];
  	u8 if_addr[ETH_ALEN];
@@ -36,7 +36,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -4715,6 +4715,7 @@ static int ieee80211_ml_process_link(str
+@@ -4762,6 +4762,7 @@ static int ieee80211_ml_process_link(str
  		   hapd->mld_link_id, sta->aid);
  
  	sta->flags |= WLAN_STA_AUTH | WLAN_STA_ASSOC_REQ_OK;
@@ -56,7 +56,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	int set_beacon = 0;
  
  	accounting_sta_stop(hapd, sta);
-@@ -361,13 +364,20 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -362,13 +365,20 @@ void ap_free_sta(struct hostapd_data *ha
  #endif /* CONFIG_NO_RADIUS */
  
  #ifndef CONFIG_NO_VLAN
@@ -78,7 +78,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	if (sta->vlan_id_bound) {
  		/*
  		 * Need to remove the STA entry before potentially removing the
-@@ -378,10 +388,9 @@ void ap_free_sta(struct hostapd_data *ha
+@@ -379,10 +389,9 @@ void ap_free_sta(struct hostapd_data *ha
  			hostapd_drv_sta_remove(hapd, sta->addr);
  			sta->added_unassoc = 0;
  		}
@@ -90,7 +90,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	os_free(sta->challenge);
  
  	os_free(sta->sa_query_trans_id);
-@@ -1142,10 +1151,19 @@ int ap_sta_wps_cancel(struct hostapd_dat
+@@ -1209,10 +1218,19 @@ int ap_sta_wps_cancel(struct hostapd_dat
  static int ap_sta_get_free_vlan_id(struct hostapd_data *hapd)
  {
  	struct hostapd_vlan *vlan;
@@ -111,7 +111,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		if (vlan->vlan_id == vlan_id) {
  			vlan_id++;
  			goto retry;
-@@ -1160,6 +1178,15 @@ int ap_sta_set_vlan(struct hostapd_data
+@@ -1227,6 +1245,15 @@ int ap_sta_set_vlan(struct hostapd_data
  {
  	struct hostapd_vlan *vlan = NULL, *wildcard_vlan = NULL;
  	int old_vlan_id, vlan_id = 0, ret = 0;
@@ -127,7 +127,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	/* Check if there is something to do */
  	if (hapd->conf->ssid.per_sta_vif && !sta->vlan_id) {
-@@ -1177,7 +1204,7 @@ int ap_sta_set_vlan(struct hostapd_data
+@@ -1244,7 +1271,7 @@ int ap_sta_set_vlan(struct hostapd_data
  		/* find a free vlan_id sufficiently big */
  		vlan_id = ap_sta_get_free_vlan_id(hapd);
  		/* Get wildcard VLAN */
@@ -136,7 +136,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			if (vlan->vlan_id == VLAN_ID_WILDCARD)
  				break;
  		}
-@@ -1191,7 +1218,7 @@ int ap_sta_set_vlan(struct hostapd_data
+@@ -1258,7 +1285,7 @@ int ap_sta_set_vlan(struct hostapd_data
  			goto done;
  		}
  	} else if (vlan_desc && vlan_desc->notempty) {
@@ -145,7 +145,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			if (!vlan_compare(&vlan->vlan_desc, vlan_desc))
  				break;
  			if (vlan->vlan_id == VLAN_ID_WILDCARD)
-@@ -1204,10 +1231,10 @@ int ap_sta_set_vlan(struct hostapd_data
+@@ -1271,10 +1298,10 @@ int ap_sta_set_vlan(struct hostapd_data
  			vlan_id = vlan_desc->untagged;
  			if (vlan_desc->tagged[0]) {
  				/* Tagged VLAN configuration */
@@ -158,7 +158,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  				       HOSTAPD_MODULE_IEEE80211,
  				       HOSTAPD_LEVEL_DEBUG,
  				       "missing vlan and wildcard for vlan=%d%s",
-@@ -1220,9 +1247,9 @@ int ap_sta_set_vlan(struct hostapd_data
+@@ -1287,9 +1314,9 @@ int ap_sta_set_vlan(struct hostapd_data
  	}
  
  	if (vlan && vlan->vlan_id == VLAN_ID_WILDCARD) {
@@ -170,7 +170,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  				       HOSTAPD_MODULE_IEEE80211,
  				       HOSTAPD_LEVEL_DEBUG,
  				       "could not add dynamic VLAN interface for vlan=%d%s",
-@@ -1234,13 +1261,13 @@ int ap_sta_set_vlan(struct hostapd_data
+@@ -1301,13 +1328,13 @@ int ap_sta_set_vlan(struct hostapd_data
  			goto done;
  		}
  
@@ -186,7 +186,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			       HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_DEBUG,
  			       "updated existing dynamic VLAN interface '%s'",
-@@ -1252,7 +1279,7 @@ done:
+@@ -1319,7 +1346,7 @@ done:
  	sta->vlan_desc = vlan ? &vlan->vlan_desc : NULL;
  
  	if (vlan_id != old_vlan_id && old_vlan_id)
@@ -195,7 +195,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  
  	return ret;
  }
-@@ -1263,13 +1290,18 @@ int ap_sta_bind_vlan(struct hostapd_data
+@@ -1330,13 +1357,18 @@ int ap_sta_bind_vlan(struct hostapd_data
  #ifndef CONFIG_NO_VLAN
  	const char *iface;
  	struct hostapd_vlan *vlan = NULL;
@@ -215,7 +215,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  #endif /* CONFIG_IEEE80211BE */
  
  	if ((sta->flags & WLAN_STA_WDS) && sta->vlan_id == 0) {
-@@ -1284,7 +1316,7 @@ int ap_sta_bind_vlan(struct hostapd_data
+@@ -1351,7 +1383,7 @@ int ap_sta_bind_vlan(struct hostapd_data
  		iface = hapd->conf->ssid.vlan;
  
  	if (sta->vlan_id > 0) {
@@ -224,7 +224,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			if (vlan->vlan_id == sta->vlan_id)
  				break;
  		}
-@@ -1301,7 +1333,7 @@ int ap_sta_bind_vlan(struct hostapd_data
+@@ -1368,7 +1400,7 @@ int ap_sta_bind_vlan(struct hostapd_data
  		goto skip_counting;
  
  	if (sta->vlan_id > 0 && !vlan) {
@@ -233,7 +233,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			       HOSTAPD_LEVEL_DEBUG, "could not find VLAN for "
  			       "binding station to (vlan_id=%d)",
  			       sta->vlan_id);
-@@ -1309,7 +1341,7 @@ int ap_sta_bind_vlan(struct hostapd_data
+@@ -1376,7 +1408,7 @@ int ap_sta_bind_vlan(struct hostapd_data
  		goto done;
  	} else if (vlan && vlan->dynamic_vlan > 0) {
  		vlan->dynamic_vlan++;
@@ -242,7 +242,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  			       HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_DEBUG,
  			       "updated existing dynamic VLAN interface '%s'",
-@@ -1320,7 +1352,7 @@ int ap_sta_bind_vlan(struct hostapd_data
+@@ -1387,7 +1419,7 @@ int ap_sta_bind_vlan(struct hostapd_data
  	sta->vlan_id_bound = sta->vlan_id;
  
  skip_counting:
@@ -251,7 +251,7 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  		       HOSTAPD_LEVEL_DEBUG, "binding station to interface "
  		       "'%s'", iface);
  
-@@ -1337,7 +1369,7 @@ skip_counting:
+@@ -1404,7 +1436,7 @@ skip_counting:
  
  	/* During 1x reauth, if the vlan id changes, then remove the old id. */
  	if (old_vlanid > 0 && old_vlanid != sta->vlan_id)
@@ -306,20 +306,19 @@ Signed-off-by: Sriram R <quic_srirrama@quicinc.com>
  	while (vlan) {
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -509,10 +509,18 @@ static int hostapd_wpa_auth_set_key(void
- 				    size_t key_len, enum key_flag key_flag)
- {
+@@ -514,9 +514,17 @@ static int hostapd_wpa_auth_set_key(void
  	struct hostapd_data *hapd = ctx;
-+	struct hostapd_data *link_bss = hapd;
  	const char *ifname = hapd->conf->iface;
- 
+ 	int set_tx = !(key_flag & KEY_FLAG_NEXT);
++	struct hostapd_data *link_bss = hapd;
++
 +#ifdef CONFIG_IEEE80211BE
-+	if (hapd->conf->mld_ap) {
-+		link_bss = hostapd_mld_get_first_bss(hapd);
-+		if (link_bss == NULL)
-+			link_bss = hapd;
-+	}
-+#endif
++	link_bss = hostapd_mld_is_first_bss(hapd) ? hapd :
++		   hostapd_mld_get_first_bss(hapd);
++	if (!link_bss)
++		link_bss = hapd;
++#endif /* CONFIG_IEEE80211BE */
+ 
  	if (vlan_id > 0) {
 -		ifname = hostapd_get_vlan_id_ifname(hapd->conf->vlan, vlan_id);
 +		ifname = hostapd_get_vlan_id_ifname(link_bss->conf->vlan, vlan_id);

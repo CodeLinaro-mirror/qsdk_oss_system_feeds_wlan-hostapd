@@ -31,7 +31,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2929,6 +2929,8 @@ static int __ieee802_11_set_beacon(struc
+@@ -2879,6 +2879,8 @@ static int __ieee802_11_set_beacon(struc
  #ifdef CONFIG_IEEE80211BE
  	params.punct_bitmap = iconf->punct_bitmap;
  #endif /* CONFIG_IEEE80211BE */
@@ -42,7 +42,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	    hostapd_set_freq_params(&freq, iconf->hw_mode, iface->freq,
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1404,6 +1404,7 @@ void hostapd_event_ch_switch(struct host
+@@ -1422,6 +1422,7 @@ void hostapd_event_ch_switch(struct host
  	if (hapd->csa_in_progress &&
  	    freq == hapd->cs_freq_params.freq) {
  		hostapd_cleanup_cs_params(hapd);
@@ -52,7 +52,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4380,6 +4380,9 @@ static int hostapd_build_beacon_data(str
+@@ -4404,6 +4404,9 @@ int hostapd_build_beacon_data(struct hos
  		beacon->assocresp_ies_len = wpabuf_len(assocresp_extra);
  	}
  
@@ -62,18 +62,18 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  	ret = 0;
  free_beacon:
  	/* if the function fails, the caller should not free beacon data */
-@@ -4591,6 +4594,8 @@ static int hostapd_fill_csa_settings(str
- 	iface->conf->punct_bitmap = settings->punct_bitmap;
- #endif /* CONFIG_IEEE80211BE */
+@@ -4612,6 +4615,8 @@ static int hostapd_fill_csa_settings(str
+ 		return ret;
+ 
  	ret = hostapd_build_beacon_data(hapd, &settings->beacon_after);
 +	if (settings->beacon_after.elemid_modified)
 +		settings->beacon_after_cu = 1;
  
  	/* change back the configuration */
- #ifdef CONFIG_IEEE80211BE
+ 	hostapd_change_config_freq(iface->bss[0], iface->conf,
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -573,6 +573,7 @@ struct hostapd_data {
+@@ -571,6 +571,7 @@ struct hostapd_data {
  
  	u64 scan_cookie; /* Scan instance identifier for the ongoing HT40 scan
  			  */
@@ -83,7 +83,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -1954,6 +1954,7 @@ struct wpa_driver_ap_params {
+@@ -1956,6 +1956,7 @@ struct wpa_driver_ap_params {
  	/* critical_update_flag - critical update flag*/
  	bool elemid_added;
  	bool elemid_modified;
@@ -91,7 +91,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	/**
  	 * allowed_freqs - List of allowed 20 MHz channel center frequencies in
-@@ -2879,6 +2880,10 @@ struct beacon_data {
+@@ -2892,6 +2893,10 @@ struct beacon_data {
  	size_t proberesp_ies_len;
  	size_t assocresp_ies_len;
  	size_t probe_resp_len;
@@ -102,19 +102,20 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  };
  
  /**
-@@ -2910,6 +2915,9 @@ struct csa_settings {
- 	int link_id;
+@@ -2921,6 +2926,10 @@ struct csa_settings {
  
  	struct unsol_bcast_probe_resp ubpr;
+ 	bool handle_dfs;
 +
 +	/* critical_update_flag - critical update flag*/
 +	bool beacon_after_cu;
++
  };
  
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5560,7 +5560,8 @@ static int wpa_driver_nl80211_set_ap(voi
+@@ -5640,7 +5640,8 @@ static int wpa_driver_nl80211_set_ap(voi
  		goto fail;
  #endif /* CONFIG_FILS */
  
@@ -124,7 +125,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  		if (params->elemid_added)
  			critical_update |= NL80211_CU_ELEMID_ADDED;
  		if (params->elemid_modified)
-@@ -11687,7 +11688,6 @@ static int nl80211_switch_channel(void *
+@@ -11706,7 +11707,6 @@ static int nl80211_switch_channel(void *
  	int ret = -ENOBUFS;
  	int csa_off_len = 0;
  	int i;
@@ -132,7 +133,7 @@ Signed-off-by: Mohan Kumar G <quic_mkumarg@quicinc.com>
  
  	wpa_printf(MSG_DEBUG,
  		   "nl80211: Channel switch request (cs_count=%u block_tx=%u freq=%d channel=%d sec_channel_offset=%d width=%d cf1=%d cf2=%d puncturing_bitmap=0x%04x link_id=%d%s%s%s)",
-@@ -11805,6 +11805,10 @@ static int nl80211_switch_channel(void *
+@@ -11824,6 +11824,10 @@ static int nl80211_switch_channel(void *
  		     settings->counter_offset_presp)))
  		goto fail;
  

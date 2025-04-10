@@ -84,7 +84,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  
  	return 0;
  }
-@@ -1657,7 +1670,7 @@ static int hostapd_dfs_start_channel_swi
+@@ -1656,7 +1669,7 @@ static int hostapd_dfs_start_channel_swi
  
  int hostapd_dfs_radar_detected(struct hostapd_iface *iface, int freq,
  			       int ht_enabled, int chan_offset, int chan_width,
@@ -93,7 +93,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  {
  	wpa_msg(iface->bss[0]->msg_ctx, MSG_INFO, DFS_EVENT_RADAR_DETECTED
  		"freq=%d ht_enabled=%d chan_offset=%d chan_width=%d cf1=%d cf2=%d",
-@@ -1674,13 +1687,13 @@ int hostapd_dfs_radar_detected(struct ho
+@@ -1673,13 +1686,13 @@ int hostapd_dfs_radar_detected(struct ho
  
  	/* mark radar frequency as invalid */
  	if (!set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
@@ -109,7 +109,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  	 }
  
  	if (!hostapd_dfs_is_background_event(iface, freq)) {
-@@ -1720,7 +1733,7 @@ int hostapd_dfs_nop_finished(struct host
+@@ -1719,7 +1732,7 @@ int hostapd_dfs_nop_finished(struct host
  
  	/* TODO add correct implementation here */
  	set_dfs_state(iface, freq, ht_enabled, chan_offset, chan_width,
@@ -131,7 +131,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  			     int chan_offset, int chan_width, int cf1, int cf2);
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2235,7 +2235,7 @@ static void hostapd_event_dfs_radar_dete
+@@ -2259,7 +2259,7 @@ static void hostapd_event_dfs_radar_dete
  	wpa_printf(MSG_DEBUG, "DFS radar detected on %d MHz", radar->freq);
  	hostapd_dfs_radar_detected(hapd->iface, radar->freq, radar->ht_enabled,
  				   radar->chan_offset, radar->chan_width,
@@ -142,7 +142,21 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  static void hostapd_event_awgn_detected(struct hostapd_data *hapd,
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2567,13 +2567,15 @@ static void nl80211_radar_event(struct w
+@@ -2524,11 +2524,11 @@ static void nl80211_process_radar_event(
+ 					enum nl80211_radar_event event_type)
+ {
+ 	wpa_printf(MSG_DEBUG,
+-		   "nl80211: DFS event on freq %d MHz, ht: %d, offset: %d, width: %d, cf1: %dMHz, cf2: %dMHz, link_id=%d",
++		   "nl80211: DFS event on freq %d MHz, ht: %d, offset: %d, width: %d, cf1: %dMHz, cf2: %dMHz, link_id=%d radar_bitmap: %0x ",
+ 		   data->dfs_event.freq, data->dfs_event.ht_enabled,
+ 		   data->dfs_event.chan_offset, data->dfs_event.chan_width,
+ 		   data->dfs_event.cf1, data->dfs_event.cf2,
+-		   data->dfs_event.link_id);
++		   data->dfs_event.link_id, data->dfs_event.radar_bitmap);
+ 
+ 	switch (event_type) {
+ 	case NL80211_RADAR_DETECTED:
+@@ -2604,6 +2604,8 @@ static void nl80211_radar_event(struct i
  		data.dfs_event.cf1 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ1]);
  	if (tb[NL80211_ATTR_CENTER_FREQ2])
  		data.dfs_event.cf2 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ2]);
@@ -150,18 +164,8 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
 +		data.dfs_event.radar_bitmap = nla_get_u16(tb[NL80211_ATTR_RADAR_BITMAP]);
  
  	wpa_printf(MSG_DEBUG,
--		   "nl80211: DFS event on freq %d MHz, ht: %d, offset: %d, width: %d, cf1: %dMHz, cf2: %dMHz, link_id=%d",
--		   data.dfs_event.freq, data.dfs_event.ht_enabled,
-+		   "nl80211: DFS event on freq %d MHz, ht: %d, offset: %d, width: %d, cf1: %dMHz, cf2: %dMHz, link_id=%d"
-+		   "radar_bitmap: %0x ",data.dfs_event.freq, data.dfs_event.ht_enabled,
- 		   data.dfs_event.chan_offset, data.dfs_event.chan_width,
- 		   data.dfs_event.cf1, data.dfs_event.cf2,
--		   data.dfs_event.link_id);
-+		   data.dfs_event.link_id, data.dfs_event.radar_bitmap);
- 
- 	switch (event_type) {
- 	case NL80211_RADAR_DETECTED:
-@@ -2986,12 +2988,14 @@ static void qca_nl80211_dfs_offload_rada
+ 		   "nl80211: Checking suitable BSS for the DFS event");
+@@ -3048,12 +3050,14 @@ static void qca_nl80211_dfs_offload_rada
  		data.dfs_event.cf1 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ1]);
  	if (tb[NL80211_ATTR_CENTER_FREQ2])
  		data.dfs_event.cf2 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ2]);
@@ -180,7 +184,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  	case QCA_NL80211_VENDOR_SUBCMD_DFS_OFFLOAD_RADAR_DETECTED:
 --- a/wpa_supplicant/ap.c
 +++ b/wpa_supplicant/ap.c
-@@ -2148,7 +2148,8 @@ void wpas_ap_event_dfs_radar_detected(st
+@@ -2165,7 +2165,8 @@ void wpas_ap_event_dfs_radar_detected(st
  	hostapd_dfs_radar_detected(iface, radar->freq,
  				   radar->ht_enabled, radar->chan_offset,
  				   radar->chan_width,
@@ -192,7 +196,7 @@ Signed-off-by: Nagarajan Maran <quic_nmaran@quicinc.com>
  
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -6871,6 +6871,7 @@ union wpa_event_data {
+@@ -6956,6 +6956,7 @@ union wpa_event_data {
  		int cf1;
  		int cf2;
  		int link_id;

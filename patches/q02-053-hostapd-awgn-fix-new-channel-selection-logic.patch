@@ -316,12 +316,17 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  		return 0;
  	}
  
-@@ -314,47 +382,47 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -314,47 +382,52 @@ int hostapd_intf_awgn_detected(struct ho
  	if (!chan_bw_interference_bitmap || (chan_bw_interference_bitmap & SEG_PRI20))
  		channel_switch = 1;
  
 +	available_chandef_list = os_zalloc(sizeof(struct hostapd_channel_data *) *
 +					   mode->num_channels);
++	if (!available_chandef_list) {
++		wpa_printf(MSG_ERROR, "available_chandef_list memory allocation failed");
++		goto exit;
++	}
++
  	if (channel_switch) {
 -		/* Find a random channel to be switched */
 -		num_available_chandefs = intf_awgn_find_channel(iface, NULL, 0,
@@ -387,7 +392,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  	} else {
  		/* interference is not present in the primary 20Mhz, so reduce bandwidth*/
  		for (i = 0; i < mode->num_channels; i++) {
-@@ -364,7 +432,7 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -364,7 +437,7 @@ int hostapd_intf_awgn_detected(struct ho
  		}
  		if (!chan_data) {
  			wpa_printf(MSG_ERROR, "AWGN : no channel found");
@@ -396,7 +401,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  		}
  
  		if ((chan_width > CHAN_WIDTH_160) &&
-@@ -390,7 +458,7 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -390,7 +463,7 @@ int hostapd_intf_awgn_detected(struct ho
  			wpa_printf(MSG_ERROR,
  				   "AWGN : couldn't find centre freq for chan : %d"
  				   " chan_width : %d", chan_data->chan, new_chan_width);
@@ -405,7 +410,7 @@ Signed-off-by: Hari Chandrakanthan <quic_haric@quicinc.com>
  		}
  	} else {
  		new_centre_freq = chan_data->freq;
-@@ -446,5 +514,7 @@ int hostapd_intf_awgn_detected(struct ho
+@@ -446,5 +519,7 @@ int hostapd_intf_awgn_detected(struct ho
  		}
  	}
  

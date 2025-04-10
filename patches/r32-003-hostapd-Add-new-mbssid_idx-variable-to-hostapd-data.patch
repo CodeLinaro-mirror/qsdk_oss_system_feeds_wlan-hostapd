@@ -24,7 +24,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -3381,6 +3381,11 @@ struct hostapd_iface * hostapd_init(stru
+@@ -3387,6 +3387,11 @@ struct hostapd_iface * hostapd_init(stru
  		if (hapd == NULL)
  			goto fail;
  		hapd->msg_ctx = hapd;
@@ -36,7 +36,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		hostapd_bss_setup_multi_link(hapd, interfaces);
  	}
  
-@@ -3508,6 +3513,12 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3524,6 +3529,12 @@ hostapd_interface_init_bss(struct hapd_i
  
  
  		bss_idx = iface->num_bss++;
@@ -51,7 +51,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		hostapd_config_free(conf);
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
-@@ -572,6 +572,7 @@ struct hostapd_data {
+@@ -570,6 +570,7 @@ struct hostapd_data {
  	u64 scan_cookie; /* Scan instance identifier for the ongoing HT40 scan
  			  */
  	bool disable_cu;
@@ -61,11 +61,11 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9687,7 +9687,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -10052,7 +10052,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		*eid++ = WLAN_EID_MULTIPLE_BSSID_INDEX;
  		if (frame_type == WLAN_FC_STYPE_BEACON) {
  			*eid++ = 3;
--			*eid++ = i; /* BSSID Index */
+-			*eid++ = mbssindex; /* BSSID Index */
 +			*eid++ = bss->mbssid_idx; /* BSSID Index */
  			if (hapd->iconf->mbssid == ENHANCED_MBSSID_ENABLED &&
  			    (conf->dtim_period % elem_count))

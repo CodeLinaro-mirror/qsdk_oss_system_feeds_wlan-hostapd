@@ -51,7 +51,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
 
 --- a/hostapd/Makefile
 +++ b/hostapd/Makefile
-@@ -374,6 +374,7 @@ ifdef CONFIG_IEEE80211BE
+@@ -375,6 +375,7 @@ ifdef CONFIG_IEEE80211BE
  CONFIG_IEEE80211AX=y
  CFLAGS += -DCONFIG_IEEE80211BE
  OBJS += ../src/ap/ieee802_11_eht.o
@@ -83,7 +83,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  u32 hostapd_sta_flags_to_drv(u32 flags)
  {
-@@ -71,7 +73,7 @@ int hostapd_build_ap_extra_ies(struct ho
+@@ -73,7 +75,7 @@ int hostapd_build_ap_extra_ies(struct ho
  			       struct wpabuf **assocresp_ret)
  {
  	struct wpabuf *beacon = NULL, *proberesp = NULL, *assocresp = NULL;
@@ -92,23 +92,22 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  	*beacon_ret = *proberesp_ret = *assocresp_ret = NULL;
  
-@@ -116,6 +118,15 @@ int hostapd_build_ap_extra_ies(struct ho
+@@ -118,6 +120,14 @@ int hostapd_build_ap_extra_ies(struct ho
  		goto fail;
  #endif /* CONFIG_FILS */
  
 +#ifdef CONFIG_IEEE80211BE
 +	pos = hostapd_add_scs_cap(buf, false, true);
 +	if (add_buf_data(&beacon, buf, pos - buf) < 0 ||
-+		add_buf_data(&proberesp, buf, pos - buf) < 0 ||
-+		add_buf_data(&assocresp, buf, pos - buf) < 0) {
++	    add_buf_data(&proberesp, buf, pos - buf) < 0 ||
++	    add_buf_data(&assocresp, buf, pos - buf) < 0) {
 +		goto fail;
 +	}
 +#endif
-+
- 	pos = hostapd_eid_rsnxe(hapd, buf, sizeof(buf));
- 	if (add_buf_data(&assocresp, buf, pos - buf) < 0)
- 		goto fail;
-@@ -410,6 +421,49 @@ int hostapd_add_sta_node(struct hostapd_
+ 	if (!hapd->conf->rsn_override_omit_rsnxe) {
+ 		pos = hostapd_eid_rsnxe(hapd, buf, sizeof(buf));
+ 		if (add_buf_data(&assocresp, buf, pos - buf) < 0)
+@@ -414,6 +424,49 @@ int hostapd_add_sta_node(struct hostapd_
  	return hapd->driver->add_sta_node(hapd->drv_priv, addr, auth_alg);
  }
  
@@ -172,7 +171,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  enum wpa_driver_if_type;
  struct wpa_bss_params;
  struct wpa_driver_scan_params;
-@@ -151,6 +156,10 @@ int hostapd_drv_set_secure_ranging_ctx(s
+@@ -157,6 +162,10 @@ int hostapd_drv_set_secure_ranging_ctx(s
  				       u8 ltf_keyseed_len,
  				       const u8 *ltf_keyseed, u32 action);
  
@@ -196,7 +195,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  #ifdef NEED_AP_MLME
  
-@@ -810,6 +812,7 @@ static size_t hostapd_probe_resp_elems_l
+@@ -819,6 +821,7 @@ static size_t hostapd_probe_resp_elems_l
  	buflen += hostapd_get_rsne_override_len(hapd);
  	buflen += hostapd_get_rsne_override_2_len(hapd);
  	buflen += hostapd_get_rsnxe_override_len(hapd);
@@ -204,7 +203,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  	return buflen;
  }
-@@ -974,7 +977,9 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -983,7 +986,9 @@ static u8 * hostapd_probe_resp_fill_elem
  
  	/* Wi-Fi Alliance WMM */
  	pos = hostapd_eid_wmm(hapd, pos);
@@ -215,7 +214,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  #ifdef CONFIG_WPS
  	if (hapd->conf->wps_state && hapd->wps_probe_resp_ie) {
  		os_memcpy(pos, wpabuf_head(hapd->wps_probe_resp_ie),
-@@ -2244,6 +2249,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2312,6 +2317,7 @@ int ieee802_11_build_ap_params(struct ho
  	tail_len += hostapd_get_rsne_override_len(hapd);
  	tail_len += hostapd_get_rsne_override_2_len(hapd);
  	tail_len += hostapd_get_rsnxe_override_len(hapd);
@@ -223,7 +222,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  	tailpos = tail = os_malloc(tail_len);
  	if (head == NULL || tail == NULL) {
-@@ -2434,7 +2440,9 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2502,7 +2508,9 @@ int ieee802_11_build_ap_params(struct ho
  
  	/* Wi-Fi Alliance WMM */
  	tailpos = hostapd_eid_wmm(hapd, tailpos);
@@ -236,7 +235,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  		os_memcpy(tailpos, wpabuf_head(hapd->wps_beacon_ie),
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -58,7 +58,9 @@
+@@ -59,7 +59,9 @@
  #include "comeback_token.h"
  #include "nan_usd_ap.h"
  #include "pasn/pasn_common.h"
@@ -247,7 +246,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  #ifdef CONFIG_FILS
  static struct wpabuf *
-@@ -5261,7 +5263,9 @@ rsnxe_done:
+@@ -5302,7 +5304,9 @@ rsnxe_done:
  
  	if (sta && (sta->flags & WLAN_STA_WMM))
  		p = hostapd_eid_wmm(hapd, p);
@@ -258,9 +257,9 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  #ifdef CONFIG_WPS
  	if (sta &&
  	    ((sta->flags & WLAN_STA_WPS) ||
-@@ -6351,6 +6355,9 @@ static int handle_action(struct hostapd_
- 				return 1;
- 		}
+@@ -6446,6 +6450,9 @@ static int handle_action(struct hostapd_
+ 		    hostapd_action_vs(hapd, sta, mgmt, len, freq, true) == 0)
+ 			return 1;
  		break;
 +	case WLAN_ACTION_ROBUST_AV_STREAMING:
 +		hostapd_handle_scs(hapd, (const u8 *)mgmt, len);
@@ -281,7 +280,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  static u8 * hostapd_eid_timeout_interval(u8 *pos, u8 type, u32 value)
  {
-@@ -507,6 +509,13 @@ u8 * hostapd_eid_ext_capab(struct hostap
+@@ -518,6 +520,13 @@ u8 * hostapd_eid_ext_capab(struct hostap
  			*pos |= hapd->conf->ext_capa[i];
  		}
  
@@ -1121,7 +1120,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  	accounting_sta_stop(hapd, sta);
  
  	/* just in case */
-@@ -910,6 +914,7 @@ static int ap_sta_remove(struct hostapd_
+@@ -933,6 +937,7 @@ static int ap_sta_remove(struct hostapd_
  
  	wpa_printf(MSG_DEBUG, "%s: Removing STA " MACSTR " from kernel driver",
  		   hapd->conf->iface, MAC2STR(sta->addr));
@@ -1139,7 +1138,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  /* STA flags */
  #define WLAN_STA_AUTH BIT(0)
-@@ -55,6 +56,8 @@
+@@ -56,6 +57,8 @@
  #define WLAN_SUPP_HT_RATES_MAX 77
  
  struct hostapd_data;
@@ -1148,7 +1147,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  struct mbo_non_pref_chan_info {
  	struct mbo_non_pref_chan_info *next;
-@@ -269,6 +272,7 @@ struct sta_info {
+@@ -270,6 +273,7 @@ struct sta_info {
  	u8 fils_snonce[FILS_NONCE_LEN];
  	u8 fils_session[FILS_SESSION_LEN];
  	u8 fils_erp_pmkid[PMKID_LEN];
@@ -1156,7 +1155,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  	u8 *fils_pending_assoc_req;
  	size_t fils_pending_assoc_req_len;
  	unsigned int fils_pending_assoc_is_reassoc:1;
-@@ -331,6 +335,12 @@ struct sta_info {
+@@ -334,6 +338,12 @@ struct sta_info {
  
  	struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab;
  	size_t eht_240mhz_len;
@@ -1171,7 +1170,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -968,7 +968,8 @@ struct ieee80211_hdr {
+@@ -987,7 +987,8 @@ struct ieee80211_hdr {
  #define IEEE80211_BSSID_FROMDS addr2
  #define IEEE80211_SA_FROMDS addr3
  
@@ -1181,7 +1180,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  
  struct ieee80211_hdr_s1g_beacon {
  	le16 frame_control;
-@@ -1163,6 +1164,11 @@ struct ieee80211_mgmt {
+@@ -1182,6 +1183,11 @@ struct ieee80211_mgmt {
  					u8 dialog_token;
  					u8 variable[];
  				} STRUCT_PACKED rrm;
@@ -1193,7 +1192,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  			} u;
  		} STRUCT_PACKED action;
  	} u;
-@@ -2740,6 +2746,9 @@ struct ieee80211_eht_operation {
+@@ -2755,6 +2761,9 @@ struct ieee80211_eht_operation {
  					 EHT_PHYCAP_MU_BEAMFORMER_160MHZ | \
  					 EHT_PHYCAP_MU_BEAMFORMER_320MHZ)
  
@@ -1205,7 +1204,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  #define EHT_PHYCAP_MCS_NSS_LEN_20MHZ_PLUS	3
 --- a/src/common/qca-vendor.h
 +++ b/src/common/qca-vendor.h
-@@ -15486,6 +15486,13 @@ enum qca_wlan_vendor_attr_scs_rule_confi
+@@ -15860,6 +15860,13 @@ enum qca_wlan_vendor_attr_scs_rule_confi
  	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_SERVICE_CLASS_ID = 19,
  	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_DST_MAC_ADDR = 20,
  	QCA_WLAN_VENDOR_ATTR_SCS_RULE_CONFIG_NETDEV_IF_INDEX = 21,
@@ -1240,7 +1239,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  /**
   * struct hostapd_channel_data - Channel information
   */
-@@ -5473,6 +5485,10 @@ struct wpa_driver_ops {
+@@ -5551,6 +5563,10 @@ struct wpa_driver_ops {
  	 */
  	struct hostapd_multi_hw_info *
  	(*get_multi_hw_info)(void *priv, unsigned int *num_multi_hws);
@@ -1261,17 +1260,19 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  static struct nl_sock * nl_create_handle(struct nl_cb *cb, const char *dbg)
  {
  	struct nl_sock *handle;
-@@ -2796,6 +2797,9 @@ static int nl80211_action_subscribe_ap(s
+@@ -2804,6 +2805,11 @@ static int nl80211_action_subscribe_ap(s
  	if (nl80211_register_action_frame(bss, (u8 *) "\x12", 1) < 0)
  		ret = -1;
  #endif /* CONFIG_FST */
-+    /* Robust AV */
++
++	/* Robust AV */
 +	if (nl80211_register_action_frame(bss, (u8 *) "\x13", 1) < 0)
 +		ret = -1;
- 	/* Vendor-specific */
- 	if (nl80211_register_action_frame(bss, (u8 *) "\x7f", 1) < 0)
++
+ 	/* Vendor-specific Protected */
+ 	if (nl80211_register_action_frame(bss, (u8 *) "\x7e", 1) < 0)
  		ret = -1;
-@@ -12272,7 +12276,6 @@ fail:
+@@ -12283,7 +12289,6 @@ fail:
  	return -1;
  }
  
@@ -1279,9 +1280,9 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  static int nl80211_add_sta_node(void *priv, const u8 *addr, u16 auth_alg)
  {
  	struct i802_bss *bss = priv;
-@@ -14871,6 +14874,63 @@ free_all:
+@@ -14941,6 +14946,63 @@ wpa_driver_get_multi_hw_info(void *priv,
  }
- #endif /* CONFIG_IEEE80211BE */
+ 
  
 +#ifdef CONFIG_IEEE80211BE
 +#define NL_VENDOR_SET_QOS_ATTR(msg, attr, val, bit) \
@@ -1343,7 +1344,7 @@ Signed-off-by: Balamurugan Ramar <quic_bramar@quicinc.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -15035,6 +15095,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15107,6 +15169,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.is_drv_shared = nl80211_is_drv_shared,
  	.link_sta_remove = wpa_driver_nl80211_link_sta_remove,
  	.can_share_drv = wpa_driver_nl80211_can_share_drv,

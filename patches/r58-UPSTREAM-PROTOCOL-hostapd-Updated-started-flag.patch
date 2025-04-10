@@ -30,7 +30,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
 
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2290,6 +2290,10 @@ static void hostapd_event_iface_unavaila
+@@ -2286,6 +2286,10 @@ static void hostapd_event_iface_unavaila
  		hostapd_switch_channel_fallback(hapd->iface,
  						&hapd->cs_freq_params);
  	}
@@ -41,7 +41,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  }
  
  
-@@ -3133,6 +3137,10 @@ void hostapd_wpa_event(void *ctx, enum w
+@@ -3123,6 +3127,10 @@ void hostapd_wpa_event(void *ctx, enum w
  #ifdef NEED_AP_MLME
  	case EVENT_INTERFACE_UNAVAILABLE:
  		hostapd_event_iface_unavailable(hapd);
@@ -54,7 +54,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		if (!data)
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -9208,7 +9208,7 @@ repeat_rnr_len:
+@@ -9445,7 +9445,7 @@ repeat_rnr_len:
  			bool ap_mld = false;
  			u8 match_idx = 255;
  
@@ -63,7 +63,7 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  				continue;
  
  #ifdef CONFIG_IEEE80211BE
-@@ -9478,7 +9478,7 @@ static bool hostapd_eid_rnr_bss(struct h
+@@ -9717,7 +9717,7 @@ static bool hostapd_eid_rnr_bss(struct h
  #endif /* CONFIG_IEEE80211BE */
  
  	if (!bss || !bss->conf || !bss->started ||
@@ -72,16 +72,16 @@ Signed-off-by: Manish Dharanenthiran <quic_mdharane@quicinc.com>
  		return false;
  
  	if (hostapd_skip_rnr(i, skip_profiles, ap_mld, tbtt_info_len,
-@@ -9817,7 +9817,7 @@ static size_t hostapd_eid_mbssid_elem_le
- 		else
- 			bss = tx_bss->iface->bss[i];
+@@ -10056,7 +10056,7 @@ static size_t hostapd_eid_mbssid_elem_le
+ 		 else
+ 			 bss = tx_bss->iface->bss[i];
  
 -		if (!bss || !bss->conf || !bss->started ||
 +		if (!bss || !bss->conf || !bss->started || bss->disabled ||
  		    mbssid_known_bss(i, known_bss, known_bss_len))
  			continue;
  
-@@ -10009,7 +10009,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -10254,7 +10254,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  		else
  			bss = tx_bss->iface->bss[i];
  

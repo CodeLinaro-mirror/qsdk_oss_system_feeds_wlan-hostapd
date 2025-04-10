@@ -23,7 +23,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
 
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -3946,13 +3946,35 @@ static int hostapd_config_fill(struct ho
+@@ -3717,13 +3717,35 @@ static int hostapd_config_fill(struct ho
  		conf->discard_6g_awgn_event = atoi(pos);
  	} else if (os_strcmp(buf, "mbssid") == 0) {
  		int mbssid = atoi(pos);
@@ -57,20 +57,20 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
 +			val = val / 2;
 +		}
 +		conf->group_size = group_size;
- #endif /* CONFIG_IEEE80211AX */
- 	} else if (os_strcmp(buf, "max_listen_interval") == 0) {
- 		bss->max_listen_interval = atoi(pos);
+ 	} else if (os_strcmp(buf, "mbssid_index") == 0) {
+ 		bss->mbssid_index = atoi(pos);
+ 	} else if (os_strcmp(buf, "mbssid_max") == 0) {
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
-@@ -3449,6 +3449,7 @@ own_ip_addr=127.0.0.1
+@@ -3462,6 +3462,7 @@ own_ip_addr=127.0.0.1
  # 0 = Disabled (default)
  # 1 = Multiple BSSID advertisement enabled.
  # 2 = Enhanced multiple BSSID advertisement enabled.
 +# 3 = Multi MBSSID group enabled
  #mbssid=0
  #
- # The transmitting interface should be added with the 'interface' option while
-@@ -3482,3 +3483,9 @@ own_ip_addr=127.0.0.1
+ # Maximum number of BSSs that can be added into a Multiple BSSID set
+@@ -3507,3 +3508,9 @@ own_ip_addr=127.0.0.1
  #bridge=br-lan
  #wpa_key_mgmt=SAE
  #bssid=00:03:7f:12:84:85
@@ -82,7 +82,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
 +#mbssid_group_size=4
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -336,6 +336,7 @@ struct hostapd_config * hostapd_config_d
+@@ -327,6 +327,7 @@ struct hostapd_config * hostapd_config_d
  #ifdef CONFIG_AIRTIME_POLICY
  	conf->airtime_update_interval = AIRTIME_DEFAULT_UPDATE_INTERVAL;
  #endif /* CONFIG_AIRTIME_POLICY */
@@ -92,7 +92,7 @@ Signed-off-by: Rathees Kumar R Chinannan <quic_rrchinan@quicinc.com>
  
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
-@@ -1298,6 +1298,10 @@ struct hostapd_config {
+@@ -1282,6 +1282,10 @@ struct hostapd_config {
  	int ccfs;
  	int bandwidth_device;
  	int center_freq_device;
