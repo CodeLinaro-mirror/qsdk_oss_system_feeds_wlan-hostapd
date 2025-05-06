@@ -52,16 +52,16 @@ Signed-off-by: Hari Naraayana Desikan Kannan <quic_hnaraaya@quicinc.com>
 +		os_free(params.freqs);
  	}
  
- 	ieee802_11_set_beacon(hapd);
+ 	ieee802_11_set_beacon_per_bss_only(hapd);
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -10523,6 +10523,11 @@ static int wpa_driver_nl80211_get_survey
- 					 &arg, NULL, NULL);
+@@ -10807,6 +10807,11 @@ static int wpa_driver_nl80211_get_survey
+ 					 &arg);
  	} while (err > 0);
  
 +	if (!bss->scan_link) {
 +		wpa_printf(MSG_ERROR, "nl80211: scan_link empty");
-+		return -1;
++		err = -1;
 +	}
 +
  	if (err)
