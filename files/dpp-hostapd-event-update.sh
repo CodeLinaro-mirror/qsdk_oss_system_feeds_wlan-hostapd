@@ -84,6 +84,7 @@ local ifname=$2
 			encryption=
 			dpp_akm=
 			ieee80211w=
+			sae_pwe=
 			case "$CONFIG" in
 				dpp)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "DPP"
@@ -94,46 +95,61 @@ local ifname=$2
 				sae)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "SAE"
 					hostapd_cli -i"$ifname" set ieee80211w 2
+					hostapd_cli -i"$ifname" set sae_pwe 2
 					encryption="sae"
 					ieee80211w=2
+					sae_pwe=2
 					;;
 				psk+sae|psk-sae)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "WPA-PSK SAE"
+					hostapd_cli -i"$ifname" set ieee80211w 1
+					hostapd_cli -i"$ifname" set sae_pwe 2
 					encryption="sae-mixed"
 					ieee80211w=1
+					sae_pwe=2
 					sae_require_mfp=1
 					;;
 				psk)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "WPA-PSK"
+					hostapd_cli -i"$ifname" set ieee80211w 1
 					encryption="psk2"
 					ieee80211w=1
 					;;
 				dpp+sae|dpp-sae)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "DPP SAE"
 					hostapd_cli -i"$ifname" set ieee80211w 2
+					hostapd_cli -i"$ifname" set sae_pwe 2
 					encryption="sae"
 					ieee80211w=2
+					sae_pwe=2
 					dpp_akm=1
 					;;
 				dpp+psk+sae|dpp-psk-sae)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "DPP WPA-PSK SAE"
+					hostapd_cli -i"$ifname" set ieee80211w 1
+					hostapd_cli -i"$ifname" set sae_pwe 2
 					encryption="sae-mixed"
 					ieee80211w=1
 					sae_require_mfp=1
+					sae_pwe=2
 					dpp_akm=1
 					;;
 				sae-ext-key)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "SAE-EXT-KEY"
 					hostapd_cli -i"$ifname" set rsn_pairwise "GCMP-256"
 					hostapd_cli -i"$ifname" set group_cipher "GCMP-256"
+					hostapd_cli -i"$ifname" set ieee80211w 2
+					hostapd_cli -i"$ifname" set sae_pwe 2
 					encryption="sae-ext-key"
 					ieee80211w=2
+					sae_pwe=2
 					;;
 			esac
 			[ -n "$mld_group" ] && uci set wireless.$mld_group.encryption=$encryption
 			uci set wireless."${sect}".encryption=$encryption
 			uci set wireless."${sect}".dpp_akm=$dpp_akm
 			uci set wireless."${sect}".ieee80211w=$ieee80211w
+			uci set wireless."${sect}".sae_pwe=$sae_pwe
 			uci commit wireless
 			;;
 		DPP-CONFOBJ-SSID)
