@@ -70,8 +70,8 @@
  	dl_list_init(&hapd->sae_commit_queue);
  #endif /* CONFIG_SAE */
  
-+	if (conf && conf->ieee80211ax && hapd->iface)
-+		hapd->parameter_set_count = hapd->iface->conf->he_mu_edca.he_qos_info & 0xf;
++	if (conf && conf->ieee80211ax)
++		hapd->parameter_set_count = conf->he_mu_edca.he_qos_info & 0xf;
 +
  	return hapd;
  }
