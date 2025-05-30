@@ -27,7 +27,9 @@ encryption=
 sae_require_mfp=
 ieee80211w=
 dpp_akm=
+sae_pwe=
 i=0
+
 get_section() {
 	local config=$1
 	local ifname
@@ -122,8 +124,9 @@ update_wireless() {
 	[ -n "$mld_group" ] && uci set wireless.$mld_group.ssid=$ssid
 	uci set wireless.${sect}.dpp_connector=$dpp_connector
 	uci set wireless.${sect}.key=$psk
-	[ -n "$mld_group" ] && uci set wireless.$mld_group.key=$key
-	uci set wireless.${sect}.sae_pwe=$sae_pwe
+	[ -n "$mld_group" ] && uci set wireless.$mld_group.key=$psk
+	[ -n "$sae_pwe" ] && uci set wireless.${sect}.sae_pwe=$sae_pwe
+	[ -n "$mld_group" ] && uci set wireless.$mld_group.sae_pwe=$sae_pwe
 	uci set wireless.${sect}.dpp_csign=$dpp_csign
 	uci set wireless.${sect}.dpp_pp_key=$dpp_pp_key
 	uci set wireless.${sect}.dpp_netaccesskey=$dpp_netaccesskey
@@ -132,6 +135,7 @@ update_wireless() {
 	[ -n "$sae_require_mfp" ] && uci set wireless.${sect}.sae_require_mfp=$sae_require_mfp
 	[ -n "$dpp_akm" ] && uci set wireless.${sect}.dpp_akm=$dpp_akm
 	[ -n "$ieee80211w" ] && uci set wireless.${sect}.ieee80211w=$ieee80211w
+	[ -n "$mld_group" ] && uci set wireless.$mld_group.ieee80211w=$ieee80211w
 	uci commit wireless
 }
 
@@ -149,6 +153,7 @@ case "$CMD" in
 		sae_require_mfp=
 		ieee80211w=
 		key_mgmt=
+		sae_pwe=
 		case "$CONFIG" in
 			dpp+psk+sae|dpp-psk-sae)
 				key_mgmt="DPP SAE WPA-PSK"
@@ -173,12 +178,14 @@ case "$CMD" in
 				key_mgmt="SAE"
 				encryption="sae"
 				ieee80211w=2
+				sae_pwe=2
 				;;
 			psk+sae|psk-sae)
 				key_mgmt="SAE WPA-PSK"
 				encryption="sae-mixed"
 				ieee80211w=1
 				sae_require_mfp=1
+				sae_pwe=2
 				;;
 			psk)
 				key_mgmt="WPA-PSK"
@@ -189,12 +196,15 @@ case "$CMD" in
 				key_mgmt="SAE-EXT-KEY"
 				encryption="sae-ext-key"
 				ieee80211w=2
+				sae_pwe=2
 				wpa_cli -i"$ifname" set_network 0 pairwise "GCMP-256"
 				wpa_cli -i"$ifname" set_network 0 group "GCMP-256"
 				;;
 		esac
 		wpa_cli -i"$ifname"  set_network 0 ieee80211w "$ieee80211w"
 		wpa_cli -i"$ifname"  set_network 0 key_mgmt "$key_mgmt"
+		wpa_cli -i"$ifname"  set_network 0 sae_require_mfp "$key_mgmt"
+		wpa_cli -i"$ifname"  set sae_pwe "$sae_pwe"
 
 		. /sbin/wifi config
 		config_foreach is_mld wifi-mld

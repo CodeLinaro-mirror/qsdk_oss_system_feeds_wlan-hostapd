@@ -638,7 +638,7 @@ Signed-off-by: P Praneesh <quic_ppranees@quicinc.com>
 +			}
  		}
  
-+		if (!start_freq_list)
++		if (start_freq_list)
 +			os_free(start_freq_list);
 +
  		/* This channel would at least be usable */

@@ -23,14 +23,13 @@ Fixes: e1bf37022e01 ("nl80211: MLO: Process stop AP event on link basis")
 Internal patch title - [PATCH] hostapd: use active_links to notify start/stop state of links
 
 Signed-off-by: Karthikeyan Kathirvel <quic_kathirve@quicinc.com>
+Signed-off-by: Yuvarani V <quic_yuvarani@quicinc.com>
 ---
  src/drivers/driver_nl80211.c       | 52 +++++++++++++++++++++---------
  src/drivers/driver_nl80211.h       |  6 ++++
  src/drivers/driver_nl80211_event.c |  6 ++--
  3 files changed, 45 insertions(+), 19 deletions(-)
 
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index a7bc56b58f51..9ea492526dfe 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
 @@ -2437,6 +2437,7 @@ skip_wifi_status:
@@ -81,7 +80,7 @@ index a7bc56b58f51..9ea492526dfe 100644
  	int ret;
  	u8 link_addr[ETH_ALEN];
  
-@@ -9897,20 +9924,13 @@ int nl80211_remove_link(struct i802_bss *bss, int link_id)
+@@ -9897,20 +9924,13 @@ int nl80211_remove_link(struct i802_bss
  
  	link = &bss->links[link_id];
  
@@ -90,7 +89,7 @@ index a7bc56b58f51..9ea492526dfe 100644
  	os_memcpy(link_addr, link->addr, ETH_ALEN);
 +
  	/* First remove the link locally */
- 	bss->valid_links &= ~BIT(link_id);
+-	bss->valid_links &= ~BIT(link_id);
  	os_memset(link->addr, 0, ETH_ALEN);
 -
 -	/* Choose new deflink if we are removing that link */
@@ -102,10 +101,11 @@ index a7bc56b58f51..9ea492526dfe 100644
 -	}
 +	/* Clear the active links and set the flink */
 +	nl80211_update_active_links(bss, link_id);
++	bss->valid_links &= ~BIT(link_id);
  
  	/* If this was the last link, reset default link */
  	if (!bss->valid_links) {
-@@ -14960,7 +14980,7 @@ static int nl80211_link_add(void *priv, u8 link_id, const u8 *addr,
+@@ -14960,7 +14980,7 @@ static int nl80211_link_add(void *priv,
  		return -EINVAL;
  	}
  
@@ -114,7 +114,7 @@ index a7bc56b58f51..9ea492526dfe 100644
  		wpa_printf(MSG_DEBUG,
  			   "nl80211: MLD: Link %u already set", link_id);
  		return -EINVAL;
-@@ -14992,14 +15012,16 @@ static int nl80211_link_add(void *priv, u8 link_id, const u8 *addr,
+@@ -14992,14 +15012,16 @@ static int nl80211_link_add(void *priv,
  	os_memcpy(bss->links[link_id].addr, addr, ETH_ALEN);
  
  	/* The new link is the first one, make it the default */
@@ -134,8 +134,6 @@ index a7bc56b58f51..9ea492526dfe 100644
  
  	if (drv->rtnl_sk)
  		rtnl_neigh_add_fdb_entry(bss, addr, true);
-diff --git a/src/drivers/driver_nl80211.h b/src/drivers/driver_nl80211.h
-index 537d05d025b0..86172caf31fe 100644
 --- a/src/drivers/driver_nl80211.h
 +++ b/src/drivers/driver_nl80211.h
 @@ -65,7 +65,12 @@ struct i802_bss {
@@ -151,7 +149,7 @@ index 537d05d025b0..86172caf31fe 100644
  	struct i802_link links[MAX_NUM_MLD_LINKS];
  	struct i802_link *flink, *scan_link;
  
-@@ -359,6 +364,7 @@ void nl80211_restore_ap_mode(struct i802_bss *bss);
+@@ -359,6 +364,7 @@ void nl80211_restore_ap_mode(struct i802
  struct i802_link * nl80211_get_link(struct i802_bss *bss, s8 link_id);
  u8 nl80211_get_link_id_from_link(struct i802_bss *bss, struct i802_link *link);
  int nl80211_remove_link(struct i802_bss *bss, int link_id);
@@ -159,11 +157,9 @@ index 537d05d025b0..86172caf31fe 100644
  
  static inline bool nl80211_link_valid(u16 links, s8 link_id)
  {
-diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index 2c737305f2fb..2665faef0e9b 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -2651,10 +2651,8 @@ static void nl80211_stop_ap(struct i802_bss *bss, struct nlattr **tb)
+@@ -2651,10 +2651,8 @@ static void nl80211_stop_ap(struct i802_
  			   "nl80211: STOP_AP event on link %d", link_id);
  		ctx = mld_link->ctx;
  
@@ -176,6 +172,3 @@ index 2c737305f2fb..2665faef0e9b 100644
  	}
  
  	wpa_supplicant_event(ctx, EVENT_INTERFACE_UNAVAILABLE, NULL);
--- 
-2.34.1
-
