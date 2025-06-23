@@ -37,11 +37,9 @@ Signed-off-by: Thirusenthil Kumaran J <thirusen@qti.qualcomm.com>
  src/ap/hostapd.c | 532 ++++++++++++++++++++++++++++++++++++++++++++++-
  1 file changed, 522 insertions(+), 10 deletions(-)
 
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index eb398f408b2b..0df4034ba659 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -6191,6 +6191,33 @@ static int hapd_psd_to_eirp(s16 psd, u8 psd_scale, u16 ch_bw, s16 *eirp)
+@@ -6191,6 +6191,33 @@ static int hapd_psd_to_eirp(s16 psd, u8
  	return -1;
  }
  
@@ -75,11 +73,10 @@ index eb398f408b2b..0df4034ba659 100644
  
  /**
   * reg_get_eirp_from_psd_and_reg_max_eirp() - Get PSD limited EIRP
-@@ -6214,6 +6241,49 @@ reg_get_eirp_from_psd_and_reg_max_eirp(s16 psd, u16 bw, s16 *reg_eirp_pwr)
- }
+@@ -6215,6 +6242,49 @@ reg_get_eirp_from_psd_and_reg_max_eirp(s
  
  
-+/**
+ /**
 + * hostapd_reg_is_pwr_type_client() - Check if the power type is client
 + * @pwr_type: Power type
 + *
@@ -122,10 +119,11 @@ index eb398f408b2b..0df4034ba659 100644
 +}
 +
 +
- /**
++/**
   * hostapd_reg_get_eirp_from_chan_list() - Get the regulatory EIRP for the freq
   * @iface: Pointer to hostapd_iface
-@@ -6240,17 +6310,62 @@ hostapd_reg_get_eirp_from_chan_list(struct hostapd_iface *iface, u16 freq,
+  * @freq: Frequency in MHz
+@@ -6240,17 +6310,62 @@ hostapd_reg_get_eirp_from_chan_list(stru
  	s16 psd_pwr;
  	u16 start_freq = (bw == 20) ? freq : center_freq - (bw / 2) + 10;
  	u8 pwr_type = (is_client_lookup) ? client_type : ap_pwr_type;
@@ -193,7 +191,7 @@ index eb398f408b2b..0df4034ba659 100644
  
  	if (is_twice_pwr)
  		*eirp_pwr *= 2;
-@@ -6259,20 +6374,417 @@ hostapd_reg_get_eirp_from_chan_list(struct hostapd_iface *iface, u16 freq,
+@@ -6259,20 +6374,417 @@ hostapd_reg_get_eirp_from_chan_list(stru
  }
  
  
@@ -365,17 +363,17 @@ index eb398f408b2b..0df4034ba659 100644
 +{
 +	u16 effective_bw = hostapd_reg_find_non_punc_bw(bw, in_punc_pattern);
 +	s16 oobe_psd_pwr, afc_eirp_pwr;
-+	u8 psd_scale = is_twice_pwr ? 2 : 1;
 +	int ret;
 +
 +	ret = hostapd_reg_get_psd_from_chan_list(iface, freq, center_freq, bw,
 +						 in_punc_pattern, NL80211_REG_AP_SP,
 +						 client_type, is_client_lookup,
-+						 is_twice_pwr, &oobe_psd_pwr);
++						 false, &oobe_psd_pwr);
 +	if (ret)
 +		return ret;
 +
-+	if (hapd_psd_to_eirp(oobe_psd_pwr, psd_scale, effective_bw, &afc_eirp_pwr)) {
++	oobe_psd_pwr *= PSD_SCALE;
++	if (hapd_psd_to_eirp(oobe_psd_pwr, PSD_SCALE, effective_bw, &afc_eirp_pwr)) {
 +		wpa_printf(MSG_ERROR, "Unable to get EIRP from PSD");
 +		return -1;
 +	}
@@ -503,7 +501,7 @@ index eb398f408b2b..0df4034ba659 100644
 +	ret = hostapd_reg_get_eirp_from_chan_list(iface, freq, cen_freq, bw,
 +						  in_punc_pattern, NL80211_REG_AP_SP,
 +						  client_type, is_client_lookup,
-+						  is_twice_pwr, &reg_sp_eirp_pwr);
++						  false, &reg_sp_eirp_pwr);
 +	if (ret) {
 +		wpa_printf(MSG_ERROR,
 +			   "Unable to get reg EIRP for SP, Cli Type: %d ",
@@ -544,7 +542,7 @@ index eb398f408b2b..0df4034ba659 100644
 +		return -1;
 +	}
 +
-+	afc_eirp_pwr = CHAN_MIN_TX_POWER;
++	afc_eirp_pwr = CHAN_MIN_TX_POWER * EIRP_PWR_SCALE;
 +	for (i = 0; i < afc_info->num_chan_objs; i++) {
 +		struct afc_chan_obj *chan_obj = &afc_info->afc_chan_info[i];
 +
@@ -591,7 +589,8 @@ index eb398f408b2b..0df4034ba659 100644
 +		return is_twice_pwr ? CHAN_MIN_TWICE_TX_POWER :
 +				      CHAN_MIN_TX_POWER;
 +	}
-+
+ 
+-	if (ret)
 +	if (ap_pwr_type == NL80211_REG_AP_SP)
 +		ret = hostapd_get_sp_eirp(iface, freq, center_freq, bw,
 +					  in_punc_pattern,
@@ -603,8 +602,7 @@ index eb398f408b2b..0df4034ba659 100644
 +							  in_punc_pattern, ap_pwr_type,
 +							  client_type, is_client_lookup,
 +							  is_twice_pwr, &eirp_pwr);
- 
--	if (ret)
++
 +	if (ret) {
 +		wpa_printf(MSG_ERROR,
 +			   "Unable to get EIRP for freq: %d, cf: %d, bw: %d, pp 0x%x"
@@ -616,6 +614,3 @@ index eb398f408b2b..0df4034ba659 100644
  
  	return eirp_pwr;
  }
--- 
-2.34.1
-
