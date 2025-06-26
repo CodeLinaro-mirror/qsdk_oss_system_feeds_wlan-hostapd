@@ -22,11 +22,9 @@ Signed-off-by: Hariharan Basuthkar <quic_hbasuthk@quicinc.com>
  src/common/ieee802_11_defs.h   |  21 ++
  5 files changed, 642 insertions(+), 69 deletions(-)
 
-diff --git a/src/ap/beacon.c b/src/ap/beacon.c
-index 72cca32..6d25aef 100644
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -708,7 +708,8 @@ static size_t he_elem_len(struct hostapd_data *hapd)
+@@ -704,7 +704,8 @@ static size_t he_elem_len(struct hostapd
  		 * client EIRP */
  		if (hapd->iconf->reg_def_cli_eirp != -1 &&
  		    he_reg_is_sp(hapd->iconf->he_6ghz_reg_pwr_type))
@@ -36,7 +34,7 @@ index 72cca32..6d25aef 100644
  	}
  #endif /* CONFIG_IEEE80211AX */
  
-@@ -2057,6 +2058,11 @@ static u8 * hostapd_gen_fils_discovery(struct hostapd_data *hapd, size_t *len)
+@@ -2111,6 +2112,11 @@ static u8 * hostapd_gen_fils_discovery(s
                  if (hapd->iconf->he_6ghz_reg_pwr_type == HE_REG_INFO_6GHZ_AP_TYPE_INDOOR)
                          total_len += 3 + MAX_PSD_TPE_POWER_COUNT +
                                       1 + MAX_PSD_TPE_EXT_POWER_COUNT;
@@ -48,26 +46,23 @@ index 72cca32..6d25aef 100644
          }
  #endif /* CONFIG_IEEE80211AX */
  
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 65643c4..f61d7e1 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7601,6 +7601,14 @@ void ieee802_11_rx_from_unknown(struct hostapd_data *hapd, const u8 *src,
- #define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_LPI         2      /* dBm/MHz */
- #define REG_APL1_PSD_MAX_TXPOWER_DEFAULT_SUBORDINATE_CLIENT_VLP         1      /* dBm/MHz */
+@@ -7875,6 +7875,13 @@ void ieee802_11_rx_from_unknown(struct h
+ 			WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA);
+ }
  
-+#define CONV_20MHZ_EIRP_TO_PSD_IN_DBM      13
++#define CONV_20MHZ_EIRP_TO_PSD_IN_DBM        13
 +#define SP_AP_AND_CLIENT_POWER_DIFF_IN_SCALE 600
-+#define TPE_NUM_POWER_SUPP_IN_11BE         5
-+#define TPE_NUM_EIRP_POWER_EXT_SUPPORTED   1
-+#define MAX_NUM_20_MHZ_IN_CURR_BW	   16
-+#define EIRP_PWR_SCALE                     100
-+#define PSD_SCALE                          100
-+
- #ifndef REG_DOM_SUPPORT_TX_POWER
- static u8 hostapd_get_6g_tx_power(struct hostapd_data *hapd, u8 ap_type, u8 tx_pwr_cat)
- {
-@@ -7688,7 +7696,7 @@ static u8 *hostapd_add_tpe_info(u8 *eid, enum max_tx_pwr_interpretation tx_pwr_i
++#define TPE_NUM_POWER_SUPP_IN_11BE           5
++#define TPE_NUM_EIRP_POWER_EXT_SUPPORTED     1
++#define MAX_NUM_20_MHZ_IN_CURR_BW	     16
++#define EIRP_PWR_SCALE                       100
++#define PSD_SCALE                            100
+ 
+ static u8 *hostapd_add_tpe_info(u8 *eid, enum max_tx_pwr_interpretation tx_pwr_intrpn,
+ 				u8 tx_pwr_count, s8 *tx_pwr_array,
+@@ -7920,7 +7927,7 @@ static u8 *hostapd_add_tpe_info(u8 *eid,
  					   tx_pwr_ext_count);
  				return eid;
  			}
@@ -76,7 +71,7 @@ index 65643c4..f61d7e1 100644
  			*length += tx_pwr_ext_count;
  		}
  	} else if (tx_pwr_intrpn == LOCAL_EIRP_PSD || tx_pwr_intrpn == REGULATORY_CLIENT_EIRP_PSD) {
-@@ -7817,17 +7825,517 @@ static u8 num_psd_values_to_psd_count(int n_chans)
+@@ -8050,17 +8057,511 @@ static u8 num_psd_values_to_psd_count(in
  	}
  }
  
@@ -526,7 +521,6 @@ index 65643c4..f61d7e1 100644
 +	s8 tx_pwr_array[TPE_NUM_POWER_SUPP_IN_11BE] = {0};
 +	u16 freq;
 +
-+#ifdef REG_DOM_SUPPORT_TX_POWER
 +	if (hostapd_assign_tx_pwr_count(iconf, &tx_pwr_count)) {
 +		wpa_printf(MSG_DEBUG, "Error in fetching tx_pwr_count");
 +		return eid;
@@ -545,11 +539,6 @@ index 65643c4..f61d7e1 100644
 +				      tx_pwr_array);
 +	hostapd_fill_eirp_for_ext_tpe(iconf, tx_pwr_ext_array, tx_pwr_array,
 +				      &tx_pwr_ext_count, num_pwr_levels);
-+#else
-+	tx_pwr_array[0] = (hostapd_get_6g_tx_power(hapd,
-+						   iconf->he_6ghz_reg_pwr_type,
-+						   REG_DEFAULT_CLIENT) * 2);
-+#endif /* REG_DOM_SUPPORT_TX_POWER */
 +
 +	return hostapd_add_tpe_info(eid, tx_pwr_intrpn, tx_pwr_count,
 +				    tx_pwr_array, tx_pwr_ext_count,
@@ -596,7 +585,7 @@ index 65643c4..f61d7e1 100644
  	int i = 0, j = 0;
  
  	if (!tx_pwr_array || ((total_chan_count - non_11be_chan_count) && !tx_pwr_ext_array))
-@@ -7839,7 +8347,8 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -8072,7 +8573,8 @@ static int get_psd_values(struct hostapd
  		return -1;
  	}
  
@@ -606,7 +595,7 @@ index 65643c4..f61d7e1 100644
  	for (i = non_11be_start_idx; i < non_11be_start_idx + non_11be_chan_count;
  	     i++, non11be_chan_pos++) {
  		if (i >= chan_data.num_channels) {
-@@ -7847,9 +8356,10 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -8080,9 +8582,10 @@ static int get_psd_values(struct hostapd
  			return -1;
  		}
  		non_be_chan_index_map |= BIT(non11be_chan_pos);
@@ -619,7 +608,7 @@ index 65643c4..f61d7e1 100644
  			is_different_psd = 1;
  	}
  
-@@ -7881,7 +8391,8 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -8114,7 +8617,8 @@ static int get_psd_values(struct hostapd
  			 */
  			*tx_pwr_ext_array = RNR_20_MHZ_PSD_NO_POWER;
  		} else {
@@ -629,7 +618,7 @@ index 65643c4..f61d7e1 100644
  		}
  		tx_pwr_ext_array++;
  		*tx_pwr_ext_count += 1;
-@@ -7890,62 +8401,9 @@ static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
+@@ -8123,62 +8627,10 @@ static int get_psd_values(struct hostapd
  	return 0;
  }
  
@@ -686,7 +675,7 @@ index 65643c4..f61d7e1 100644
 -{
 -	os_free(chan_data->channels);
 -}
--
+ 
 -static u8 *hostapd_add_psd_tpe(struct hostapd_data *hapd, u8 pwr_mode, u8 *eid,
 -			       u8 tx_pwr_cat, enum max_tx_pwr_interpretation tx_pwr_intrpn)
 +static u8 *hostapd_add_psd_tpe(struct hostapd_data *hapd, u8 client_mode,
@@ -695,7 +684,7 @@ index 65643c4..f61d7e1 100644
  {
  	s8 tx_pwr_ext_array[MAX_PSD_TPE_EXT_POWER_COUNT] = {0};
  	int non_11be_chan_count = 0, total_chan_count = 0;
-@@ -7967,7 +8425,7 @@ static u8 *hostapd_add_psd_tpe(struct hostapd_data *hapd, u8 pwr_mode, u8 *eid,
+@@ -8201,7 +8653,7 @@ static u8 *hostapd_add_psd_tpe(struct ho
  	if (get_psd_values(hapd, non_11be_start_idx, chan_start_idx,
  			   non_11be_chan_count, total_chan_count, &tx_pwr_count,
  			   tx_pwr_array, &tx_pwr_ext_count, tx_pwr_ext_array,
@@ -704,7 +693,7 @@ index 65643c4..f61d7e1 100644
  		wpa_printf(MSG_ERROR, "failed to get the PSD values");
  		goto free;
  	}
-@@ -8026,10 +8484,10 @@ u8 *hostapd_eid_txpower_envelope(struct hostapd_data *hapd, u8 *eid)
+@@ -8256,10 +8708,10 @@ u8 * hostapd_eid_txpower_envelope(struct
  						  REGULATORY_CLIENT_EIRP_PSD);
  		}
  
@@ -719,11 +708,9 @@ index 65643c4..f61d7e1 100644
  
  		return eid;
  	}
-diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
-index 770fbb4..759546e 100644
 --- a/src/common/ieee802_11_common.c
 +++ b/src/common/ieee802_11_common.c
-@@ -3014,6 +3014,92 @@ bool is_6ghz_freq(int freq)
+@@ -3020,6 +3020,92 @@ bool is_6ghz_freq(int freq)
  	return true;
  }
  
@@ -816,11 +803,9 @@ index 770fbb4..759546e 100644
  
  bool is_6ghz_op_class(u8 op_class)
  {
-diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
-index fcda1f4..513ce37 100644
 --- a/src/common/ieee802_11_common.h
 +++ b/src/common/ieee802_11_common.h
-@@ -347,6 +347,8 @@ bool is_6ghz_freq(int freq);
+@@ -348,6 +348,8 @@ bool is_6ghz_freq(int freq);
  bool is_6ghz_op_class(u8 op_class);
  bool is_6ghz_psc_frequency(int freq);
  int get_6ghz_sec_channel(int channel);
@@ -829,11 +814,9 @@ index fcda1f4..513ce37 100644
  
  bool is_same_band(int freq1, int freq2);
  #define IS_2P4GHZ(n) (n >= 2412 && n <= 2484)
-diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
-index 525c675..827e656 100644
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -2194,6 +2194,27 @@ enum reg_6g_client_type {
+@@ -2201,6 +2201,27 @@ enum reg_6g_client_type {
  #define MAX_PSD_TPE_EXT_POWER_COUNT		15
  #define MAX_TPE_EIRP_NUM_POWER_SUPPORTED	4
  
@@ -861,6 +844,3 @@ index 525c675..827e656 100644
  #define RRM_CAPABILITIES_IE_LEN 5
  
  /* IEEE Std 802.11-2020, 9.6.6.4 - Link Measurement Request frame format */
--- 
-2.34.1
-
