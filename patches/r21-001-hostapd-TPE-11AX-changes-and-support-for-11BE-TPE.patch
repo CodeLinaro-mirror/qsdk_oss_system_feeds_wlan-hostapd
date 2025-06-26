@@ -450,7 +450,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  
  	if (!mode)
  		return eid;
-@@ -7889,15 +8197,6 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7889,13 +8197,6 @@ u8 * hostapd_eid_txpower_envelope(struct
  	if (ieee80211_freq_to_chan(iface->freq, &channel) == NUM_HOSTAPD_MODES)
  		return eid;
  
@@ -461,12 +461,10 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
 -	if (i == mode->num_channels)
 -		return eid;
 -
--	chan = &mode->channels[i];
--
  #ifdef CONFIG_IEEE80211AX
  	/* IEEE Std 802.11ax-2021, Annex E.2.7 (6 GHz band in the United
  	 * States): An AP that is an Indoor Access Point per regulatory rules
-@@ -7909,58 +8208,37 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -7907,58 +8208,37 @@ u8 * hostapd_eid_txpower_envelope(struct
  	 *	Unit interpretation = Regulatory client EIRP PSD
  	 */
  	if (is_6ghz_op_class(iconf->op_class)) {
@@ -543,7 +541,7 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  	switch (hostapd_get_oper_chwidth(iconf)) {
  	case CONF_OPER_CHWIDTH_USE_HT:
  		if (iconf->secondary_channel == 0) {
-@@ -8032,9 +8310,12 @@ u8 * hostapd_eid_txpower_envelope(struct
+@@ -8031,9 +8311,12 @@ u8 * hostapd_eid_txpower_envelope(struct
  	else
  		tx_pwr = max_tx_power;
  
