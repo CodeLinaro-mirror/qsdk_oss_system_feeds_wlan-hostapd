@@ -22,11 +22,9 @@ Signed-off-by: Sri Vidya Gunturi <sgunturi@qti.qualcomm.com>
  wpa_supplicant/wpa_cli.c     | 19 +++++++++++++++++++
  5 files changed, 99 insertions(+), 1 deletion(-)
 
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index fb6dfce..f3dab91 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5717,6 +5717,20 @@ struct wpa_driver_ops {
+@@ -5706,6 +5706,20 @@ struct wpa_driver_ops {
  	 * Returns: true if the driver supports retail AFC, false otherwise
  	 */
  	bool (*is_retail_afc_supported)(void *priv);
@@ -47,16 +45,14 @@ index fb6dfce..f3dab91 100644
  };
  
  /**
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index c7d889e..5d98ef1 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15434,7 +15434,37 @@ fail:
- 	wpa_printf(MSG_ERROR, "%s failed to set qos attr\n", __func__);
- 	return -EINVAL;
+@@ -15460,6 +15460,40 @@ wpa_driver_get_multi_hw_info(void *priv,
+ 	return nl80211_get_multi_hw_info(bss, num_multi_hws);
  }
--#endif
+ 
 +
++#ifdef CONFIG_IEEE80211BE
 +static int wpa_driver_set_epcs_cfg(void *priv, bool epcs_cfg_value)
 +{
 +	struct i802_bss *bss = priv;
@@ -87,10 +83,12 @@ index c7d889e..5d98ef1 100644
 +	return -1;
 +}
 +#endif /* CONFIG_IEEE80211BE */
- 
++
++
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
-@@ -15614,4 +15644,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ 	.desc = "Linux nl80211/cfg80211",
+@@ -15637,4 +15671,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.get_multi_hw_info = wpa_driver_get_multi_hw_info,
  	.set_6gclient_type = nl80211_set_6gclient_type,
  	.is_retail_afc_supported = nl80211_is_retail_afc_supported,
@@ -98,11 +96,9 @@ index c7d889e..5d98ef1 100644
 +	.set_epcs_cfg = wpa_driver_set_epcs_cfg,
 +#endif /* CONFIG_IEEE80211BE */
  };
-diff --git a/wpa_supplicant/ctrl_iface.c b/wpa_supplicant/ctrl_iface.c
-index 641ad7d..2f3dbc5 100644
 --- a/wpa_supplicant/ctrl_iface.c
 +++ b/wpa_supplicant/ctrl_iface.c
-@@ -12314,6 +12314,25 @@ static int wpas_ctrl_iface_mlo_status(struct wpa_supplicant *wpa_s,
+@@ -12314,6 +12314,25 @@ static int wpas_ctrl_iface_mlo_status(st
  	return pos - buf;
  }
  
@@ -128,7 +124,7 @@ index 641ad7d..2f3dbc5 100644
  
  #ifdef CONFIG_TESTING_OPTIONS
  static int wpas_ctrl_ml_probe(struct wpa_supplicant *wpa_s, char *cmd)
-@@ -13873,6 +13892,11 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
+@@ -13873,6 +13892,11 @@ char * wpa_supplicant_ctrl_iface_process
  		if (wpas_update_random_addr_disassoc(wpa_s) != 1)
  			reply_len = -1;
  		wpa_s->conf->preassoc_mac_addr = mac_addr_style;
@@ -140,11 +136,9 @@ index 641ad7d..2f3dbc5 100644
  	} else {
  		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
  		reply_len = 16;
-diff --git a/wpa_supplicant/driver_i.h b/wpa_supplicant/driver_i.h
-index 9be186e..4f94c58 100644
 --- a/wpa_supplicant/driver_i.h
 +++ b/wpa_supplicant/driver_i.h
-@@ -1289,4 +1289,15 @@ static inline int wpa_drv_mark_ppe_vp_type(struct wpa_supplicant *wpa_s,
+@@ -1289,4 +1289,15 @@ static inline int wpa_drv_mark_ppe_vp_ty
  
  }
  
@@ -160,11 +154,9 @@ index 9be186e..4f94c58 100644
 +}
 +#endif /* CONFIG_IEEE80211BE */
  #endif /* DRIVER_I_H */
-diff --git a/wpa_supplicant/wpa_cli.c b/wpa_supplicant/wpa_cli.c
-index 2eb2cff..a2d32cc 100644
 --- a/wpa_supplicant/wpa_cli.c
 +++ b/wpa_supplicant/wpa_cli.c
-@@ -434,6 +434,19 @@ static int wpa_cli_cmd_mlo_signal_poll(struct wpa_ctrl *ctrl, int argc, char *ar
+@@ -434,6 +434,19 @@ static int wpa_cli_cmd_mlo_signal_poll(s
  }
  
  
@@ -184,7 +176,7 @@ index 2eb2cff..a2d32cc 100644
  static int wpa_cli_cmd_set(struct wpa_ctrl *ctrl, int argc, char *argv[])
  {
  	char cmd[256];
-@@ -4127,6 +4140,12 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
+@@ -4127,6 +4140,12 @@ static const struct wpa_cli_cmd wpa_cli_
  	{ "nan_flush", wpa_cli_cmd_nan_flush, NULL,
  	  cli_cmd_flag_none, "= Flush all NAN USD services" },
  #endif /* CONFIG_NAN_USD */
@@ -197,6 +189,3 @@ index 2eb2cff..a2d32cc 100644
  	{ NULL, NULL, NULL, cli_cmd_flag_none, NULL }
  };
  
--- 
-2.34.1
-

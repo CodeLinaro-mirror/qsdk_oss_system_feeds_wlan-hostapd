@@ -21,7 +21,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7726,6 +7726,10 @@ static void handle_action_cb(struct host
+@@ -7729,6 +7729,10 @@ static void handle_action_cb(struct host
  	if (mgmt->u.action.category == WLAN_ACTION_PROTECTED_EHT &&
  	    mgmt->u.action.u.ttlm_resp.action == WLAN_PROT_EHT_T2L_MAPPING_RESPONSE)
  		hostapd_ttlm_resp_tx_status(hapd, sta, ok);
@@ -132,10 +132,10 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  #endif /* TTLM_H */
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -1199,6 +1199,10 @@ struct ieee80211_mgmt {
- 					u8 status_code;
+@@ -1210,6 +1210,10 @@ struct ieee80211_mgmt {
+ 					u8 dialog_token;
  					u8 variable[];
- 				} STRUCT_PACKED ttlm_resp;
+ 				} STRUCT_PACKED ttlm_req;
 +				struct {
 +					u8 action;
 +					u8 status_code;

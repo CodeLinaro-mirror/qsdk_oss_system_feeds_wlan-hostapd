@@ -27,9 +27,9 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -6942,6 +6942,9 @@ static int handle_action(struct hostapd_
- #ifdef CONFIG_IEEE80211BE
- 	case WLAN_ACTION_PROTECTED_EHT:
+@@ -6945,6 +6945,9 @@ static int handle_action(struct hostapd_
+ 			break;
+ 		}
  		switch (mgmt->u.action.u.ttlm_resp.action) {
 +		case WLAN_PROT_EHT_T2L_MAPPING_REQUEST:
 +			hostapd_handle_ttlm_req(hapd, sta, (const u8 *) mgmt, len);
@@ -37,7 +37,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  		case WLAN_PROT_EHT_T2L_MAPPING_RESPONSE:
  			hostapd_handle_ttlm_resp(hapd, sta, (const u8 *) mgmt, len);
  			break;
-@@ -7719,6 +7722,12 @@ static void handle_action_cb(struct host
+@@ -7722,6 +7725,12 @@ static void handle_action_cb(struct host
  	}
  #endif /* CONFIG_HS20 */
  
@@ -218,15 +218,15 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  #endif /* TTLM_H */
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -1187,6 +1187,11 @@ struct ieee80211_mgmt {
- 					u8 action;
- 					u8 dialog_token;
+@@ -1205,6 +1205,11 @@ struct ieee80211_mgmt {
+ 					u8 status_code;
  					u8 variable[];
-+				} STRUCT_PACKED ttlm_req;
+ 				} STRUCT_PACKED ttlm_resp;
 +				struct {
 +					u8 action;
 +					u8 dialog_token;
 +					u8 variable[];
- 				} STRUCT_PACKED scs;
- 				struct {
- 					u8 action;
++				} STRUCT_PACKED ttlm_req;
+ 			} u;
+ 		} STRUCT_PACKED action;
+ 	} u;

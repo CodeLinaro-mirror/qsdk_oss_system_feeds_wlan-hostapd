@@ -19,7 +19,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -7579,16 +7579,16 @@ fail:
+@@ -7573,16 +7573,16 @@ fail:
  }
  
  
@@ -40,7 +40,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	if (!msg || nla_put_u32(msg, NL80211_ATTR_IFTYPE, mode))
  		goto fail;
  
-@@ -7619,7 +7619,7 @@ static int wpa_driver_nl80211_set_mode_i
+@@ -7613,7 +7613,7 @@ static int wpa_driver_nl80211_set_mode_i
  	if (TEST_FAIL())
  		return -1;
  
@@ -49,7 +49,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	if (mode_switch_res && nlmode == nl80211_get_ifmode(bss))
  		mode_switch_res = 0;
  
-@@ -7683,7 +7683,7 @@ static int wpa_driver_nl80211_set_mode_i
+@@ -7677,7 +7677,7 @@ static int wpa_driver_nl80211_set_mode_i
  		}
  
  		/* Try to set the mode again while the interface is down */
@@ -58,7 +58,7 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  		if (mode_switch_res == -EBUSY) {
  			wpa_printf(MSG_DEBUG,
  				   "nl80211: Delaying mode set while interface going down");
-@@ -12098,7 +12098,7 @@ static int nl80211_set_qos_map(void *pri
+@@ -12092,7 +12092,7 @@ static int nl80211_set_qos_map(void *pri
  	wpa_hexdump(MSG_DEBUG, "nl80211: Setting QoS Map",
  		    qos_map_set, qos_map_set_len);
  
@@ -67,15 +67,6 @@ Signed-off-by: Aditya Kumar Singh <quic_adisi@quicinc.com>
  	    nla_put(msg, NL80211_ATTR_QOS_MAP, qos_map_set_len, qos_map_set)) {
  		nlmsg_free(msg);
  		return -ENOBUFS;
-@@ -14998,7 +14998,7 @@ static int nl80211_set_scs(void *priv, s
- 	struct nlattr *params;
- 	int ret;
- 
--	msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR);
-+	msg = nl80211_bss_msg(bss, 0, NL80211_CMD_VENDOR);
- 	if (!msg)
- 		return -EINVAL;
- 
 --- a/src/drivers/driver_nl80211_scan.c
 +++ b/src/drivers/driver_nl80211_scan.c
 @@ -75,13 +75,14 @@ static int get_noise_for_scan_results(st
