@@ -39,11 +39,9 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  src/drivers/driver_nl80211_event.c | 58 ++++++++++++++++++++++-
  9 files changed, 305 insertions(+), 16 deletions(-)
 
-diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
-index e91c2cfda9..b7a750f4b1 100644
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -466,6 +466,20 @@ static inline int hostapd_drv_channel_info(struct hostapd_data *hapd,
+@@ -466,6 +466,20 @@ static inline int hostapd_drv_channel_in
  	return hapd->driver->channel_info(hapd->drv_priv, ci);
  }
  
@@ -64,11 +62,9 @@ index e91c2cfda9..b7a750f4b1 100644
  static inline int
  hostapd_drv_send_external_auth_status(struct hostapd_data *hapd,
  				      struct external_auth *params)
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index 1ab2f4b83d..faef8512d3 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2523,6 +2523,19 @@ static int hostapd_allocate_afc_rsp_info(struct hostapd_iface *iface,
+@@ -2523,6 +2523,19 @@ static int hostapd_allocate_afc_rsp_info
  	return 0;
  }
  
@@ -88,7 +84,7 @@ index 1ab2f4b83d..faef8512d3 100644
  static void hostapd_event_afc_update_complete(
  		struct hostapd_data *hapd,
  		struct afc_sp_reg_info *afc_rsp_info)
-@@ -2534,8 +2547,62 @@ static void hostapd_event_afc_update_complete(
+@@ -2534,8 +2547,62 @@ static void hostapd_event_afc_update_com
  		wpa_printf(MSG_DEBUG, "AFC response memory  allocation failed");
  		return;
  	}
@@ -152,7 +148,7 @@ index 1ab2f4b83d..faef8512d3 100644
  }
  
  #ifdef CONFIG_OWE
-@@ -3277,6 +3344,9 @@ void hostapd_wpa_event(void *ctx, enum wpa_event_type event,
+@@ -3277,6 +3344,9 @@ void hostapd_wpa_event(void *ctx, enum w
  		hostapd_event_afc_update_complete(hapd,
  						  &data->afc_rsp_info);
  		break;
@@ -162,11 +158,9 @@ index 1ab2f4b83d..faef8512d3 100644
  #ifdef CONFIG_IEEE80211BE
  	case EVENT_LINK_REMOVAL_STARTED:
  		hostapd_update_link_removal_field(hapd,
-diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index b201f4f591..f6186c1348 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -73,8 +73,6 @@ static void hostapd_switch_color_timeout_handler(void *eloop_data,
+@@ -73,8 +73,6 @@ static void hostapd_switch_color_timeout
  						 void *user_ctx);
  #endif /* CONFIG_IEEE80211AX */
  
@@ -175,7 +169,7 @@ index b201f4f591..f6186c1348 100644
  
  int hostapd_for_each_interface(struct hapd_interfaces *interfaces,
  			       int (*cb)(struct hostapd_iface *iface,
-@@ -2218,7 +2216,7 @@ static int start_ctrl_iface(struct hostapd_iface *iface)
+@@ -2218,7 +2216,7 @@ static int start_ctrl_iface(struct hosta
   * deinitializing the driver and the control interfaces. A subsequent
   * REG_CHANGE event can bring the AP back up.
   */
@@ -184,7 +178,7 @@ index b201f4f591..f6186c1348 100644
  {
  	hostapd_bss_deinit_no_free(bss);
  	hostapd_bss_link_deinit(bss);
-@@ -2227,8 +2225,7 @@ static void hostapd_no_ir_cleanup(struct hostapd_data *bss)
+@@ -2227,8 +2225,7 @@ static void hostapd_no_ir_cleanup(struct
  }
  
  
@@ -194,7 +188,7 @@ index b201f4f591..f6186c1348 100644
  {
  	struct hostapd_data *hapd = iface->bss[0];
  	bool all_no_ir, is_6ghz;
-@@ -2301,12 +2298,7 @@ static int hostapd_no_ir_channel_list_updated(struct hostapd_iface *iface,
+@@ -2301,12 +2298,7 @@ static int hostapd_no_ir_channel_list_up
  				   "NO_IR: All chan in new chanlist are NO_IR, stop AP.");
  		}
  
@@ -208,7 +202,7 @@ index b201f4f591..f6186c1348 100644
  	} else if (iface->state == HAPD_IFACE_NO_IR) {
  		if (all_no_ir) {
  			wpa_printf(MSG_DEBUG,
-@@ -2365,12 +2357,66 @@ static void channel_list_update_timeout(void *eloop_ctx, void *timeout_ctx)
+@@ -2365,12 +2357,66 @@ static void channel_list_update_timeout(
  	setup_interface2(iface);
  }
  
@@ -276,7 +270,7 @@ index b201f4f591..f6186c1348 100644
  					   NULL);
  		return;
  	}
-@@ -2525,6 +2571,7 @@ static int setup_interface2(struct hostapd_iface *iface)
+@@ -2525,6 +2571,7 @@ static int setup_interface2(struct hosta
  	iface->afc_rsp_info = NULL;
  	iface->is_afc_power_event_received = false;
  	iface->wait_channel_update = 0;
@@ -284,7 +278,7 @@ index b201f4f591..f6186c1348 100644
  	iface->is_no_ir = false;
  	iface->power_mode_6ghz_before_change = -1;
  
-@@ -3371,6 +3418,7 @@ void hostapd_interface_deinit(struct hostapd_iface *iface)
+@@ -3371,6 +3418,7 @@ void hostapd_interface_deinit(struct hos
  
  	eloop_cancel_timeout(channel_list_update_timeout, iface, NULL);
  	iface->wait_channel_update = 0;
@@ -292,7 +286,7 @@ index b201f4f591..f6186c1348 100644
  	iface->power_mode_6ghz_before_change = -1;
  	iface->is_no_ir = false;
  	hostapd_free_afc_data(iface);
-@@ -5799,7 +5847,7 @@ void hostapd_ocv_check_csa_sa_query(void *eloop_ctx, void *timeout_ctx)
+@@ -5801,7 +5849,7 @@ void hostapd_ocv_check_csa_sa_query(void
   * Lower band interfaces coming up: Disable FILS/UBPR for all 6GHz APs if not done
   * already.
   */
@@ -301,8 +295,6 @@ index b201f4f591..f6186c1348 100644
  hostapd_interface_update_fils_ubpr(struct hostapd_iface *iface, bool iface_enabled)
  {
  	int i, j;
-diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index 455a76a49b..cb43f5266b 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -834,6 +834,11 @@ struct hostapd_iface {
@@ -317,7 +309,7 @@ index 455a76a49b..cb43f5266b 100644
  
  	struct hostapd_multi_hw_info *multi_hw_info;
  	unsigned int num_multi_hws;
-@@ -1022,4 +1027,72 @@ u8 hostapd_max_bssid_indicator(struct hostapd_data *hapd);
+@@ -1022,4 +1027,72 @@ u8 hostapd_max_bssid_indicator(struct ho
  int hostapd_allocate_mbssid_idx(struct hostapd_data *hapd);
  int hostapd_get_mbssid_index(u32 *bmap);
  void hostapd_free_mbssid_idx(struct hostapd_data *hapd);
@@ -390,8 +382,6 @@ index 455a76a49b..cb43f5266b 100644
 +}
 +#endif
  #endif /* HOSTAPD_H */
-diff --git a/src/common/qca-vendor.h b/src/common/qca-vendor.h
-index 91f3391b93..9860df1148 100644
 --- a/src/common/qca-vendor.h
 +++ b/src/common/qca-vendor.h
 @@ -16645,6 +16645,7 @@ enum qca_wlan_vendor_attr_afc_event {
@@ -402,11 +392,9 @@ index 91f3391b93..9860df1148 100644
  
  	QCA_WLAN_VENDOR_ATTR_AFC_EVENT_AFTER_LAST,
  	QCA_WLAN_VENDOR_ATTR_AFC_EVENT_MAX =
-diff --git a/src/drivers/driver.h b/src/drivers/driver.h
-index 8e16114077..5b6670216a 100644
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5684,6 +5684,12 @@ struct wpa_driver_ops {
+@@ -5676,6 +5676,12 @@ struct wpa_driver_ops {
  				int ppe_vp_type, bool is_bss);
  
  #endif /* CONFIG_IEEE80211BE */
@@ -419,7 +407,7 @@ index 8e16114077..5b6670216a 100644
  };
  
  /**
-@@ -6346,6 +6352,11 @@ enum wpa_event_type {
+@@ -6338,6 +6344,11 @@ enum wpa_event_type {
  	 * EVENT_AFC_POWER_UPDATE_COMPLETE_NOTIFY - Notify AFC data is processed
  	 */
  	EVENT_AFC_POWER_UPDATE_COMPLETE_NOTIFY,
@@ -431,11 +419,9 @@ index 8e16114077..5b6670216a 100644
  
  	/**
  	 * EVENT_LINK_REMOVAL_STARTED - Update link_removal_count and TSF
-diff --git a/src/drivers/driver_common.c b/src/drivers/driver_common.c
-index 0af1920c42..a5252d66ab 100644
 --- a/src/drivers/driver_common.c
 +++ b/src/drivers/driver_common.c
-@@ -106,6 +106,7 @@ const char * event_to_string(enum wpa_event_type event)
+@@ -106,6 +106,7 @@ const char * event_to_string(enum wpa_ev
  	E2S(RX_CRITICAL_UPDATE);
  	E2S(6GHZ_POWER_MODE_NOTIFY);
  	E2S(AFC_POWER_UPDATE_COMPLETE_NOTIFY);
@@ -443,11 +429,9 @@ index 0af1920c42..a5252d66ab 100644
  	E2S(LINK_REMOVAL_STARTED);
  	E2S(LINK_REMOVAL_COMPLETED);
  	}
-diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index f271cf6a1e..5d53814d18 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -13656,7 +13656,6 @@ static int nl80211_get_pref_freq_list(void *priv,
+@@ -13656,7 +13656,6 @@ static int nl80211_get_pref_freq_list(vo
  	return 0;
  }
  
@@ -455,9 +439,9 @@ index f271cf6a1e..5d53814d18 100644
  static int nl80211_set_prob_oper_freq(void *priv, unsigned int freq)
  {
  	struct i802_bss *bss = priv;
-@@ -15025,6 +15024,21 @@ fail:
- 	return ret;
+@@ -15000,6 +14999,21 @@ fail:
  }
+ 
  
 +static bool nl80211_is_retail_afc_supported(void *priv)
 +{
@@ -477,17 +461,15 @@ index f271cf6a1e..5d53814d18 100644
  #ifdef CONFIG_DPP
  static int nl80211_dpp_listen(void *priv, bool enable)
  {
-@@ -15565,4 +15579,5 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+@@ -15539,4 +15553,5 @@ const struct wpa_driver_ops wpa_driver_n
+ 	.radio_disable = testing_nl80211_radio_disable,
  #endif /* CONFIG_TESTING_OPTIONS */
  	.get_multi_hw_info = wpa_driver_get_multi_hw_info,
- 	.set_6gclient_type = nl80211_set_6gclient_type,
 +	.is_retail_afc_supported = nl80211_is_retail_afc_supported,
  };
-diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
-index 113bfc0e6b..82bf427b2a 100644
 --- a/src/drivers/driver_nl80211_event.c
 +++ b/src/drivers/driver_nl80211_event.c
-@@ -4005,6 +4005,62 @@ qca_nl80211_afc_power_update_completed(struct i802_bss *bss,
+@@ -4005,6 +4005,62 @@ qca_nl80211_afc_power_update_completed(s
  			     &event);
  	os_free(afc_freq_info);
  	os_free(afc_chan_info);
@@ -550,7 +532,7 @@ index 113bfc0e6b..82bf427b2a 100644
  
  	return 0;
  }
-@@ -4061,7 +4117,7 @@ static void nl80211_vendor_event_qca(struct i802_bss *bss,
+@@ -4061,7 +4117,7 @@ static void nl80211_vendor_event_qca(str
  		qca_nl80211_6ghz_pwr_mode_change_completed(bss, data, len);
  		break;
  	case QCA_NL80211_VENDOR_SUBCMD_AFC_EVENT:
@@ -559,6 +541,3 @@ index 113bfc0e6b..82bf427b2a 100644
  		break;
  	default:
  		wpa_printf(MSG_DEBUG,
--- 
-2.34.1
-
