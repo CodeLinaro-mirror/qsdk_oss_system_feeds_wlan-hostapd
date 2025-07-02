@@ -20,11 +20,9 @@ Signed-off-by: Arunpandi Kannan <quic_arunpand@quicinc.com>
  src/ap/wpa_auth_glue.c | 1 +
  4 files changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index b9ff9ff..625594a 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -1121,7 +1121,9 @@ void hostapd_event_sta_low_ack(struct hostapd_data *hapd, const u8 *addr,
+@@ -1111,7 +1111,9 @@ void hostapd_event_sta_low_ack(struct ho
  #endif /* CONFIG_IEEE80211BE */
  
  	if (!sta || (!hapd->conf->disassoc_low_ack && num_packets != 0xFFFF) ||
@@ -35,11 +33,9 @@ index b9ff9ff..625594a 100644
  		return;
  
  	if (num_packets == 0xFFFF)
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 19bccd0..25ac036 100644
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -7146,6 +7146,9 @@ static void handle_assoc_cb(struct hostapd_data *hapd,
+@@ -7421,6 +7421,9 @@ static void handle_assoc_cb(struct hosta
  		ap_sta_set_authorized(hapd, sta, 1);
  	}
  
@@ -49,23 +45,19 @@ index 19bccd0..25ac036 100644
  	if (reassoc)
  		mlme_reassociate_indication(hapd, sta);
  	else
-diff --git a/src/ap/sta_info.h b/src/ap/sta_info.h
-index 803447c..b350f1f 100644
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -343,6 +343,7 @@ struct sta_info {
- 	struct hostapd_scs_resp *scs_resp;
- 	u8 session_cnt;
- #endif
+@@ -333,6 +333,7 @@ struct sta_info {
+ 
+ 	struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab;
+ 	size_t eht_240mhz_len;
 +	bool ft_re_add;
  };
  
  
-diff --git a/src/ap/wpa_auth_glue.c b/src/ap/wpa_auth_glue.c
-index b3f7f60..9c5bd53 100644
 --- a/src/ap/wpa_auth_glue.c
 +++ b/src/ap/wpa_auth_glue.c
-@@ -1378,6 +1378,7 @@ static int hostapd_wpa_auth_add_sta_ft(void *ctx, const u8 *sta_addr)
+@@ -1369,6 +1369,7 @@ static int hostapd_wpa_auth_add_sta_ft(v
  		 * previous association. */
  		wpa_printf(MSG_DEBUG,
  			   "FT: Remove and re-add driver STA entry after successful FT authentication");
@@ -73,6 +65,3 @@ index b3f7f60..9c5bd53 100644
  		return ap_sta_re_add(hapd, sta, 0);
  	}
  
--- 
-2.34.1
-

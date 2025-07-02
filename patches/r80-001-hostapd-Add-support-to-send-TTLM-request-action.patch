@@ -30,36 +30,36 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 
 --- a/hostapd/Makefile
 +++ b/hostapd/Makefile
-@@ -376,6 +376,7 @@ CONFIG_IEEE80211AX=y
+@@ -375,6 +375,7 @@ ifdef CONFIG_IEEE80211BE
+ CONFIG_IEEE80211AX=y
  CFLAGS += -DCONFIG_IEEE80211BE
  OBJS += ../src/ap/ieee802_11_eht.o
- OBJS += ../src/ap/scs.o
 +OBJS += ../src/ap/ttlm.o
  endif
  
  ifdef CONFIG_IEEE80211AX
 --- a/src/ap/Makefile
 +++ b/src/ap/Makefile
-@@ -57,6 +57,7 @@ LIB_OBJS= \
+@@ -56,6 +56,7 @@ LIB_OBJS= \
+ 	wpa_auth_glue.o \
  	wpa_auth_ie.o \
  	wps_hostapd.o \
- 	x_snoop.o \
--    scs.o
-+	scs.o \
+-	x_snoop.o
++	x_snoop.o \
 +	ttlm.o
  
  include ../lib.rules
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -19,6 +19,7 @@
+@@ -18,6 +18,7 @@
+ #include "crypto/sha384.h"
  #include "pasn/pasn_common.h"
  #include "hostapd.h"
- #include "scs.h"
 +#include "ttlm.h"
  
  /* STA flags */
  #define WLAN_STA_AUTH BIT(0)
-@@ -89,6 +90,9 @@ struct mld_info {
+@@ -86,6 +87,9 @@ struct mld_info {
  
  	struct mld_link_info links[MAX_NUM_MLD_LINKS];
  	struct mld_peer_epcs_info epcs;
@@ -457,7 +457,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +#endif /* TTLM_H */
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -3456,4 +3456,34 @@ struct ieee80211_s1g_beacon_compat {
+@@ -3447,4 +3447,34 @@ struct ieee80211_s1g_beacon_compat {
  #pragma pack(pop)
  #endif /* _MSC_VER */
  
@@ -494,10 +494,10 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  #endif /* IEEE802_11_DEFS_H */
 --- a/wpa_supplicant/Makefile
 +++ b/wpa_supplicant/Makefile
-@@ -1050,6 +1050,7 @@ endif
+@@ -1049,6 +1049,7 @@ OBJS += ../src/ap/ieee802_11_he.o
+ endif
  ifdef CONFIG_IEEE80211BE
  OBJS += ../src/ap/ieee802_11_eht.o
- OBJS += ../src/ap/scs.o
 +OBJS += ../src/ap/ttlm.o
  endif
  ifdef CONFIG_WNM_AP

@@ -96,15 +96,18 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  /**
 --- a/src/ap/ap_drv_ops.c
 +++ b/src/ap/ap_drv_ops.c
-@@ -24,6 +24,7 @@
+@@ -22,7 +22,9 @@
+ #include "hs20.h"
+ #include "wpa_auth.h"
  #include "ap_drv_ops.h"
- #ifdef CONFIG_IEEE80211BE
- #include "scs.h"
+-
++#ifdef CONFIG_IEEE80211BE
 +#include "common/qca-vendor.h"
- #endif
++#endif
  
  u32 hostapd_sta_flags_to_drv(u32 flags)
-@@ -390,7 +391,7 @@ int hostapd_vlan_if_add(struct hostapd_d
+ {
+@@ -380,7 +382,7 @@ int hostapd_vlan_if_add(struct hostapd_d
  		addr = hapd->own_addr;
  
  	return hostapd_if_add(hapd, WPA_IF_AP_VLAN, ifname, addr,
@@ -113,11 +116,11 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  }
  
  
-@@ -464,6 +465,18 @@ int hostapd_set_scs_params(struct hostap
- 	os_memcpy(scs_drv.peer_mac, scs_m->peer_mac, 6);
- 	return hapd->driver->set_scs(hapd->drv_priv, &scs_drv);
+@@ -413,6 +415,21 @@ int hostapd_add_sta_node(struct hostapd_
  }
-+
+ 
+ 
++#ifdef CONFIG_IEEE80211BE
 +int hostapd_drv_mark_ppe_vp_type(struct hostapd_data *hapd)
 +{
 +	if (hapd->driver == NULL || hapd->driver->mark_ppe_vp_type == NULL)
@@ -129,10 +132,13 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
 +			NULL, 0, 0, NULL, hapd->conf->iface,
 +			hapd->conf->ppe_vp_type, true);
 +}
- #endif
- 
++#endif
++
++
  int hostapd_sta_auth(struct hostapd_data *hapd, const u8 *addr,
-@@ -633,13 +646,13 @@ int hostapd_set_ssid(struct hostapd_data
+ 		     u16 seq, u16 status, const u8 *ie, size_t len)
+ {
+@@ -580,13 +597,13 @@ int hostapd_set_ssid(struct hostapd_data
  int hostapd_if_add(struct hostapd_data *hapd, enum wpa_driver_if_type type,
  		   const char *ifname, const u8 *addr, void *bss_ctx,
  		   void **drv_priv, char *force_ifname, u8 *if_addr,
@@ -150,7 +156,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
 --- a/src/ap/ap_drv_ops.h
 +++ b/src/ap/ap_drv_ops.h
-@@ -66,7 +66,7 @@ int hostapd_set_ssid(struct hostapd_data
+@@ -61,7 +61,7 @@ int hostapd_set_ssid(struct hostapd_data
  int hostapd_if_add(struct hostapd_data *hapd, enum wpa_driver_if_type type,
  		   const char *ifname, const u8 *addr, void *bss_ctx,
  		   void **drv_priv, char *force_ifname, u8 *if_addr,
@@ -159,17 +165,19 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  int hostapd_if_remove(struct hostapd_data *hapd, enum wpa_driver_if_type type,
  		      const char *ifname);
  int hostapd_if_link_remove(struct hostapd_data *hapd,
-@@ -171,6 +171,7 @@ int hostapd_drv_set_secure_ranging_ctx(s
- #ifdef CONFIG_IEEE80211BE
- int hostapd_set_scs_params(struct hostapd_data *hapd, struct sta_info *sta,
- 			   struct hostapd_qos_mandatory_scs_param *scs_m, u8 req_type);
+@@ -163,6 +163,9 @@ int hostapd_drv_set_secure_ranging_ctx(s
+ 				       u8 ltf_keyseed_len,
+ 				       const u8 *ltf_keyseed, u32 action);
+ 
++#ifdef CONFIG_IEEE80211BE
 +int hostapd_drv_mark_ppe_vp_type(struct hostapd_data *hapd);
- #endif
++#endif
  
  #include "drivers/driver.h"
+ 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -1705,7 +1705,7 @@ int hostapd_setup_bss(struct hostapd_dat
+@@ -1725,7 +1725,7 @@ int hostapd_setup_bss(struct hostapd_dat
  				   conf->iface, addr, hapd,
  				   &hapd->drv_priv, force_ifname, if_addr,
  				   conf->bridge[0] ? conf->bridge : NULL,
@@ -188,7 +196,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  #ifdef CONFIG_MACSEC
  #include "pae/ieee802_1x_kay.h"
  #endif /* CONFIG_MACSEC */
-@@ -2782,6 +2783,7 @@ struct wpa_init_params {
+@@ -2770,6 +2771,7 @@ struct wpa_init_params {
  	size_t num_bridge;
  
  	u8 *own_addr; /* buffer for writing own MAC address */
@@ -196,7 +204,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  };
  
  
-@@ -3754,7 +3756,7 @@ struct wpa_driver_ops {
+@@ -3742,7 +3744,7 @@ struct wpa_driver_ops {
  	 * uses global data.
  	 */
  	void * (*init2)(void *ctx, const char *ifname, void *global_priv,
@@ -205,7 +213,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	/**
  	 * get_interfaces - Get information about available interfaces
-@@ -4165,7 +4167,8 @@ struct wpa_driver_ops {
+@@ -4153,7 +4155,8 @@ struct wpa_driver_ops {
  	int (*if_add)(void *priv, enum wpa_driver_if_type type,
  		      const char *ifname, const u8 *addr, void *bss_ctx,
  		      void **drv_priv, char *force_ifname, u8 *if_addr,
@@ -215,17 +223,16 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	/**
  	 * if_remove - Remove a virtual interface
-@@ -5672,6 +5675,13 @@ struct wpa_driver_ops {
- 	 */
+@@ -5660,6 +5663,12 @@ struct wpa_driver_ops {
  	int (*ml_reconfig_link_remove)(void *priv, enum wpa_driver_if_type type,
- 				        const struct driver_reconfig_link_removal_params *params);
+ 				       const struct driver_reconfig_link_removal_params *params);
+ 
 +	int (*mark_ppe_vp_type)(void *priv, unsigned int vendor_id,
 +				unsigned int subcmd, const u8 *data,
 +				size_t data_len,
 +				enum nested_attr nested_attr_flag,
 +				struct wpabuf *buf, const char *ifname,
 +				int ppe_vp_type, bool is_bss);
-+
  #endif /* CONFIG_IEEE80211BE */
  };
  
@@ -242,7 +249,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	(((v) = get80211param(drv, param)) != -1)
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -217,6 +217,14 @@ static int i802_sta_disassoc(void *priv,
+@@ -216,6 +216,14 @@ static int i802_sta_disassoc(void *priv,
  			     u16 reason, int link_id);
  
  
@@ -257,7 +264,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  /* Converts nl80211_chan_width to a common format */
  enum chan_width convert2width(int width)
  {
-@@ -2336,7 +2344,8 @@ static void * wpa_driver_nl80211_drv_ini
+@@ -2335,7 +2343,8 @@ static void * wpa_driver_nl80211_drv_ini
  					  void *global_priv, int hostapd,
  					  const u8 *set_addr,
  					  const char *driver_params,
@@ -267,7 +274,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  {
  	struct wpa_driver_nl80211_data *drv;
  	struct i802_bss *bss;
-@@ -2390,6 +2399,7 @@ static void * wpa_driver_nl80211_drv_ini
+@@ -2389,6 +2398,7 @@ static void * wpa_driver_nl80211_drv_ini
  	bss = drv->first_bss;
  	bss->drv = drv;
  	bss->ctx = ctx;
@@ -275,7 +282,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  	os_strlcpy(bss->ifname, ifname, sizeof(bss->ifname));
  	drv->eapol_tx_sock = -1;
-@@ -2461,10 +2471,11 @@ failed:
+@@ -2460,10 +2470,11 @@ failed:
   */
  static void * wpa_driver_nl80211_init(void *ctx, const char *ifname,
  				      void *global_priv,
@@ -289,7 +296,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  }
  
  
-@@ -6430,15 +6441,13 @@ static int nl80211_create_iface_once(str
+@@ -6424,15 +6435,13 @@ static int nl80211_create_iface_once(str
  	return ifidx;
  }
  
@@ -306,7 +313,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	ret = nl80211_create_iface_once(drv, ifname, iftype, addr, wds, handler,
  					arg);
  
-@@ -6476,10 +6485,13 @@ int nl80211_create_iface(struct wpa_driv
+@@ -6470,10 +6479,13 @@ int nl80211_create_iface(struct wpa_driv
  		nl80211_disable_11b_rates(drv, ret, 1);
  	}
  
@@ -321,7 +328,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  static int nl80211_setup_ap(struct i802_bss *bss)
  {
  	struct wpa_driver_nl80211_data *drv = bss->drv;
-@@ -7682,6 +7694,12 @@ static int nl80211_set_mode(struct i802_
+@@ -7676,6 +7688,12 @@ static int nl80211_set_mode(struct i802_
  	wpa_printf(MSG_DEBUG, "nl80211: Set mode ifindex %d iftype %d (%s)",
  		   ifindex, mode, nl80211_iftype_str(mode));
  
@@ -334,7 +341,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	msg = nl80211_cmd_msg(bss, 0, NL80211_CMD_SET_INTERFACE);
  	if (!msg || nla_put_u32(msg, NL80211_ATTR_IFTYPE, mode))
  		goto fail;
-@@ -8789,10 +8807,10 @@ static int i802_set_wds_sta(void *priv,
+@@ -8783,10 +8801,10 @@ static int i802_set_wds_sta(void *priv,
  
  	if (val) {
  		if (!if_nametoindex(name)) {
@@ -347,7 +354,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  				return -1;
  
  			if (bridge_ifname)
-@@ -8941,7 +8959,8 @@ static void *i802_init(struct hostapd_da
+@@ -8935,7 +8953,8 @@ static void *i802_init(struct hostapd_da
  	bss = wpa_driver_nl80211_drv_init(hapd, params->ifname,
  					  params->global_priv, 1,
  					  params->bssid, params->driver_params,
@@ -357,7 +364,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  	if (bss == NULL)
  		return NULL;
  
-@@ -9145,7 +9164,7 @@ static int wpa_driver_nl80211_if_add(voi
+@@ -9139,7 +9158,7 @@ static int wpa_driver_nl80211_if_add(voi
  				     void *bss_ctx, void **drv_priv,
  				     char *force_ifname, u8 *if_addr,
  				     const char *bridge, int use_existing,
@@ -366,7 +373,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  {
  	enum nl80211_iftype nlmode;
  	struct i802_bss *bss = priv;
-@@ -9162,7 +9181,7 @@ static int wpa_driver_nl80211_if_add(voi
+@@ -9156,7 +9175,7 @@ static int wpa_driver_nl80211_if_add(voi
  		os_memset(&p2pdev_info, 0, sizeof(p2pdev_info));
  		ifidx = nl80211_create_iface(drv, ifname, nlmode, addr,
  					     0, nl80211_wdev_handler,
@@ -375,7 +382,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		if (!p2pdev_info.wdev_id_set || ifidx != 0) {
  			wpa_printf(MSG_ERROR, "nl80211: Failed to create a P2P Device interface %s",
  				   ifname);
-@@ -9178,7 +9197,7 @@ static int wpa_driver_nl80211_if_add(voi
+@@ -9172,7 +9191,7 @@ static int wpa_driver_nl80211_if_add(voi
  			   (long long unsigned int) p2pdev_info.wdev_id);
  	} else {
  		ifidx = nl80211_create_iface(drv, ifname, nlmode, addr,
@@ -384,7 +391,7 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  		if (use_existing && ifidx == -ENFILE) {
  			added = 0;
  			ifidx = if_nametoindex(ifname);
-@@ -12268,6 +12287,69 @@ static bool is_cmd_with_nested_attrs(uns
+@@ -12262,6 +12281,69 @@ static bool is_cmd_with_nested_attrs(uns
  	}
  }
  
@@ -454,9 +461,9 @@ Signed-off-by: Balamurugan Mahalingam <quic_bmahalin@quicinc.com>
  
  static int nl80211_vendor_cmd(void *priv, unsigned int vendor_id,
  			      unsigned int subcmd, const u8 *data,
-@@ -15442,6 +15524,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15379,6 +15461,7 @@ const struct wpa_driver_ops wpa_driver_n
+ 	.link_sta_remove = wpa_driver_nl80211_link_sta_remove,
  	.can_share_drv = wpa_driver_nl80211_can_share_drv,
- 	.set_scs = nl80211_set_scs,
  	.ml_reconfig_link_remove = driver_nl80211_ml_reconfig_link_removal,
 +	.mark_ppe_vp_type = nl80211_vendor_cmd_if_offload_type,
  #endif /* CONFIG_IEEE80211BE */
