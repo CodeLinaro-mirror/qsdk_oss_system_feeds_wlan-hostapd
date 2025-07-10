@@ -1,8 +1,8 @@
-From 451fd0367e19f6d61aa0dd894d36155bd2921c17 Mon Sep 17 00:00:00 2001
+From ad5b02738a24bcca19505e8b08f48107b0aa6f7c Mon Sep 17 00:00:00 2001
 From: Sri Vidya Gunturi <sgunturi@qti.qualcomm.com>
 Date: Tue, 8 Apr 2025 10:13:37 +0530
-Subject: [PATCH 02/20] UPSTREAM:PROTOCOL: nl80211: Register for Protected EHT
- Action frames
+Subject: [PATCH 02/20] UPSTREAM:PROTOCOL: nl80211: Register for Protected EHT Action
+ frames
 
 Register for Protected EHT Action frames in the nl80211_action_subscribe_ap
 API to receive the below frames -
@@ -17,10 +17,10 @@ Signed-off-by: Sri Vidya Gunturi <sgunturi@qti.qualcomm.com>
  1 file changed, 5 insertions(+)
 
 diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
-index 6aaaf21..2eeda29 100644
+index a407d71..46fcdd4 100644
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -2831,6 +2831,11 @@ static int nl80211_action_subscribe_ap(struct i802_bss *bss)
+@@ -2830,6 +2830,11 @@ static int nl80211_action_subscribe_ap(struct i802_bss *bss)
  	if (nl80211_register_action_frame(bss, (u8 *) "\x12", 1) < 0)
  		ret = -1;
  #endif /* CONFIG_FST */
@@ -29,9 +29,9 @@ index 6aaaf21..2eeda29 100644
 +	if (nl80211_register_action_frame(bss, (u8 *) "\x25", 1) < 0)
 +		ret = -1;
 +#endif /* CONFIG_IEEE80211BE */
- 
- 	/* Robust AV */
- 	if (nl80211_register_action_frame(bss, (u8 *) "\x13", 1) < 0)
+ 	/* Vendor-specific Protected */
+ 	if (nl80211_register_action_frame(bss, (u8 *) "\x7e", 1) < 0)
+ 		ret = -1;
 -- 
 2.34.1
 
