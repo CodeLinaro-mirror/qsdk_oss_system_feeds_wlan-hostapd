@@ -275,11 +275,10 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  	skip_auth = wpa_s->conf->reassoc_same_bss_optim &&
 --- a/wpa_supplicant/driver_i.h
 +++ b/wpa_supplicant/driver_i.h
-@@ -1265,4 +1265,15 @@ static inline int wpa_drv_set_6gclient_t
- 	return wpa_s->driver->set_6gclient_type(wpa_s->drv_priv,
- 						he_6ghz_reg_client_type);
+@@ -1257,4 +1257,14 @@ wpas_drv_nan_cancel_subscribe(struct wpa
+ 						   subscribe_id);
  }
-+
+ 
 +static inline struct
 +hostapd_multi_hw_info *wpa_get_multi_hw_info(struct wpa_supplicant *wpa_s,
 +					     unsigned int *num_multi_hws) {
@@ -301,7 +300,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  #include "nan_usd.h"
  #ifdef CONFIG_MESH
  #include "ap/ap_config.h"
-@@ -7648,8 +7649,10 @@ static int wpa_supplicant_init_iface(str
+@@ -7639,8 +7640,10 @@ static int wpa_supplicant_init_iface(str
  				     const struct wpa_interface *iface)
  {
  	struct wpa_driver_capa capa;
@@ -312,7 +311,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  
  	wpa_printf(MSG_DEBUG, "Initializing interface '%s' conf '%s' driver "
  		   "'%s' ctrl_interface '%s' bridge '%s'", iface->ifname,
-@@ -7821,6 +7824,23 @@ static int wpa_supplicant_init_iface(str
+@@ -7812,6 +7815,23 @@ static int wpa_supplicant_init_iface(str
  		wpa_s->support_6ghz = wpas_is_6ghz_supported(wpa_s, false);
  	}
  
@@ -336,7 +335,7 @@ Signed-off-by: Pavithra Ganesan <quic_pavigane@quicinc.com>
  	capa_res = wpa_drv_get_capa(wpa_s, &capa);
  	if (capa_res == 0) {
  		wpa_s->drv_capa_known = 1;
-@@ -8120,6 +8140,9 @@ static void wpa_supplicant_deinit_iface(
+@@ -8111,6 +8131,9 @@ static void wpa_supplicant_deinit_iface(
  		wpa_s->conf = NULL;
  	}
  

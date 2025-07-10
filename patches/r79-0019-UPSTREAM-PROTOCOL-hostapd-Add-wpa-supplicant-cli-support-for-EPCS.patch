@@ -24,7 +24,7 @@ Signed-off-by: Sri Vidya Gunturi <sgunturi@qti.qualcomm.com>
 
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -5706,6 +5706,20 @@ struct wpa_driver_ops {
+@@ -5698,6 +5698,20 @@ struct wpa_driver_ops {
  	 * Returns: true if the driver supports retail AFC, false otherwise
  	 */
  	bool (*is_retail_afc_supported)(void *priv);
@@ -47,7 +47,7 @@ Signed-off-by: Sri Vidya Gunturi <sgunturi@qti.qualcomm.com>
  /**
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15460,6 +15460,40 @@ wpa_driver_get_multi_hw_info(void *priv,
+@@ -15430,6 +15430,40 @@ wpa_driver_get_multi_hw_info(void *priv,
  	return nl80211_get_multi_hw_info(bss, num_multi_hws);
  }
  
@@ -88,9 +88,9 @@ Signed-off-by: Sri Vidya Gunturi <sgunturi@qti.qualcomm.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -15637,4 +15671,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15606,4 +15640,7 @@ const struct wpa_driver_ops wpa_driver_n
+ #endif /* CONFIG_TESTING_OPTIONS */
  	.get_multi_hw_info = wpa_driver_get_multi_hw_info,
- 	.set_6gclient_type = nl80211_set_6gclient_type,
  	.is_retail_afc_supported = nl80211_is_retail_afc_supported,
 +#ifdef CONFIG_IEEE80211BE
 +	.set_epcs_cfg = wpa_driver_set_epcs_cfg,
@@ -138,7 +138,7 @@ Signed-off-by: Sri Vidya Gunturi <sgunturi@qti.qualcomm.com>
  		reply_len = 16;
 --- a/wpa_supplicant/driver_i.h
 +++ b/wpa_supplicant/driver_i.h
-@@ -1289,4 +1289,15 @@ static inline int wpa_drv_mark_ppe_vp_ty
+@@ -1280,4 +1280,15 @@ static inline int wpa_drv_mark_ppe_vp_ty
  
  }
  
