@@ -79,7 +79,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  
  
  #define HOSTAPD_CLI_DUP_VALUE_MAX_LEN 256
-@@ -4647,6 +4648,316 @@ static int hostapd_ctrl_iface_link_remov
+@@ -4647,6 +4648,354 @@ static int hostapd_ctrl_iface_link_remov
  
  	return ret;
  }
@@ -124,8 +124,10 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	ongoing_ttlm = os_zalloc(sizeof(*ongoing_ttlm));
 +	if (!ttlm_conf || !ongoing_ttlm) {
 +		os_free(input);
-+		os_free(ttlm_conf);
-+		os_free(ongoing_ttlm);
++		if (ttlm_conf)
++			os_free(ttlm_conf);
++		if (ongoing_ttlm)
++			os_free(ongoing_ttlm);
 +		return -1;
 +	}
 +
@@ -153,28 +155,35 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +
 +			ttlm_conf->ttlm_direction[dir].direction = dir;
 +
-+		} else if (os_strncmp(token, "def_link_map=", 13) == 0) {
-+			ttlm_conf->ttlm_direction[dir].default_mapping = atoi(token + 13);
++		} else {
++			if (dir < 0 || dir > TTLM_DIRECTION_BIDI) {
++				wpa_printf(MSG_DEBUG, "Direction is not specified");
++				goto fail;
++			}
 +
-+		} else if (os_strncmp(token, "link_map_size=", 15) == 0) {
-+			ttlm_conf->ttlm_direction[dir].link_mapping_size = atoi(token + 15);
++			ttlm_dir = &ttlm_conf->ttlm_direction[dir];
++			if (os_strncmp(token, "def_link_map=", 13) == 0) {
++				ttlm_dir->default_mapping = atoi(token + 13);
 +
-+		} else if (os_strncmp(token, "num_tids=", 9) == 0) {
-+			num_tids = atoi(token + 9);
-+			ttlm_conf->ttlm_direction[dir].num_tids = num_tids;
++			} else if (os_strncmp(token, "link_map_size=", 15) == 0) {
++				ttlm_dir->link_mapping_size = atoi(token + 15);
 +
-+			for (i = 0; i < num_tids; i++) {
-+				tid_str = strtok_r(NULL, " ", &saveptr);
-+				map_str = strtok_r(NULL, " ", &saveptr);
-+				if (!tid_str || !map_str) {
-+					wpa_printf(MSG_DEBUG, "Missing TID or mapping");
-+					goto fail;
++			} else if (os_strncmp(token, "num_tids=", 9) == 0) {
++				num_tids = atoi(token + 9);
++				ttlm_dir->num_tids = num_tids;
++
++				for (i = 0; i < num_tids; i++) {
++					tid_str = strtok_r(NULL, " ", &saveptr);
++					map_str = strtok_r(NULL, " ", &saveptr);
++					if (!tid_str || !map_str) {
++						wpa_printf(MSG_DEBUG, "Missing TID or mapping");
++						goto fail;
++					}
++
++					ttlm_dir->map_tid_to_links[i].tid = atoi(tid_str);
++					ttlm_dir->map_tid_to_links[i].link_map =
++						strtol(map_str, NULL, 0);
 +				}
-+
-+				ttlm_conf->ttlm_direction[dir].map_tid_to_links[i].tid =
-+					atoi(tid_str);
-+				ttlm_conf->ttlm_direction[dir].map_tid_to_links[i].link_map =
-+					strtol(map_str, NULL, 0);
 +			}
 +		}
 +	}
@@ -245,16 +254,18 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +
 +static int hostapd_ctrl_iface_negotiated_ttlm_response(struct hostapd_data *hapd, const char *cmd)
 +{
-+	struct ttlm_ongoing_negotiation_info *ongoing_ttlm;
++	struct ttlm_ongoing_negotiation_info *ongoing_ttlm, *partner_ttlm;
++	struct tid_to_link_map_info *partner_tid_map;
 +	struct ttlm_of_direction *ttlm_dir = NULL;
 +	struct ttlm_config *ttlm_conf;
-+	struct sta_info *sta;
++	struct sta_info *sta, *lsta;
++	struct hostapd_data *lhapd;
 +	char *tid_str, *map_str;
 +	char *input, *token;
 +	int assoc_frame = 0;
 +	int resp_code = 0;
 +	int i, dir = -1;
-+	int tmp, ret;
++	int tmp;
 +	u8 addr[ETH_ALEN];
 +	u8 tid_num = 0;
 +	u16 link_map = 0;
@@ -285,7 +296,6 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	ttlm_conf = os_zalloc(sizeof(*ttlm_conf));
 +	if (!ttlm_conf) {
 +		os_free(input);
-+		os_free(ttlm_conf);
 +		return -1;
 +	}
 +
@@ -299,28 +309,45 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +			resp_code = atoi(token + 10);
 +		} else if (strncmp(token, "dir=", 4) == 0) {
 +			dir = atoi(token + 4);
-+			if (dir >= TTLM_DIRECTION_MAX) {
-+				wpa_printf(MSG_DEBUG, "Invalid direction");
++			if (dir < 0 || dir > TTLM_DIRECTION_BIDI) {
++				wpa_printf(MSG_DEBUG, "Invalid direction:%d", dir);
 +				goto fail;
 +			}
++
++			if (dir == TTLM_DIRECTION_BIDI &&
++			    (ttlm_conf->ttlm_direction[TTLM_DIRECTION_DL].direction !=
++			     TTLM_DIRECTION_INVALID ||
++			     ttlm_conf->ttlm_direction[TTLM_DIRECTION_UL].direction !=
++			     TTLM_DIRECTION_INVALID)) {
++				wpa_printf(MSG_DEBUG, "Cannot mix BIDI with UL/DL");
++				goto fail;
++			}
++
 +			ttlm_conf->ttlm_direction[dir].direction = dir;
-+		} else if (strncmp(token, "def_link_map=", 14) == 0) {
-+			ttlm_conf->ttlm_direction[dir].default_mapping = atoi(token + 14);
-+		} else if (strncmp(token, "link_map_size=", 15) == 0) {
-+			ttlm_conf->ttlm_direction[dir].link_mapping_size = atoi(token + 15);
-+		} else if (strncmp(token, "num_tids=", 9) == 0) {
-+			ttlm_conf->ttlm_direction[dir].num_tids = atoi(token + 9);
-+			for (i = 0; i < ttlm_conf->ttlm_direction[dir].num_tids; i++) {
-+				tid_str = strtok(NULL, " ");
-+				map_str = strtok(NULL, " ");
-+				if (!tid_str || !map_str) {
-+					wpa_printf(MSG_DEBUG, "Missing TID or mapping value");
-+					goto fail;
++		} else {
++			if (dir < 0 || dir > TTLM_DIRECTION_BIDI) {
++				wpa_printf(MSG_DEBUG, "Direction is not specified");
++				goto fail;
++			}
++
++			ttlm_dir = &ttlm_conf->ttlm_direction[dir];
++			if (strncmp(token, "def_link_map=", 14) == 0) {
++				ttlm_dir->default_mapping = atoi(token + 14);
++			} else if (strncmp(token, "link_map_size=", 15) == 0) {
++				ttlm_dir->link_mapping_size = atoi(token + 15);
++			} else if (strncmp(token, "num_tids=", 9) == 0) {
++				ttlm_dir->num_tids = atoi(token + 9);
++				for (i = 0; i < ttlm_dir->num_tids; i++) {
++					tid_str = strtok(NULL, " ");
++					map_str = strtok(NULL, " ");
++					if (!tid_str || !map_str) {
++						wpa_printf(MSG_DEBUG, "Missing TID or mapping");
++						goto fail;
++					}
++					ttlm_dir->map_tid_to_links[i].tid = atoi(tid_str);
++					ttlm_dir->map_tid_to_links[i].link_map =
++						strtol(map_str, NULL, 0);
 +				}
-+				ttlm_conf->ttlm_direction[dir].map_tid_to_links[i].tid =
-+					atoi(tid_str);
-+				ttlm_conf->ttlm_direction[dir].map_tid_to_links[i].link_map =
-+					strtol(map_str, NULL, 0);
 +			}
 +		}
 +	}
@@ -368,12 +395,23 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +		goto fail;
 +	}
 +
-+	if (!assoc_frame)
-+		ret = hostapd_send_ttlm_resp_action(hapd, ongoing_ttlm, sta);
++	if (!assoc_frame) {
++		for_each_mld_link(lhapd, hapd) {
++			if (lhapd == hapd)
++				continue;
++
++			lsta = ap_get_sta(lhapd, sta->addr);
++			if (lsta && lsta->mld_info.mld_sta) {
++				partner_tid_map = &lsta->mld_info.tid_map_info;
++				partner_ttlm = &partner_tid_map->ttlm_ongoing_negotiation_info;
++				os_memcpy(partner_ttlm, ongoing_ttlm, sizeof(*partner_ttlm));
++			}
++		}
++	}
 +
 +	os_free(ttlm_conf);
 +	os_free(input);
-+	return ret;
++	return 0;
 +
 +fail:
 +	os_free(ttlm_conf);
@@ -396,7 +434,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  #endif /* CONFIG_IEEE80211BE */
  
  
-@@ -5567,6 +5878,9 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -5567,6 +5916,9 @@ static int hostapd_ctrl_iface_receive_pr
  	} else if (os_strncmp(buf, "EPCS ", 5) == 0) {
  		reply_len = hostapd_epcs_handle_cli(hapd, buf + 5,
  						    reply, reply_size);

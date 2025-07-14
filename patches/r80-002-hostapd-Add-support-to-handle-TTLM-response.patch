@@ -79,19 +79,35 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  #include "ttlm.h"
  
  
-@@ -271,3 +272,156 @@ int hostapd_send_ttlm_req(struct hostapd
+@@ -263,3 +264,183 @@ int hostapd_send_ttlm_req(struct hostapd
  
  	return ret;
  }
 +
 +
-+static void hostapd_copy_negotiated_ttlm_info_to_sta(struct sta_info *sta, struct
-+						      ttlm_ongoing_negotiation_info
-+						      *ongoing_ttlm)
++static void hostapd_reset_ttlm_info(struct ttlm_info *ttlm)
++{
++	u8 dir;
++
++	for (dir = 0; dir < TTLM_DIRECTION_MAX; dir++) {
++		ttlm[dir].default_link_mapping = true;
++		os_memset(ttlm[dir].ieee_link_map_tid, 0,
++			  sizeof(u16) * NUM_MAX_TIDS);
++	}
++}
++
++
++static void hostapd_copy_negotiated_ttlm_info_to_sta(struct hostapd_data *hapd,
++						     struct sta_info *sta,
++						     struct ttlm_ongoing_negotiation_info
++						     *ongoing_ttlm)
 +{
 +	struct ttlm_prev_negotiated_info *negotiated_ttlm = NULL;
 +	struct ttlm_info *negotiated_ttlm_of_tids = NULL;
 +	struct ttlm_info *ongoing_ttlm_of_tids = NULL;
++	struct ttlm_ongoing_negotiation_info *lsta_ttlm;
++	struct hostapd_data *lhapd;
++	struct sta_info *lsta;
 +	int i, dir, tid;
 +
 +	negotiated_ttlm = &sta->mld_info.tid_map_info.ttlm_prev_negotiated_info;
@@ -151,6 +167,16 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +		negotiated_ttlm->ttlm_info[TTLM_DIRECTION_BIDI].direction =
 +			TTLM_DIRECTION_INVALID;
 +	}
++
++	for_each_mld_link(lhapd, hapd) {
++		lsta = ap_get_sta(lhapd, sta->addr);
++		if (lsta && lsta->mld_info.mld_sta) {
++			lsta_ttlm = &lsta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info;
++			lsta_ttlm->ttlm_resp_type = TTLM_RESP_TYPE_INVALID;
++			lsta_ttlm->dialog_token = 0;
++			hostapd_reset_ttlm_info(lsta_ttlm->ttlm_info);
++		}
++	}
 +}
 +
 +
@@ -192,7 +218,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	int ret;
 +
 +	ongoing_ttlm = &sta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info;
-+	hostapd_copy_negotiated_ttlm_info_to_sta(sta, ongoing_ttlm);
++	hostapd_copy_negotiated_ttlm_info_to_sta(hapd, sta, ongoing_ttlm);
 +	hostapd_fill_ttlm_nl_params(&driver_ttlm_info,
 +				    &sta->mld_info.tid_map_info.ttlm_prev_negotiated_info);
 +
@@ -220,6 +246,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	if (ongoing_ttlm->dialog_token != mgmt->u.action.u.ttlm_resp.dialog_token) {
 +		wpa_printf(MSG_ERROR, "TTLM dialog token mismatch: expected:%d, received:%d",
 +			   ongoing_ttlm->dialog_token, mgmt->u.action.u.ttlm_resp.dialog_token);
++		hostapd_send_ttlm_teardown(hapd, sta);
 +		return -1;
 +	}
 +
@@ -347,7 +374,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  /**
   * struct external_auth - External authentication trigger parameters
   *
-@@ -5719,6 +5734,17 @@ struct wpa_driver_ops {
+@@ -5711,6 +5726,17 @@ struct wpa_driver_ops {
  	 * Returns: 0 on success, negative value on failure
  	 */
  	int (*set_epcs_cfg)(void *priv, bool epcs_cfg_value);
@@ -367,7 +394,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -15494,6 +15494,55 @@ failed:
+@@ -15464,6 +15464,55 @@ failed:
  #endif /* CONFIG_IEEE80211BE */
  
  
@@ -423,7 +450,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  const struct wpa_driver_ops wpa_driver_nl80211_ops = {
  	.name = "nl80211",
  	.desc = "Linux nl80211/cfg80211",
-@@ -15673,5 +15722,6 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15642,5 +15691,6 @@ const struct wpa_driver_ops wpa_driver_n
  	.is_retail_afc_supported = nl80211_is_retail_afc_supported,
  #ifdef CONFIG_IEEE80211BE
  	.set_epcs_cfg = wpa_driver_set_epcs_cfg,

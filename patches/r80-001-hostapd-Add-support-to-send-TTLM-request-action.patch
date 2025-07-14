@@ -71,7 +71,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  struct sta_info {
 --- /dev/null
 +++ b/src/ap/ttlm.c
-@@ -0,0 +1,273 @@
+@@ -0,0 +1,265 @@
 +/*
 + * hostapd / Tid-to-link Mapping(TTLM)
 + * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
@@ -247,33 +247,25 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	struct ttlm_ongoing_negotiation_info *current_ttlm_info = NULL;
 +	struct ttlm_ongoing_negotiation_info *partner_ttlm_info = NULL;
 +	struct tid_to_link_map_info *partner_tid_map = NULL;
-+	struct sta_info *partner;
++	struct hostapd_data *lhapd;
++	struct sta_info *lsta;
 +	u8 dir;
 +	u8 tid;
-+	int i;
 +
 +	current_ttlm_info = &sta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info;
 +	os_memcpy(current_ttlm_info, ttlm_info, sizeof(*current_ttlm_info));
-+
 +	current_ttlm_info->dialog_token = dialog_token;
 +
-+	for (i = 0; i < MAX_NUM_MLD_LINKS; i++) {
-+		if (i == hapd->mld_link_id)
++	for_each_mld_link(lhapd, hapd) {
++		lsta = ap_get_sta(lhapd, sta->addr);
++		if (lsta && lsta == sta)
 +			continue;
 +
-+		if (!is_zero_ether_addr(sta->mld_info.links[i].peer_addr)) {
-+			for (partner = hapd->sta_list; partner; partner = partner->next) {
-+				if (partner->mld_info.mld_sta &&
-+				    os_memcmp(partner->mld_info.links[i].peer_addr,
-+				    sta->mld_info.links[i].peer_addr, ETH_ALEN) == 0) {
-+					partner_tid_map = &partner->mld_info.tid_map_info;
-+					partner_ttlm_info =
-+						&partner_tid_map->ttlm_ongoing_negotiation_info;
-+					os_memcpy(partner_ttlm_info, ttlm_info,
-+						  sizeof(*partner_ttlm_info));
-+					partner_ttlm_info->dialog_token = dialog_token;
-+				}
-+			}
++		if (lsta && lsta->mld_info.mld_sta) {
++			partner_tid_map = &lsta->mld_info.tid_map_info;
++			partner_ttlm_info = &partner_tid_map->ttlm_ongoing_negotiation_info;
++			os_memcpy(partner_ttlm_info, ttlm_info, sizeof(*partner_ttlm_info));
++			partner_ttlm_info->dialog_token = dialog_token;
 +		}
 +	}
 +

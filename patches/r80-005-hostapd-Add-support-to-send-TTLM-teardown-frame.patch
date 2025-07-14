@@ -34,29 +34,10 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  #ifndef CONFIG_NO_RRM
 --- a/src/ap/ttlm.c
 +++ b/src/ap/ttlm.c
-@@ -725,3 +725,85 @@ int hostapd_ttlm_resp_tx_status(struct h
+@@ -752,3 +752,67 @@ int hostapd_ttlm_resp_tx_status(struct h
  
  	return ret;
  }
-+
-+
-+static void hostapd_reset_ttlm_info(struct ttlm_info *ttlm)
-+{
-+	u8 dir;
-+
-+	for (dir = 0; dir < TTLM_DIRECTION_MAX; dir++)
-+		ttlm[dir].direction = TTLM_DIRECTION_INVALID;
-+
-+	ttlm[TTLM_DIRECTION_DL].direction = TTLM_DIRECTION_DL;
-+	ttlm[TTLM_DIRECTION_DL].default_link_mapping = true;
-+	os_memset(ttlm[TTLM_DIRECTION_DL].ieee_link_map_tid, 0,
-+		  sizeof(u16) * NUM_MAX_TIDS);
-+
-+	ttlm[TTLM_DIRECTION_UL].direction = TTLM_DIRECTION_UL;
-+	ttlm[TTLM_DIRECTION_UL].default_link_mapping = true;
-+	os_memset(ttlm[TTLM_DIRECTION_UL].ieee_link_map_tid, 0,
-+		  sizeof(u16) * NUM_MAX_TIDS);
-+}
 +
 +
 +int hostapd_send_ttlm_teardown(struct hostapd_data *hapd, struct sta_info *sta)
@@ -75,6 +56,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	wpabuf_put_u8(buf, WLAN_PROT_EHT_T2L_MAPPING_TEARDOWN);
 +
 +	ongoing_ttlm->dialog_token = 0;
++	ongoing_ttlm->ttlm_resp_type = TTLM_RESP_TYPE_INVALID;
 +	hostapd_reset_ttlm_info(ongoing_ttlm->ttlm_info);
 +
 +	if (hapd->mld_link_id != sta->mld_assoc_link_id) {
@@ -122,9 +104,9 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +}
 --- a/src/ap/ttlm.h
 +++ b/src/ap/ttlm.h
-@@ -148,5 +148,7 @@ int hostapd_ttlm_resp_tx_status(struct h
+@@ -147,5 +147,7 @@ void hostapd_handle_ttlm_req(struct host
+ int hostapd_ttlm_resp_tx_status(struct hostapd_data *hapd, struct sta_info *sta, int ok);
  int hostapd_send_ttlm_resp_action(struct hostapd_data *hapd,
- 				  struct ttlm_ongoing_negotiation_info *ongoing_ttlm,
  				  struct sta_info *sta);
 +int hostapd_ttlm_teardown_tx_status(struct hostapd_data *hapd, struct sta_info *sta, int ok);
 +int hostapd_send_ttlm_teardown(struct hostapd_data *hapd, struct sta_info *sta);
