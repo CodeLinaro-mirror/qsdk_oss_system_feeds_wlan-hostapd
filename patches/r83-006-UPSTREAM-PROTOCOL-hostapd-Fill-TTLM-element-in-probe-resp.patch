@@ -17,10 +17,10 @@ Signed-off-by: Amith A <amitajit@qti.qualcomm.com>
 
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -829,6 +829,16 @@ static size_t hostapd_probe_resp_elems_l
- 		if (is_5ghz_freq(hapd->iface->freq))
- 			buflen += (6 + 2 + 4 +
- 				   sizeof(struct ieee80211_240mhz_vendor_oper));
+@@ -820,6 +820,16 @@ static size_t hostapd_probe_resp_elems_l
+ 		/* ML reconfigure feature */
+ 		if (hapd->conf->mld_ap)
+ 			buflen += hostapd_eid_eht_ml_reconfig_len(hapd);
 +
 +		/* TTLM IE */
 +		if (hapd->mld &&
@@ -31,10 +31,10 @@ Signed-off-by: Amith A <amitajit@qti.qualcomm.com>
 +		    hapd->mld->ttlm_ctx.upcoming_ttlm.ttlm.mapping_switch_time_present)
 +			buflen += hostapd_get_ttlm_elem_len(
 +				&hapd->mld->ttlm_ctx.upcoming_ttlm.ttlm);
+ 
  	}
  
- 	/* TODO: hanlde ML probe len */
-@@ -1022,6 +1032,19 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -993,6 +1001,19 @@ static u8 * hostapd_probe_resp_fill_elem
  
  		pos = hostapd_eid_eht_capab(hapd, pos, IEEE80211_MODE_AP);
  		pos = hostapd_eid_eht_operation(hapd, pos);
@@ -51,9 +51,9 @@ Signed-off-by: Amith A <amitajit@qti.qualcomm.com>
 +							 &hapd->mld->ttlm_ctx.upcoming_ttlm.ttlm,
 +							 hapd);
 +
- 		pos = hostapd_eid_vendor_240mhz(hapd, pos, IEEE80211_MODE_AP);
  	}
  
+ 	/*TODO: ML probe IE ? */
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
 @@ -10104,6 +10104,10 @@ static bool hostapd_eid_rnr_bss(struct h
