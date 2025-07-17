@@ -39,14 +39,14 @@ Signed-off-by: Rajat Soni <rajson@qti.qualcomm.com>
  
  
  #define HOSTAPD_CLI_DUP_VALUE_MAX_LEN 256
-@@ -4614,6 +4615,69 @@ static int hostapd_ctrl_iface_disable_ml
+@@ -4614,6 +4615,73 @@ static int hostapd_ctrl_iface_disable_ml
  	return 0;
  }
  
 +static int hotapd_ctrl_set_tx_rx_chain_mask(struct hostapd_data *hapd, char *cmd,
 +					    char *buf, size_t buflen)
 +{
-+	int ret, i;
++	int ret = -1, i;
 +	uint32_t tx_ant, rx_ant;
 +	uint8_t radio_idx = NL80211_WIPHY_RADIO_ID_MAX;
 +	char *ptr;
@@ -54,6 +54,10 @@ Signed-off-by: Rajat Soni <rajson@qti.qualcomm.com>
 +	u8 dfs_domain;
 +	struct hostapd_hw_modes *modes;
 +
++	if (!hapd->started) {
++		wpa_printf(MSG_ERROR, "Interface is not UP.\n");
++		return ret;
++	}
 +
 +	tx_ant = (uint32_t)strtol(cmd, &ptr, 10);
 +	rx_ant = (uint32_t)strtol(ptr, NULL, 10);
@@ -109,7 +113,7 @@ Signed-off-by: Rajat Soni <rajson@qti.qualcomm.com>
  
  static int hostapd_ctrl_iface_link_remove(struct hostapd_data *hapd, char *cmd,
  					  char *buf, size_t buflen)
-@@ -5917,6 +5981,10 @@ static int hostapd_ctrl_iface_receive_pr
+@@ -5917,6 +5985,10 @@ static int hostapd_ctrl_iface_receive_pr
  		if (hostapd_ctrl_iface_conf_ml_rec_links(hapd, buf + 17))
  			reply_len = -1;
  #endif /* CONFIG_IEEE80211BE */
@@ -163,7 +167,7 @@ Signed-off-by: Rajat Soni <rajson@qti.qualcomm.com>
  	 * @priv: Private driver interface data
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -5306,6 +5306,38 @@ static int nl80211_put_freq_params(struc
+@@ -5306,6 +5306,42 @@ static int nl80211_put_freq_params(struc
  	return 0;
  }
  
@@ -173,7 +177,7 @@ Signed-off-by: Rajat Soni <rajson@qti.qualcomm.com>
 +	struct i802_bss *bss = priv;
 +	struct wpa_driver_nl80211_data *drv = bss->drv;
 +	struct nl_msg *msg;
-+	int ret = 0;
++	int ret = -1;
 +
 +	msg = nl80211_bss_msg(bss, 0, NL80211_CMD_SET_WIPHY);
 +	if (!msg) {
@@ -196,13 +200,17 @@ Signed-off-by: Rajat Soni <rajson@qti.qualcomm.com>
 +nla_put_failure:
 +	wpa_printf(MSG_ERROR, "nl80211: Chain_mask: Failed to set chain mask %d %d: "
 +		   "%d (%s)", tx_ant, rx_ant, ret, strerror(-ret));
++
++	if (msg)
++		nlmsg_free(msg);
++
 +	return ret;
 +
 +}
  
  static int wpa_driver_nl80211_set_ap(void *priv,
  				     struct wpa_driver_ap_params *params)
-@@ -15544,6 +15576,7 @@ const struct wpa_driver_ops wpa_driver_n
+@@ -15544,6 +15580,7 @@ const struct wpa_driver_ops wpa_driver_n
  	.set_supp_port = wpa_driver_nl80211_set_supp_port,
  	.set_country = wpa_driver_nl80211_set_country,
  	.get_country = wpa_driver_nl80211_get_country,
