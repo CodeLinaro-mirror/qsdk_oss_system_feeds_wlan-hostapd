@@ -212,7 +212,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  	 * If set indicate the AP as disabled in the RNR element included in the
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -758,6 +758,8 @@ static size_t hostapd_probe_resp_elems_l
+@@ -756,6 +756,8 @@ static size_t hostapd_probe_resp_elems_l
  {
  	size_t buflen = 0;
  	struct hostapd_data *hapd_probed = params->mld_ap? params->mld_ap : hapd;
@@ -221,7 +221,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  
  #ifdef CONFIG_WPS
  	if (hapd->wps_probe_resp_ie)
-@@ -792,12 +794,19 @@ static size_t hostapd_probe_resp_elems_l
+@@ -790,12 +792,19 @@ static size_t hostapd_probe_resp_elems_l
  		if (hapd->iconf->punct_bitmap)
  			buflen += EHT_OPER_DISABLED_SUBCHAN_BITMAP_SIZE;
  
@@ -243,7 +243,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  				WLAN_FC_STYPE_PROBE_RESP);
  
  			/* For Max Channel Switch Time element during channel
-@@ -806,7 +815,7 @@ static size_t hostapd_probe_resp_elems_l
+@@ -804,7 +813,7 @@ static size_t hostapd_probe_resp_elems_l
  
  		} else if (hapd->conf->mld_ap) {
  			buflen += hostapd_eid_eht_ml_beacon_len(
@@ -252,7 +252,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  				WLAN_FC_STYPE_PROBE_RESP);
  			/* For Max Channel Switch Time element
  			 * during channel switch
-@@ -850,6 +859,8 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -847,6 +856,8 @@ static u8 * hostapd_probe_resp_fill_elem
  	u8 *csa_pos;
  	u8 *epos;
  	struct hostapd_data *hapd_probed = params->mld_ap ? params->mld_ap : hapd;
@@ -261,25 +261,27 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  
  	epos = pos + len;
  
-@@ -976,18 +987,34 @@ static u8 * hostapd_probe_resp_fill_elem
+@@ -973,18 +984,36 @@ static u8 * hostapd_probe_resp_fill_elem
  
  #ifdef CONFIG_IEEE80211BE
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
-+		if (hapd->conf->enable_aal)
++		if (hapd->conf->enable_aal) {
 +			include_ext_cap |= BIT(BASIC_MULTI_LINK_CTRL_EXT_EN);
 +
-+		/* RMSL value would be sent in broadcast Probe response case only */
-+		if (is_broadcast_ether_addr(params->resp->da))
-+			include_ext_cap |= BIT(BASIC_MULTI_LINK_CTRL_EXT_RMSL_INFO_EN);
++			/* RMSL value would be sent in broadcast Probe response case only */
++			if (is_broadcast_ether_addr(params->resp->da))
++				include_ext_cap |= BIT(BASIC_MULTI_LINK_CTRL_EXT_RMSL_INFO_EN);
++		}
 +
  		if (params->mld_ap && params->mld_ap->conf->mld_ap) {
 +			/* Check for non-Tx BSS conf */
-+			if (params->mld_ap->conf->enable_aal)
++			if (params->mld_ap->conf->enable_aal) {
 +				p_ext_cap = BIT(BASIC_MULTI_LINK_CTRL_EXT_EN);
 +
-+			/* RMSL value would be sent in broadcast Probe response case */
-+			if (is_broadcast_ether_addr(params->resp->da))
-+				p_ext_cap |= BIT(BASIC_MULTI_LINK_CTRL_EXT_RMSL_INFO_EN);
++				/* RMSL value would be sent in broadcast Probe response case */
++				if (is_broadcast_ether_addr(params->resp->da))
++					p_ext_cap |= BIT(BASIC_MULTI_LINK_CTRL_EXT_RMSL_INFO_EN);
++			}
 +
  			pos = hostapd_eid_eht_ml_beacon(
  				params->mld_ap, params->mld_info,
@@ -299,7 +301,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  				WLAN_FC_STYPE_PROBE_RESP);
  
  		/* ML reconfigure feature */
-@@ -2336,6 +2363,7 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2331,6 +2360,7 @@ int ieee802_11_build_ap_params(struct ho
  	u8 *startpos;
  	u16 elemid_modified = 0;
  	struct hostapd_data *tx_bss;
@@ -307,7 +309,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  #endif /* NEED_AP_MLME */
  
  	os_memset(params, 0, sizeof(*params));
-@@ -2621,8 +2649,14 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2615,8 +2645,14 @@ int ieee802_11_build_ap_params(struct ho
  	if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
  		if (hapd->conf->mld_ap) {
  			startpos = tailpos;
@@ -362,7 +364,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  	}
  #endif /* CONFIG_IEEE80211BE */
  
-@@ -6182,6 +6183,53 @@ u8 hostapd_get_active_links(struct hosta
+@@ -6184,6 +6185,53 @@ u8 hostapd_get_active_links(struct hosta
  	return active_links;
  }
  
@@ -429,7 +431,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  int hostapd_wnm_add_multi_link_sub_elem(struct hostapd_data *hapd,
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -10350,6 +10350,7 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -10342,6 +10342,7 @@ static size_t hostapd_eid_mbssid_elem_le
  	struct hostapd_data *tx_bss = hostapd_mbssid_get_tx_bss(hapd);
  	size_t len, i, tx_xrate_len;
  	u8 ext_capa[20], buf[100];
@@ -437,7 +439,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  
  	/* Element ID: 1 octet
  	 * Length: 1 octet
-@@ -10425,7 +10426,12 @@ static size_t hostapd_eid_mbssid_elem_le
+@@ -10417,7 +10418,12 @@ static size_t hostapd_eid_mbssid_elem_le
  
  		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
  		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
@@ -450,7 +452,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  									   frame_type);
  			if (bss->eht_mld_link_removal_inprogress)
  				nontx_profile_len += hostapd_eid_eht_ml_reconfig_len(bss);
-@@ -10549,6 +10555,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -10541,6 +10547,7 @@ static u8 * hostapd_eid_mbssid_elem(stru
  	u8 *eid_len_offset, *max_bssid_indicator_offset;
  	u8 buf[100];
  	u8 *startpos;
@@ -458,7 +460,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  
  	*eid++ = WLAN_EID_MULTIPLE_BSSID;
  	eid_len_offset = eid++;
-@@ -10659,7 +10666,12 @@ static u8 * hostapd_eid_mbssid_elem(stru
+@@ -10651,7 +10658,12 @@ static u8 * hostapd_eid_mbssid_elem(stru
  
  		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
  		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
@@ -639,7 +641,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  
 --- a/src/common/ieee802_11_defs.h
 +++ b/src/common/ieee802_11_defs.h
-@@ -3078,6 +3078,8 @@ struct ieee80211_eht_capabilities {
+@@ -3069,6 +3069,8 @@ struct ieee80211_eht_capabilities {
  #define BASIC_MULTI_LINK_CTRL_PRES_AP_MLD_ID		0x0200
  #define BASIC_MULTI_LINK_CTRL_PRES_EXT_MLD_CAP		0x0400
  
@@ -648,7 +650,7 @@ Signed-off-by: Srinivas Pitla <spitla@qti.qualcomm.com>
  /*
   * STA Control field definitions of Per-STA Profile subelement in Basic
   * Multi-Link element as described in Figure 9-1002n: STA Control field format.
-@@ -3137,6 +3139,16 @@ struct eht_ml_basic_common_info {
+@@ -3128,6 +3130,16 @@ struct eht_ml_basic_common_info {
  #define EHT_ML_MLD_CAPA_FREQ_SEP_FOR_STR_MASK         0x0f80
  #define EHT_ML_MLD_CAPA_AAR_SUPP                      0x1000
  
