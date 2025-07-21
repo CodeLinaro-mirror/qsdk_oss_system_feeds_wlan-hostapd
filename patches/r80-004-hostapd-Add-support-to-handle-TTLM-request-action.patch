@@ -52,16 +52,16 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  		return;
 --- a/src/ap/ttlm.c
 +++ b/src/ap/ttlm.c
-@@ -579,3 +579,149 @@ int hostapd_handle_ttlm_assoc_req(struct
+@@ -598,3 +598,161 @@ int hostapd_handle_ttlm_assoc_req(struct
  	wpa_printf(MSG_DEBUG, "TTLM IE in assoc request has been parsed successfully");
  	return WLAN_STATUS_SUCCESS;
  }
 +
 +
 +int hostapd_send_ttlm_resp_action(struct hostapd_data *hapd,
-+				  struct ttlm_ongoing_negotiation_info *ongoing_ttlm,
 +				  struct sta_info *sta)
 +{
++	struct ttlm_ongoing_negotiation_info *ongoing_ttlm;
 +	struct hostapd_data *lhapd;
 +	size_t ttlm_elem_len;
 +	struct wpabuf *buf;
@@ -72,15 +72,15 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	if (!buf)
 +		return -1;
 +
++	ongoing_ttlm = &sta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info;
 +	wpabuf_put_u8(buf, WLAN_ACTION_PROTECTED_EHT);
 +	wpabuf_put_u8(buf, WLAN_PROT_EHT_T2L_MAPPING_RESPONSE);
 +	wpabuf_put_u8(buf, ongoing_ttlm->dialog_token);
++	wpabuf_put_le16(buf, ongoing_ttlm->ttlm_resp_type);
 +
-+	if (ongoing_ttlm->ttlm_resp_type == TTLM_RESP_TYPE_DENIED_TID_TO_LINK_MAPPING ||
-+	    ongoing_ttlm->ttlm_resp_type == TTLM_RESP_TYPE_PREFERRED_TID_TO_LINK_MAPPING) {
-+		wpabuf_put_le16(buf, ongoing_ttlm->ttlm_resp_type);
-+
-+		if (hostapd_build_ttlm_elem(ongoing_ttlm, &ttlm_elem, &ttlm_elem_len) < 0) {
++	if (ongoing_ttlm->ttlm_resp_type == TTLM_RESP_TYPE_PREFERRED_TID_TO_LINK_MAPPING) {
++		if (hostapd_build_ttlm_elem(ongoing_ttlm, &ttlm_elem, &ttlm_elem_len) < 0 ||
++		    ttlm_elem_len == 0) {
 +			wpabuf_free(buf);
 +			return -1;
 +		}
@@ -92,8 +92,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +		}
 +		wpabuf_put_data(buf, ttlm_elem, ttlm_elem_len);
 +		os_free(ttlm_elem);
-+	} else
-+		wpabuf_put_le16(buf, TTLM_RESP_TYPE_SUCCESS);
++	}
 +
 +	if (hapd->mld_link_id != sta->mld_assoc_link_id) {
 +		for_each_mld_link(lhapd, hapd) {
@@ -124,7 +123,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +			     const u8 *buf, size_t len)
 +{
 +	const struct ieee80211_mgmt *mgmt = (const struct ieee80211_mgmt *) buf;
-+	struct ttlm_ongoing_negotiation_info *ongoing_ttlm;
++	struct ttlm_ongoing_negotiation_info *ongoing_ttlm, *configured_ttlm;
 +	struct ieee802_11_elems elems;
 +	struct ttlm_info ttlm_info;
 +	enum ttlm_dir dir;
@@ -150,6 +149,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	if (ieee802_11_parse_elems(pos, ie_len, &elems, 0) == ParseFailed) {
 +		wpa_printf(MSG_ERROR, "Could not parse TTLM request frame received "
 +			   MACSTR, MAC2STR(mgmt->sa));
++		os_free(ongoing_ttlm);
 +		return;
 +	}
 +
@@ -159,10 +159,12 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +	for (i = 0; i < elems.ttlm_num; i++) {
 +		retval = hostapd_parse_ttlm_elem(hapd, elems.ttlm[i], &ttlm_info);
 +		if (!retval && ttlm_info.direction < TTLM_DIRECTION_MAX) {
++			ongoing_ttlm->ttlm_resp_type = TTLM_RESP_TYPE_SUCCESS;
 +			os_memcpy(&ongoing_ttlm->ttlm_info[ttlm_info.direction],
 +				  &ttlm_info, sizeof(struct ttlm_info));
 +		} else {
 +			wpa_printf(MSG_ERROR, "Failed to parse TTLM IE");
++			os_free(ongoing_ttlm);
 +			return;
 +		}
 +	}
@@ -173,13 +175,23 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +		os_memset(ongoing_ttlm, 0, sizeof(*ongoing_ttlm));
 +		for (dir = 0; dir < TTLM_DIRECTION_MAX; dir++)
 +			ongoing_ttlm->ttlm_info[dir].direction = TTLM_DIRECTION_INVALID;
++		ongoing_ttlm->ttlm_resp_type = TTLM_RESP_TYPE_DENIED_TID_TO_LINK_MAPPING;
 +	}
 +
-+	os_memcpy(&sta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info, ongoing_ttlm,
-+		  sizeof(struct ttlm_ongoing_negotiation_info));
++	configured_ttlm = &sta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info;
++	if (configured_ttlm->ttlm_resp_type !=
++	    TTLM_RESP_TYPE_PREFERRED_TID_TO_LINK_MAPPING && configured_ttlm->ttlm_resp_type !=
++	    TTLM_RESP_TYPE_DENIED_TID_TO_LINK_MAPPING) {
++		os_memcpy(configured_ttlm, ongoing_ttlm,
++			  sizeof(struct ttlm_ongoing_negotiation_info));
++	}
++
++	sta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info.dialog_token =
++		ongoing_ttlm->dialog_token;
 +
 +	wpa_printf(MSG_DEBUG, "TTLM request has been parsed successfully");
-+	hostapd_send_ttlm_resp_action(hapd, ongoing_ttlm, sta);
++	hostapd_send_ttlm_resp_action(hapd, sta);
++	os_free(ongoing_ttlm);
 +}
 +
 +
@@ -204,7 +216,7 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +}
 --- a/src/ap/ttlm.h
 +++ b/src/ap/ttlm.h
-@@ -142,5 +142,11 @@ int hostapd_handle_ttlm_resp(struct host
+@@ -142,5 +142,10 @@ int hostapd_handle_ttlm_resp(struct host
  int hostapd_apply_ttlm_mapping_to_driver(struct hostapd_data *hapd, struct sta_info *sta);
  int hostapd_handle_ttlm_assoc_req(struct hostapd_data *hapd, const struct ieee80211_mgmt *mgmt,
  				  size_t len, struct sta_info *sta, const u8 *ie, size_t ie_len);
@@ -212,7 +224,6 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
 +			     const u8 *buf, size_t len);
 +int hostapd_ttlm_resp_tx_status(struct hostapd_data *hapd, struct sta_info *sta, int ok);
 +int hostapd_send_ttlm_resp_action(struct hostapd_data *hapd,
-+				  struct ttlm_ongoing_negotiation_info *ongoing_ttlm,
 +				  struct sta_info *sta);
  
  #endif /* TTLM_H */
