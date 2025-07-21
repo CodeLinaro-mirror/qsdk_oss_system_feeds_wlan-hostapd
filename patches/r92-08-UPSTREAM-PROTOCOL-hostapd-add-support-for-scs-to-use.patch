@@ -597,19 +597,21 @@ index c875b70..940c191 100644
  #else
  
  static inline int hostapd_ucode_init(struct hapd_interfaces *ifaces)
-@@ -50,6 +58,17 @@ static inline void hostapd_ucode_free_bss(struct hostapd_data *hapd)
+@@ -50,6 +58,19 @@ static inline void hostapd_ucode_free_bss(struct hostapd_data *hapd)
  {
  }
  
-+void hostapd_ucode_config_nft_table(char *table, bool add)
++static inline void hostapd_ucode_config_nft_table(char *table, bool add)
 +{
 +}
-+void hostapd_ucode_config_nft_chain(struct hostapd_data *hapd, char *table,
-+				    char *chain, bool add)
++static inline void hostapd_ucode_config_nft_chain(struct hostapd_data *hapd, char *table,
++						  char *chain, bool add)
 +{
 +}
-+void hostapd_ucode_config_nft_rule(struct hostapd_data *hapd, struct hostapd_nft_rule_params *rparams,
-+				   bool add)
++static inline void
++hostapd_ucode_config_nft_rule(struct hostapd_data *hapd,
++			      struct hostapd_nft_rule_params *rparams,
++			      bool add)
 +{
 +}
  #endif
