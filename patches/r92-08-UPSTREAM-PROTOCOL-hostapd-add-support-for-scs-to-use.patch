@@ -1,6 +1,6 @@
-From b1c90cb720fddaa1e5ad116ca299791904bd313a Mon Sep 17 00:00:00 2001
-From: Arun Vikas T <vikast@qti.qualcomm.com>
-Date: Fri, 18 Jul 2025 23:44:20 +0530
+From 56fc5aa70304109301b1192475f4fcd10ed0e102 Mon Sep 17 00:00:00 2001
+From: Hari Chandrakanthan <haric@qti.qualcomm.com>
+Date: Tue, 22 Jul 2025 23:49:52 +0530
 Subject: [PATCH] UPSTREAM:PROTOCOL:hostapd: add support for scs to use nft
 
 Add support to create/delete nft rules during scs add/delete.
@@ -19,17 +19,17 @@ Tag: SCS
 Signed-off-by: Hari Chandrakanthan <haric@qti.qualcomm.com>
 Signed-off-by: Vivek Chettri <vchettri@qti.qualcomm.com>
 ---
- hostapd/main.c     |   5 ++
+ hostapd/main.c     |  20 ++++++
  src/ap/hostapd.c   |  18 ++++-
  src/ap/hostapd.h   |   3 +
- src/ap/robust_av.c | 160 ++++++++++++++++++++++++++++++++++++++++++---
- src/ap/robust_av.h |  40 ++++++++++++
- src/ap/ucode.c     | 108 ++++++++++++++++++++++++++++++
- src/ap/ucode.h     |  19 ++++++
- 7 files changed, 340 insertions(+), 13 deletions(-)
+ src/ap/robust_av.c | 169 ++++++++++++++++++++++++++++++++++++++++++---
+ src/ap/robust_av.h |  40 +++++++++++
+ src/ap/ucode.c     | 110 +++++++++++++++++++++++++++++
+ src/ap/ucode.h     |  21 ++++++
+ 7 files changed, 368 insertions(+), 13 deletions(-)
 
 diff --git a/hostapd/main.c b/hostapd/main.c
-index df748dc..a4be770 100644
+index df748dc..24aa6fc 100644
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
 @@ -32,6 +32,7 @@
@@ -40,16 +40,31 @@ index df748dc..a4be770 100644
  
  struct hapd_global {
  	void **drv_priv;
-@@ -1089,6 +1090,8 @@ int main(int argc, char *argv[])
+@@ -1089,6 +1090,23 @@ int main(int argc, char *argv[])
  	hostapd_global_ctrl_iface_init(&interfaces);
  	hostapd_ucode_init(&interfaces);
  
 +	hostapd_ucode_config_nft_table(TABLE_NAME, true);
 +
++	for (i = 0; i < interfaces.count; i++) {
++		struct hostapd_iface *iface = interfaces.iface[i];
++
++		for (int j = 0; j < iface->num_bss; j++) {
++			struct hostapd_data *hapd;
++			char buf[128] = {0};
++
++			hapd = iface->bss[j];
++			if (hapd->conf->scs) {
++				os_snprintf(buf, 128, "%s_%s", CHAIN_NAME, hapd->conf->iface);
++				hostapd_ucode_config_nft_chain(hapd, TABLE_NAME, buf, true);
++			}
++		}
++	}
++
  	if (hostapd_global_run(&interfaces, daemonize, pid_file)) {
  		wpa_printf(MSG_ERROR, "Failed to start eloop");
  		goto out;
-@@ -1096,6 +1099,8 @@ int main(int argc, char *argv[])
+@@ -1096,6 +1114,8 @@ int main(int argc, char *argv[])
  
  	ret = 0;
  
@@ -59,7 +74,7 @@ index df748dc..a4be770 100644
  	hostapd_global_ctrl_iface_deinit(&interfaces);
  	/* Sending deauth to all stations before deinit */
 diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
-index 4eb91b1..b60718b 100644
+index 38169f7..d280983 100644
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
 @@ -11,6 +11,7 @@
@@ -99,7 +114,7 @@ index 4eb91b1..b60718b 100644
  	/* If TX BSS is already beaconing, update it with newly added profile
  	 */
  	if (start_beacon && tx_hapd && tx_hapd != hapd && tx_hapd->beacon_set_done)
-@@ -4826,13 +4833,18 @@ int hostapd_remove_bss(struct hostapd_iface *iface, unsigned int idx,
+@@ -4827,13 +4834,18 @@ int hostapd_remove_bss(struct hostapd_iface *iface, unsigned int idx,
  		       bool is_link_remove)
  {
  	size_t i;
@@ -121,7 +136,7 @@ index 4eb91b1..b60718b 100644
  		wpa_printf(MSG_DEBUG, "%s: free hapd %p (%s)",
  			   __func__, hapd, hapd->conf->iface);
 diff --git a/src/ap/hostapd.h b/src/ap/hostapd.h
-index eb49ae6..ba6cef9 100644
+index 3c3bdf6..1fb3d63 100644
 --- a/src/ap/hostapd.h
 +++ b/src/ap/hostapd.h
 @@ -29,6 +29,9 @@
@@ -135,7 +150,7 @@ index eb49ae6..ba6cef9 100644
  struct radius_server_data;
  struct upnp_wps_device_sm;
 diff --git a/src/ap/robust_av.c b/src/ap/robust_av.c
-index 6f5258b..780e08c 100644
+index 6f5258b..05c0dba 100644
 --- a/src/ap/robust_av.c
 +++ b/src/ap/robust_av.c
 @@ -10,6 +10,7 @@
@@ -146,7 +161,7 @@ index 6f5258b..780e08c 100644
  
  u8 *hostapd_add_scs_ie(u8 *frm, bool scs)
  {
-@@ -728,9 +729,141 @@ hostapd_copy_and_send_scs_data(struct hostapd_data *hapd, struct sta_info *sta,
+@@ -728,9 +729,150 @@ hostapd_copy_and_send_scs_data(struct hostapd_data *hapd, struct sta_info *sta,
  	return ret;
  }
  
@@ -192,7 +207,11 @@ index 6f5258b..780e08c 100644
 +		}
 +
 +		if (te->tclas_elem.type4_params.classifier_mask & BIT(6)) {
-+			rule->proto = te->tclas_elem.type4_params.protocol;
++			if (rule->ip_family == 4) {
++				rule->proto = te->tclas_elem.type4_params.protocol;
++			} else {
++				rule->proto = te->tclas_elem.type4_params.next_header;
++			}
 +			rule->valid_flags |= NFT_RULE_PARAM_PROTO;
 +		}
 +
@@ -254,8 +273,13 @@ index 6f5258b..780e08c 100644
 +			hostapd_ucode_config_nft_rule(hapd, &rule, true);
 +
 +			rule.proto = IPPROTO_TCP;
++		} else if (te.classifier_type == QM_TCLAS_CLASSIFIER_TYPE10) {
++			rule.ip_family = 4;
 +			hostapd_ucode_config_nft_rule(hapd, &rule, true);
++			rule.ip_family = 6;
 +		}
++
++		hostapd_ucode_config_nft_rule(hapd, &rule, true);
 +
 +		wpa_printf(MSG_INFO, "scs_id:%u rule valid flag : 0x%x ", scs_req_desc->scs_id, rule.valid_flags);
 +	}
@@ -289,7 +313,7 @@ index 6f5258b..780e08c 100644
  			struct hostapd_scs_req_desc_data *scs_req_desc_tmp,
  			u8 status)
  {
-@@ -763,12 +896,13 @@ hostapd_process_scs_add(struct sta_info *sta,
+@@ -763,12 +905,13 @@ hostapd_process_scs_add(struct sta_info *sta,
  	sta->scs_req_desc[idx] = scs_req_desc;
  	sta->scs_session_count++;
  
@@ -305,7 +329,7 @@ index 6f5258b..780e08c 100644
  			   struct hostapd_scs_req_desc_data *scs_req_desc,
  			   u8 status)
  {
-@@ -789,6 +923,8 @@ hostapd_process_scs_remove(struct sta_info *sta,
+@@ -789,6 +932,8 @@ hostapd_process_scs_remove(struct sta_info *sta,
  		return -EINVAL;
  	}
  
@@ -314,7 +338,7 @@ index 6f5258b..780e08c 100644
  	os_free(sta->scs_req_desc[idx]);
  
  	while (idx < (scs_session_count - 1)) {
-@@ -804,7 +940,7 @@ hostapd_process_scs_remove(struct sta_info *sta,
+@@ -804,7 +949,7 @@ hostapd_process_scs_remove(struct sta_info *sta,
  
  
  static int
@@ -323,7 +347,7 @@ index 6f5258b..780e08c 100644
  			   struct hostapd_scs_req_desc_data *scs_req_desc_tmp,
  			   u8 status)
  {
-@@ -826,14 +962,19 @@ hostapd_process_scs_change(struct sta_info *sta,
+@@ -826,14 +971,19 @@ hostapd_process_scs_change(struct sta_info *sta,
  		return -EINVAL;
  	}
  
@@ -344,7 +368,7 @@ index 6f5258b..780e08c 100644
  				    struct hostapd_scs_req_data *scs_req,
  				    struct hostapd_scs_resp_data *scs_resp)
  {
-@@ -870,7 +1011,7 @@ static void hostapd_process_scs_req(struct sta_info *sta,
+@@ -870,7 +1020,7 @@ static void hostapd_process_scs_req(struct sta_info *sta,
  
  		switch (request_type) {
  		case QM_ADD_REQ:
@@ -353,7 +377,7 @@ index 6f5258b..780e08c 100644
  						      status);
  			if (!ret)
  				scs_resp_desc->status = WLAN_STATUS_SUCCESS;
-@@ -881,7 +1022,7 @@ static void hostapd_process_scs_req(struct sta_info *sta,
+@@ -881,7 +1031,7 @@ static void hostapd_process_scs_req(struct sta_info *sta,
  			break;
  
  		case QM_REMOVE_REQ:
@@ -362,7 +386,7 @@ index 6f5258b..780e08c 100644
  							 status);
  			if (!ret)
  				scs_resp_desc->status =
-@@ -893,7 +1034,7 @@ static void hostapd_process_scs_req(struct sta_info *sta,
+@@ -893,7 +1043,7 @@ static void hostapd_process_scs_req(struct sta_info *sta,
  			break;
  
  		case QM_CHANGE_REQ:
@@ -371,7 +395,7 @@ index 6f5258b..780e08c 100644
  							 status);
  			if (!ret)
  				scs_resp_desc->status = WLAN_STATUS_SUCCESS;
-@@ -1055,7 +1196,7 @@ static int hostapd_handle_scs_req(struct hostapd_data *hapd, const u8 *buf,
+@@ -1055,7 +1205,7 @@ static int hostapd_handle_scs_req(struct hostapd_data *hapd, const u8 *buf,
  		goto send_error_resp;
  	}
  
@@ -380,7 +404,7 @@ index 6f5258b..780e08c 100644
  
  send_error_resp:
  	ret = hostapd_send_scs_response(hapd, sta, mgmt->sa, &scs_resp);
-@@ -1066,7 +1207,6 @@ send_error_resp:
+@@ -1066,7 +1216,6 @@ send_error_resp:
  	return ret;
  }
  
@@ -447,7 +471,7 @@ index 9bcc659..37f6f9c 100644
  
  void
 diff --git a/src/ap/ucode.c b/src/ap/ucode.c
-index 88489d8..112cd73 100644
+index f33c6bc..3262ea2 100644
 --- a/src/ap/ucode.c
 +++ b/src/ap/ucode.c
 @@ -9,6 +9,7 @@
@@ -458,7 +482,7 @@ index 88489d8..112cd73 100644
  #include <libubox/uloop.h>
  #include "sta_info.h"
  
-@@ -925,3 +926,110 @@ void hostapd_ucode_free_bss(struct hostapd_data *hapd)
+@@ -926,3 +927,112 @@ void hostapd_ucode_free_bss(struct hostapd_data *hapd)
  	ucv_put(wpa_ucode_call(2));
  	ucv_gc(vm);
  }
@@ -470,7 +494,8 @@ index 88489d8..112cd73 100644
 +	if (wpa_ucode_call_prepare("config_nft_table"))
 +		return;
 +
-+	wpa_printf(MSG_INFO, "%s: Create a NFT Table", __func__);
++	wpa_printf(MSG_INFO, "%s: %s a NFT Table", __func__, add?"create":"delete");
++
 +	if (add)
 +		nft_add = ucv_boolean_new(true);
 +	else
@@ -527,10 +552,10 @@ index 88489d8..112cd73 100644
 +
 +	if (rparams->ip_family == 6) {
 +		if ((rparams->valid_flags & NFT_RULE_PARAM_SADDR))
-+			inet_ntop(AF_INET, &rparams->saddr6, v6_src_addr,
++			inet_ntop(AF_INET6, &rparams->saddr6, v6_src_addr,
 +				  sizeof(v6_src_addr));
 +		if ((rparams->valid_flags & NFT_RULE_PARAM_DADDR))
-+			inet_ntop(AF_INET, &rparams->daddr6, v6_dst_addr,
++			inet_ntop(AF_INET6, &rparams->daddr6, v6_dst_addr,
 +				  sizeof(v6_src_addr));
 +	}
 +
@@ -566,11 +591,12 @@ index 88489d8..112cd73 100644
 +	uc_value_push(ucv_get(ucv_int64_new(rparams->mark)));
 +	uc_value_push(ucv_get(ucv_int64_new(rparams->esp_spi)));
 +	uc_value_push(ucv_get(ucv_int64_new(rparams->dscp)));
-+	ucv_put(wpa_ucode_call(15));
++	uc_value_push(ucv_get(ucv_int64_new(rparams->ip_family)));
++	ucv_put(wpa_ucode_call(16));
 +	ucv_gc(vm);
 +}
 diff --git a/src/ap/ucode.h b/src/ap/ucode.h
-index c875b70..940c191 100644
+index c875b70..4453f38 100644
 --- a/src/ap/ucode.h
 +++ b/src/ap/ucode.h
 @@ -2,8 +2,10 @@
