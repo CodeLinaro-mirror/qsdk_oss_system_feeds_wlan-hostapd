@@ -59,7 +59,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  					const char *param)
 --- a/src/ap/beacon.c
 +++ b/src/ap/beacon.c
-@@ -2433,17 +2433,28 @@ int ieee802_11_build_ap_params(struct ho
+@@ -2427,17 +2427,28 @@ int ieee802_11_build_ap_params(struct ho
  					   tailpos-startpos, ELEMID_CU_PARAM_HTOP);
  #endif
  
@@ -173,7 +173,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  			iface = interfaces->iface[i];
  			break;
  		}
-@@ -3599,10 +3603,6 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3599,21 +3603,9 @@ hostapd_interface_init_bss(struct hapd_i
  	wpa_printf(MSG_INFO, "Configuration file: %s (phy %s)%s",
  		   config_fname, phy, iface ? "" : " --> new PHY");
  
@@ -181,11 +181,14 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
 -	if (!conf)
 -		return NULL;
 -
- #ifdef CONFIG_IEEE80211BE
- 	/* AP MLD can be enabled with the same interface name, so even if we
- 	 * get the interface, we still need to allocate a new hostapd_iface
-@@ -3613,7 +3613,7 @@ hostapd_interface_init_bss(struct hapd_i
- 
+-#ifdef CONFIG_IEEE80211BE
+-	/* AP MLD can be enabled with the same interface name, so even if we
+-	 * get the interface, we still need to allocate a new hostapd_iface
+-	 * structure. */
+-	if (conf->bss[0]->mld_ap)
+-		iface = NULL;
+-#endif /* CONFIG_IEEE80211BE */
+-
  	if (iface) {
  		struct hostapd_bss_config **tmp_conf;
 -		struct hostapd_data **tmp_bss;
@@ -193,7 +196,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  		struct hostapd_bss_config *bss;
  		const char *ifname;
  
-@@ -3625,12 +3625,23 @@ hostapd_interface_init_bss(struct hapd_i
+@@ -3625,12 +3617,23 @@ hostapd_interface_init_bss(struct hapd_i
  		}
  
  		ifname = conf->bss[0]->iface;
@@ -219,7 +222,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <quic_ssreeela@quicinc.com>
  
  		tmp_conf = os_realloc_array(
  			iface->conf->bss, iface->conf->num_bss + 1,
-@@ -5493,6 +5504,28 @@ hostapd_interface_update_fils_ubpr(struc
+@@ -5493,6 +5496,28 @@ hostapd_interface_update_fils_ubpr(struc
  }
  
  
