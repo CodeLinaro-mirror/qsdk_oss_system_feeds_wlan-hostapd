@@ -22,13 +22,11 @@ Signed-off-by: Vivek Chettri <vchettri@qti.qualcomm.com>
  src/ap/sta_info.c       |  3 +++
  3 files changed, 33 insertions(+), 2 deletions(-)
 
-diff --git a/src/ap/ieee802_11.h b/src/ap/ieee802_11.h
-index 0980ad3..02870bf 100644
 --- a/src/ap/ieee802_11.h
 +++ b/src/ap/ieee802_11.h
-@@ -401,6 +401,9 @@ int hostapd_process_assoc_ml_info(struct hostapd_data *hapd,
- 
- #ifdef CONFIG_IEEE80211BE
+@@ -453,6 +453,9 @@ void hostapd_link_reconf_resp_tx_status(
+ 					const struct ieee80211_mgmt *mgmt,
+ 					size_t len, int ok);
  void hostapd_epcs_timeout_handler(void *eloop_ctx, void *timeout_ctx);
 +int hostapd_configure_epcs(struct hostapd_data *hapd,
 +				  struct sta_info *sta,
@@ -36,19 +34,17 @@ index 0980ad3..02870bf 100644
  #endif /* CONFIG_IEEE80211BE */
  u8 * hostapd_fragment_multi_link_element(struct wpabuf *buf, u8 *pos);
  #endif /* IEEE802_11_H */
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index a134648..e250d29 100644
 --- a/src/ap/ieee802_11_eht.c
 +++ b/src/ap/ieee802_11_eht.c
-@@ -21,6 +21,7 @@
- #include "utils/eloop.h"
- #include "wmm.h"
- #include "ap/ctrl_iface_ap.h"
+@@ -24,6 +24,7 @@
+ #include "wpa_auth.h"
+ #include "common/ocv.h"
+ #include "common/wpa_ctrl.h"
 +#include <linux/netfilter.h>
  
  static u16 ieee80211_eht_ppet_size(u16 ppe_thres_hdr, const u8 *phy_cap_info)
  {
-@@ -1924,12 +1925,13 @@ void hostapd_epcs_timeout_handler(void *eloop_ctx, void *timeout_ctx)
+@@ -3172,12 +3173,13 @@ void hostapd_epcs_timeout_handler(void *
  	mld_info->epcs.timer_started = false;
  }
  
@@ -63,7 +59,7 @@ index a134648..e250d29 100644
  
  	if (hapd->driver == NULL)
  		return -1;
-@@ -1960,12 +1962,24 @@ static int hostapd_configure_epcs(struct hostapd_data *hapd,
+@@ -3208,12 +3210,24 @@ static int hostapd_configure_epcs(struct
  		return -1;
  	}
  
@@ -88,7 +84,7 @@ index a134648..e250d29 100644
  	if (qm_resp.qm_resp_desc[0].qm_id != qm_req.qm_req_desc[0].qm_id) {
  		wpa_printf(MSG_ERROR, "EPCS QM ID mismatch in response:%u",
  			   qm_resp.qm_resp_desc[0].qm_id);
-@@ -1978,6 +1992,18 @@ static int hostapd_configure_epcs(struct hostapd_data *hapd,
+@@ -3226,6 +3240,18 @@ static int hostapd_configure_epcs(struct
  		return -1;
  	}
  
@@ -107,7 +103,7 @@ index a134648..e250d29 100644
  	return 0;
  }
  
-@@ -2091,7 +2117,6 @@ failed:
+@@ -3339,7 +3365,6 @@ failed:
  			   "for sta with mld addr" MACSTR, prev_epcs_state, epcs_info->action_code, sta_epcs->state,
  			   MAC2STR(sta->mld_info.common_info.mld_addr));
  		return -1;
@@ -115,11 +111,9 @@ index a134648..e250d29 100644
  	} else {
  		if (sta_epcs->state == EPCS_STATE_DISABLED)
  			ret = hostapd_configure_epcs(hapd, sta, QM_REMOVE_REQ);
-diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index c3c202a..b28b5bc 100644
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -563,6 +563,9 @@ void ap_free_sta(struct hostapd_data *hapd, struct sta_info *sta)
+@@ -563,6 +563,9 @@ void ap_free_sta(struct hostapd_data *ha
  	os_free(sta->ifname_wds);
  
  #ifdef CONFIG_IEEE80211BE
@@ -128,7 +122,4 @@ index c3c202a..b28b5bc 100644
 +	hostapd_configure_epcs(hapd, sta, QM_REMOVE_REQ);
  	eloop_cancel_timeout(hostapd_epcs_timeout_handler, hapd, sta);
  	ap_sta_free_sta_profile(&sta->mld_info);
- #endif /* CONFIG_IEEE80211BE */
--- 
-2.34.1
-
+ 	ml_deinit_link_reconf_req(&sta->reconf_req);
