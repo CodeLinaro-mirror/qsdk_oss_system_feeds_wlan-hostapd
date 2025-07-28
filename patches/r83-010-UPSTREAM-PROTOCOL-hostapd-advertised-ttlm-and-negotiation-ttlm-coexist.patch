@@ -26,7 +26,7 @@ Signed-off-by: Amith A <amitajit@qti.qualcomm.com>
 
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -4767,7 +4767,14 @@ static int hostapd_ctrl_iface_negotiated
+@@ -4776,7 +4776,14 @@ static int hostapd_ctrl_iface_negotiated
  		}
  	}
  
@@ -43,7 +43,7 @@ Signed-off-by: Amith A <amitajit@qti.qualcomm.com>
  	os_free(ongoing_ttlm);
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
-@@ -2962,6 +2962,40 @@ static void hostapd_mld_iface_disable(st
+@@ -2966,6 +2966,40 @@ static void hostapd_mld_iface_disable(st
  		hostapd_iface_disable(link_bss);
  }
  
@@ -84,7 +84,7 @@ Signed-off-by: Amith A <amitajit@qti.qualcomm.com>
  static void hostapd_event_update_ttlm_status(struct hostapd_data *hapd,
  					     struct ttlm_update_event *ttlm_update_event)
  {
-@@ -2985,16 +3019,22 @@ static void hostapd_event_update_ttlm_st
+@@ -2989,16 +3023,22 @@ static void hostapd_event_update_ttlm_st
  
  		hostapd_ttlm_handle_mapping_switch_time_expiry(ttlm_ctx,
  							       hapd->mld_link_id);
@@ -112,24 +112,8 @@ Signed-off-by: Amith A <amitajit@qti.qualcomm.com>
  		wpa_printf(MSG_ERROR, "TTLM: Invalid status");
 --- a/src/ap/ttlm.c
 +++ b/src/ap/ttlm.c
-@@ -1199,6 +1199,7 @@ void hostapd_handle_ttlm_req(struct host
- 	if (ieee802_11_parse_elems(pos, ie_len, &elems, 0) == ParseFailed) {
- 		wpa_printf(MSG_ERROR, "Could not parse TTLM request frame received "
- 			   MACSTR, MAC2STR(mgmt->sa));
-+		os_free(ongoing_ttlm);
- 		return;
- 	}
- 
-@@ -1212,6 +1213,7 @@ void hostapd_handle_ttlm_req(struct host
- 				  &ttlm_info, sizeof(struct ttlm_info));
- 		} else {
- 			wpa_printf(MSG_ERROR, "Failed to parse TTLM IE");
-+			os_free(ongoing_ttlm);
- 			return;
- 		}
- 	}
-@@ -1224,11 +1226,17 @@ void hostapd_handle_ttlm_req(struct host
- 			ongoing_ttlm->ttlm_info[dir].direction = TTLM_DIRECTION_INVALID;
+@@ -1243,6 +1243,11 @@ void hostapd_handle_ttlm_req(struct host
+ 		ongoing_ttlm->ttlm_resp_type = TTLM_RESP_TYPE_DENIED_TID_TO_LINK_MAPPING;
  	}
  
 +	if (!is_valid_negotiated_ttlm(&hapd->mld->ttlm_ctx.established_ttlm,
@@ -137,18 +121,12 @@ Signed-off-by: Amith A <amitajit@qti.qualcomm.com>
 +		ongoing_ttlm->ttlm_resp_type = TTLM_RESP_TYPE_DENIED_TID_TO_LINK_MAPPING;
 +	}
 +
- 	os_memcpy(&sta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info, ongoing_ttlm,
- 		  sizeof(struct ttlm_ongoing_negotiation_info));
- 
- 	wpa_printf(MSG_DEBUG, "TTLM request has been parsed successfully");
- 	hostapd_send_ttlm_resp_action(hapd, ongoing_ttlm, sta);
-+	os_free(ongoing_ttlm);
- }
- 
- 
+ 	configured_ttlm = &sta->mld_info.tid_map_info.ttlm_ongoing_negotiation_info;
+ 	if (configured_ttlm->ttlm_resp_type !=
+ 	    TTLM_RESP_TYPE_PREFERRED_TID_TO_LINK_MAPPING && configured_ttlm->ttlm_resp_type !=
 --- a/src/ap/ttlm.h
 +++ b/src/ap/ttlm.h
-@@ -242,4 +242,7 @@ void hostapd_ttlm_handle_mapping_switch_
+@@ -241,4 +241,7 @@ void hostapd_ttlm_handle_mapping_switch_
  void hostapd_ttlm_handle_expected_duration_expiry(struct ttlm_context *ttlm_ctx,
  						  u8 link_id);
  int hostapd_send_advertised_ttlm(struct hostapd_data *hapd, struct mlo_ttlm_ie *ttlm_conf);
