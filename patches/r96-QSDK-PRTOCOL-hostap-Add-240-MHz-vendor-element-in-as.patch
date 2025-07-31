@@ -1,0 +1,37 @@
+From b8eb6d19352eb6ae75524ac21c93256cbd165945 Mon Sep 17 00:00:00 2001
+From: Manish Dharanenthiran <mdharane@qti.qualcomm.com>
+Date: Wed, 30 Jul 2025 23:59:47 +0530
+Subject: [PATCH] QSDK:PROTOCOL:hostap: Add 240 MHz vendor element in (Re)association response
+
+Currently, 240 MHz vendor element is getting added in association respone
+only for the assoc link. But, for non-assoc link, vendor element has to
+be added in the per-sta profile as well. Because of this, station(s) are
+not getting associated when 240MHz bandwidth is enabled in 5GHz link as
+it sees the bandwidth mismatch between (Re)association response and
+beacon of the non-assoc link(s).
+
+Fix this by adding the 240 MHz vendor element inside per-sta profile for
+non-assoc link.
+
+Feature: 240 MHz (QtoQ)
+
+Signed-off-by: Manish Dharanenthiran <mdharane@qti.qualcomm.com>
+---
+ src/ap/ieee802_11.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 8586f56..6d4a29b 100644
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -4967,6 +4967,7 @@ void ieee80211_ml_build_assoc_resp(struct hostapd_data *hapd,
+ 		if (hapd->iconf->ieee80211be && !hapd->conf->disable_11be) {
+ 			p = hostapd_eid_eht_capab(hapd, p, IEEE80211_MODE_AP);
+ 			p = hostapd_eid_eht_operation(hapd, p);
++			p = hostapd_eid_vendor_240mhz(hapd, p, IEEE80211_MODE_AP);
+ 		}
+ 	}
+ 
+-- 
+2.34.1
+
