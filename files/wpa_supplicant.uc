@@ -1,6 +1,6 @@
 let libubus = require("ubus");
 import { open, readfile } from "fs";
-import { wdev_create, wdev_set_mesh_params, wdev_remove, is_equal, wdev_set_up, vlist_new, phy_open } from "common";
+import { wdev_create, wdev_set_mesh_params, wdev_remove, is_equal, wdev_get_radio_mask, wdev_set_radio_mask, wdev_set_up, vlist_new, phy_open } from "common";
 
 let ubus = libubus.connect();
 
@@ -93,6 +93,18 @@ function iface_start(phydev, iface, macaddr_list)
 		let ret = phydev.wdev_add(ifname, wdev_config);
 		if (ret)
 			wpas.printf(`Failed to create device ${ifname}: ${ret}`);
+	} else {
+		let radio_mask = wdev_get_radio_mask(ifname);
+
+		if (radio_mask == null) {
+			wpas.printf(`[error] Failed to get radio mask for ${ifname}`);
+			return null;
+		}
+
+		// Configure the radio mask for each radio during BSS creation
+		radio_mask = (radio_mask | (1 << phydev.radio));
+		wdev_set_radio_mask(ifname, radio_mask);
+		wpas.printf(`[debug] preserving radio mask ${radio_mask} for ML BSS ${ifname} radio index ${phydev.radio}`);
 	}
 	wdev_set_up(ifname, true);
 	wpas.add_iface(iface.config, radio);
