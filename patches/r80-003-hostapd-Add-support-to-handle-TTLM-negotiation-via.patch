@@ -41,8 +41,8 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  };
 --- a/src/ap/ieee802_11.c
 +++ b/src/ap/ieee802_11.c
-@@ -5332,6 +5332,11 @@ static int add_associated_sta(struct hos
- 					     sta->eht_240mhz_len);
+@@ -5336,6 +5336,11 @@ static int add_associated_sta(struct hos
+ 		p = hostapd_eid_eht_operation(hapd, p);
  		hostapd_get_epcs_capab(hapd, sta);
  	}
 +
@@ -320,9 +320,9 @@ Signed-off-by: Dhanavandhana Kannan <dhanavan@qti.qualcomm.com>
  	u8 ssid_len;
  	u8 supp_rates_len;
 @@ -205,6 +208,7 @@ struct ieee802_11_elems {
- 
- 	const u8 *eht_240mhz_capab;
- 	u8 eht_240mhz_len;
+ 	 * fragmented element.
+ 	 */
+ 	unsigned int num_frag_elems;
 +	u8 ttlm_num;
  };
  

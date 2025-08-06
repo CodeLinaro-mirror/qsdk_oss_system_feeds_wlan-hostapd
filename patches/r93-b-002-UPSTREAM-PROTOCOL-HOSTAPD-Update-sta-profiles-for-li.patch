@@ -25,16 +25,16 @@ Signed-off-by: Mohan Kumar G <mkumarg@qti.qualcomm.com>
  src/ap/sta_info.c       |  2 +-
  5 files changed, 43 insertions(+), 9 deletions(-)
 
-diff --git a/src/ap/ap_drv_ops.c b/src/ap/ap_drv_ops.c
-index 52d7d91..92d9a4b 100644
---- a/src/ap/ap_drv_ops.c
-+++ b/src/ap/ap_drv_ops.c
-@@ -533,9 +533,11 @@ int hostapd_sta_add(struct hostapd_data *hapd,
+Index: hostapd-2025.03.10~95ad7115/src/ap/ap_drv_ops.c
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/ap/ap_drv_ops.c
++++ hostapd-2025.03.10~95ad7115/src/ap/ap_drv_ops.c
+@@ -531,9 +531,11 @@ int hostapd_sta_add(struct hostapd_data
+ 		    const struct ieee80211_he_6ghz_band_cap *he_6ghz_capab,
+ 		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
  		    int set, const u8 *link_addr, bool mld_link_sta,
- 		    u16 eml_cap,
- 		    const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab,
--		    size_t eht_240mhz_len)
-+		    size_t eht_240mhz_len, int type)
+-		    u16 eml_cap)
++		    u16 eml_cap, int type)
  {
  	struct hostapd_sta_add_params params;
 +	struct hostapd_data *assoc_hapd;
@@ -42,7 +42,7 @@ index 52d7d91..92d9a4b 100644
  
  	if (hapd->driver == NULL)
  		return 0;
-@@ -579,6 +581,26 @@ int hostapd_sta_add(struct hostapd_data *hapd,
+@@ -575,6 +577,26 @@ int hostapd_sta_add(struct hostapd_data
  		if (link_addr)
  			params.eml_cap = eml_cap;
  	}
@@ -69,24 +69,24 @@ index 52d7d91..92d9a4b 100644
  #endif /* CONFIG_IEEE80211BE */
  
  	return hapd->driver->sta_add(hapd->drv_priv, &params);
-diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
-index d738b52..d72af0d 100644
---- a/src/ap/ap_drv_ops.h
-+++ b/src/ap/ap_drv_ops.h
-@@ -52,7 +52,7 @@ int hostapd_sta_add(struct hostapd_data *hapd,
+Index: hostapd-2025.03.10~95ad7115/src/ap/ap_drv_ops.h
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/ap/ap_drv_ops.h
++++ hostapd-2025.03.10~95ad7115/src/ap/ap_drv_ops.h
+@@ -50,7 +50,7 @@ int hostapd_sta_add(struct hostapd_data
+ 		    const struct ieee80211_he_6ghz_band_cap *he_6ghz_capab,
+ 		    u32 flags, u8 qosinfo, u8 vht_opmode, int supp_p2p_ps,
  		    int set, const u8 *link_addr, bool mld_link_sta,
- 		    u16 eml_cap,
- 		    const struct ieee80211_240mhz_vendor_oper *eht_240mhz_capab,
--		    size_t eht_240mhz_len);
-+		    size_t eht_240mhz_len, int type);
+-		    u16 eml_cap);
++		    u16 eml_cap, int type);
  int hostapd_set_privacy(struct hostapd_data *hapd, int enabled);
  int hostapd_set_generic_elem(struct hostapd_data *hapd, const u8 *elem,
  			     size_t elem_len);
-diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
-index 081f316..7486cfa 100644
---- a/src/ap/ieee802_11.c
-+++ b/src/ap/ieee802_11.c
-@@ -5104,7 +5104,7 @@ int ieee80211_ml_process_link(struct hostapd_data *hapd,
+Index: hostapd-2025.03.10~95ad7115/src/ap/ieee802_11.c
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/ap/ieee802_11.c
++++ hostapd-2025.03.10~95ad7115/src/ap/ieee802_11.c
+@@ -5099,7 +5099,7 @@ int ieee80211_ml_process_link(struct hos
  	/* TODO: What other processing is required? */
  
  	if (!offload &&
@@ -95,16 +95,16 @@ index 081f316..7486cfa 100644
  		status = WLAN_STATUS_AP_UNABLE_TO_HANDLE_NEW_STA;
  out:
  	wpabuf_free(mlbuf);
-@@ -5192,7 +5192,7 @@ int hostapd_process_assoc_ml_info(struct hostapd_data *hapd,
+@@ -5187,7 +5187,7 @@ int hostapd_process_assoc_ml_info(struct
  					    0, NULL, NULL, NULL, 0, NULL, 0, NULL,
  					    sta->flags, 0, 0, 0, 0,
- 					    mld_link_addr, mld_link_sta, eml_cap,
--					    NULL, 0)) {
-+					    NULL, 0, reassoc)) {
+ 					    mld_link_addr, mld_link_sta,
+-					    eml_cap)) {
++					    eml_cap, reassoc)) {
  				hostapd_logger(hapd, sta->addr,HOSTAPD_MODULE_IEEE80211,HOSTAPD_LEVEL_NOTICE,
  					       "Could not add STA to kernel driver");
  				return -1;
-@@ -5268,7 +5268,7 @@ static void send_deauth(struct hostapd_data *hapd, const u8 *addr,
+@@ -5263,7 +5263,7 @@ static void send_deauth(struct hostapd_d
  
  
  static int add_associated_sta(struct hostapd_data *hapd,
@@ -113,7 +113,7 @@ index 081f316..7486cfa 100644
  {
  	struct ieee80211_ht_capabilities ht_cap;
  	struct ieee80211_vht_capabilities vht_cap;
-@@ -5279,6 +5279,7 @@ static int add_associated_sta(struct hostapd_data *hapd,
+@@ -5273,6 +5273,7 @@ static int add_associated_sta(struct hos
  	const u8 *mld_link_addr = NULL;
  	bool mld_link_sta = false;
  	u16 eml_cap = 0;
@@ -121,7 +121,7 @@ index 081f316..7486cfa 100644
  
  #ifdef CONFIG_IEEE80211BE
  	if (ap_sta_is_mld(hapd, sta)) {
-@@ -5320,12 +5321,12 @@ static int add_associated_sta(struct hostapd_data *hapd,
+@@ -5314,12 +5315,12 @@ static int add_associated_sta(struct hos
  	 * STA entry is removed from the list.
  	 */
  	wpa_printf(MSG_DEBUG, "Add associated STA " MACSTR
@@ -136,21 +136,21 @@ index 081f316..7486cfa 100644
  
  	if (!ap_sta_is_mld(hapd, sta) && !sta->added_unassoc &&
  	    (!(sta->flags & WLAN_STA_AUTHORIZED) ||
-@@ -5390,7 +5391,8 @@ static int add_associated_sta(struct hostapd_data *hapd,
+@@ -5372,7 +5373,8 @@ static int add_associated_sta(struct hos
+ 			    sta->he_6ghz_capab,
+ 			    sta->flags | WLAN_STA_ASSOC, sta->qosinfo,
  			    sta->vht_opmode, sta->p2p_ie ? 1 : 0,
- 			    set, mld_link_addr, mld_link_sta, eml_cap,
- 			    sta->flags & WLAN_STA_EHT? sta->eht_240mhz_capab : NULL,
--			    sta->flags & WLAN_STA_EHT? sta->eht_240mhz_len : 0)) {
-+			    sta->flags & WLAN_STA_EHT? sta->eht_240mhz_len : 0,
+-			    set, mld_link_addr, mld_link_sta, eml_cap)) {
++			    set, mld_link_addr, mld_link_sta, eml_cap,
 +			    type)) {
  		hostapd_logger(hapd, sta->addr,
  			       HOSTAPD_MODULE_IEEE80211, HOSTAPD_LEVEL_NOTICE,
  			       "Could not %s STA to kernel driver",
-diff --git a/src/ap/ieee802_11_eht.c b/src/ap/ieee802_11_eht.c
-index 41929d3..ec72d9b 100644
---- a/src/ap/ieee802_11_eht.c
-+++ b/src/ap/ieee802_11_eht.c
-@@ -2590,6 +2590,7 @@ hostapd_handle_link_reconf_req(struct hostapd_data *hapd, const u8 *buf,
+Index: hostapd-2025.03.10~95ad7115/src/ap/ieee802_11_eht.c
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/ap/ieee802_11_eht.c
++++ hostapd-2025.03.10~95ad7115/src/ap/ieee802_11_eht.c
+@@ -2518,6 +2518,7 @@ hostapd_handle_link_reconf_req(struct ho
  	u8 dialog_token;
  	const struct ieee80211_mgmt *mgmt = (const struct ieee80211_mgmt *) buf;
  	struct link_reconf_req_list *req_list = NULL;
@@ -158,7 +158,7 @@ index 41929d3..ec72d9b 100644
  	const u8 *pos = NULL;
  	int ret = -1;
  
-@@ -2700,6 +2701,15 @@ skip_oci_validation:
+@@ -2628,6 +2629,15 @@ skip_oci_validation:
  	if (!hostapd_validate_link_reconf_req(hapd, assoc_sta, req_list))
  		goto out;
  
@@ -174,19 +174,16 @@ index 41929d3..ec72d9b 100644
  	req_list->dialog_token = dialog_token;
  	ret = hostapd_send_link_reconf_resp(hapd, assoc_sta, req_list);
  	if (ret) {
-diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index 4690220..70d4002 100644
---- a/src/ap/sta_info.c
-+++ b/src/ap/sta_info.c
-@@ -2205,7 +2205,7 @@ int ap_sta_re_add(struct hostapd_data *hapd, struct sta_info *sta, int check_aut
+Index: hostapd-2025.03.10~95ad7115/src/ap/sta_info.c
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/ap/sta_info.c
++++ hostapd-2025.03.10~95ad7115/src/ap/sta_info.c
+@@ -2203,7 +2203,7 @@ int ap_sta_re_add(struct hostapd_data *h
+ 			    sta->supported_rates_len,
  			    0, NULL, NULL, NULL, 0, NULL, 0, NULL,
  			    sta->flags, 0, 0, 0, 0,
- 			    mld_link_addr, mld_link_sta, eml_cap,
--			    NULL, 0)) {
-+			    NULL, 0, 0)) {
+-			    mld_link_addr, mld_link_sta, eml_cap)) {
++			    mld_link_addr, mld_link_sta, eml_cap, 0)) {
  		hostapd_logger(hapd, sta->addr,
  			       HOSTAPD_MODULE_IEEE80211,
  			       HOSTAPD_LEVEL_NOTICE,
--- 
-2.34.1
-
