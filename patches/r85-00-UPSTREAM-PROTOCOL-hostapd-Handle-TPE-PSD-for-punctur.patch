@@ -64,8 +64,10 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  src/drivers/driver_nl80211_capa.c |   2 -
  6 files changed, 284 insertions(+), 79 deletions(-)
 
---- a/src/ap/hostapd.c
-+++ b/src/ap/hostapd.c
+Index: hostapd-2025.03.10~95ad7115/src/ap/hostapd.c
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/ap/hostapd.c
++++ hostapd-2025.03.10~95ad7115/src/ap/hostapd.c
 @@ -6608,7 +6608,7 @@ hostapd_reg_get_eirp_from_chan_list(stru
   *
   * Return: 0 on success, -1 on failure
@@ -106,9 +108,19 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  		ret = hapd_eirp_to_psd(reg_eirp_pwr, is_twice_pwr ? 2 : 1,
  				       effective_bw, psd_pwr);
  		if (ret) {
---- a/src/ap/hostapd.h
-+++ b/src/ap/hostapd.h
-@@ -1334,4 +1334,26 @@ int hostapd_epcs_handle_cli(struct hosta
+Index: hostapd-2025.03.10~95ad7115/src/ap/hostapd.h
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/ap/hostapd.h
++++ hostapd-2025.03.10~95ad7115/src/ap/hostapd.h
+@@ -1066,6 +1066,7 @@ static inline bool hostapd_mld_is_first_
+ 
+ #endif /* CONFIG_IEEE80211BE */
+ 
++#define SP_AP_AND_CLIENT_POWER_DIFF            6
+ #define CONV_20MHZ_EIRP_TO_PSD_IN_DBM         13
+ #define SP_AP_AND_CLIENT_POWER_DIFF_IN_SCALE 600
+ #define TPE_NUM_POWER_SUPP_IN_11BE             5
+@@ -1334,4 +1335,26 @@ int hostapd_epcs_handle_cli(struct hosta
  bool
  hostapd_verify_action_frame_has_min_length(const struct ieee80211_mgmt *mgmt,
  					   size_t len);
@@ -135,8 +147,10 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
 +				   bool is_client_lookup, bool is_twice_pwr,
 +				   s16 *psd_pwr);
  #endif /* HOSTAPD_H */
---- a/src/ap/ieee802_11.c
-+++ b/src/ap/ieee802_11.c
+Index: hostapd-2025.03.10~95ad7115/src/ap/ieee802_11.c
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/ap/ieee802_11.c
++++ hostapd-2025.03.10~95ad7115/src/ap/ieee802_11.c
 @@ -8162,25 +8162,33 @@ static u8 num_psd_values_to_psd_count(in
  }
  
@@ -223,7 +237,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  			max_eirp_arr_lpi[i] =
  			    hostapd_get_eirp_pwr(iface, freq, bw_cen_freq, bw,
  						 iface->conf->punct_bitmap,
-@@ -8395,41 +8410,153 @@ static u8 *hostapd_add_eirp_tpe(struct h
+@@ -8395,41 +8410,156 @@ static u8 *hostapd_add_eirp_tpe(struct h
  				    tx_pwr_ext_array, tx_pwr_cat);
  }
  
@@ -322,8 +336,11 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
 +	reg_psd *= PSD_SCALE;
 +	oobe_psd = MIN(oobe_psd, reg_psd);
 +	oobe_psd /= PSD_SCALE;
++    	/* Primary 20 MHz PSD shouldnt consider the mandatory power difference
++	 * of SP AP and client SP as per regulatory guidelines.
++	 */
 +	if (chan_freq == iface->freq && primary_20_mhz_psd)
-+	    *primary_20_mhz_psd = oobe_psd;
++	    *primary_20_mhz_psd = oobe_psd + SP_AP_AND_CLIENT_POWER_DIFF;
 +
 +	wpa_printf(MSG_DEBUG, "OOBE PSD for %d MHz channel %d is %d dBm, primary_20_mhz_psd = %d",
 +		   20, chan_freq, oobe_psd, *primary_20_mhz_psd);
@@ -397,7 +414,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  }
  
  /**
-@@ -8990,6 +9117,56 @@ get_min_psd_values(struct afc_sp_reg_inf
+@@ -8990,6 +9120,56 @@ get_min_psd_values(struct afc_sp_reg_inf
  	}
  }
  
@@ -418,7 +435,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
 +						     pwr_type,
 +						     &num_channels_6ghz,
 +						     &chan_idx);
-+	if (!ch_6g_lst) {
++	if (!ch_6g_lst || (ch_6g_lst->flag & HOSTAPD_CHAN_DISABLED)) {
 +		int ret;
 +
 +		/* The given freq is not found in SP power mode channel list, so it is
@@ -430,7 +447,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
 +			   pwr_type, freq);
 +		ret = hostapd_reg_get_psd_from_chan_list(iface, freq, freq, CHWIDTH_20, 0,
 +							 NL80211_REG_AP_LPI,
-+							 client_mode, true, false,
++							 NL80211_REG_REGULAR_CLIENT_LPI, true, false,
 +							 &psd_power);
 +		if (ret)
 +			psd_power = CHAN_MIN_TX_POWER;
@@ -454,7 +471,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  static int get_psd_values(struct hostapd_data *hapd, int non_11be_start_idx,
  			  int chan_start_idx, int non_11be_chan_count,
  			  int total_chan_count, u8 *tx_pwr_count,
-@@ -9001,8 +9178,12 @@ static int get_psd_values(struct hostapd
+@@ -9001,8 +9181,12 @@ static int get_psd_values(struct hostapd
  	u16 punct_bitmap = iface->conf->punct_bitmap;
  	u16 non_be_chan_index_map = 0;
  	int is_different_psd = 0, non11be_chan_pos = non_11be_start_idx - chan_start_idx;
@@ -468,7 +485,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  
  	if (!tx_pwr_array || ((total_chan_count - non_11be_chan_count) && !tx_pwr_ext_array))
  		return -1;
-@@ -9014,7 +9195,8 @@ static int get_psd_values(struct hostapd
+@@ -9014,7 +9198,8 @@ static int get_psd_values(struct hostapd
  	}
  
  	start_chan_psd = get_psd_for_chan_idx(hapd, non_11be_start_idx, chan_data,
@@ -478,7 +495,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  
  	for (i = non_11be_start_idx; i < non_11be_start_idx + non_11be_chan_count;
  	     i++, non11be_chan_pos++) {
-@@ -9024,7 +9206,8 @@ static int get_psd_values(struct hostapd
+@@ -9024,7 +9209,8 @@ static int get_psd_values(struct hostapd
  		}
  		non_be_chan_index_map |= BIT(non11be_chan_pos);
  		chan_psd = get_psd_for_chan_idx(hapd, i, chan_data, client_mode,
@@ -488,7 +505,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  		*tx_pwr_array = chan_psd * 2;
  		tx_pwr_array++;
  		if (!is_different_psd && (start_chan_psd != chan_psd))
-@@ -9034,6 +9217,13 @@ static int get_psd_values(struct hostapd
+@@ -9034,6 +9220,13 @@ static int get_psd_values(struct hostapd
  	/* For 11be the TPE extension parameter added if the bw is 320MHZ or if
  	 * any channel is punctured in 320MHZ/160MHZ/80MHZ
  	 */
@@ -502,7 +519,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  	for (i = chan_start_idx, j = 0; i < chan_start_idx + total_chan_count; i++, j++) {
  		if (i >= chan_data.num_channels) {
  			wpa_printf(MSG_ERROR, "Invalid channel index :%d", i);
-@@ -9042,24 +9232,27 @@ static int get_psd_values(struct hostapd
+@@ -9042,24 +9235,27 @@ static int get_psd_values(struct hostapd
  		if (non_be_chan_index_map & BIT(j)) { /* filled in 11ax TPE*/
  			continue;
  		}
@@ -539,7 +556,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  		*tx_pwr_count = 0;
  		*tx_pwr_ext_count = 0;
  	} else {
-@@ -9073,7 +9266,6 @@ static int get_psd_values(struct hostapd
+@@ -9073,7 +9269,6 @@ static int get_psd_values(struct hostapd
  	return 0;
  }
  
@@ -547,7 +564,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  static u8 *hostapd_add_psd_tpe(struct hostapd_data *hapd, u8 client_mode,
  			       u8 *eid, u8 tx_pwr_cat,
  			       enum max_tx_pwr_interpretation tx_pwr_intrpn,
-@@ -9085,10 +9277,12 @@ static u8 *hostapd_add_psd_tpe(struct ho
+@@ -9085,10 +9280,12 @@ static u8 *hostapd_add_psd_tpe(struct ho
  	s8 tx_pwr_array[MAX_PSD_TPE_POWER_COUNT] = {0};
  	u8 tx_pwr_count = 0, tx_pwr_ext_count = 0;
   	struct hostapd_iface *iface = hapd->iface;
@@ -562,7 +579,7 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  		return eid;
  
  	if (get_chan_list(hapd, &non_11be_start_idx, &chan_start_idx,
-@@ -9096,6 +9290,10 @@ static u8 *hostapd_add_psd_tpe(struct ho
+@@ -9096,6 +9293,10 @@ static u8 *hostapd_add_psd_tpe(struct ho
  		wpa_printf(MSG_ERROR, "Unable to get chan list");
  		goto free;
  	}
@@ -573,8 +590,10 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  
  	if (get_psd_values(hapd, non_11be_start_idx, chan_start_idx,
  			   non_11be_chan_count, total_chan_count, &tx_pwr_count,
---- a/src/common/ieee802_11_defs.h
-+++ b/src/common/ieee802_11_defs.h
+Index: hostapd-2025.03.10~95ad7115/src/common/ieee802_11_defs.h
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/common/ieee802_11_defs.h
++++ hostapd-2025.03.10~95ad7115/src/common/ieee802_11_defs.h
 @@ -2972,6 +2972,7 @@ struct ieee80211_he_mu_edca_parameter_se
  /* Maximum transmit power in Y/2 dBm (-127..126); 127 indicates no maximum
   * transmit power is specified for the corresponding 20 MHz channel. */
@@ -583,8 +602,10 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  
  /* IEEE P802.11be/D5.0, Figure 9-704c - MLD Parameters subfield format */
  /* B0..B7: AP MLD ID */
---- a/src/drivers/driver.h
-+++ b/src/drivers/driver.h
+Index: hostapd-2025.03.10~95ad7115/src/drivers/driver.h
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/drivers/driver.h
++++ hostapd-2025.03.10~95ad7115/src/drivers/driver.h
 @@ -222,18 +222,6 @@ struct hostapd_channel_data {
  	 * eirp_power - EIRP power
  	 */
@@ -604,8 +625,10 @@ Signed-off-by: Priyadarshnee Srinivasan <priys@qti.qualcomm.com>
  };
  
  #define HE_MAC_CAPAB_0		0
---- a/src/drivers/driver_nl80211_capa.c
-+++ b/src/drivers/driver_nl80211_capa.c
+Index: hostapd-2025.03.10~95ad7115/src/drivers/driver_nl80211_capa.c
+===================================================================
+--- hostapd-2025.03.10~95ad7115.orig/src/drivers/driver_nl80211_capa.c
++++ hostapd-2025.03.10~95ad7115/src/drivers/driver_nl80211_capa.c
 @@ -2517,8 +2517,6 @@ static void nl80211_reg_rule_max_eirp(u3
  			if ((u32) chan->freq - 10 >= start &&
  			    (u32) chan->freq + 10 <= end) {
