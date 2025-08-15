@@ -68,7 +68,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  struct atf_peer_config *
  atf_allocate_peer_config(u8 *macaddr, struct atf_algo *algo)
  {
-@@ -1071,6 +1088,259 @@ atf_offload_build_wmm_ac_config(struct h
+@@ -1067,6 +1084,259 @@ atf_offload_build_wmm_ac_config(struct h
  	return 0;
  }
  
@@ -115,7 +115,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +			goto fail;
 +
 +		if (nla_put_u32(msg,
-+				QCA_WLAN_VENDOR_ATTR_ATF_OFFLOAD_SSID_GROUP_INDEX, i) ||
++				QCA_WLAN_VENDOR_ATTR_ATF_OFFLOAD_SSID_GROUP_INDEX, param->group_info[i].group_index) ||
 +		    nla_put_u32(msg,
 +				QCA_WLAN_VENDOR_ATTR_ATF_OFFLOAD_SSID_GROUP_AIRTIME_CONFIGURED,
 +				param->group_info[i].group_airtime) ||
@@ -328,7 +328,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  atf_send_calculated_airtime(struct hostapd_iface *iface)
  {
-@@ -1078,13 +1348,20 @@ atf_send_calculated_airtime(struct hosta
+@@ -1074,13 +1344,20 @@ atf_send_calculated_airtime(struct hosta
  	struct atf_peer_params atf_peer_param = {0};
  	struct atf_group_params atf_group_param = {0};
  	struct atf_group_wmm_ac_params atf_group_ac = {0};
@@ -349,7 +349,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  	ret = atf_offload_build_peer_config(iface, &atf_peer_param);
  	if (ret != 0)
  		return ret;
-@@ -1102,10 +1379,32 @@ atf_send_calculated_airtime(struct hosta
+@@ -1098,10 +1375,32 @@ atf_send_calculated_airtime(struct hosta
  		goto group_ac_free;
  	}
  
@@ -435,7 +435,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  /**
   * @struct atf_peer_config - per sta config.
   */
-@@ -282,6 +318,8 @@ void atf_trigger_config_timer(struct hos
+@@ -286,6 +322,8 @@ void atf_trigger_config_timer(struct hos
  void atf_join_leave_update(struct hostapd_iface *iface, struct sta_info *sta,
                             bool is_join);
  
