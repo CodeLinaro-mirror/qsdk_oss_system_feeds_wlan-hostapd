@@ -128,7 +128,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  
  	/*update to the group candidate list*/
  	dl_list_add(&peer_cfg->group->explicit_peers, &sta->atf_candidate_list);
-@@ -788,6 +807,315 @@ atf_build_candidate_list(struct hostapd_
+@@ -788,6 +807,320 @@ atf_build_candidate_list(struct hostapd_
  }
  
  
@@ -270,8 +270,13 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 +				peer_info[num_peers].percentage_peer =
 +				    sta->atf_peer.calculated_airtime;
 +				peer_info[num_peers].group_index = group->index;
-+				wpa_printf(MSG_DEBUG, "ATF: build peer " MACSTR " airtime %d group id %d %p",
-+					   MAC2STR(sta->addr), sta->atf_peer.calculated_airtime, group->index, group);
++
++				if (sta->atf_peer.atf_configured)
++					peer_info[num_peers].explicit_peer_flag = 1;
++
++				wpa_printf(MSG_DEBUG, "ATF: build peer " MACSTR " airtime %d group id %d %d",
++					   MAC2STR(sta->addr), sta->atf_peer.calculated_airtime, group->index,
++					   peer_info[num_peers].explicit_peer_flag);
 +				num_peers++;
 +			}
 +		}
@@ -444,7 +449,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  static void
  atf_cfg_timeout_handler(void *eloop_ctx, void *timeout_ctx)
  {
-@@ -819,6 +1147,14 @@ atf_cfg_timeout_handler(void *eloop_ctx,
+@@ -819,6 +1152,14 @@ atf_cfg_timeout_handler(void *eloop_ctx,
  		goto out;
  	}
  
