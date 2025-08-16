@@ -120,7 +120,48 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  		group->num_expl_peers++;
  	}
  
-@@ -744,6 +762,7 @@ atf_update_peer_cfg_to_peer(struct atf_a
+@@ -730,8 +748,38 @@ atf_update_peer_cfg_to_peer(struct atf_a
+ 			continue;
+ 
+ 		sta = ap_get_sta(bss, peer_cfg->addr);
+-		if (sta && ap_sta_is_authorized(sta))
+-			break;
++		if (!bss->mld) {
++			if (sta && ap_sta_is_authorized(sta))
++				break;
++		} else {
++			if (!sta) {
++				/* when user configured peer config with link address */
++				wpa_printf(MSG_DEBUG, "ATF: sta not found, find by link");
++				sta = ap_get_link_sta(bss, peer_cfg->addr);
++				if (sta && ap_sta_is_authorized(sta))
++					break;
++			} else if (sta->mld_info.mld_sta == true) {
++				/* when mld address is same as link address, we have
++				 * to ensure that its the link address as user
++				 * gives only link address
++				 */
++				sta = ap_get_link_sta(bss, peer_cfg->addr);
++				if (!sta) {
++					wpa_printf(MSG_DEBUG, "ATF: Link not found");
++					continue;
++				}
++				if (ap_sta_is_authorized(sta))
++					break;
++			} else {
++				/* when its legacy station, we just need to check the
++				 * authorized flag
++				 */
++				wpa_printf(MSG_DEBUG, "ATF:sta is not ml");
++				if (ap_sta_is_authorized(sta))
++					break;
++			}
++		}
++
+ 	}
+ 
+ 	if (sta == NULL) {
+@@ -744,6 +792,7 @@ atf_update_peer_cfg_to_peer(struct atf_a
  
  	sta->atf_peer.atf_configured = true;
  	sta->atf_peer.peer_cfg_ref = peer_cfg;
@@ -128,7 +169,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  
  	/*update to the group candidate list*/
  	dl_list_add(&peer_cfg->group->explicit_peers, &sta->atf_candidate_list);
-@@ -788,6 +807,320 @@ atf_build_candidate_list(struct hostapd_
+@@ -788,6 +837,327 @@ atf_build_candidate_list(struct hostapd_
  }
  
  
@@ -266,7 +307,14 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 +					continue;
 +
 +				ATF_CLEAR_STA_UPDATED(sta->atf_peer);
-+				memcpy(peer_info[num_peers].peer_macaddr, sta->addr, 6);
++				if (ap_sta_is_mld(hapd, sta)) {
++					wpa_printf(MSG_DEBUG, "ATF: Getting addrress from link %d " MACSTR " sta addr",
++						   hapd->mld_link_id, MAC2STR(sta->mld_info.links[hapd->mld_link_id].peer_addr));
++					memcpy(peer_info[num_peers].peer_macaddr, sta->mld_info.links[hapd->mld_link_id].peer_addr, 6);
++				} else {
++					memcpy(peer_info[num_peers].peer_macaddr, sta->addr, 6);
++				}
++
 +				peer_info[num_peers].percentage_peer =
 +				    sta->atf_peer.calculated_airtime;
 +				peer_info[num_peers].group_index = group->index;
@@ -275,7 +323,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 +					peer_info[num_peers].explicit_peer_flag = 1;
 +
 +				wpa_printf(MSG_DEBUG, "ATF: build peer " MACSTR " airtime %d group id %d %d",
-+					   MAC2STR(sta->addr), sta->atf_peer.calculated_airtime, group->index,
++					   MAC2STR(peer_info[num_peers].peer_macaddr), sta->atf_peer.calculated_airtime, group->index,
 +					   peer_info[num_peers].explicit_peer_flag);
 +				num_peers++;
 +			}
@@ -449,7 +497,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  static void
  atf_cfg_timeout_handler(void *eloop_ctx, void *timeout_ctx)
  {
-@@ -819,6 +1152,14 @@ atf_cfg_timeout_handler(void *eloop_ctx,
+@@ -819,6 +1189,14 @@ atf_cfg_timeout_handler(void *eloop_ctx,
  		goto out;
  	}
  
