@@ -56,7 +56,53 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -413,6 +413,7 @@ atf_allocate_algo()
+@@ -30,6 +30,27 @@ struct atf_offload *atf = NULL;
+ /* one second timeout for Airtime distribution */
+ #define ATF_ALGO_TIMEOUT 1
+ 
++void atf_offload_initialize_peer(struct sta_info *sta)
++{
++	wpa_printf(MSG_DEBUG, "ATF: initialize sta %p %p",
++		   sta, &sta->atf_candidate_list);
++	dl_list_init(&sta->atf_candidate_list);
++}
++
++
++void atf_offload_deinitialize_peer(struct sta_info *sta)
++{
++	wpa_printf(MSG_DEBUG, "ATF: deinitialize sta %p %p",
++		   sta, &sta->atf_candidate_list);
++	if (dl_list_empty(&sta->atf_candidate_list)) {
++		wpa_printf(MSG_ERROR, "ATF: sta already deinitialized");
++		return;
++	}
++	dl_list_del(&sta->atf_candidate_list);
++	dl_list_init(&sta->atf_candidate_list);
++}
++
++
+ struct atf_peer_config *
+ atf_allocate_peer_config(u8 *macaddr, struct atf_algo *algo)
+ {
+@@ -195,7 +216,7 @@ atf_clear_candidate_list(struct atf_grou
+ 		dl_list_for_each_safe(sta, tmp, &group->implicit_peers, struct sta_info,
+ 		                      atf_candidate_list)
+ 		{
+-			dl_list_del(&sta->atf_candidate_list);
++			atf_offload_deinitialize_peer(sta);
+ 		}
+ 	}
+ 
+@@ -203,7 +224,7 @@ atf_clear_candidate_list(struct atf_grou
+ 		dl_list_for_each_safe(sta, tmp, &group->explicit_peers, struct sta_info,
+ 		                      atf_candidate_list)
+ 		{
+-			dl_list_del(&sta->atf_candidate_list);
++			atf_offload_deinitialize_peer(sta);
+ 		}
+ 	}
+ }
+@@ -413,6 +434,7 @@ atf_allocate_algo()
  	dl_list_init(&algo->ssid_cfgs);
  	algo->num_peer_cfg = 0;
  	dl_list_init(&algo->peer_cfgs);
@@ -64,31 +110,40 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  
  	return algo;
  }
-@@ -441,10 +442,21 @@ atf_join_leave_update(struct hostapd_ifa
+@@ -440,11 +462,30 @@ atf_join_leave_update(struct hostapd_ifa
+ 	if (!iface || !iface->atf_algo || !sta)
  		return;
  
++	wpa_printf(MSG_DEBUG, "ATF: sta %p is %s %p", sta,
++		   is_join ? "join" : "leave" , &sta->atf_candidate_list);
  	ATF_SET_STA_TO_UPDATE(sta->atf_peer);
 -	if (is_join)
++
++	if (is_join && !dl_list_empty(&sta->atf_candidate_list)) {
++		wpa_printf(MSG_DEBUG, "ATF: sta %p is reassociating %p", sta, &sta->atf_candidate_list);
++		/* when sta reassociates, re-initialize peer so that
++		 * it would avoid adding two node
++		 */
++		atf_offload_deinitialize_peer(sta);
++	}
 +
 +	/* After reboot, when first client joins it should be
 +	 * full update.
 +	 */
 +	if (is_join && !iface->atf_algo->init_update_done) {
-+		dl_list_init(&sta->atf_candidate_list);
 +		ATF_OFFLOAD_SET_FULL_UPDATE(iface->atf_algo);
 +		iface->atf_algo->init_update_done = 1;
 +	} else if (is_join) {
-+		dl_list_init(&sta->atf_candidate_list);
  		ATF_OFFLOAD_SET_JOIN_UPDATE(iface->atf_algo);
 -	else
 +	} else {
-+		dl_list_del(&sta->atf_candidate_list);
++		atf_offload_deinitialize_peer(sta);
  		ATF_OFFLOAD_SET_LEAVE_UPDATE(iface->atf_algo);
 +	}
  
  	atf_trigger_config_timer(iface);
  }
-@@ -472,8 +484,13 @@ atf_reset_groups(struct atf_algo *algo)
+@@ -472,8 +513,13 @@ atf_reset_groups(struct atf_algo *algo)
  	if (dl_list_empty(&algo->groups))
  		return;
  
@@ -103,7 +158,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  }
  
  
-@@ -689,7 +706,7 @@ atf_update_peer(struct hostapd_data *hap
+@@ -689,7 +735,7 @@ atf_update_peer(struct hostapd_data *hap
  				   MAC2STR(sta->addr));
  			return -1;
  		}
@@ -112,7 +167,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  		dl_list_add(&group->implicit_peers, &sta->atf_candidate_list);
  		group->num_impl_peers++;
  	} else {
-@@ -701,6 +718,7 @@ atf_update_peer(struct hostapd_data *hap
+@@ -701,6 +747,7 @@ atf_update_peer(struct hostapd_data *hap
  
  			return -1;
  		}
@@ -120,7 +175,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  		group->num_expl_peers++;
  	}
  
-@@ -730,8 +748,38 @@ atf_update_peer_cfg_to_peer(struct atf_a
+@@ -730,8 +777,38 @@ atf_update_peer_cfg_to_peer(struct atf_a
  			continue;
  
  		sta = ap_get_sta(bss, peer_cfg->addr);
@@ -161,7 +216,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  	}
  
  	if (sta == NULL) {
-@@ -744,6 +792,7 @@ atf_update_peer_cfg_to_peer(struct atf_a
+@@ -744,6 +821,7 @@ atf_update_peer_cfg_to_peer(struct atf_a
  
  	sta->atf_peer.atf_configured = true;
  	sta->atf_peer.peer_cfg_ref = peer_cfg;
@@ -169,7 +224,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  
  	/*update to the group candidate list*/
  	dl_list_add(&peer_cfg->group->explicit_peers, &sta->atf_candidate_list);
-@@ -788,6 +837,327 @@ atf_build_candidate_list(struct hostapd_
+@@ -788,6 +866,327 @@ atf_build_candidate_list(struct hostapd_
  }
  
  
@@ -497,7 +552,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  static void
  atf_cfg_timeout_handler(void *eloop_ctx, void *timeout_ctx)
  {
-@@ -819,6 +1189,14 @@ atf_cfg_timeout_handler(void *eloop_ctx,
+@@ -819,6 +1218,14 @@ atf_cfg_timeout_handler(void *eloop_ctx,
  		goto out;
  	}
  
@@ -611,3 +666,56 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  #ifdef CONFIG_ATF_OFFLOAD
  
  void atf_offload_init(struct hapd_interfaces *ifaces);
+@@ -222,6 +284,10 @@ void atf_timer_stop(struct hostapd_iface
+ 
+ void atf_trigger_config_timer(struct hostapd_iface *iface);
+ 
++void atf_offload_initialize_peer(struct sta_info *sta);
++
++void atf_offload_deinitialize_peer(struct sta_info *sta);
++
+ void atf_join_leave_update(struct hostapd_iface *iface, struct sta_info *sta,
+                            bool is_join);
+ 
+@@ -248,5 +314,13 @@ static inline void atf_join_leave_update
+ {
+ }
+ 
++static inline void atf_offload_initialize_peer(struct sta_info *sta)
++{
++}
++
++static inline void atf_offload_deinitialize_peer(struct sta_info *sta)
++{
++}
++
+ #endif /* CONFIG_ATF_OFFLOAD */
+ #endif /* ATF_OFFLOAD_H */
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -653,6 +653,8 @@ void ap_free_sta(struct hostapd_data *ha
+ 
+ 	os_free(sta->ifname_wds);
+ 
++	atf_join_leave_update(hapd->iface, sta, false);
++
+ #ifdef CONFIG_IEEE80211BE
+ 
+ 	wpa_printf(MSG_INFO, "EPCS Tear Down from AP free STA");
+@@ -1185,6 +1187,7 @@ struct sta_info * ap_sta_add(struct host
+ 	sta->policies = NULL;
+ 	sta->num_dscp_policies = 0;
+ 	sta->dscp_reset = 0;
++	atf_offload_initialize_peer(sta);
+ 
+ #ifdef CONFIG_TAXONOMY
+ 	sta_track_claim_taxonomy_info(hapd->iface, addr,
+@@ -2071,8 +2074,6 @@ void ap_sta_set_authorized_event(struct
+ 		wpa_msg(hapd->msg_ctx, MSG_INFO, AP_STA_DISCONNECTED "%s", buf);
+ 		hostapd_ubus_notify(hapd, "disassoc", sta->addr);
+ 
+-		atf_join_leave_update(hapd->iface, sta, false);
+-
+ 		if (hapd->msg_ctx_parent &&
+ 		    hapd->msg_ctx_parent != hapd->msg_ctx)
+ 			wpa_msg_no_global(hapd->msg_ctx_parent, MSG_INFO,
