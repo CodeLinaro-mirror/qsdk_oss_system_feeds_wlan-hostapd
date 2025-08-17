@@ -47,8 +47,6 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  src/atf/atf_offload_config.c | 73 +++++++++++++++++++++++++++
  4 files changed, 209 insertions(+)
 
-diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index 1a1a5df..6367ea4 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
 @@ -3384,6 +3384,22 @@ own_ip_addr=127.0.0.1
@@ -74,11 +72,9 @@ index 1a1a5df..6367ea4 100644
  #
  #end of atf_offload_config file configuration.
  
-diff --git a/src/atf/atf_offload.c b/src/atf/atf_offload.c
-index b0df67c..02ac202 100644
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -27,6 +27,74 @@
+@@ -27,6 +27,75 @@
  
  struct atf_offload *atf = NULL;
  
@@ -143,7 +139,8 @@ index b0df67c..02ac202 100644
 +
 +	dl_list_for_each(ssid, &algo->ssid_cfgs, struct atf_ssid_config, list)
 +	{
-+		if (os_strcmp(name, ssid->name) == 0)
++		size_t len = strlen(ssid->name);
++		if (strlen(name) == len && os_strncmp(name, ssid->name, len) == 0)
 +			return ssid;
 +	}
 +	return NULL;
@@ -153,11 +150,10 @@ index b0df67c..02ac202 100644
  void
  atf_add_ssid_to_group(struct atf_group *group, const char *name)
  {
-@@ -78,6 +146,21 @@ atf_free_group(struct atf_group *group)
- }
+@@ -79,6 +148,21 @@ atf_free_group(struct atf_group *group)
  
  
-+static void
+ static void
 +atf_free_ssid_configs(struct atf_algo *algo)
 +{
 +	struct atf_ssid_config *ssid_cfg, *tmp;
@@ -172,10 +168,11 @@ index b0df67c..02ac202 100644
 +	}
 +}
 +
- static void
++static void
  atf_free_group_configs(struct atf_algo *algo)
  {
-@@ -95,6 +178,17 @@ void
+ 	struct atf_group *group, *tmp;
+@@ -95,6 +179,17 @@ void
  atf_free_algo_configs(struct atf_algo *algo)
  {
  
@@ -193,7 +190,7 @@ index b0df67c..02ac202 100644
  	atf_free_group_configs(algo);
  
  	/* Ensure list is empty after removing all group configs.
-@@ -164,6 +258,8 @@ atf_allocate_algo()
+@@ -164,6 +259,8 @@ atf_allocate_algo()
  	dl_list_add(&atf->algo_list, &algo->list);
  	algo->num_group_cfg = 0;
  	dl_list_init(&algo->groups);
@@ -202,8 +199,6 @@ index b0df67c..02ac202 100644
  
  	return algo;
  }
-diff --git a/src/atf/atf_offload.h b/src/atf/atf_offload.h
-index f57673b..3c64062 100644
 --- a/src/atf/atf_offload.h
 +++ b/src/atf/atf_offload.h
 @@ -20,6 +20,21 @@
@@ -244,7 +239,7 @@ index f57673b..3c64062 100644
  };
  
  /**
-@@ -87,6 +105,12 @@ struct atf_group *atf_find_group_by_name(const char *name, struct atf_algo *algo
+@@ -87,6 +105,12 @@ struct atf_group *atf_find_group_by_name
  void
  atf_free_algo_configs(struct atf_algo *algo);
  
@@ -257,11 +252,9 @@ index f57673b..3c64062 100644
  #else
  
  static inline void atf_offload_init(struct hapd_interfaces *ifaces)
-diff --git a/src/atf/atf_offload_config.c b/src/atf/atf_offload_config.c
-index 80b1b4f..76e0902 100644
 --- a/src/atf/atf_offload_config.c
 +++ b/src/atf/atf_offload_config.c
-@@ -75,6 +75,7 @@ atf_read_config(struct atf_algo *algo, const char *conf_file)
+@@ -75,6 +75,7 @@ atf_read_config(struct atf_algo *algo, c
  	char buffer[4096], *pos;
  	int line = 0, invalid_config = 0, error = 0;
  	struct atf_group *atf_group;
@@ -269,7 +262,7 @@ index 80b1b4f..76e0902 100644
  	int val;
  
  	if (!conf_file || !algo)
-@@ -190,6 +191,78 @@ atf_read_config(struct atf_algo *algo, const char *conf_file)
+@@ -190,6 +191,78 @@ atf_read_config(struct atf_algo *algo, c
  				continue;
  			}
  			atf_free_group(atf_group);
@@ -348,6 +341,3 @@ index 80b1b4f..76e0902 100644
  		}
  	}
  
--- 
-2.34.1
-
