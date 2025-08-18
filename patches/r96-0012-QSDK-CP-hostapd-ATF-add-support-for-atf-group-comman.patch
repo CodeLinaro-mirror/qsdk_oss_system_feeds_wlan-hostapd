@@ -39,7 +39,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.h
 +++ b/src/atf/atf_offload.h
-@@ -200,6 +200,11 @@ struct atf_algo {
+@@ -203,6 +203,11 @@ struct atf_algo {
  	struct dl_list peer_cfgs;
  	u16 num_peer_cfg;
  
@@ -51,6 +51,15 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  	/* Feature flags */
  	bool ssid_group_enabled;
  	bool atfstrictsched_enabled;
+@@ -330,6 +335,8 @@ u8 atf_get_hw_idx(struct hostapd_iface *
+ int nl80211_atf_offload_enable_disable(void *priv, u8 radio_index, u8 value);
+ 
+ int nl80211_atf_offload_strict_scheduling_enable_disable(void *priv, u8 radio_index, u8 value);
++
++void atf_delete_ssid_from_group(struct atf_algo *algo, const char *name);
+ #else
+ 
+ static inline void atf_offload_init(struct hapd_interfaces *ifaces)
 --- a/src/atf/atf_offload_config.c
 +++ b/src/atf/atf_offload_config.c
 @@ -25,6 +25,21 @@
@@ -118,7 +127,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  			atf_free_group(atf_group);
  		} else if (os_strcmp(buffer, "atf-ssid") == 0) {
  
-@@ -496,9 +524,308 @@ hostapd_ctrl_iface_atf_offload_gatfstric
+@@ -496,9 +524,309 @@ hostapd_ctrl_iface_atf_offload_gatfstric
  }
  
  
@@ -226,6 +235,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +	group = atf_find_group_by_name(group_name, algo);
 +	if (group) {
++		atf_delete_ssid_from_group(algo, ssid_name);
 +		atf_add_ssid_to_group(group, ssid_name);
 +	} else {
 +		group = atf_allocate_group(group_name, algo);
@@ -233,6 +243,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +			wpa_printf(MSG_ERROR, "ATF: Failed to allocate greoup config\n");
 +			goto fail;
 +		}
++		atf_delete_ssid_from_group(algo, ssid_name);
 +		atf_add_ssid_to_group(group, ssid_name);
 +		wpa_printf(MSG_INFO, "ATF: group name %s num_of_ssid %d\n",
 +			   group->name, group->num_of_ssid);
@@ -387,35 +398,34 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +		return -1;
 +	}
 +
-+	ret = os_snprintf(buf, buflen, "\n          Group           ");
++	ret = os_snprintf(buf, buflen, "\n%-20s%-12s%s", "Group", "Airtime", "SSID List");
 +	if (!os_snprintf_error(buflen, ret))
-+		len += ret;
-+
-+	ret = os_snprintf(buf + len, buflen - len, "Airtime         SSID List");
-+	if (!os_snprintf_error(buflen - len, ret))
 +		len += ret;
 +
 +	dl_list_for_each(group, &algo->groups, struct atf_group, list)
 +	{
 +		if (group) {
-+			ret = os_snprintf(buf + len, buflen - len, "\n               %s",
++			ret = os_snprintf(buf + len, buflen - len, "\n%-20s",
 +					  group->name);
 +			if (!os_snprintf_error(buflen - len, ret))
 +				len += ret;
 +
-+			ret = os_snprintf(buf + len, buflen - len, "       %d           ",
++			ret = os_snprintf(buf + len, buflen - len, "%-10d",
 +					  group->user_cfg_airtime / 10);
 +			if (!os_snprintf_error(buflen - len, ret))
 +				len += ret;
 +
 +			for (j = 0; j < group->num_of_ssid; j++) {
-+				ret = os_snprintf(buf + len, buflen - len, "%s ",
++				ret = os_snprintf(buf + len, buflen - len, "%-2s ",
 +						  group->ssidname[j]);
 +				if (!os_snprintf_error(buflen - len, ret))
 +					len += ret;
 +			}
 +		}
 +	}
++	ret = os_snprintf(buf + len, buflen - len, "\n");
++	if (!os_snprintf_error(buflen - len, ret))
++		len += ret;
 +
 +	return len;
 +}
@@ -428,7 +438,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  {
  	if (os_strncmp(cmd, "commitatf ", 10) == 0)
  		return hostapd_ctrl_iface_atf_offload_commitatf(hapd, cmd + 10, buf, buflen);
-@@ -508,6 +835,18 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -508,6 +836,18 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_atfstrictsched(hapd, cmd + 15, buf, buflen);
  	else if (os_strncmp(cmd, "gatfstrictsched", 15) == 0)
  		return hostapd_ctrl_iface_atf_offload_gatfstrictsched(hapd, buf, buflen);
@@ -462,3 +472,36 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  struct atf_algo;
  
  int atf_read_config(struct atf_algo *algo, const char *fname);
+--- a/src/atf/atf_offload.c
++++ b/src/atf/atf_offload.c
+@@ -251,6 +251,30 @@ atf_add_ssid_to_group(struct atf_group *
+ 
+ 
+ void
++atf_delete_ssid_from_group(struct atf_algo *algo, const char *name)
++{
++        struct atf_group *group;
++        int i, j;
++
++        dl_list_for_each(group, &algo->groups, struct atf_group, list)
++        {
++                for (i = 0; i < group->num_of_ssid; i++) {
++			size_t len = strlen(group->ssidname[i]);
++                        if (strlen(name) == len &&
++			    os_strncmp(name, group->ssidname[i], len) == 0) {
++                                for ( j = i; j < group->num_of_ssid - 1; j++)
++                                        os_strlcpy(group->ssidname[j],
++						    group->ssidname[j + 1],
++						    WLAN_SSID_MAX_LEN);
++                                group->num_of_ssid--;
++                                break;
++                        }
++                }
++        }
++}
++
++
++void
+ atf_clear_candidate_list(struct atf_group *group)
+ {
+ 	struct sta_info *sta, *tmp;

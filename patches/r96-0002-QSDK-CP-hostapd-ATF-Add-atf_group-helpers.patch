@@ -74,8 +74,6 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  create mode 100644 src/atf/atf_offload_config.c
  create mode 100644 src/atf/atf_offload_config.h
 
-diff --git a/hostapd/Makefile b/hostapd/Makefile
-index 4c23683..35b1cb5 100644
 --- a/hostapd/Makefile
 +++ b/hostapd/Makefile
 @@ -394,6 +394,7 @@ endif
@@ -86,24 +84,14 @@ index 4c23683..35b1cb5 100644
  endif
  
  ifndef MULTICALL
-diff --git a/hostapd/config_file.c b/hostapd/config_file.c
-index aa9628f..2c817a8 100644
 --- a/hostapd/config_file.c
 +++ b/hostapd/config_file.c
-@@ -4729,16 +4729,45 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+@@ -4729,16 +4729,45 @@ static int hostapd_config_fill(struct ho
  		}
  #endif /* CONFIG_AIRTIME_POLICY */
  #ifdef CONFIG_ATF_OFFLOAD
 -        } else if (os_strcmp(buf, "atf_offload") == 0) {
 -                int val = atoi(pos);
--
--                if (val < 0 || val > 1) {
--                        wpa_printf(MSG_INFO,
--                                        "Line %d: Invalid atf_offload (must be 0 or 1)",
--                                        line);
--                        return 1;
--                }
--                conf->atf_offload = val;
 +	} else if (os_strcmp(buf, "atf_offload") == 0) {
 +		int val = atoi(pos);
 +
@@ -142,12 +130,17 @@ index aa9628f..2c817a8 100644
 +			return 1;
 +		}
 +		conf->atf_ssid_grp = val;
-+
+ 
+-                if (val < 0 || val > 1) {
+-                        wpa_printf(MSG_INFO,
+-                                        "Line %d: Invalid atf_offload (must be 0 or 1)",
+-                                        line);
+-                        return 1;
+-                }
+-                conf->atf_offload = val;
  #endif /* CONFIG_ATF_OFFLOAD */
  #ifdef CONFIG_MACSEC
  	} else if (os_strcmp(buf, "macsec_policy") == 0) {
-diff --git a/hostapd/hostapd.conf b/hostapd/hostapd.conf
-index fa62536..1a1a5df 100644
 --- a/hostapd/hostapd.conf
 +++ b/hostapd/hostapd.conf
 @@ -3357,6 +3357,51 @@ own_ip_addr=127.0.0.1
@@ -202,11 +195,9 @@ index fa62536..1a1a5df 100644
  ##### EDMG support ############################################################
  #
  # Enable EDMG capability for AP mode in the 60 GHz band. Default value is false.
-diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
-index 7ab8d50..17f45dc 100644
 --- a/src/ap/ap_config.c
 +++ b/src/ap/ap_config.c
-@@ -1110,6 +1110,10 @@ void hostapd_config_free(struct hostapd_config *conf)
+@@ -1110,6 +1110,10 @@ void hostapd_config_free(struct hostapd_
  	wpabuf_free(conf->lci);
  	wpabuf_free(conf->civic);
  
@@ -217,8 +208,6 @@ index 7ab8d50..17f45dc 100644
  	os_free(conf);
  }
  
-diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
-index 3e7a95c..914ccfe 100644
 --- a/src/ap/ap_config.h
 +++ b/src/ap/ap_config.h
 @@ -1304,6 +1304,9 @@ struct hostapd_config {
@@ -231,8 +220,6 @@ index 3e7a95c..914ccfe 100644
  #endif /* CONFIG_ATF_OFFLOAD */
  
  	int ieee80211be;
-diff --git a/src/atf/Makefile b/src/atf/Makefile
-index a075f74..fa75e77 100644
 --- a/src/atf/Makefile
 +++ b/src/atf/Makefile
 @@ -1,6 +1,7 @@
@@ -244,11 +231,9 @@ index a075f74..fa75e77 100644
 +	    atf_offload_config.o
  
  include ../lib.rules
-diff --git a/src/atf/atf_offload.c b/src/atf/atf_offload.c
-index 4787bb6..b0df67c 100644
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -23,15 +23,127 @@
+@@ -23,15 +23,128 @@
  #include "ap/sta_info.h"
  
  #include "atf_offload.h"
@@ -256,7 +241,7 @@ index 4787bb6..b0df67c 100644
  
  struct atf_offload *atf = NULL;
  
-+void
+ void
 +atf_add_ssid_to_group(struct atf_group *group, const char *name)
 +{
 +	wpa_printf(MSG_INFO, "ATF: Adding %s  to group %s", name, group->name);
@@ -358,7 +343,8 @@ index 4787bb6..b0df67c 100644
 +
 +	dl_list_for_each(group, &algo->groups, struct atf_group, list)
 +	{
-+		if (os_strcmp(name, group->name) == 0)
++		size_t len = strlen(group->name);
++		if (strlen(name) == len && os_strncmp(name, group->name, len) == 0)
 +			return group;
 +	}
 +
@@ -366,7 +352,7 @@ index 4787bb6..b0df67c 100644
 +}
 +
 +
- void
++void
  atf_cleanup_algo(struct atf_algo *algo)
  {
  	if (!algo)
@@ -376,7 +362,7 @@ index 4787bb6..b0df67c 100644
  	dl_list_del(&algo->list);
  	os_free(algo);
  	algo = NULL;
-@@ -50,6 +162,8 @@ atf_allocate_algo()
+@@ -50,6 +163,8 @@ atf_allocate_algo()
  	wpa_printf(MSG_DEBUG, "ATF: Allocated new algo structure for atf offload\n");
  	dl_list_init(&algo->list);
  	dl_list_add(&atf->algo_list, &algo->list);
@@ -385,7 +371,7 @@ index 4787bb6..b0df67c 100644
  
  	return algo;
  }
-@@ -75,6 +189,7 @@ void
+@@ -75,6 +190,7 @@ void
  atf_init_algo(struct hostapd_iface *iface)
  {
  	struct atf_algo *algo;
@@ -393,7 +379,7 @@ index 4787bb6..b0df67c 100644
  
  	if (!iface->conf->atf_offload)
  		return;
-@@ -87,6 +202,20 @@ atf_init_algo(struct hostapd_iface *iface)
+@@ -87,6 +203,20 @@ atf_init_algo(struct hostapd_iface *ifac
  
  	iface->atf_algo = algo;
  	algo->iface = iface;
@@ -414,8 +400,6 @@ index 4787bb6..b0df67c 100644
  }
  
  
-diff --git a/src/atf/atf_offload.h b/src/atf/atf_offload.h
-index cfec469..f57673b 100644
 --- a/src/atf/atf_offload.h
 +++ b/src/atf/atf_offload.h
 @@ -16,6 +16,29 @@
@@ -464,7 +448,7 @@ index cfec469..f57673b 100644
  };
  
  /**
-@@ -46,6 +78,15 @@ void atf_init_algo(struct hostapd_iface *iface);
+@@ -46,6 +78,15 @@ void atf_init_algo(struct hostapd_iface
  
  void atf_deinit_algo(struct hostapd_iface *iface);
  
@@ -480,9 +464,6 @@ index cfec469..f57673b 100644
  #else
  
  static inline void atf_offload_init(struct hapd_interfaces *ifaces)
-diff --git a/src/atf/atf_offload_config.c b/src/atf/atf_offload_config.c
-new file mode 100644
-index 0000000..80b1b4f
 --- /dev/null
 +++ b/src/atf/atf_offload_config.c
 @@ -0,0 +1,209 @@
@@ -695,9 +676,6 @@ index 0000000..80b1b4f
 +
 +	return -1;
 +}
-diff --git a/src/atf/atf_offload_config.h b/src/atf/atf_offload_config.h
-new file mode 100644
-index 0000000..9c10e80
 --- /dev/null
 +++ b/src/atf/atf_offload_config.h
 @@ -0,0 +1,18 @@
@@ -719,6 +697,3 @@ index 0000000..9c10e80
 +int atf_read_config(struct atf_algo *algo, const char *fname);
 +
 +#endif /* ATF_OFFLOAD_CONFIG_H */
--- 
-2.34.1
-

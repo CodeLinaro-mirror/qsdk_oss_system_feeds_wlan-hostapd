@@ -43,7 +43,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -1135,6 +1135,86 @@ atf_offload_build_group_config(struct ho
+@@ -1215,6 +1215,86 @@ atf_offload_build_group_config(struct ho
  	return 0;
  }
  
@@ -132,7 +132,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
                                  struct atf_group_wmm_ac_params *wmm_ac_param)
 --- a/src/atf/atf_offload.h
 +++ b/src/atf/atf_offload.h
-@@ -210,6 +210,8 @@ struct atf_algo {
+@@ -213,6 +213,8 @@ struct atf_algo {
  	/* Feature flags */
  	bool ssid_group_enabled;
  	bool atfstrictsched_enabled;
@@ -141,10 +141,12 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	/* used in ATF distribution logic*/
  	enum atf_offload_update_flag update_flag;
-@@ -339,6 +341,10 @@ int nl80211_atf_offload_enable_disable(v
+@@ -343,7 +345,12 @@ int nl80211_atf_offload_enable_disable(v
  int nl80211_atf_offload_strict_scheduling_enable_disable(void *priv, u8 radio_index, u8 value);
  
  int nl80211_atf_offload_ssid_sched_policy(void *priv, u8 radio_index, u8 value, int link_id);
++
+ void atf_delete_ssid_from_group(struct atf_algo *algo, const char *name);
 +
 +int nl80211_atf_offload_stats_enable_disable(void *priv, u8 radio_index, u8 value);
 +
@@ -154,7 +156,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  static inline void atf_offload_init(struct hapd_interfaces *ifaces)
 --- a/src/atf/atf_offload_config.c
 +++ b/src/atf/atf_offload_config.c
-@@ -1551,6 +1551,139 @@ hostapd_ctrl_iface_atf_offload_flushatft
+@@ -1554,6 +1554,139 @@ hostapd_ctrl_iface_atf_offload_flushatft
  }
  
  
@@ -294,7 +296,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1595,6 +1728,15 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1598,6 +1731,15 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_showairtime(hapd, buf, buflen);
  	else if (os_strncmp(cmd, "flushatftable", 13) == 0)
  		return hostapd_ctrl_iface_atf_offload_flushatftable(hapd, buf, buflen);
