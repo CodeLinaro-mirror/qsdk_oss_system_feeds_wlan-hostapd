@@ -43,7 +43,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -1215,6 +1215,86 @@ atf_offload_build_group_config(struct ho
+@@ -1217,6 +1217,86 @@ atf_offload_build_group_config(struct ho
  	return 0;
  }
  
@@ -141,12 +141,10 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	/* used in ATF distribution logic*/
  	enum atf_offload_update_flag update_flag;
-@@ -343,7 +345,12 @@ int nl80211_atf_offload_enable_disable(v
- int nl80211_atf_offload_strict_scheduling_enable_disable(void *priv, u8 radio_index, u8 value);
+@@ -348,6 +350,10 @@ void atf_delete_ssid_from_group(struct a
  
- int nl80211_atf_offload_ssid_sched_policy(void *priv, u8 radio_index, u8 value, int link_id);
-+
- void atf_delete_ssid_from_group(struct atf_algo *algo, const char *name);
+ struct atf_group *
+ atf_find_group(struct atf_algo *algo, const char *name);
 +
 +int nl80211_atf_offload_stats_enable_disable(void *priv, u8 radio_index, u8 value);
 +
@@ -156,7 +154,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  static inline void atf_offload_init(struct hapd_interfaces *ifaces)
 --- a/src/atf/atf_offload_config.c
 +++ b/src/atf/atf_offload_config.c
-@@ -1554,6 +1554,139 @@ hostapd_ctrl_iface_atf_offload_flushatft
+@@ -1568,6 +1568,139 @@ hostapd_ctrl_iface_atf_offload_flushatft
  }
  
  
@@ -296,7 +294,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1598,6 +1731,15 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1612,6 +1745,15 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_showairtime(hapd, buf, buflen);
  	else if (os_strncmp(cmd, "flushatftable", 13) == 0)
  		return hostapd_ctrl_iface_atf_offload_flushatftable(hapd, buf, buflen);

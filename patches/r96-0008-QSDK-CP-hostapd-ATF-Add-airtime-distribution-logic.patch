@@ -420,7 +420,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 +	algo = iface->atf_algo;
 +
 +	/* Fill Group Configurations */
-+	if (algo->num_group_cfg >= ATF_MAX_SSID_GROUP) {
++	if (algo->num_group_cfg > ATF_MAX_SSID_GROUP) {
 +		wpa_printf(MSG_ERROR, "ATF: invalid num of Configured group %d!",
 +		           algo->num_group_cfg);
 +		return -1;
