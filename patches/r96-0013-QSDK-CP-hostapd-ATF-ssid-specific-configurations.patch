@@ -77,7 +77,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  void atf_offload_send_feature_params(struct hostapd_data *hapd)
  {
  	struct hostapd_iface *iface;
-@@ -1198,6 +1234,58 @@ atf_offload_build_wmm_ac_config(struct h
+@@ -1200,6 +1236,58 @@ atf_offload_build_wmm_ac_config(struct h
  }
  
  
@@ -272,7 +272,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  			atf_free_ssid_config(ssid_config);
  		} else if (os_strcmp(buffer, "atf-sta") == 0) {
  			if (hwaddr_aton(pos, sta_mac)) {
-@@ -825,6 +902,239 @@ hostapd_ctrl_iface_atf_offload_showatfgr
+@@ -824,6 +901,254 @@ hostapd_ctrl_iface_atf_offload_showatfgr
  }
  
  
@@ -348,9 +348,24 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	struct atf_algo *algo;
 +	u8 atf_ssid_scheduling, radio_index;
 +	int link_id = -1, ret;
++	struct atf_group *group = NULL;
++	char ssid_buf[SSID_MAX_LEN + 1];
++	struct hostapd_ssid *ssid;
 +
 +	if (!iface || !iface->atf_algo) {
 +		wpa_printf(MSG_ERROR, "ATF: Missing atf algo\n");
++		return -1;
++	}
++
++	ssid = &hapd->conf->ssid;
++	os_memset(ssid_buf, 0, sizeof(ssid_buf));
++	os_memcpy(ssid_buf, ssid->ssid, ssid->ssid_len);
++
++
++	group = atf_find_group(algo, ssid_buf);
++	if (!group ||
++	    os_strncmp(group->name, "default-group", strlen("default-group")) == 0) {
++		wpa_printf(MSG_ERROR, "ATF: SSID is not configured\n");
 +		return -1;
 +	}
 +
@@ -512,7 +527,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -849,6 +1159,16 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -848,6 +1173,16 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_delatfgroup(hapd, cmd + 12, buf, buflen);
  	else if (os_strncmp(cmd, "showatfgroup", 12) == 0)
  		return hostapd_ctrl_iface_atf_offload_showatfgroup(hapd, buf, buflen);
@@ -559,15 +574,20 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  void atf_join_leave_update(struct hostapd_iface *iface, struct sta_info *sta,
                             bool is_join);
  
-@@ -336,6 +340,7 @@ int nl80211_atf_offload_enable_disable(v
+@@ -336,7 +340,12 @@ int nl80211_atf_offload_enable_disable(v
  
  int nl80211_atf_offload_strict_scheduling_enable_disable(void *priv, u8 radio_index, u8 value);
  
 +int nl80211_atf_offload_ssid_sched_policy(void *priv, u8 radio_index, u8 value, int link_id);
++
  void atf_delete_ssid_from_group(struct atf_algo *algo, const char *name);
++
++struct atf_group *
++atf_find_group(struct atf_algo *algo, const char *name);
  #else
  
-@@ -360,7 +365,11 @@ static inline void atf_join_leave_update
+ static inline void atf_offload_init(struct hapd_interfaces *ifaces)
+@@ -360,7 +369,11 @@ static inline void atf_join_leave_update
  {
  }
  
