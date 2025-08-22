@@ -264,7 +264,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	struct hostapd_iface *iface = hapd->iface;
 +	struct atf_algo *algo;
 +	struct atf_group *group;
-+	char *input, *group_name, *a_time, *context;
++	char *input, *group_name, *a_time, *context = NULL;
 +	int airtime;
 +	u32 scaled_airtime;
 +

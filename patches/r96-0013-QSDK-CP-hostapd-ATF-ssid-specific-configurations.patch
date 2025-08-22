@@ -34,7 +34,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -47,6 +47,42 @@ u8 atf_get_hw_idx(struct hostapd_iface *
+@@ -68,6 +68,42 @@ u8 atf_get_hw_idx(struct hostapd_iface *
  }
  
  
@@ -77,7 +77,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  void atf_offload_send_feature_params(struct hostapd_data *hapd)
  {
  	struct hostapd_iface *iface;
-@@ -1200,6 +1236,58 @@ atf_offload_build_wmm_ac_config(struct h
+@@ -1229,6 +1265,58 @@ atf_offload_build_wmm_ac_config(struct h
  }
  
  
@@ -272,7 +272,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  			atf_free_ssid_config(ssid_config);
  		} else if (os_strcmp(buffer, "atf-sta") == 0) {
  			if (hwaddr_aton(pos, sta_mac)) {
-@@ -824,6 +901,254 @@ hostapd_ctrl_iface_atf_offload_showatfgr
+@@ -824,6 +901,253 @@ hostapd_ctrl_iface_atf_offload_showatfgr
  }
  
  
@@ -283,7 +283,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	struct hostapd_iface *iface = hapd->iface;
 +	struct atf_algo *algo;
 +	struct atf_group *group;
-+	char *input, *group_name, *atf_sched_policy, *context;
++	char *input, *group_name, *atf_sched_policy, *context = NULL;
 +	u8 sched_policy;
 +	int ret = 0;
 +
@@ -361,6 +361,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	os_memset(ssid_buf, 0, sizeof(ssid_buf));
 +	os_memcpy(ssid_buf, ssid->ssid, ssid->ssid_len);
 +
++	algo = iface->atf_algo;
 +
 +	group = atf_find_group(algo, ssid_buf);
 +	if (!group ||
@@ -368,8 +369,6 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +		wpa_printf(MSG_ERROR, "ATF: SSID is not configured\n");
 +		return -1;
 +	}
-+
-+	algo = iface->atf_algo;
 +
 +	if (algo->ssid_group_enabled) {
 +		wpa_printf(MSG_ERROR, "ATF: SSID config not allowed when ssid group is enabled\n");
@@ -432,7 +431,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +{
 +	struct hostapd_iface *iface = hapd->iface;
 +	struct atf_algo *algo;
-+	char *input, *ssid, *a_time, *context;
++	char *input, *ssid, *a_time, *context = NULL;
 +	int airtime, ret = 0;
 +	u32 scaled_airtime;
 +
@@ -527,7 +526,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -848,6 +1173,16 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -848,6 +1172,16 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_delatfgroup(hapd, cmd + 12, buf, buflen);
  	else if (os_strncmp(cmd, "showatfgroup", 12) == 0)
  		return hostapd_ctrl_iface_atf_offload_showatfgroup(hapd, buf, buflen);
@@ -565,7 +564,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  struct atf_peer_config *atf_allocate_peer_config(u8 *macaddr, struct atf_algo *algo);
  
  void atf_free_peer_config(struct atf_peer_config *peer_config);
-@@ -327,6 +329,8 @@ void atf_trigger_config_timer(struct hos
+@@ -331,6 +333,8 @@ void atf_offload_deinitialize_peer(struc
  
  void atf_offload_send_feature_params(struct hostapd_data *hapd);
  
@@ -574,7 +573,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  void atf_join_leave_update(struct hostapd_iface *iface, struct sta_info *sta,
                             bool is_join);
  
-@@ -336,7 +340,12 @@ int nl80211_atf_offload_enable_disable(v
+@@ -340,7 +344,12 @@ int nl80211_atf_offload_enable_disable(v
  
  int nl80211_atf_offload_strict_scheduling_enable_disable(void *priv, u8 radio_index, u8 value);
  
@@ -587,7 +586,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  #else
  
  static inline void atf_offload_init(struct hapd_interfaces *ifaces)
-@@ -360,7 +369,11 @@ static inline void atf_join_leave_update
+@@ -372,7 +381,11 @@ static inline void atf_offload_deinitial
  {
  }
  
