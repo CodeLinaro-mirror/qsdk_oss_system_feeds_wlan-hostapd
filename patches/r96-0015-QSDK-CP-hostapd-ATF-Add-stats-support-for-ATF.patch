@@ -43,7 +43,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -1217,6 +1217,86 @@ atf_offload_build_group_config(struct ho
+@@ -1261,6 +1261,110 @@ atf_offload_build_group_config(struct ho
  	return 0;
  }
  
@@ -85,6 +85,30 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +fail:
 +	nlmsg_free(msg);
 +	return -1;
++}
++
++
++void atf_offload_disable_atf_stats(struct hostapd_iface *iface)
++{
++	struct wpa_driver_nl80211_data *drv_priv;
++	int ret, radio_index;
++
++	if (!iface || !iface->atf_algo) {
++		wpa_printf(MSG_ERROR, "ATF: algo is missing\n");
++		return;
++	}
++
++	drv_priv = iface->bss[0]->drv_priv;
++	radio_index = atf_get_hw_idx(iface);
++
++	if (!iface->atf_algo->atf_stats_enabled)
++		return;
++
++	ret = nl80211_atf_offload_stats_enable_disable(drv_priv,
++						       radio_index,
++						       0);
++	if (ret)
++		wpa_printf(MSG_ERROR, "ATF: Failed to disable ATF stats\n");
 +}
 +
 +
@@ -132,7 +156,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
                                  struct atf_group_wmm_ac_params *wmm_ac_param)
 --- a/src/atf/atf_offload.h
 +++ b/src/atf/atf_offload.h
-@@ -213,6 +213,8 @@ struct atf_algo {
+@@ -214,6 +214,8 @@ struct atf_algo {
  	/* Feature flags */
  	bool ssid_group_enabled;
  	bool atfstrictsched_enabled;
@@ -141,20 +165,26 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	/* used in ATF distribution logic*/
  	enum atf_offload_update_flag update_flag;
-@@ -348,6 +350,10 @@ void atf_delete_ssid_from_group(struct a
+@@ -353,7 +355,16 @@ void atf_delete_ssid_from_group(struct a
  
  struct atf_group *
  atf_find_group(struct atf_algo *algo, const char *name);
 +
 +int nl80211_atf_offload_stats_enable_disable(void *priv, u8 radio_index, u8 value);
 +
++void atf_offload_disable_atf_stats(struct hostapd_iface *ifaces);
++
 +int nl80211_atf_offload_stats_timeout(void *priv, u8 radio_index, u8 value);
  #else
++static inline void atf_offload_disable_atf_stats(struct hostapd_iface *ifaces)
++{
++}
  
  static inline void atf_offload_init(struct hapd_interfaces *ifaces)
+ {
 --- a/src/atf/atf_offload_config.c
 +++ b/src/atf/atf_offload_config.c
-@@ -1568,6 +1568,139 @@ hostapd_ctrl_iface_atf_offload_flushatft
+@@ -1553,6 +1553,139 @@ hostapd_ctrl_iface_atf_offload_flushatft
  }
  
  
@@ -294,7 +324,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1612,6 +1745,15 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1597,6 +1730,15 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_showairtime(hapd, buf, buflen);
  	else if (os_strncmp(cmd, "flushatftable", 13) == 0)
  		return hostapd_ctrl_iface_atf_offload_flushatftable(hapd, buf, buflen);
@@ -331,3 +361,13 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  };
  
  #endif /* QCA_VENDOR_H */
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -4335,6 +4335,7 @@ void hostapd_interface_deinit_free(struc
+ 	hostapd_interface_deinit(iface);
+ 	wpa_printf(MSG_DEBUG, "%s: driver=%p drv_priv=%p -> hapd_deinit",
+ 		   __func__, driver, drv_priv);
++	atf_offload_disable_atf_stats(iface);
+ 	hostapd_cleanup_driver(driver, drv_priv, iface);
+ 	hostapd_interface_free(iface);
+ }
