@@ -41,7 +41,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -427,20 +427,23 @@ atf_free_ssid_configs(struct atf_algo *a
+@@ -448,20 +448,23 @@ atf_free_ssid_configs(struct atf_algo *a
  
  
  static void
@@ -69,7 +69,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  {
  	atf_free_peer_configs(algo);
  
-@@ -465,7 +468,10 @@ atf_free_algo_configs(struct atf_algo *a
+@@ -486,7 +489,10 @@ atf_free_algo_configs(struct atf_algo *a
  	algo->user_cfg_airtime = 0;
  	dl_list_init(&algo->ssid_cfgs);
  
@@ -81,7 +81,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	/* Ensure list is empty after removing all group configs.
  	 * if list is not empty, something is corrupted.
-@@ -514,7 +520,7 @@ atf_cleanup_algo(struct atf_algo *algo)
+@@ -535,7 +541,7 @@ atf_cleanup_algo(struct atf_algo *algo)
  	if (!algo)
  		return;
  
@@ -90,7 +90,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  	dl_list_del(&algo->list);
  	os_free(algo);
  	algo = NULL;
-@@ -859,6 +865,9 @@ atf_update_peer_cfg_to_peer(struct atf_a
+@@ -888,6 +894,9 @@ atf_update_peer_cfg_to_peer(struct atf_a
  	struct hostapd_data *bss;
  	struct sta_info *sta = NULL;
  	int i;
@@ -100,7 +100,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	if (!peer_cfg)
  		return;
-@@ -916,9 +925,22 @@ atf_update_peer_cfg_to_peer(struct atf_a
+@@ -945,9 +954,22 @@ atf_update_peer_cfg_to_peer(struct atf_a
  		return;
  	}
  
@@ -123,6 +123,14 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	/*update to the group candidate list*/
  	dl_list_add(&peer_cfg->group->explicit_peers, &sta->atf_candidate_list);
+@@ -1134,6 +1156,7 @@ atf_offload_build_peer_config(struct hos
+ 					memcpy(peer_info[num_peers].peer_macaddr, sta->addr, 6);
+ 				}
+ 
++				sta->atf_peer.bss = hapd;
+ 				peer_info[num_peers].percentage_peer =
+ 				    sta->atf_peer.calculated_airtime;
+ 				peer_info[num_peers].group_index = group->index;
 --- a/src/atf/atf_offload.h
 +++ b/src/atf/atf_offload.h
 @@ -119,6 +119,7 @@ struct atf_peer_config {
@@ -133,7 +141,15 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	/* add this node to atf_algo */
  	struct dl_list list;
-@@ -168,6 +169,7 @@ struct atf_group {
+@@ -135,6 +136,7 @@ struct atf_peer {
+ 	struct atf_peer_config *peer_cfg_ref;
+ 	struct sta_info *sta;
+ 	u32 calculated_airtime;
++	struct hostapd_data *bss;
+ 
+ 	/* Flag to indicate whether it is updated to driver */
+ 	bool is_updated;
+@@ -168,6 +170,7 @@ struct atf_group {
  	char ssidname[WLAN_SSID_MAX][WLAN_SSID_MAX_LEN + 1];
  	u32 user_cfg_airtime;
  	u32 sched_policy;
@@ -141,7 +157,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	/* add this node to atf_algo */
  	struct dl_list list;
-@@ -305,7 +307,7 @@ void atf_free_group(struct atf_group *gr
+@@ -305,7 +308,7 @@ void atf_free_group(struct atf_group *gr
  struct atf_group *atf_find_group_by_name(const char *name, struct atf_algo *algo);
  
  void
@@ -231,7 +247,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  	algo->ssid_group_enabled = atf_ssid_group;
  	iface->conf->atf_ssid_grp = atf_ssid_group;
  
-@@ -1149,6 +1185,400 @@ hostapd_ctrl_iface_atf_offload_delssid(s
+@@ -1148,6 +1184,375 @@ hostapd_ctrl_iface_atf_offload_delssid(s
  }
  
  
@@ -244,7 +260,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	struct atf_ssid_config *ssid_config;
 +	struct atf_group *group;
 +	struct atf_peer_config *peer_config;
-+	char *input, *name, *a_time, *token, *context;
++	char *input, *name, *a_time, *token, *context = NULL;
 +	u8 addr[ETH_ALEN];
 +	int airtime, ret = 0;
 +	u32 scaled_airtime;
@@ -353,7 +369,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	struct hostapd_iface *iface = hapd->iface;
 +	struct atf_algo *algo;
 +	struct atf_peer_config *peer_config;
-+	char *input, *token, *context;
++	char *input, *token, *context = NULL;
 +	u8 addr[ETH_ALEN];
 +	int ret = 0;
 +
@@ -405,6 +421,8 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	struct atf_group *group;
 +	struct atf_peer_config *peer_config;
 +	struct sta_info *sta, *tmp;
++	struct hostapd_data *bss;
++	u8 addr[ETH_ALEN];
 +	int len = 0, ret;
 +
 +	if (!iface || !iface->atf_algo) {
@@ -429,19 +447,9 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	len += ret;
 +
 +	ret = os_snprintf(buf + len, buflen - len,
-+			  "   SSID             Client(MAC Address)         Air time(Percentage)");
-+	if (os_snprintf_error(buflen - len, ret))
-+		return len;
-+	len += ret;
-+
-+	ret = os_snprintf(buf + len, buflen - len,
-+			  "        Config ATF(Percentage)      ");
-+	if (os_snprintf_error(buflen - len, ret))
-+		return len;
-+	len += ret;
-+
-+	ret = os_snprintf(buf + len, buflen - len,
-+			  "Peer_Assoc_Status(1--Assoc,0-No-Assoc)\n");
++			  "%-16s %-22s %-20s %-24s %-24s\n",
++			  "SSID","Client(MAC Address)","Air time(Percentage)",
++			  "Config ATF(Percentage)","Peer_Assoc_Status(1--Assoc,0-No-Assoc)");
 +	if (os_snprintf_error(buflen - len, ret))
 +		return len;
 +	len += ret;
@@ -453,13 +461,8 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +	dl_list_for_each(group, &algo->groups, struct atf_group, list) {
 +		ret = os_snprintf(buf + len, buflen - len,
-+				  "   %s                        ", group->name);
-+		if (os_snprintf_error(buflen - len, ret))
-+			return len;
-+		len += ret;
-+
-+		ret = os_snprintf(buf + len, buflen - len,
-+				  "                     %d\n", group->user_cfg_airtime / 10);
++				  "%-50s %d\n",
++				  group->name, group->user_cfg_airtime / 10);
 +		if (os_snprintf_error(buflen - len, ret))
 +			return len;
 +		len += ret;
@@ -471,30 +474,10 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +				      struct sta_info, atf_candidate_list) {
 +			if (sta && sta->atf_peer.peer_cfg_ref) {
 +				ret = os_snprintf(buf + len, buflen - len,
-+						  "                 " MACSTR "         ",
-+						  MAC2STR(sta->atf_peer.peer_cfg_ref->addr));
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
-+
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "               %d.%d",
++						  "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++						  "", MAC2STR(sta->atf_peer.peer_cfg_ref->addr)," ",
 +						  sta->atf_peer.calculated_airtime / 10,
-+						  sta->atf_peer.calculated_airtime % 10);
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
-+
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "               %d.%d",
-+						  sta->atf_peer.peer_cfg_ref->user_cfg_airtime / 10,
-+						  sta->atf_peer.peer_cfg_ref->user_cfg_airtime % 10);
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
-+
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "             1\n");
++						  sta->atf_peer.peer_cfg_ref->user_cfg_airtime / 10, "1");
 +				if (os_snprintf_error(buflen - len, ret))
 +					return len;
 +				len += ret;
@@ -502,6 +485,32 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +		}
 +
 +implicit_peers:
++		/* To print unconfigured and associated peers */
++		if (dl_list_empty(&group->implicit_peers))
++			goto explicit_peers;
++
++		dl_list_for_each_safe(sta, tmp, &group->implicit_peers,
++				      struct sta_info, atf_candidate_list) {
++			if (sta && sta->atf_peer.calculated_airtime) {
++				bss = sta->atf_peer.bss;
++
++				if (ap_sta_is_mld(bss, sta))
++					memcpy(addr, sta->mld_info.links[hapd->mld_link_id].peer_addr, 6);
++				else
++					memcpy(addr, sta->addr, 6);
++
++				ret = os_snprintf(buf + len, buflen - len,
++						  "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++						  "", MAC2STR(addr), " ",
++						  sta->atf_peer.calculated_airtime / 10,
++						  0, "1");
++				if (os_snprintf_error(buflen - len, ret))
++					return len;
++				len += ret;
++			}
++		}
++
++explicit_peers:
 +		/* To print the airtime of configured and unassociated peers */
 +		if (dl_list_empty(&algo->peer_cfgs))
 +			continue;
@@ -511,28 +520,10 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +			if (peer_config->calculated_for_airtime == 0 &&
 +			    peer_config->group == group) {
 +				ret = os_snprintf(buf + len, buflen - len,
-+						  "                     " MACSTR " ",
-+						  MAC2STR(peer_config->addr));
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
-+
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "                     0.0");
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
-+
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "                         %d.%d",
-+						  peer_config->user_cfg_airtime / 10,
-+						  peer_config->user_cfg_airtime % 10);
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
-+
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "                             0\n");
++						  "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++						  "", MAC2STR(peer_config->addr), " ",
++						  0, peer_config->user_cfg_airtime / 10,
++						  "0");
 +				if (os_snprintf_error(buflen - len, ret))
 +					return len;
 +				len += ret;
@@ -632,7 +623,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1183,6 +1613,16 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1182,6 +1587,16 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_addssid(hapd, cmd + 8, buf, buflen);
  	else if (os_strncmp(cmd, "delssid ", 8) == 0)
  		return hostapd_ctrl_iface_atf_offload_delssid(hapd, cmd + 8, buf, buflen);
