@@ -71,14 +71,31 @@ function iface_start(phydev, iface, macaddr_list)
 {
 	let phy = phydev.name;
 	let radio = phydev.radio;
+	let ifname = iface.config.iface;
 
-	if (iface.running)
-		return;
+	wpas.printf(`[debug] [iface_start] for ${ifname} radio index ${phydev.radio} running ${iface.running}`);
 
 	if (radio == null)
 		radio = -1;
 
-	let ifname = iface.config.iface;
+	if (is_ml_config(ifname, radio)) {
+		// Setting radio_mask even interface is running is allowed.
+		let radio_mask = wdev_get_radio_mask(ifname);
+
+		if (radio_mask == null) {
+			wpas.printf(`[error] [iface_start] Failed to get radio mask for ${ifname}`);
+			return null;
+		}
+
+		// Configure the radio mask for each radio during BSS creation
+		radio_mask = (radio_mask | (1 << phydev.radio));
+		wdev_set_radio_mask(ifname, radio_mask);
+		wpas.printf(`[debug] [iface_start] preserving radio mask ${radio_mask} for ML BSS ${ifname} radio index ${phydev.radio}`);
+	}
+
+	if (iface.running)
+		return;
+
 	let wdev_config = {};
 	for (let field in iface.config)
 		wdev_config[field] = iface.config[field];
@@ -92,19 +109,7 @@ function iface_start(phydev, iface, macaddr_list)
 		wpas.printf(`[debug] Create device started ${ifname} ${radio}  ${wdev_config.macaddr}`);
 		let ret = phydev.wdev_add(ifname, wdev_config);
 		if (ret)
-			wpas.printf(`Failed to create device ${ifname}: ${ret}`);
-	} else {
-		let radio_mask = wdev_get_radio_mask(ifname);
-
-		if (radio_mask == null) {
-			wpas.printf(`[error] Failed to get radio mask for ${ifname}`);
-			return null;
-		}
-
-		// Configure the radio mask for each radio during BSS creation
-		radio_mask = (radio_mask | (1 << phydev.radio));
-		wdev_set_radio_mask(ifname, radio_mask);
-		wpas.printf(`[debug] preserving radio mask ${radio_mask} for ML BSS ${ifname} radio index ${phydev.radio}`);
+			wpas.printf(`[iface_start] Failed to create device ${ifname}: ${ret}`);
 	}
 	wdev_set_up(ifname, true);
 	wpas.add_iface(iface.config, radio);
