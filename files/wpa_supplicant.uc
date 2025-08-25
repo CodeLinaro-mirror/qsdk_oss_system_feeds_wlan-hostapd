@@ -3,6 +3,7 @@ import { open, readfile } from "fs";
 import { wdev_create, wdev_set_mesh_params, wdev_remove, is_equal, wdev_get_radio_mask, wdev_set_radio_mask, wdev_set_up, vlist_new, phy_open } from "common";
 
 let ubus = libubus.connect();
+let mon_ifaces = {};
 
 wpas.data.config = {};
 wpas.data.iface_phy = {};
@@ -268,6 +269,7 @@ let main_obj = {
 			is_ml: false,
 			config: [],
 			defer: true,
+			mon_if_name: "",
 		},
 		call: function(req) {
 			let phy = phy_name(req.args.phy, req.args.radio);
@@ -275,6 +277,10 @@ let main_obj = {
 				return libubus.STATUS_INVALID_ARGUMENT;
 
 			wpas.printf(`Set new config for phy ${phy} ${req.args.defer} ${req.args.config}`);
+
+			if (req.args.mon_if_name != null)
+				mon_ifaces[req.args.radio] = req.args.mon_if_name;
+
 			try {
 				if (req.args.config)
 					set_config(phy, req.args.phy, req.args.radio, req.args.num_global_macaddr, req.args.config);
@@ -371,7 +377,7 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state)
 {
 	let ubus = wpas.data.ubus;
 	let status = iface.status(radio);
-	let msg = { phy: phy, radio: radio };
+	let msg = { phy: phy, radio: radio, mon_ifaces: mon_ifaces[radio]};
 
 	switch (state) {
 	case "DISCONNECTED":
@@ -401,7 +407,7 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state)
 	default:
 		return;
 	}
-
+	
 	wpas.printf(`apsta_state message passed ${msg}`);
 	ubus.call("hostapd", "apsta_state", msg);
 }

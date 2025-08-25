@@ -901,6 +901,40 @@ function bss_config(bss_name) {
 	}
 }
 
+let chan_width = {
+        "0" : "CHAN_WIDTH_20_NOHT",
+        "1" : "CHAN_WIDTH_20",
+        "2" : "CHAN_WIDTH_40",
+        "3" : "CHAN_WIDTH_80",
+        "4" : "CHAN_WIDTH_80P80",
+        "5" : "CHAN_WIDTH_160",
+        "6" : "CHAN_WIDTH_2160",
+        "7" : "CHAN_WIDTH_4320",
+        "8" : "CHAN_WIDTH_6480",
+        "9" : "CHAN_WIDTH_8640",
+        "10" : "CHAN_WIDTH_320",
+        "11" : "CHAN_WIDTH_UNKNOWN",
+};
+
+function get_bw(curr_chan_width) {
+
+        switch (chan_width[curr_chan_width]) {
+        case "CHAN_WIDTH_20_NOHT":
+        case "CHAN_WIDTH_20":
+                return 20;
+        case "CHAN_WIDTH_40":
+                return 40;
+        case "CHAN_WIDTH_80":
+                return 80;
+        case "CHAN_WIDTH_160":
+                return 160;
+        case "CHAN_WIDTH_320":
+                return 320;
+        default:
+                return 20;
+        }
+}
+
 let main_obj = {
 	reload: {
 		args: {
@@ -931,9 +965,12 @@ let main_obj = {
 			csa: true,
 			csa_count: 0,
 			punct_bitmap: 0,
+			mon_ifaces: "",
 		},
 		call: ex_wrap(function(req) {
 			let phy = phy_name(req.args.phy, req.args.radio);
+			let mon_if_names = split(req.args.mon_ifaces, " ");
+
 			if (req.args.up == null || !phy)
 				return libubus.STATUS_INVALID_ARGUMENT;
 
@@ -949,8 +986,15 @@ let main_obj = {
 				return 0;
 			}
 
+			let ret;
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
+				for (let mon in mon_if_names) {
+					ret = system(`ifconfig ${mon} down`);
+					if (ret) {
+						hostapd.printf(`Failed to bring down monitor interface ${mon}: ${ret}`);
+					}
+				}
 				iface.stop();
 				return 0;
 			}
@@ -963,7 +1007,6 @@ let main_obj = {
 				return libubus.STATUS_UNKNOWN_ERROR;
 
 			hostapd.printf(`apsta_state: freq_info for radio ${req.args.radio} is ${freq_info}`);
-			let ret;
 			if (req.args.csa) {
 				freq_info.csa_count = req.args.csa_count ?? 10;
 				ret = iface.switch_channel(freq_info);
@@ -972,6 +1015,25 @@ let main_obj = {
 			}
 			if (!ret)
 				return libubus.STATUS_UNKNOWN_ERROR;
+
+			let bw = get_bw(req.args.chan_width);
+
+                        for (let mon in mon_if_names) {
+                                ret = system(`ifconfig ${mon} up`);
+
+				if (ret) {
+					hostapd.printf(`Failed to bring up monitor interface ${mon}: ${ret}`);
+					continue;
+				}
+				if (freq_info.frequency == freq_info.center_freq1)
+					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw}`);
+				else
+					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1}`);
+
+				if (ret) {
+					hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
+				}
+                        }
 
 			return 0;
 		})
