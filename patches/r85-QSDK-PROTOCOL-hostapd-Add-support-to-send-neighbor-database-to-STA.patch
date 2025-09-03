@@ -1,7 +1,7 @@
 From d20359445a9817d5f5d4d567508033da2a147650 Mon Sep 17 00:00:00 2001
 From: Balaganapathy Palanisamy <bpalanis@qti.qualcomm.com>
 Date: Tue, 8 Jul 2025 13:30:28 +0530
-Subject: [PATCH] UPSTREAM:PROTOCOL: hostapd: Add support to send neighbor database to STA
+Subject: [PATCH] QSDK:PROTOCOL: hostapd: Add support to send neighbor database to STA
 
 Add cli support to send RRM neighbor report to provided
 MAC address. Iterate over the neighbor database for matching
@@ -11,31 +11,26 @@ Add SEND_NEIGHBOR command to the hostapd control interface
 and add send_neighbor command to the hostapd_cli interface.
 e.g. SEND_NEIGHBOR <dest_mac> ssid=<your_ssid> dialog_token=<token>
 
-Fixes: None
-Patch-dependency: None
-Patch-work: None
-Feature: RRM
-Patch-title: "hostapd: Add support to send neighbor database to STA"
-
 Signed-off-by: Balaganapathy Palanisamy <bpalanis@qti.qualcomm.com>
 ---
- hostapd/ctrl_iface.c  | 31 +++++++++++++++++++++++++++++++
+ hostapd/ctrl_iface.c  | 42 ++++++++++++++++++++++++++++++++++++++++++
  hostapd/hostapd_cli.c |  7 +++++++
  src/ap/rrm.c          |  8 ++++----
  src/ap/rrm.h          |  4 ++++
- 4 files changed, 46 insertions(+), 4 deletions(-)
+ 4 files changed, 57 insertions(+), 4 deletions(-)
 
 diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
 index ad38a0661..9c9c35a61 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -3594,6 +3594,34 @@ static int hostapd_ctrl_iface_remove_neighbor(struct hostapd_data *hapd,
+@@ -3594,6 +3594,45 @@ static int hostapd_ctrl_iface_remove_neighbor(struct hostapd_data *hapd,
  	return hostapd_neighbor_remove(hapd, bssid, ssidp);
  }
  
 +static int hostapd_ctrl_iface_send_neighbor(struct hostapd_data *hapd,
 +					    char *buf)
 +{
++	struct sta_info *sta;
 +	struct wpa_ssid_value ssid;
 +	u8 addr[ETH_ALEN];
 +	char *tmp;
@@ -43,6 +38,16 @@ index ad38a0661..9c9c35a61 100644
 +
 +	if (hwaddr_aton(buf, addr)) {
 +		wpa_printf(MSG_ERROR, "CTRL: SEND_NEIGHBOR: Bad Address");
++		return -1;
++	}
++
++	sta = ap_get_sta(hapd, addr);
++	if (!sta && hapd->mld)
++		sta = ap_get_link_sta(hapd, addr);
++	if (!sta) {
++		wpa_printf(MSG_ERROR, "Station " MACSTR
++			   " not found for neighbor report message",
++			   MAC2STR(addr));
 +		return -1;
 +	}
 +
@@ -57,7 +62,7 @@ index ad38a0661..9c9c35a61 100644
 +	if (tmp)
 +		token = atoi(tmp + 13);
 +
-+	hostapd_send_nei_report_resp(hapd, addr, token, &ssid, 0, 0, 0);
++	hostapd_send_nei_report_resp(hapd, sta->addr, token, &ssid, 0, 0, 0);
 +
 +	return 0;
 +}
