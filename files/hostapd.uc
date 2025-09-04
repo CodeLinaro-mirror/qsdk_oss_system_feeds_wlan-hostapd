@@ -1162,6 +1162,9 @@ let auth_obj = {};
 hostapd.data.auth_obj = ubus.publish("hostapd-auth", auth_obj);
 hostapd.udebug_set("hostapd", hostapd.data.ubus);
 
+const TRANSPORT_HEADER_SIZE_IN_BITS = 64;
+const SPI_LEN_IN_BITS = 32;
+
 function bss_event(type, name, data) {
 	let ubus = hostapd.data.ubus;
 
@@ -1298,6 +1301,10 @@ return {
 		if (esp_spi && proto == 50) {
 			rule = rule + " esp spi " + esp_spi;
 		}
+
+                if (esp_spi && proto == 17) {
+                        rule = rule + " @th," + TRANSPORT_HEADER_SIZE_IN_BITS +  "," + SPI_LEN_IN_BITS + " " + esp_spi;
+                }
 
                 rule = rule + " meta mark set " + mark + " counter";
 
