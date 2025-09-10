@@ -168,7 +168,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +		return -1;
 +	}
 +
-+	if (atf_scheduling > 2) {
++	if (atf_scheduling > 1) {
 +		wpa_printf(MSG_ERROR, "ATF: Invalid atf sctrict scheduling\n");
 +		return -1;
 +	}
