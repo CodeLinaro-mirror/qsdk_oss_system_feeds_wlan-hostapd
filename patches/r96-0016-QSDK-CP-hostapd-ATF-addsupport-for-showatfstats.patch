@@ -26,7 +26,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -1013,6 +1013,55 @@ atf_build_candidate_list(struct hostapd_
+@@ -1024,6 +1024,55 @@ atf_build_candidate_list(struct hostapd_
  	return 0;
  }
  
@@ -82,7 +82,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  void
  atf_cal_implicit_peers(struct atf_group *group)
-@@ -1339,6 +1388,141 @@ nl80211_atf_offload_stats_timeout(void *
+@@ -1374,6 +1423,141 @@ nl80211_atf_offload_stats_timeout(void *
  fail:
  	nlmsg_free(msg);
  	return -1;
@@ -292,18 +292,18 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  };
  
  /**
-@@ -359,6 +390,8 @@ atf_find_group(struct atf_algo *algo, co
- int nl80211_atf_offload_stats_enable_disable(void *priv, u8 radio_index, u8 value);
+@@ -361,6 +392,8 @@ int nl80211_atf_offload_stats_enable_dis
+ void atf_offload_disable_atf_stats(struct hostapd_iface *ifaces);
  
  int nl80211_atf_offload_stats_timeout(void *priv, u8 radio_index, u8 value);
 +
 +int nl80211_atf_offload_showatfstats(void *priv, u8 radio_index, struct hostapd_data *hapd);
  #else
- 
- static inline void atf_offload_init(struct hapd_interfaces *ifaces)
+ static inline void atf_offload_disable_atf_stats(struct hostapd_iface *ifaces)
+ {
 --- a/src/atf/atf_offload_config.c
 +++ b/src/atf/atf_offload_config.c
-@@ -1686,6 +1686,283 @@ hostapd_ctrl_iface_atf_offload_g_atf_sta
+@@ -1691,6 +1691,283 @@ hostapd_ctrl_iface_atf_offload_g_atf_sta
  }
  
  
@@ -348,7 +348,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +		dl_list_for_each_safe(sta, tmp, &group->explicit_peers,
 +				      struct sta_info, atf_candidate_list) {
-+			if (sta && sta->atf_peer.peer_cfg_ref) {
++			if (sta->atf_peer.peer_cfg_ref) {
 +				peer_config = sta->atf_peer.peer_cfg_ref;
 +				airtime_stats = &peer_config->peer_airtime;
 +				peer_airtime = 0;
@@ -393,7 +393,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +		dl_list_for_each_safe(sta, tmp, &group->implicit_peers,
 +				      struct sta_info, atf_candidate_list) {
-+			if (sta && sta->atf_peer.calculated_airtime) {
++			if (sta->atf_peer.calculated_airtime) {
 +				implicit_peer = &sta->atf_peer;
 +				airtime_stats = &implicit_peer->peer_airtime;
 +				peer_airtime = 0;
@@ -489,7 +489,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +		dl_list_for_each_safe(sta, tmp, &group->explicit_peers,
 +				      struct sta_info, atf_candidate_list) {
-+			if (sta && sta->atf_peer.peer_cfg_ref) {
++			if (sta->atf_peer.peer_cfg_ref) {
 +				peer = sta->atf_peer.peer_cfg_ref;
 +				borrowed = 0;
 +				unused = 0;
@@ -517,7 +517,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +		dl_list_for_each_safe(sta, tmp, &group->implicit_peers,
 +				      struct sta_info, atf_candidate_list) {
-+			if (sta && sta->atf_peer.calculated_airtime) {
++			if (sta->atf_peer.calculated_airtime) {
 +				implicit_peer = &sta->atf_peer;
 +				borrowed = 0;
 +				unused = 0;
@@ -587,7 +587,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1739,6 +2016,8 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1744,6 +2021,8 @@ hostapd_ctrl_iface_config_atf_offload(st
  									buf, buflen);
  	else if (os_strncmp(cmd, "g_atf_stats_timeout", 19) == 0)
  		return hostapd_ctrl_iface_atf_offload_g_atf_stats_timeout(hapd, buf, buflen);

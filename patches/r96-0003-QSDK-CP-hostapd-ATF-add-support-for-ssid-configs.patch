@@ -147,7 +147,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 +}
 +
 +
- void
+ int
  atf_add_ssid_to_group(struct atf_group *group, const char *name)
  {
 @@ -79,6 +148,21 @@ atf_free_group(struct atf_group *group)

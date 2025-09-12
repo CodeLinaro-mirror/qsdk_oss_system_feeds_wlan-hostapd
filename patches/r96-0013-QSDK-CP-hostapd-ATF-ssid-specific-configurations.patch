@@ -559,7 +559,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  struct atf_peer_config *atf_find_peer_config_by_mac(u8 *mac, struct atf_algo *algo);
  
-+void atf_add_ssid_to_group(struct atf_group *group, const char *name);
++int atf_add_ssid_to_group(struct atf_group *group, const char *name);
 +
  struct atf_peer_config *atf_allocate_peer_config(u8 *macaddr, struct atf_algo *algo);
  

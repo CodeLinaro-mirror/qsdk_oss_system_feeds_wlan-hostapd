@@ -233,7 +233,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  include ../lib.rules
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -23,15 +23,128 @@
+@@ -23,15 +23,133 @@
  #include "ap/sta_info.h"
  
  #include "atf_offload.h"
@@ -241,12 +241,17 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  
  struct atf_offload *atf = NULL;
  
- void
++int
 +atf_add_ssid_to_group(struct atf_group *group, const char *name)
 +{
++	if (group->num_of_ssid == WLAN_SSID_MAX)
++		return -1;
++
 +	wpa_printf(MSG_INFO, "ATF: Adding %s  to group %s", name, group->name);
 +	os_strlcpy(group->ssidname[group->num_of_ssid], name, WLAN_SSID_MAX_LEN);
 +	group->num_of_ssid++;
++
++	return 0;
 +}
 +
 +
@@ -352,7 +357,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 +}
 +
 +
-+void
+ void
  atf_cleanup_algo(struct atf_algo *algo)
  {
  	if (!algo)
@@ -362,7 +367,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  	dl_list_del(&algo->list);
  	os_free(algo);
  	algo = NULL;
-@@ -50,6 +163,8 @@ atf_allocate_algo()
+@@ -50,6 +168,8 @@ atf_allocate_algo()
  	wpa_printf(MSG_DEBUG, "ATF: Allocated new algo structure for atf offload\n");
  	dl_list_init(&algo->list);
  	dl_list_add(&atf->algo_list, &algo->list);
@@ -371,7 +376,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  
  	return algo;
  }
-@@ -75,6 +190,7 @@ void
+@@ -75,6 +195,7 @@ void
  atf_init_algo(struct hostapd_iface *iface)
  {
  	struct atf_algo *algo;
@@ -379,7 +384,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  
  	if (!iface->conf->atf_offload)
  		return;
-@@ -87,6 +203,20 @@ atf_init_algo(struct hostapd_iface *ifac
+@@ -87,6 +208,20 @@ atf_init_algo(struct hostapd_iface *ifac
  
  	iface->atf_algo = algo;
  	algo->iface = iface;

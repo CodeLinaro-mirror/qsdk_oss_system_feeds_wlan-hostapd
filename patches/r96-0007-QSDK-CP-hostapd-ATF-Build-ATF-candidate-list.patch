@@ -51,7 +51,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  #ifdef CONFIG_PASN
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -187,6 +187,47 @@ atf_add_ssid_to_group(struct atf_group *
+@@ -192,6 +192,47 @@ atf_add_ssid_to_group(struct atf_group *
  }
  
  
@@ -99,7 +99,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  struct atf_group *
  atf_allocate_group(const char *name, struct atf_algo *algo)
  {
-@@ -207,6 +248,10 @@ atf_allocate_group(const char *name, str
+@@ -212,6 +253,10 @@ atf_allocate_group(const char *name, str
  	group->algo = algo;
  	algo->num_group_cfg++;
  
@@ -110,7 +110,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  	wpa_printf(MSG_INFO, "ATF: Added group %s [%d], no of groups %d", group->name,
  	           group->index, algo->num_group_cfg);
  
-@@ -222,6 +267,7 @@ atf_free_group(struct atf_group *group)
+@@ -227,6 +272,7 @@ atf_free_group(struct atf_group *group)
  	if (!algo->num_group_cfg)
  		return;
  
@@ -118,7 +118,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  	algo->num_group_cfg--;
  	dl_list_del(&group->list);
  	os_free(group);
-@@ -418,6 +464,332 @@ atf_trigger_config_timer(struct hostapd_
+@@ -424,6 +470,337 @@ atf_trigger_config_timer(struct hostapd_
  }
  
  
@@ -164,7 +164,11 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 +	 * if update == false, return NULL.
 +	 */
 +	if (update) {
-+		atf_add_ssid_to_group(group, name);
++		if (atf_add_ssid_to_group(group, name)) {
++			wpa_printf(MSG_ERROR, "ATF: Failed to add ssid to group");
++			return NULL;
++		}
++
 +		return group;
 +	}
 +
@@ -250,6 +254,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 +		ssid = &bss->conf->ssid;
 +		os_memset(ssid_buf, 0, sizeof(ssid_buf));
 +		os_memcpy(ssid_buf, ssid->ssid, ssid->ssid_len);
++		ssid_buf[ssid->ssid_len] = '\0';
 +
 +		group = atf_find_group(algo, ssid_buf);
 +		if (!group) {
@@ -451,7 +456,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  static void
  atf_cfg_timeout_handler(void *eloop_ctx, void *timeout_ctx)
  {
-@@ -444,6 +816,11 @@ atf_cfg_timeout_handler(void *eloop_ctx,
+@@ -450,6 +827,11 @@ atf_cfg_timeout_handler(void *eloop_ctx,
  		goto out;
  	}
  
@@ -463,7 +468,7 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  out:
  	algo->atf_tasksched = 0;
  	return;
-@@ -503,6 +880,8 @@ atf_init_algo(struct hostapd_iface *ifac
+@@ -509,6 +891,8 @@ atf_init_algo(struct hostapd_iface *ifac
  		wpa_printf(MSG_ERROR, "ATF: Could not allocate default group");
  		return;
  	}
