@@ -257,7 +257,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	algo = iface->atf_algo;
  
-@@ -1151,6 +1189,375 @@ hostapd_ctrl_iface_atf_offload_delssid(s
+@@ -1151,6 +1189,351 @@ hostapd_ctrl_iface_atf_offload_delssid(s
  }
  
  
@@ -447,22 +447,11 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +		return -1;
 +	}
 +
-+	ret = os_snprintf(buf + len, buflen - len, "\n\n                      ");
-+	if (!os_snprintf_error(buflen - len, ret))
-+		len += ret;
-+
-+	ret = os_snprintf(buf + len, buflen - len, "SHOW   ATF    TABLE\n");
-+	if (os_snprintf_error(buflen - len, ret))
-+		return len;
-+	len += ret;
-+
-+	ret = os_snprintf(buf + len, buflen - len,
-+			  "%-16s %-22s %-20s %-24s %-24s\n",
-+			  "SSID","Client(MAC Address)","Air time(Percentage)",
-+			  "Config ATF(Percentage)","Peer_Assoc_Status(1--Assoc,0-No-Assoc)");
-+	if (os_snprintf_error(buflen - len, ret))
-+		return len;
-+	len += ret;
++	wpa_printf(MSG_INFO, "\n\n                      ");
++	wpa_printf(MSG_INFO, "SHOW   ATF    TABLE\n");
++	wpa_printf(MSG_INFO, "%-16s %-22s %-20s %-24s %-24s\n",
++		   "SSID","Client(MAC Address)","Air time(Percentage)",
++		   "Config ATF(Percentage)","Peer_Assoc_Status(1--Assoc,0-No-Assoc)");
 +
 +	if (dl_list_empty(&algo->groups)) {
 +		wpa_printf(MSG_ERROR, "ATF: No ssid configuration found\n");
@@ -470,12 +459,8 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	}
 +
 +	dl_list_for_each(group, &algo->groups, struct atf_group, list) {
-+		ret = os_snprintf(buf + len, buflen - len,
-+				  "%-50s %d\n",
-+				  group->name, group->user_cfg_airtime / 10);
-+		if (os_snprintf_error(buflen - len, ret))
-+			return len;
-+		len += ret;
++		wpa_printf(MSG_INFO, "%-50s %d\n",
++			   group->name, group->user_cfg_airtime / 10);
 +
 +		if (dl_list_empty(&group->explicit_peers))
 +			goto implicit_peers;
@@ -483,14 +468,10 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +		dl_list_for_each_safe(sta, tmp, &group->explicit_peers,
 +				      struct sta_info, atf_candidate_list) {
 +			if (sta->atf_peer.peer_cfg_ref) {
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
-+						  "", MAC2STR(sta->atf_peer.peer_cfg_ref->addr)," ",
-+						  sta->atf_peer.calculated_airtime / 10,
-+						  sta->atf_peer.peer_cfg_ref->user_cfg_airtime / 10, "1");
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
++				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++					   "", MAC2STR(sta->atf_peer.peer_cfg_ref->addr)," ",
++					   sta->atf_peer.calculated_airtime / 10,
++					   sta->atf_peer.peer_cfg_ref->user_cfg_airtime / 10, "1");
 +			}
 +		}
 +
@@ -509,14 +490,10 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +				else
 +					memcpy(addr, sta->addr, 6);
 +
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
-+						  "", MAC2STR(addr), " ",
-+						  sta->atf_peer.calculated_airtime / 10,
-+						  0, "1");
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
++				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++					   "", MAC2STR(addr), " ",
++					   sta->atf_peer.calculated_airtime / 10,
++					   0, "1");
 +			}
 +		}
 +
@@ -529,17 +506,16 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +				 struct atf_peer_config, list) {
 +			if (peer_config->calculated_for_airtime == 0 &&
 +			    peer_config->group == group) {
-+				ret = os_snprintf(buf + len, buflen - len,
-+						  "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
-+						  "", MAC2STR(peer_config->addr), " ",
-+						  0, peer_config->user_cfg_airtime / 10,
-+						  "0");
-+				if (os_snprintf_error(buflen - len, ret))
-+					return len;
-+				len += ret;
++				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++					   "", MAC2STR(peer_config->addr), " ",
++					   0, peer_config->user_cfg_airtime / 10, "0");
 +			}
 +		}
 +	}
++
++	ret = os_snprintf(buf, buflen, "Check hostapd logs for atf table\n");
++	if (!os_snprintf_error(buflen, ret))
++		len += ret;
 +
 +	return len;
 +}
@@ -633,7 +609,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1185,6 +1592,16 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1185,6 +1568,16 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_addssid(hapd, cmd + 8, buf, buflen);
  	else if (os_strncmp(cmd, "delssid ", 8) == 0)
  		return hostapd_ctrl_iface_atf_offload_delssid(hapd, cmd + 8, buf, buflen);
