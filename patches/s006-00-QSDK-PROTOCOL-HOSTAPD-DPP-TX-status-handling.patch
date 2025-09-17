@@ -1,0 +1,232 @@
+From 63fc19a28914e7ed9f82fe08982c35b120439f86 Mon Sep 17 00:00:00 2001
+From: Arunpandi Kannan <arunpand@qti.qualcomm.com>
+Date: Mon, 15 Sep 2025 05:20:00 +0530
+Subject: [PATCH] QSDK:PROTOCOL:HOSTAPD: DPP TX status handling
+
+1) After sending each packet, DPP depends on tx status to start timers for
+next DPP phase. if tx status not received, it gets stuck in same DPP session,
+So initate timer for Tx status. Clear the Tx status timer, if Tx status received
+or next DPP phase starts.
+
+2) Start dpp listen on requested channel before sending DPP chirp packets.
+
+3) In case of offchannel send failure, stop chirping and return.
+
+Tag: DPP
+Patch-depdendency: r09-hostapd-dpp-changes.patch
+Patch-work: none
+
+Signed-off-by: Arunpandi Kannan <arunpand@qti.qualcomm.com>
+---
+ wpa_supplicant/dpp_supplicant.c   | 52 ++++++++++++++++++++++++++++---
+ wpa_supplicant/gas_query.c        |  2 --
+ wpa_supplicant/scan.c             | 10 ++++++
+ wpa_supplicant/wpa_supplicant_i.h |  2 ++
+ 4 files changed, 59 insertions(+), 7 deletions(-)
+
+diff --git a/wpa_supplicant/dpp_supplicant.c b/wpa_supplicant/dpp_supplicant.c
+index 924f12d..fff8f22 100644
+--- a/wpa_supplicant/dpp_supplicant.c
++++ b/wpa_supplicant/dpp_supplicant.c
+@@ -50,6 +50,7 @@ wpas_dpp_tx_pkex_status(struct wpa_supplicant *wpa_s,
+ 			const u8 *data, size_t data_len,
+ 			enum offchannel_send_action_result result);
+ static void wpas_dpp_gas_client_timeout(void *eloop_ctx, void *timeout_ctx);
++static void wpas_dpp_chirp_start(struct wpa_supplicant *wpa_s);
+ #ifdef CONFIG_DPP2
+ static void wpas_dpp_reconfig_reply_wait_timeout(void *eloop_ctx,
+ 						 void *timeout_ctx);
+@@ -193,6 +194,24 @@ int wpas_dpp_nfc_handover_sel(struct wpa_supplicant *wpa_s, const char *cmd)
+ }
+ 
+ 
++static void wpas_dpp_tx_status_timeout(void *eloop_ctx, void *timeout_ctx)
++{
++	struct wpa_supplicant *wpa_s = eloop_ctx;
++	struct dpp_authentication *auth = wpa_s->dpp_auth;
++
++	if (!auth)
++		return;
++
++	wpa_printf(MSG_DEBUG,
++		   "DPP: Terminate due to tx status failure");
++	wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_FAIL
++		"TX status timeout");
++	offchannel_send_action_done(wpa_s);
++	dpp_auth_deinit(auth);
++	wpa_s->dpp_auth = NULL;
++}
++
++
+ static void wpas_dpp_auth_resp_retry_timeout(void *eloop_ctx, void *timeout_ctx)
+ {
+ 	struct wpa_supplicant *wpa_s = eloop_ctx;
+@@ -435,6 +454,7 @@ void wpas_dpp_send_conn_status_result(struct wpa_supplicant *wpa_s,
+ 
+ 	/* This exchange will be terminated in the TX status handler */
+ 	auth->remove_on_tx_status = 1;
++	eloop_register_timeout(1, 0, wpas_dpp_tx_status_timeout, wpa_s, NULL);
+ 
+ 	return;
+ }
+@@ -524,6 +544,7 @@ static void wpas_dpp_tx_status(struct wpa_supplicant *wpa_s,
+ 		return;
+ 	}
+ 
++	eloop_cancel_timeout(wpas_dpp_tx_status_timeout, wpa_s, NULL);
+ #ifdef CONFIG_DPP2
+ 	if (auth->connect_on_tx_status) {
+ 		auth->connect_on_tx_status = 0;
+@@ -1162,6 +1183,7 @@ static void wpas_dpp_tx_auth_resp(struct wpa_supplicant *wpa_s)
+ 			       wpabuf_head(auth->resp_msg),
+ 			       wpabuf_len(auth->resp_msg),
+ 			       500, wpas_dpp_tx_status, 0);
++	eloop_register_timeout(1, 0, wpas_dpp_tx_status_timeout, wpa_s, NULL);
+ }
+ 
+ 
+@@ -2175,6 +2197,7 @@ static void wpas_dpp_rx_auth_conf(struct wpa_supplicant *wpa_s, const u8 *src,
+ 	}
+ 
+ 	eloop_cancel_timeout(wpas_dpp_auth_conf_wait_timeout, wpa_s, NULL);
++	eloop_cancel_timeout(wpas_dpp_tx_status_timeout, wpa_s, NULL);
+ 
+ 	if (dpp_auth_conf_rx(auth, hdr, buf, len) < 0) {
+ 		wpa_printf(MSG_DEBUG, "DPP: Authentication failed");
+@@ -5047,6 +5070,12 @@ int wpas_dpp_controller_start(struct wpa_supplicant *wpa_s, const char *cmd)
+ 
+ static void wpas_dpp_chirp_next(void *eloop_ctx, void *timeout_ctx);
+ 
++static void wpas_dpp_chirp_roc_start(void *eloop_ctx, void *timeout_ctx)
++{
++	struct wpa_supplicant *wpa_s = eloop_ctx;
++	 wpas_dpp_chirp_start(wpa_s);
++}
++
+ static void wpas_dpp_chirp_timeout(void *eloop_ctx, void *timeout_ctx)
+ {
+ 	struct wpa_supplicant *wpa_s = eloop_ctx;
+@@ -5074,7 +5103,7 @@ static void wpas_dpp_chirp_tx_status(struct wpa_supplicant *wpa_s,
+ 
+ 	wpa_printf(MSG_DEBUG, "DPP: Chirp send completed - wait for response");
+ 	eloop_cancel_timeout(wpas_dpp_chirp_timeout, wpa_s, NULL);
+-	if (eloop_register_timeout(2, 0, wpas_dpp_chirp_timeout,
++	if (eloop_register_timeout(4, 0, wpas_dpp_chirp_timeout,
+ 				   wpa_s, NULL) < 0)
+ 		wpas_dpp_chirp_stop(wpa_s, 0);
+ }
+@@ -5085,7 +5114,16 @@ static void wpas_dpp_chirp_start(struct wpa_supplicant *wpa_s)
+ 	struct wpabuf *msg, *announce = NULL;
+ 	int type;
+ 
+-	wpas_abort_ongoing_scan(wpa_s);
++	if (wpa_s->dpp_roc_freq != wpa_s->dpp_chirp_freq) {
++		wpa_drv_remain_on_channel(wpa_s, wpa_s->dpp_chirp_freq, 3000);
++		if (eloop_register_timeout(3, 0, wpas_dpp_chirp_roc_start, wpa_s, 0) < 0) {
++			wpas_dpp_chirp_stop(wpa_s, 0);
++			return;
++		}
++		wpa_s->dpp_roc_freq = wpa_s->dpp_chirp_freq;
++		return;
++	}
++	wpa_s->is_dpp_defer_scan = 1;
+ 	msg = wpa_s->dpp_presence_announcement;
+ 	type = DPP_PA_PRESENCE_ANNOUNCEMENT;
+ 	if (!msg) {
+@@ -5114,10 +5152,13 @@ static void wpas_dpp_chirp_start(struct wpa_supplicant *wpa_s)
+ 		    wpa_s, wpa_s->dpp_chirp_freq, broadcast,
+ 		    wpa_s->own_addr, broadcast,
+ 		    wpabuf_head(msg), wpabuf_len(msg),
+-		    2000, wpas_dpp_chirp_tx_status, 0) < 0)
++		    3000, wpas_dpp_chirp_tx_status, 0) < 0) {
+ 		wpas_dpp_chirp_stop(wpa_s, 0);
++		wpabuf_free(announce);
++		return;
++	}
+ 
+-	if (eloop_register_timeout(2, 0, wpas_dpp_chirp_timeout, wpa_s, NULL) < 0)
++	if (eloop_register_timeout(4, 0, wpas_dpp_chirp_timeout, wpa_s, NULL) < 0)
+ 		wpas_dpp_chirp_stop(wpa_s, 0);
+ 	wpabuf_free(announce);
+ }
+@@ -5258,6 +5299,7 @@ static void wpas_dpp_chirp_next(void *eloop_ctx, void *timeout_ctx)
+ 	if (wpa_s->dpp_chirp_listen)
+ 		wpas_dpp_listen_stop(wpa_s);
+ 
++	wpa_s->is_dpp_defer_scan = 1;
+ 	if (wpa_s->dpp_chirp_freq == 0) {
+ 		if (wpa_s->dpp_chirp_round % 4 == 0 &&
+ 		    !wpa_s->dpp_chirp_scan_done) {
+@@ -5274,7 +5316,7 @@ static void wpas_dpp_chirp_next(void *eloop_ctx, void *timeout_ctx)
+ 			}
+ 			wpa_printf(MSG_DEBUG,
+ 				   "DPP: Update channel list for chirping");
+-			wpa_s->scan_req = MANUAL_SCAN_REQ;
++			wpas_abort_ongoing_scan(wpa_s);
+ 			wpa_s->scan_res_handler =
+ 				wpas_dpp_chirp_scan_res_handler;
+ 			wpa_supplicant_req_scan(wpa_s, 0, 0);
+diff --git a/wpa_supplicant/gas_query.c b/wpa_supplicant/gas_query.c
+index 88564d5..8f081a9 100644
+--- a/wpa_supplicant/gas_query.c
++++ b/wpa_supplicant/gas_query.c
+@@ -168,8 +168,6 @@ static void gas_query_done(struct gas_query *gas,
+ 		query->status_code, gas_result_txt(result));
+ 	if (gas->current == query)
+ 		gas->current = NULL;
+-	if (query->offchannel_tx_started)
+-		offchannel_send_action_done(gas->wpa_s);
+ 	dl_list_del(&query->list);
+ 	query->cb(query->ctx, query->addr, query->dialog_token, result,
+ 		  query->adv_proto, query->resp, query->status_code);
+diff --git a/wpa_supplicant/scan.c b/wpa_supplicant/scan.c
+index e09f1cc..48c65eb 100644
+--- a/wpa_supplicant/scan.c
++++ b/wpa_supplicant/scan.c
+@@ -1605,6 +1605,14 @@ void wpa_supplicant_update_scan_int(struct wpa_supplicant *wpa_s, int sec)
+ }
+ 
+ 
++void defer_wpa_supplicant_scan(void *eloop_ctx, void *timeout_ctx)
++{
++	struct wpa_supplicant *wpa_s = eloop_ctx;
++
++	wpa_s->is_dpp_defer_scan = 0;
++	eloop_register_timeout(6, 0, wpa_supplicant_scan, wpa_s, NULL);
++}
++
+ /**
+  * wpa_supplicant_req_scan - Schedule a scan for neighboring access points
+  * @wpa_s: Pointer to wpa_supplicant data
+@@ -1633,6 +1641,8 @@ void wpa_supplicant_req_scan(struct wpa_supplicant *wpa_s, int sec, int usec)
+ 	} else if (res == 0) {
+ 		wpa_dbg(wpa_s, MSG_DEBUG, "Ignore new scan request for %d.%06d sec since an earlier request is scheduled to trigger sooner",
+ 			sec, usec);
++	} else if (wpa_s->is_dpp_defer_scan) {
++		eloop_register_timeout(0, 0, defer_wpa_supplicant_scan, wpa_s, NULL);
+ 	} else {
+ 		wpa_dbg(wpa_s, MSG_DEBUG, "Setting scan request: %d.%06d sec",
+ 			sec, usec);
+diff --git a/wpa_supplicant/wpa_supplicant_i.h b/wpa_supplicant/wpa_supplicant_i.h
+index 13af4f8..d2b5b03 100644
+--- a/wpa_supplicant/wpa_supplicant_i.h
++++ b/wpa_supplicant/wpa_supplicant_i.h
+@@ -1477,6 +1477,7 @@ struct wpa_supplicant {
+ 	struct wpa_radio_work *dpp_listen_work;
+ 	unsigned int dpp_pending_listen_freq;
+ 	unsigned int dpp_listen_freq;
++	unsigned int dpp_roc_freq;
+ 	struct os_reltime dpp_listen_end;
+ 	u8 dpp_allowed_roles;
+ 	int dpp_qr_mutual;
+@@ -1510,6 +1511,7 @@ struct wpa_supplicant {
+ 	size_t dpp_last_ssid_len;
+ 	bool dpp_conf_backup_received;
+ 	bool dpp_pkex_wait_auth_req;
++	bool is_dpp_defer_scan;
+ #ifdef CONFIG_DPP2
+ 	struct dpp_pfs *dpp_pfs;
+ 	int dpp_pfs_fallback;
+-- 
+2.34.1
+
