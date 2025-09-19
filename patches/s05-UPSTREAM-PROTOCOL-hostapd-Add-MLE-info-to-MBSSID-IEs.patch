@@ -1,0 +1,46 @@
+From 73cdf81c133a3ffbe203b1c262f2c0f73352f9fa Mon Sep 17 00:00:00 2001
+From: Ramasamy Kaliappan <rkaliapp@qti.qualcomm.com>
+Date: Thu, 28 Aug 2025 17:56:42 +0530
+Subject: [PATCH] UPSTREAM:PROTOCOL: hostapd: Add MLE info to MBSSID IEs for
+ hidden non-Tx BSS
+
+Currently, the MLE basic information is missing from MBSSID IEs
+in probe responses for hidden non-transmitted BSSes, causing
+incomplete discovery in station.
+
+Add MLE info in MBSSID IEs for hidden non-transmitted BSSes in
+probe response
+Fixes: df4995a8b6d30 ("hostpad: Rework MLO support based on upstream design")
+Patch-dependency: r02-002-hostapd-MLO-MBSSID-Support.patch
+Patch-work: None
+
+Signed-off-by: Ramasamy Kaliappan <rkaliapp@qti.qualcomm.com>
+---
+ src/ap/ieee802_11.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 0f7048a4fd0d..00744b1dfc7e 100644
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -11024,7 +11024,7 @@ static size_t hostapd_eid_mbssid_elem_len(struct hostapd_data *hapd,
+ 			ie_count++;
+ 
+ 		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
+-		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
++		if (bss->conf->mld_ap && (bss != tx_bss || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
+ 			ext_cap = 0;
+ 			/* RMSL value sent in broadcast Probe response case and beacon */
+ 			if (bss->conf->enable_aal &&
+@@ -11321,7 +11321,7 @@ static u8 * hostapd_eid_mbssid_elem(struct hostapd_data *hapd, u8 *eid, u8 *end,
+ 			non_inherit_ie[ie_count++] = WLAN_EID_RSNX;
+ 
+ 		/* For ML Probe resp, solicited hapd's MLE will be in the frame body */
+-		if (bss->conf->mld_ap && (bss != hapd || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
++		if (bss->conf->mld_ap && (bss != tx_bss || frame_type != WLAN_FC_STYPE_PROBE_RESP)) {
+ 			ext_cap = 0;
+ 			if (bss->conf->enable_aal &&
+ 			    (((frame_type == WLAN_FC_STYPE_PROBE_RESP) &&
+-- 
+2.34.1
+
