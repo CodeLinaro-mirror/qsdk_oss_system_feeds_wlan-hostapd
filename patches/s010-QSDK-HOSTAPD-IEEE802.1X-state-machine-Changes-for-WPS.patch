@@ -1,6 +1,6 @@
-From 79911307cc09be075a12998455669995a402342a Mon Sep 17 00:00:00 2001
+From f4b311235844f399070db95851016b4cce5a2423 Mon Sep 17 00:00:00 2001
 From: Arunpandi Kannan <arunpand@qti.qualcomm.com>
-Date: Wed, 17 Sep 2025 23:48:58 +0530
+Date: Mon, 22 Sep 2025 14:28:05 +0530
 Subject: [PATCH] QSDK: HOSTAPD: IEEE802.1X state machine Changes for WPS
 
 IEEE802.1X Changes state machine for WPS
@@ -10,11 +10,11 @@ Signed-off-by: Arunpandi Kannan <arunpand@qti.qualcomm.com>
 ---
  src/ap/drv_callbacks.c | 12 ++++++++++--
  src/ap/ieee802_1x.c    | 28 ++++++++++++++++++++++++++--
- src/ap/sta_info.c      | 12 ++++++++++++
- 3 files changed, 48 insertions(+), 4 deletions(-)
+ src/ap/sta_info.c      | 13 +++++++++++++
+ 3 files changed, 49 insertions(+), 4 deletions(-)
 
 diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
-index 0123017..895f581 100644
+index 26d6628..3da6d04 100644
 --- a/src/ap/drv_callbacks.c
 +++ b/src/ap/drv_callbacks.c
 @@ -270,8 +270,12 @@ static struct hostapd_data * hostapd_find_by_sta(struct hostapd_iface *iface,
@@ -87,15 +87,16 @@ index a82d447..0719c0b 100644
  }
  
 diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
-index f091a49..42c438c 100644
+index f091a49..b14c99b 100644
 --- a/src/ap/sta_info.c
 +++ b/src/ap/sta_info.c
-@@ -2223,6 +2223,18 @@ void ap_sta_clear_disconnect_timeouts(struct hostapd_data *hapd,
+@@ -2223,6 +2223,19 @@ void ap_sta_clear_disconnect_timeouts(struct hostapd_data *hapd,
  		if (sta->flags & WLAN_STA_WPS)
  			hostapd_wps_eap_completed(hapd);
  	}
 +#ifdef CONFIG_IEEE80211BE
-+      else if (hapd->conf->mld_ap && eloop_cancel_timeout(ap_sta_delayed_1x_auth_fail_cb, hapd->mld->fbss, sta) > 0)
++      else if (hapd->conf->mld_ap && hapd->mld && hapd->mld->fbss &&
++	       eloop_cancel_timeout(ap_sta_delayed_1x_auth_fail_cb, hapd->mld->fbss, sta) > 0)
 +      {
 +              wpa_printf(MSG_DEBUG,
 +                         "%s: Removed ap_sta_delayed_1x_auth_fail_cb timeout for "
