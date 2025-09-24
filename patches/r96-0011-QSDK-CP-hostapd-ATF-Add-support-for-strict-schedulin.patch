@@ -206,8 +206,8 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +	algo = iface->atf_algo;
 +
-+	ret = os_snprintf(buf, buflen, "ATF strict scheduling is %s\n",
-+			  algo->atfstrictsched_enabled ? "enabled" : "disabled");
++	ret = os_snprintf(buf, buflen, "ATF scheduling is %s\n",
++			  algo->atfstrictsched_enabled ? "strict" : "fair");
 +	if (!os_snprintf_error(buflen, ret))
 +		len += ret;
 +
