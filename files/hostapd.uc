@@ -989,13 +989,16 @@ let main_obj = {
 			let ret;
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
+				iface.stop();
 				for (let mon in mon_if_names) {
+					if (mon == null)
+						continue;
+
 					ret = system(`ifconfig ${mon} down`);
 					if (ret) {
 						hostapd.printf(`Failed to bring down monitor interface ${mon}: ${ret}`);
 					}
 				}
-				iface.stop();
 				return 0;
 			}
 
