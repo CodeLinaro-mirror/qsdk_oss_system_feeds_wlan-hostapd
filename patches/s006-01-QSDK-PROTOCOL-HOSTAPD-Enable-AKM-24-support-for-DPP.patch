@@ -1,6 +1,6 @@
-From f6474e0b989b781f00a9109f29eb7628f7f92e09 Mon Sep 17 00:00:00 2001
+From 3f2698bb50d80867e372aad6eb7784ef5acf246c Mon Sep 17 00:00:00 2001
 From: Arunpandi Kannan <arunpand@qti.qualcomm.com>
-Date: Thu, 11 Sep 2025 00:25:44 +0530
+Date: Thu, 25 Sep 2025 15:31:33 +0530
 Subject: [PATCH] QSDK:PROTOCOL:HOSTAPD: Enable AKM 24 support for DPP
 
 Enable DPP to configure AKM24 in both configurator and enrollee.
@@ -16,9 +16,9 @@ Signed-off-by: Arunpandi Kannan <arunpand@qti.qualcomm.com>
  src/common/dpp.c                | 65 ++++++++++++++++++++++++++++-----
  src/common/dpp.h                |  4 ++
  src/common/wpa_ctrl.h           |  1 +
- wpa_supplicant/dpp_supplicant.c | 11 +++++-
+ wpa_supplicant/dpp_supplicant.c |  9 ++++-
  wpa_supplicant/wpa_cli.c        |  2 +
- 6 files changed, 75 insertions(+), 11 deletions(-)
+ 6 files changed, 74 insertions(+), 10 deletions(-)
 
 diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
 index e1c6139..742af6f 100644
@@ -35,7 +35,7 @@ index e1c6139..742af6f 100644
  		char *hex;
  		size_t hexlen;
 diff --git a/src/common/dpp.c b/src/common/dpp.c
-index cb65fa2..ad23d3f 100644
+index 2ef5ec8..046daa6 100644
 --- a/src/common/dpp.c
 +++ b/src/common/dpp.c
 @@ -1094,6 +1094,8 @@ struct dpp_configuration * dpp_configuration_alloc(const char *type)
@@ -235,7 +235,7 @@ index cb65fa2..ad23d3f 100644
  			goto fail;
  #ifdef CONFIG_DPP2
 diff --git a/src/common/dpp.h b/src/common/dpp.h
-index dfd6e34..5a8a801 100644
+index e7e58ee..fa38ed1 100644
 --- a/src/common/dpp.h
 +++ b/src/common/dpp.h
 @@ -240,6 +240,7 @@ enum dpp_akm {
@@ -283,25 +283,9 @@ index ff8a016..f4f0e15 100644
  #define DPP_EVENT_C_SIGN_KEY "DPP-C-SIGN-KEY "
  #define DPP_EVENT_PP_KEY "DPP-PP-KEY "
 diff --git a/wpa_supplicant/dpp_supplicant.c b/wpa_supplicant/dpp_supplicant.c
-index 0baa81a..5e5977e 100644
+index f758844..526d507 100644
 --- a/wpa_supplicant/dpp_supplicant.c
 +++ b/wpa_supplicant/dpp_supplicant.c
-@@ -50,7 +50,6 @@ wpas_dpp_tx_pkex_status(struct wpa_supplicant *wpa_s,
- 			const u8 *data, size_t data_len,
- 			enum offchannel_send_action_result result);
- static void wpas_dpp_gas_client_timeout(void *eloop_ctx, void *timeout_ctx);
--static void wpas_dpp_chirp_start(struct wpa_supplicant *wpa_s);
- #ifdef CONFIG_DPP2
- static void wpas_dpp_reconfig_reply_wait_timeout(void *eloop_ctx,
- 						 void *timeout_ctx);
-@@ -58,6 +57,7 @@ static void wpas_dpp_start_gas_client(struct wpa_supplicant *wpa_s);
- static int wpas_dpp_process_conf_obj(void *ctx,
- 				     struct dpp_authentication *auth);
- static bool wpas_dpp_tcp_msg_sent(void *ctx, struct dpp_authentication *auth);
-+static void wpas_dpp_chirp_start(struct wpa_supplicant *wpa_s);
- #endif /* CONFIG_DPP2 */
- #ifdef CONFIG_DPP3
- static void wpas_dpp_pb_next(void *eloop_ctx, void *timeout_ctx);
 @@ -1508,7 +1508,7 @@ static struct wpa_ssid * wpas_dpp_add_network(struct wpa_supplicant *wpa_s,
  	}
  
@@ -333,10 +317,10 @@ index 0baa81a..5e5977e 100644
  		char *hex;
  		size_t hexlen;
 diff --git a/wpa_supplicant/wpa_cli.c b/wpa_supplicant/wpa_cli.c
-index 91ad28a..0b0f8c9 100644
+index a9e6228..0459a43 100644
 --- a/wpa_supplicant/wpa_cli.c
 +++ b/wpa_supplicant/wpa_cli.c
-@@ -4517,6 +4517,8 @@ static void wpa_cli_action_process(const char *msg)
+@@ -4527,6 +4527,8 @@ static void wpa_cli_action_process(const char *msg)
  		wpa_cli_exec(action_file, ifname, pos);
  	} else if (str_starts(pos, DFS_EVENT_RADAR_DETECTED)) {
  		wpa_cli_exec(action_file, ifname, pos);
