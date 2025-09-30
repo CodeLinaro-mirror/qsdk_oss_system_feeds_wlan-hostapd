@@ -31,11 +31,9 @@ Signed-off-by: Arunpandi Kannan <arunpand@qti.qualcomm.com>
  wpa_supplicant/wpa_cli.c    |  10 +++
  10 files changed, 317 insertions(+)
 
-diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
-index a114d62..fe61fc7 100644
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -6441,6 +6441,15 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
+@@ -6319,6 +6319,15 @@ static int hostapd_ctrl_iface_receive_pr
  			if (os_snprintf_error(reply_size, reply_len))
  				reply_len = -1;
  		}
@@ -51,11 +49,9 @@ index a114d62..fe61fc7 100644
  	} else if (os_strncmp(buf, "DPP_BOOTSTRAP_GEN ", 18) == 0) {
  		res = dpp_bootstrap_gen(hapd->iface->interfaces->dpp, buf + 18);
  		if (res < 0) {
-diff --git a/hostapd/hostapd_cli.c b/hostapd/hostapd_cli.c
-index a0a8e26..f73684c 100644
 --- a/hostapd/hostapd_cli.c
 +++ b/hostapd/hostapd_cli.c
-@@ -1587,6 +1587,13 @@ static int hostapd_cli_cmd_dpp_qr_code(struct wpa_ctrl *ctrl, int argc,
+@@ -1594,6 +1594,13 @@ static int hostapd_cli_cmd_dpp_qr_code(s
  }
  
  
@@ -69,7 +65,7 @@ index a0a8e26..f73684c 100644
  static int hostapd_cli_cmd_dpp_bootstrap_gen(struct wpa_ctrl *ctrl, int argc,
  					     char *argv[])
  {
-@@ -2058,6 +2065,8 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
+@@ -2067,6 +2074,8 @@ static const struct hostapd_cli_cmd host
  #ifdef CONFIG_DPP
  	{ "dpp_qr_code", hostapd_cli_cmd_dpp_qr_code, NULL,
  	  "report a scanned DPP URI from a QR Code" },
@@ -78,11 +74,9 @@ index a0a8e26..f73684c 100644
  	{ "dpp_bootstrap_gen", hostapd_cli_cmd_dpp_bootstrap_gen, NULL,
  	  "type=<qrcode> [chan=..] [mac=..] [info=..] [curve=..] [key=..] = generate DPP bootstrap information" },
  	{ "dpp_bootstrap_remove", hostapd_cli_cmd_dpp_bootstrap_remove, NULL,
-diff --git a/src/common/dpp.c b/src/common/dpp.c
-index ad23d3f..046daa6 100644
 --- a/src/common/dpp.c
 +++ b/src/common/dpp.c
-@@ -4556,6 +4556,95 @@ static int dpp_parse_supported_curves_list(struct dpp_bootstrap_info *bi,
+@@ -4556,6 +4556,95 @@ static int dpp_parse_supported_curves_li
  }
  
  
@@ -178,11 +172,9 @@ index ad23d3f..046daa6 100644
  int dpp_bootstrap_gen(struct dpp_global *dpp, const char *cmd)
  {
  	char *mac = NULL, *info = NULL, *curve = NULL;
-diff --git a/src/common/dpp.h b/src/common/dpp.h
-index 5a8a801..fa38ed1 100644
 --- a/src/common/dpp.h
 +++ b/src/common/dpp.h
-@@ -734,6 +734,7 @@ struct dpp_bootstrap_info * dpp_add_qr_code(struct dpp_global *dpp,
+@@ -734,6 +734,7 @@ struct dpp_bootstrap_info * dpp_add_qr_c
  struct dpp_bootstrap_info * dpp_add_nfc_uri(struct dpp_global *dpp,
  					    const char *uri);
  int dpp_bootstrap_gen(struct dpp_global *dpp, const char *cmd);
@@ -190,11 +182,9 @@ index 5a8a801..fa38ed1 100644
  struct dpp_bootstrap_info *
  dpp_bootstrap_get_id(struct dpp_global *dpp, unsigned int id);
  int dpp_bootstrap_remove(struct dpp_global *dpp, const char *id);
-diff --git a/src/common/dpp_crypto.c b/src/common/dpp_crypto.c
-index 609c426..6aceaac 100644
 --- a/src/common/dpp_crypto.c
 +++ b/src/common/dpp_crypto.c
-@@ -336,6 +336,66 @@ int dpp_bootstrap_key_hash(struct dpp_bootstrap_info *bi)
+@@ -336,6 +336,66 @@ int dpp_bootstrap_key_hash(struct dpp_bo
  }
  
  
@@ -261,11 +251,9 @@ index 609c426..6aceaac 100644
  int dpp_keygen(struct dpp_bootstrap_info *bi, const char *curve,
  	       const u8 *privkey, size_t privkey_len)
  {
-diff --git a/src/common/dpp_i.h b/src/common/dpp_i.h
-index edb2fb2..cc0d089 100644
 --- a/src/common/dpp_i.h
 +++ b/src/common/dpp_i.h
-@@ -106,6 +106,9 @@ int dpp_get_subject_public_key(struct dpp_bootstrap_info *bi,
+@@ -106,6 +106,9 @@ int dpp_get_subject_public_key(struct dp
  int dpp_bootstrap_key_hash(struct dpp_bootstrap_info *bi);
  int dpp_keygen(struct dpp_bootstrap_info *bi, const char *curve,
  	       const u8 *privkey, size_t privkey_len);
@@ -275,11 +263,9 @@ index edb2fb2..cc0d089 100644
  struct crypto_ec_key * dpp_gen_keypair(const struct dpp_curve_params *curve);
  int dpp_derive_k1(const u8 *Mx, size_t Mx_len, u8 *k1, unsigned int hash_len);
  int dpp_derive_k2(const u8 *Nx, size_t Nx_len, u8 *k2, unsigned int hash_len);
-diff --git a/src/crypto/crypto.h b/src/crypto/crypto.h
-index 0ac8fc1..dc3e5d5 100644
 --- a/src/crypto/crypto.h
 +++ b/src/crypto/crypto.h
-@@ -1022,6 +1022,9 @@ struct crypto_ec_key * crypto_ec_key_parse_priv(const u8 *der, size_t der_len);
+@@ -1022,6 +1022,9 @@ struct crypto_ec_key * crypto_ec_key_par
  struct crypto_ec_key * crypto_ec_key_set_priv(int group,
  					      const u8 *raw, size_t raw_len);
  
@@ -289,11 +275,9 @@ index 0ac8fc1..dc3e5d5 100644
  /**
   * crypto_ec_key_parse_pub - Initialize EC key pair from SubjectPublicKeyInfo ASN.1
   * @der: DER encoding of ASN.1 SubjectPublicKeyInfo
-diff --git a/src/crypto/crypto_openssl.c b/src/crypto/crypto_openssl.c
-index c84ccb4..175f5c1 100644
 --- a/src/crypto/crypto_openssl.c
 +++ b/src/crypto/crypto_openssl.c
-@@ -3160,6 +3160,128 @@ fail:
+@@ -3160,6 +3160,127 @@ fail:
  }
  
  
@@ -307,7 +291,7 @@ index c84ccb4..175f5c1 100644
 +	OSSL_PARAM params[4];
 +	EVP_PKEY_CTX *ctx = NULL;
 +	EVP_PKEY *pkey = NULL;
-+	BIGNUM *priv, *pub;
++	BIGNUM *priv;
 +	EC_GROUP *ec_group = NULL;
 +	u8 *pub_bin = NULL;
 +	u8 *priv_bin = NULL;
@@ -350,10 +334,9 @@ index c84ccb4..175f5c1 100644
 +		goto fail;
 +
 +out:
-+	bin_clear_free(priv_bin, priv_bin_len);
++	bin_clear_free(priv_bin, priv_len);
 +	os_free(pub_bin);
 +	BN_clear_free(priv);
-+	BN_clear_free(pub);
 +	EVP_PKEY_CTX_free(ctx);
 +	EC_GROUP_free(ec_group);
 +	return (struct crypto_ec_key *) pkey;
@@ -389,7 +372,7 @@ index c84ccb4..175f5c1 100644
 +	if (!ec_group)
 +		goto fail;
 +	pub = EC_POINT_new(ec_group);
-+	if (!EC_POINT_oct2point(ec_group, pub, pub_key, pub_len, NULL) ||
++	if (!pub || !EC_POINT_oct2point(ec_group, pub, pub_key, pub_len, NULL) ||
 +	    EC_KEY_set_public_key(eckey, pub) != 1) {
 +		wpa_printf(MSG_ERROR,
 +			   "OpenSSL: Failed to set EC_KEY(pub): %s",
@@ -422,11 +405,9 @@ index c84ccb4..175f5c1 100644
  struct crypto_ec_key * crypto_ec_key_set_priv(int group,
  					      const u8 *raw, size_t raw_len)
  {
-diff --git a/wpa_supplicant/ctrl_iface.c b/wpa_supplicant/ctrl_iface.c
-index 0b5890c..d12f407 100644
 --- a/wpa_supplicant/ctrl_iface.c
 +++ b/wpa_supplicant/ctrl_iface.c
-@@ -13784,6 +13784,17 @@ char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
+@@ -13784,6 +13784,17 @@ char * wpa_supplicant_ctrl_iface_process
  			if (os_snprintf_error(reply_size, reply_len))
  				reply_len = -1;
  		}
@@ -444,11 +425,9 @@ index 0b5890c..d12f407 100644
  	} else if (os_strncmp(buf, "DPP_BOOTSTRAP_GEN ", 18) == 0) {
  		int res;
  
-diff --git a/wpa_supplicant/wpa_cli.c b/wpa_supplicant/wpa_cli.c
-index 0b0f8c9..0459a43 100644
 --- a/wpa_supplicant/wpa_cli.c
 +++ b/wpa_supplicant/wpa_cli.c
-@@ -3065,6 +3065,13 @@ static int wpa_cli_cmd_dpp_qr_code(struct wpa_ctrl *ctrl, int argc,
+@@ -3065,6 +3065,13 @@ static int wpa_cli_cmd_dpp_qr_code(struc
  }
  
  
@@ -462,7 +441,7 @@ index 0b0f8c9..0459a43 100644
  static int wpa_cli_cmd_dpp_bootstrap_gen(struct wpa_ctrl *ctrl, int argc,
  					 char *argv[])
  {
-@@ -4034,6 +4041,9 @@ static const struct wpa_cli_cmd wpa_cli_commands[] = {
+@@ -4034,6 +4041,9 @@ static const struct wpa_cli_cmd wpa_cli_
  #ifdef CONFIG_DPP
  	{ "dpp_qr_code", wpa_cli_cmd_dpp_qr_code, NULL, cli_cmd_flag_none,
  	  "report a scanned DPP URI from a QR Code" },
@@ -472,6 +451,3 @@ index 0b0f8c9..0459a43 100644
  	{ "dpp_bootstrap_gen", wpa_cli_cmd_dpp_bootstrap_gen, NULL,
  	  cli_cmd_flag_sensitive,
  	  "type=<qrcode> [chan=..] [mac=..] [info=..] [curve=..] [key=..] = generate DPP bootstrap information" },
--- 
-2.34.1
-
