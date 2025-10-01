@@ -1,6 +1,6 @@
-From 3f2698bb50d80867e372aad6eb7784ef5acf246c Mon Sep 17 00:00:00 2001
+From 2018f2c0e48f90aaac0fddc79ca06a81b7bff32f Mon Sep 17 00:00:00 2001
 From: Arunpandi Kannan <arunpand@qti.qualcomm.com>
-Date: Thu, 25 Sep 2025 15:31:33 +0530
+Date: Mon, 29 Sep 2025 10:39:41 +0530
 Subject: [PATCH] QSDK:PROTOCOL:HOSTAPD: Enable AKM 24 support for DPP
 
 Enable DPP to configure AKM24 in both configurator and enrollee.
@@ -35,7 +35,7 @@ index e1c6139..742af6f 100644
  		char *hex;
  		size_t hexlen;
 diff --git a/src/common/dpp.c b/src/common/dpp.c
-index 2ef5ec8..046daa6 100644
+index 2ef5ec8..daccac6 100644
 --- a/src/common/dpp.c
 +++ b/src/common/dpp.c
 @@ -1094,6 +1094,8 @@ struct dpp_configuration * dpp_configuration_alloc(const char *type)
@@ -71,7 +71,7 @@ index 2ef5ec8..046daa6 100644
  		conf = conf_ap;
  	}
  
-+	if (dpp_akm_sae_ext_key(conf->akm)) {
++	if (conf && dpp_akm_sae_ext_key(conf->akm)) {
 +		pos = os_strstr(cmd, " sae_pwe=");
 +		if (pos)
 +			conf->sae_pwe = atoi(pos);
