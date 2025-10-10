@@ -26,6 +26,7 @@ function is_ml_config(if_name, radio_id) {
 		return false;
 
 	for (let phy, config in wpas.data.config) {
+		wpas.printf(`[debug] ml config check with phy:${phy} radio:${radio_id}`);
 		if (config == null || config.radio == radio_id)
 			continue;
 
@@ -36,7 +37,7 @@ function is_ml_config(if_name, radio_id) {
 					return false;
 
 				if (data.running == null || data.running == false)
-					return false;
+					continue;
 				wpas.printf(`[debug] ml configuration is true for ${if_name}`);
 				return true;
 			}
