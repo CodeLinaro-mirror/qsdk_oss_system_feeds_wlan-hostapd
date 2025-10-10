@@ -165,46 +165,39 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
  #ifdef CONFIG_IEEE80211BE
  	bool mld_sta = false;
  #endif /* CONFIG_IEEE80211BE */
-@@ -3210,6 +3211,9 @@ static void handle_auth(struct hostapd_d
+@@ -3210,6 +3211,10 @@ static void handle_auth(struct hostapd_d
  		mld_sta = true;
  	else
  		sa = mgmt->sa;
 +
-+	if (hapd->conf->mld_ap)
++	if (hapd->conf->mld_ap &&
++	    hapd->conf->macaddr_acl == DENY_UNLESS_ACCEPTED)
 +		skip_acl = true;
  #endif /* CONFIG_IEEE80211BE */
  
  	auth_alg = le_to_host16(mgmt->u.auth.auth_alg);
-@@ -3368,15 +3372,21 @@ static void handle_auth(struct hostapd_d
+@@ -3368,15 +3373,19 @@ static void handle_auth(struct hostapd_d
  		}
  	}
  
--	res = ieee802_11_allowed_address(hapd, sa, (const u8 *) mgmt, len,
 +
-+	if (!skip_acl) {
-+		res = ieee802_11_allowed_address(hapd, sa, (const u8 *) mgmt, len,
+ 	res = ieee802_11_allowed_address(hapd, sa, (const u8 *) mgmt, len,
  					 &rad_info);
 -	if (res == HOSTAPD_ACL_REJECT) {
--		wpa_msg(hapd->msg_ctx, MSG_DEBUG,
--			"Ignore Authentication frame from " MACSTR
--			" due to ACL reject", MAC2STR(sa));
--		resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
--		goto fail;
-+		if (res == HOSTAPD_ACL_REJECT) {
-+			wpa_msg(hapd->msg_ctx, MSG_DEBUG,
-+				"Ignore Authentication frame from " MACSTR
-+				" due to ACL reject", MAC2STR(sa));
-+			resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
-+			goto fail;
-+		}
-+		if (res == HOSTAPD_ACL_PENDING)
-+			return;
++	if (res == HOSTAPD_ACL_REJECT && !skip_acl) {
+ 		wpa_msg(hapd->msg_ctx, MSG_DEBUG,
+ 			"Ignore Authentication frame from " MACSTR
+ 			" due to ACL reject", MAC2STR(sa));
+ 		resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 		goto fail;
  	}
++	if (res == HOSTAPD_ACL_PENDING)
++		return;
 +
  	ubus_resp = hostapd_ubus_handle_event(hapd, &req);
  	if (ubus_resp) {
  		wpa_printf(MSG_DEBUG, "Station " MACSTR " rejected by ubus handler.\n",
-@@ -3384,11 +3394,23 @@ static void handle_auth(struct hostapd_d
+@@ -3384,15 +3393,17 @@ static void handle_auth(struct hostapd_d
  		resp = ubus_resp > 0 ? (u16) ubus_resp : WLAN_STATUS_UNSPECIFIED_FAILURE;
  		goto fail;
  	}
@@ -212,26 +205,20 @@ Signed-off-by: Harshitha Prem <hprem@qti.qualcomm.com>
 -		return;
  
  #ifdef CONFIG_IEEE80211BE
--	if (mld_sta) {
 +	/* In case of ACCEPT_UNLESS_DENIED, check both mld address and
 +	 * source address
 +	 */
-+	if (mld_sta && hapd->conf->macaddr_acl == ACCEPT_UNLESS_DENIED) {
-+
-+		res = ieee802_11_allowed_address(hapd, sa, (const u8 *) mgmt, len,
-+                                         &rad_info);
-+                if (res == HOSTAPD_ACL_REJECT) {
-+                        wpa_msg(hapd->msg_ctx, MSG_DEBUG,
-+                                "Ignore Authentication frame from " MACSTR
-+                                " due to ACL reject", MAC2STR(sa));
-+                        resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
-+                        goto fail;
-+                }
+ 	if (mld_sta) {
 +
  		res = ieee802_11_allowed_address(hapd, mgmt->sa,
  						 (const u8 *) mgmt, len,
  						 &rad_info);
-@@ -6553,6 +6575,16 @@ static void handle_assoc(struct hostapd_
+-		if (res == HOSTAPD_ACL_REJECT) {
++		if (res == HOSTAPD_ACL_REJECT && !skip_acl) {
+ 			wpa_msg(hapd->msg_ctx, MSG_DEBUG,
+ 				"Ignore Authentication frame from " MACSTR
+ 				" due to ACL reject", MAC2STR(mgmt->sa));
+@@ -6553,6 +6564,16 @@ static void handle_assoc(struct hostapd_
  	}
  #endif /* CONFIG_FILS */
  
