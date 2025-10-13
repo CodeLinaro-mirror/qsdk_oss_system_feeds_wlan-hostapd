@@ -303,7 +303,17 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  {
 --- a/src/atf/atf_offload_config.c
 +++ b/src/atf/atf_offload_config.c
-@@ -1691,6 +1691,283 @@ hostapd_ctrl_iface_atf_offload_g_atf_sta
+@@ -1624,6 +1624,9 @@ hostapd_ctrl_iface_atf_offload_enable_at
+ 		return -1;
+ 	}
+ 
++	if (!algo->atf_stats_timeout)
++		algo->atf_stats_timeout = ATF_OFFLOAD_STATS_DEFAULT_TIMEOUT;
++
+ 	algo->atf_stats_enabled = atf_stats;
+ 
+ 	wpa_printf(MSG_INFO, "ATF: ATF stats is %s\n", atf_stats ? "enabled" : "disabled");
+@@ -1719,6 +1722,283 @@ hostapd_ctrl_iface_atf_offload_g_atf_sta
  }
  
  
@@ -587,7 +597,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1744,6 +2021,8 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1774,6 +2054,8 @@ hostapd_ctrl_iface_config_atf_offload(st
  									buf, buflen);
  	else if (os_strncmp(cmd, "g_atf_stats_timeout", 19) == 0)
  		return hostapd_ctrl_iface_atf_offload_g_atf_stats_timeout(hapd, buf, buflen);
@@ -655,3 +665,13 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  };
  
  #endif /* QCA_VENDOR_H */
+--- a/src/atf/atf_offload_config.h
++++ b/src/atf/atf_offload_config.h
+@@ -17,6 +17,7 @@
+  * One digit after the decimal is preserved.
+  */
+ #define SCALE_PERCENTAGE_TO_U32(pct) ((u32)((pct) *= 10))
++#define ATF_OFFLOAD_STATS_DEFAULT_TIMEOUT 30
+ 
+ enum atf_scheduling_policy {
+ 	ATF_FAIR_SCHEDULING,

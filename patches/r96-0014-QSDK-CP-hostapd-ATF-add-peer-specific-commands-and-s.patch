@@ -239,7 +239,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	return -1;
  }
-@@ -622,6 +656,9 @@ hostapd_ctrl_iface_atf_offload_atfssidgr
+@@ -618,6 +652,9 @@ hostapd_ctrl_iface_atf_offload_atfssidgr
  		return -1;
  	}
  
@@ -249,7 +249,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  	algo->ssid_group_enabled = atf_ssid_group;
  	iface->conf->atf_ssid_grp = atf_ssid_group;
  
-@@ -988,6 +1025,7 @@ hostapd_ctrl_iface_atf_offload_atfssidsc
+@@ -1036,6 +1073,7 @@ hostapd_ctrl_iface_atf_offload_atfssidsc
  	ssid = &hapd->conf->ssid;
  	os_memset(ssid_buf, 0, sizeof(ssid_buf));
  	os_memcpy(ssid_buf, ssid->ssid, ssid->ssid_len);
@@ -257,7 +257,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	algo = iface->atf_algo;
  
-@@ -1151,6 +1189,351 @@ hostapd_ctrl_iface_atf_offload_delssid(s
+@@ -1202,6 +1240,352 @@ hostapd_ctrl_iface_atf_offload_delssid(s
  }
  
  
@@ -459,8 +459,9 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	}
 +
 +	dl_list_for_each(group, &algo->groups, struct atf_group, list) {
-+		wpa_printf(MSG_INFO, "%-50s %d\n",
-+			   group->name, group->user_cfg_airtime / 10);
++		wpa_printf(MSG_INFO, "%-50s %-15d %d\n",
++			   group->name, group->calculated_airtime / 10,
++			   group->user_cfg_airtime / 10);
 +
 +		if (dl_list_empty(&group->explicit_peers))
 +			goto implicit_peers;
@@ -609,7 +610,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1185,6 +1568,16 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1238,6 +1622,16 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_addssid(hapd, cmd + 8, buf, buflen);
  	else if (os_strncmp(cmd, "delssid ", 8) == 0)
  		return hostapd_ctrl_iface_atf_offload_delssid(hapd, cmd + 8, buf, buflen);
