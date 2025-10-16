@@ -30,7 +30,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 
 --- a/src/atf/atf_offload.c
 +++ b/src/atf/atf_offload.c
-@@ -51,11 +51,10 @@ void atf_offload_send_feature_params(str
+@@ -72,7 +72,6 @@ void atf_offload_send_feature_params(str
  {
  	struct hostapd_iface *iface;
  	struct atf_algo *algo;
@@ -38,12 +38,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  	u8 radio_index;
  
  	if (!hapd->iface || !hapd->iface->atf_algo || !hapd->drv_priv) {
--		wpa_printf(MSG_ERROR, "ATF: Invalid hapd data\n");
-+		wpa_printf(MSG_ERROR, "ATF: Invalid hapd data %s\n", __func__);
- 		return;
- 	}
- 
-@@ -70,11 +69,25 @@ void atf_offload_send_feature_params(str
+@@ -91,11 +90,25 @@ void atf_offload_send_feature_params(str
  	radio_index = atf_get_hw_idx(iface);
  
  	if (algo->atf_enabled) {
@@ -74,7 +69,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  		}
  	}
  }
-@@ -1122,6 +1135,48 @@ atf_offload_build_wmm_ac_config(struct h
+@@ -1202,6 +1215,48 @@ atf_offload_build_wmm_ac_config(struct h
  }
  
  
@@ -125,7 +120,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  {
 --- a/src/atf/atf_offload.h
 +++ b/src/atf/atf_offload.h
-@@ -324,6 +324,7 @@ u8 atf_get_hw_idx(struct hostapd_iface *
+@@ -333,6 +333,7 @@ u8 atf_get_hw_idx(struct hostapd_iface *
  
  int nl80211_atf_offload_enable_disable(void *priv, u8 radio_index, u8 value);
  
@@ -135,7 +130,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  static inline void atf_offload_init(struct hapd_interfaces *ifaces)
 --- a/src/atf/atf_offload_config.c
 +++ b/src/atf/atf_offload_config.c
-@@ -397,6 +397,82 @@ hostapd_ctrl_iface_atf_offload_get_commi
+@@ -416,6 +416,82 @@ hostapd_ctrl_iface_atf_offload_get_commi
  }
  
  
@@ -218,8 +213,8 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  				      const char *cmd, char *buf, size_t buflen)
-@@ -405,6 +481,10 @@ hostapd_ctrl_iface_config_atf_offload(st
- 		return hostapd_ctrl_iface_atf_offload_commitatf(hapd, cmd + 10, buf, buflen);
+@@ -424,6 +500,10 @@ hostapd_ctrl_iface_config_atf_offload(st
+ 		return hostapd_ctrl_iface_atf_offload_commitatf(hapd, cmd + 10);
  	else if (os_strncmp(cmd, "get_commitatf", 13) == 0)
  		return hostapd_ctrl_iface_atf_offload_get_commitatf(hapd, buf, buflen);
 +	else if (os_strncmp(cmd, "atfstrictsched ", 15) == 0)

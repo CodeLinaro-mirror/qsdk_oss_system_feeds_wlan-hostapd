@@ -107,7 +107,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	u8 radio_index;
 +
 +	if (!hapd->iface || !hapd->iface->atf_algo || !hapd->drv_priv) {
-+		wpa_printf(MSG_ERROR, "ATF: Invalid hapd data\n");
++		wpa_printf(MSG_DEBUG, "ATF: Invalid hapd data %s\n", __func__);
 +		return;
 +	}
 +

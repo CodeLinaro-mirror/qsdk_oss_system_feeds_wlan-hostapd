@@ -459,9 +459,9 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	}
 +
 +	dl_list_for_each(group, &algo->groups, struct atf_group, list) {
-+		wpa_printf(MSG_INFO, "%-50s %-15d %d\n",
-+			   group->name, group->calculated_airtime / 10,
-+			   group->user_cfg_airtime / 10);
++		wpa_printf(MSG_INFO, "%-50s %-15.1f %.1f\n",
++			   group->name, group->calculated_airtime / 10.0,
++			   group->user_cfg_airtime / 10.0);
 +
 +		if (dl_list_empty(&group->explicit_peers))
 +			goto implicit_peers;
@@ -469,10 +469,10 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +		dl_list_for_each_safe(sta, tmp, &group->explicit_peers,
 +				      struct sta_info, atf_candidate_list) {
 +			if (sta->atf_peer.peer_cfg_ref) {
-+				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20.1f %-24.1f %s\n",
 +					   "", MAC2STR(sta->atf_peer.peer_cfg_ref->addr)," ",
-+					   sta->atf_peer.calculated_airtime / 10,
-+					   sta->atf_peer.peer_cfg_ref->user_cfg_airtime / 10, "1");
++					   sta->atf_peer.calculated_airtime / 10.0,
++					   sta->atf_peer.peer_cfg_ref->user_cfg_airtime / 10.0, "1");
 +			}
 +		}
 +
@@ -491,9 +491,9 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +				else
 +					memcpy(addr, sta->addr, 6);
 +
-+				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20.1f %-24d %s\n",
 +					   "", MAC2STR(addr), " ",
-+					   sta->atf_peer.calculated_airtime / 10,
++					   sta->atf_peer.calculated_airtime / 10.0,
 +					   0, "1");
 +			}
 +		}
@@ -507,9 +507,9 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +				 struct atf_peer_config, list) {
 +			if (peer_config->calculated_for_airtime == 0 &&
 +			    peer_config->group == group) {
-+				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20d %-24d %s\n",
++				wpa_printf(MSG_INFO, "%-20s" MACSTR " %-12s %-20d %-24.1f %s\n",
 +					   "", MAC2STR(peer_config->addr), " ",
-+					   0, peer_config->user_cfg_airtime / 10, "0");
++					   0, peer_config->user_cfg_airtime / 10.0, "0");
 +			}
 +		}
 +	}
@@ -552,7 +552,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	if (!os_snprintf_error(buflen, ret))
 +		len += ret;
 +	ret = os_snprintf(buf + len, buflen - len,
-+			  " Client(MAC Address)        Air time(Percentage)\n");
++			  " Client(MAC Address)        Air time(Percentage 1000)\n");
 +	if (!os_snprintf_error(buflen - len, ret))
 +		len += ret;
 +
@@ -572,7 +572,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +		ret = os_snprintf(buf + len, buflen - len,
 +				  "	%d\n",
-+				  peer->user_cfg_airtime / 10);
++				  peer->user_cfg_airtime);
 +		if (!os_snprintf_error(buflen - len, ret))
 +			len += ret;
 +	}
