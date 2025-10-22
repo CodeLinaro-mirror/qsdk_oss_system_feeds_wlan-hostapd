@@ -29,24 +29,26 @@ mld_group=
 
 get_section() {
 	local config=$1
-	local ifname
-	local band="${2:4:1}"
-	local index=0
-	local device
+        local ifname
+        local device
+        local iface
 
-	config_get ifname "$config" ifname
-	if [ -n "$ifname" ]; then
-		[ "${ifname}" = "$2" ] && eval "$3=$config"
-	else
-		[ -z "${2:6:1}" ] && index=0 || index="${2:6:1}"
-		! [[ "$index" =~ ^[0-9]$ ]] && index=0
-		config_get device "$config" device
-		[ "$band" = "${device:11:1}" ]  && [ "${index}" = "$i" ] && eval "$3=$config"
-		if [ "$band" = "${device:11:1}" ]
-		then
-			i=$((i+1))
-		fi
-	fi
+        config_get ifname "$config" ifname
+        if [ -n "$ifname" ]; then
+                [ "${ifname}" = "$2" ] && eval "$3=$config"
+        else
+                local phy=${2:4:1}
+                local band=${2:6:1}
+                local index=${2:8:1}
+                iface="radio${phy}_band${band}"
+
+                config_get device "$config" device
+                [ "$iface" = "$device" ]  && [ "${index}" = "$i" ] && eval "$3=$config"
+                if [ "$index" -lt "$i" ];
+                then
+                        i=$((i+1))
+                fi
+        fi
 }
 
 apply_mld_config() {

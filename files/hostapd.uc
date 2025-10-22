@@ -989,13 +989,16 @@ let main_obj = {
 			let ret;
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
+				iface.stop();
 				for (let mon in mon_if_names) {
+					if (mon == null)
+						continue;
+
 					ret = system(`ifconfig ${mon} down`);
 					if (ret) {
 						hostapd.printf(`Failed to bring down monitor interface ${mon}: ${ret}`);
 					}
 				}
-				iface.stop();
 				return 0;
 			}
 
@@ -1339,5 +1342,25 @@ return {
 			system(`${cmd}`);
 
 		}
+	},
+	update_radio_mask: function(ifname, hw_idx) {
+		const mask_bit = 1 << hw_idx;
+		let radio_mask = wdev_get_radio_mask(ifname);
+
+		if (radio_mask == null) {
+			hostapd.printf(`[error] Failed to get radio mask for ${ifname}`);
+			return false;
+		}
+
+		if (radio_mask & mask_bit) {
+			hostapd.printf(`[debug] hw_idx ${hw_idx} already set for ${ifname}`);
+			return true;
+		}
+
+		radio_mask |= mask_bit;
+		wdev_set_radio_mask(ifname, radio_mask);
+		hostapd.printf(`[debug] radio mask ${radio_mask} updated for ML BSS ${ifname} hw index ${hw_idx}`);
+
+		return true;
 	},
 };
