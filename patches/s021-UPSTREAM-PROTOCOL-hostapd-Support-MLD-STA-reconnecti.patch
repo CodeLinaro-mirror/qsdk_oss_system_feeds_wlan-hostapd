@@ -24,6 +24,11 @@ Hostapd receives the link address directly in auth/assoc frames.
 It find the mld address using MLD IEs and partner link information,
 and responds using the correct link address.
 
+Also handle ap_sta_add failure reported by KW
+
+Patch-dependency: None
+Patch-work: NA
+
 Signed-off-by: Ramasamy Kaliappan <rkaliapp@qti.qualcomm.com>
 Co-developed-by: Sowmiya Sree Elavalagan <ssreeela@qti.qualcomm.com>
 Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@qti.qualcomm.com>
@@ -73,7 +78,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@qti.qualcomm.com>
  		if (sta->unadded_sta) {
  
  			/*
-@@ -3569,6 +3571,8 @@ static void handle_auth(struct hostapd_d
+@@ -3558,6 +3560,8 @@ static void handle_auth(struct hostapd_d
  	sta->flags &= ~WLAN_STA_PREAUTH;
  	ieee802_1x_notify_pre_auth(sta->eapol_sm, 0);
  
@@ -82,7 +87,25 @@ Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@qti.qualcomm.com>
  	/*
  	 * If the driver supports full AP client state, add a station to the
  	 * driver before sending authentication reply to make sure the driver
-@@ -6480,6 +6484,56 @@ static void handle_assoc(struct hostapd_
+@@ -3710,17 +3714,6 @@ static void handle_auth(struct hostapd_d
+  fail:
+ 	dst = mgmt->sa;
+ 
+-#ifdef CONFIG_IEEE80211BE
+-	if (ap_sta_is_mld(hapd, sta)) {
+-		u8 link_id = hapd->mld_link_id;
+-
+-		if (!sta->unadded_sta)
+-			dst = sta->addr;
+-		else
+-			dst = sta->mld_info.links[link_id].peer_addr;
+-	}
+-#endif /* CONFIG_IEEE80211BE */
+-
+ 	reply_res = send_auth_reply(hapd, sta, dst, auth_alg,
+ 				    auth_alg == WLAN_AUTH_SAE ?
+ 				    auth_transaction : auth_transaction + 1,
+@@ -6469,6 +6462,56 @@ static void handle_assoc(struct hostapd_
  		.ssi_signal = rssi,
  	};
  
@@ -139,7 +162,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@qti.qualcomm.com>
  	/* followed by SSID and Supported rates; and HT capabilities if 802.11n
  	 * is used */
  	resp = check_assoc_ies(hapd, sta, pos, left,
-@@ -7475,12 +7529,18 @@ static void handle_auth_cb(struct hostap
+@@ -7464,12 +7507,18 @@ static void handle_auth_cb(struct hostap
  
  	sta = ap_get_sta(hapd, mgmt->da);
  	if (!sta) {
@@ -162,7 +185,7 @@ Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@qti.qualcomm.com>
  		}
  	}
  
-@@ -7674,11 +7734,17 @@ static void handle_assoc_cb(struct hosta
+@@ -7663,11 +7712,17 @@ static void handle_assoc_cb(struct hosta
  
  	sta = ap_get_sta(hapd, mgmt->da);
  	if (!sta) {
