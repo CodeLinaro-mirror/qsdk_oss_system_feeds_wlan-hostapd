@@ -1,0 +1,16 @@
+diff --git a/src/ap/ubus.c b/src/ap/ubus.c
+index 4325a99..f3f07ee 100644
+--- a/src/ap/ubus.c
++++ b/src/ap/ubus.c
+@@ -1681,7 +1681,10 @@ void hostapd_ubus_free_bss(struct hostapd_data *hapd)
+ 		hostapd_ubus_ref_dec();
+ 	}
+ 
+-	free(name);
++	if(name) {
++		free(name);
++		obj->name = NULL;
++	}
+ }
+ 
+ static void
