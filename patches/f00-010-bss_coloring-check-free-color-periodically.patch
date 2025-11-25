@@ -15,7 +15,7 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
 
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -4799,11 +4799,12 @@ static void hostapd_switch_color_timeout
+@@ -4838,11 +4838,12 @@ static void hostapd_switch_color_timeout
  	  * DOT11BSS_COLOR_COLLISION_AP_PERIOD (50 s by default). */
  	delta_t = hapd->last_color_collision.sec -
  		hapd->first_color_collision.sec;
@@ -30,7 +30,7 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
  
  	 r = os_random() % HE_OPERATION_BSS_COLOR_MAX - 1;
  	 r++;
-@@ -4820,11 +4821,24 @@ static void hostapd_switch_color_timeout
+@@ -4859,11 +4860,24 @@ static void hostapd_switch_color_timeout
  			   "No free colors left, turning off BSS coloring");
  		hapd->iface->conf->he_op.he_bss_color_disabled = 1;
  		hapd->iface->conf->he_op.he_bss_color = os_random() % 63 + 1;
@@ -62,6 +62,6 @@ Signed-off-by: Lavanya Suresh <lavaks@codeaurora.org>
  #ifdef CONFIG_IEEE80211AX
  	bool cca_in_progress;
 +	int no_free_color;
- 	int cca_zero_count;
  	u8 cca_count;
  	u8 cca_color;
+ 	unsigned int cca_c_off_beacon;
