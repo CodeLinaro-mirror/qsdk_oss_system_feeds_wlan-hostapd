@@ -205,7 +205,6 @@ local ifname=$2
 
 			hostapd_cli -i"$ifname" disable
 			hostapd_cli -i"$ifname" enable
-			[ -n "$mld_group" ] && wifi
 			;;
 	esac
 }
@@ -220,6 +219,7 @@ if [[ "$CMD" == *DPP* ]]; then
 	config_foreach is_mld wifi-mld
 	if [ -n "$mld_iface" ]; then
 		config_foreach apply_mld_config wifi-iface
+		[ "$CMD" = "DPP-NET-ACCESS-KEY" ] &&  wifi;
 		#TODO. change needed here to bring up MLO vaps without wifi command
 	else
 		sect=
