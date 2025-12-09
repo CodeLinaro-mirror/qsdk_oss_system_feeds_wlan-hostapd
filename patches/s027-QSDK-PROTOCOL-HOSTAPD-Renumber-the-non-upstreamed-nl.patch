@@ -29,7 +29,7 @@ Signed-off-by: Roopni Devanathan <rdevanat@qti.qualcomm.com>
  	NL80211_ATTR_WIPHY_ANTENNA_GAIN,
 --- a/src/common/qca-vendor.h
 +++ b/src/common/qca-vendor.h
-@@ -1593,12 +1593,25 @@ enum qca_nl80211_vendor_subcmds {
+@@ -1593,12 +1593,26 @@ enum qca_nl80211_vendor_subcmds {
  	/* 255 - reserved for QCA */
  	QCA_NL80211_VENDOR_SUBCMD_PRI_LINK_MIGRATE = 256,
  	QCA_NL80211_VENDOR_SUBCMD_PERIODIC_PROBE_RSP_CFG = 257,
@@ -58,6 +58,7 @@ Signed-off-by: Roopni Devanathan <rdevanat@qti.qualcomm.com>
 +	QCA_NL80211_VENDOR_SUBCMD_240MHZ_INFO = 508,
 +	QCA_NL80211_VENDOR_SUBCMD_DCS_WLAN_INTERFERENCE_COMPUTE = 509,
 +	QCA_NL80211_VENDOR_SUBCMD_AFC_FETCH_POWER_EVENT = 510,
++	QCA_NL80211_VENDOR_SUBCMD_DERIVE_LINK_BSS_ADDR = 511,
  };
  
  /* Compatibility defines for previously used subcmd names.
