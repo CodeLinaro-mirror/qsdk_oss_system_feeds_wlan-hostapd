@@ -61,3 +61,12 @@ Signed-off-by: Roopni Devanathan <rdevanat@qti.qualcomm.com>
  };
  
  /* Compatibility defines for previously used subcmd names.
+@@ -3905,7 +3918,7 @@ enum qca_wlan_vendor_attr_config {
+ 	 * %QCA_NL80211_VENDOR_SUBCMD_GET_WIPHY_CONFIGURATION subcmds to
+ 	 * specify a particular Radio of the wiphy device.
+ 	 */
+-	QCA_WLAN_VENDOR_ATTR_CONFIG_RADIO_INDEX = 135,
++	QCA_WLAN_VENDOR_ATTR_CONFIG_RADIO_INDEX = 150,
+ 
+ 
+ 	/* keep last */
