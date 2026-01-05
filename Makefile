@@ -645,7 +645,9 @@ ifneq ($(LOCAL_VARIANT),macsec)
 		$(PKG_BUILD_DIR)/build/hostapd/src/common/wpa_ctrl.o \
 		$(PKG_BUILD_DIR)/build/hostapd/src/utils/os_unix.o \
 		$(PKG_BUILD_DIR)/build/hostapd/src/utils/wpa_debug.o \
-		$(PKG_BUILD_DIR)/build/hostapd/src/utils/common.o
+		$(PKG_BUILD_DIR)/build/hostapd/src/utils/common.o \
+		$(PKG_BUILD_DIR)/build/hostapd/src/utils/eloop.o \
+		$(PKG_BUILD_DIR)/build/hostapd/src/utils/uloop.o
 endif
 endef
 

@@ -162,7 +162,7 @@ function iface_freq_info(iface, config, params)
 
 	return hostapd.freq_info(freq, sec_offset, width, params.chan_width,
 				 params.center_freq1, params.center_freq2,
-				 params.punct_bitmap);
+				 params.punct_bitmap, params.is_dfs);
 }
 
 function iface_add(phy, config, phy_status)
@@ -966,6 +966,8 @@ let main_obj = {
 			csa_count: 0,
 			punct_bitmap: 0,
 			mon_ifaces: "",
+			is_dfs: false,
+			wpa_state: "",
 		},
 		call: ex_wrap(function(req) {
 			let phy = phy_name(req.args.phy, req.args.radio);
@@ -977,6 +979,7 @@ let main_obj = {
 			let config = hostapd.data.config[phy];
 			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname) {
 				hostapd.printf(`apsta_state: config not found for radio ${req.args.radio}`);
+				notify_csa_finish_event(req.args.frequency);
 				return 0;
 			}
 
@@ -1010,6 +1013,10 @@ let main_obj = {
 				return libubus.STATUS_UNKNOWN_ERROR;
 
 			hostapd.printf(`apsta_state: freq_info for radio ${req.args.radio} is ${freq_info}`);
+			if (req.args.wpa_state) {
+				hostapd.printf(`apsta_state: received wpa_state ${req.args.wpa_state} for radio ${req.args.radio}`);
+				freq_info.wpa_state = req.args.wpa_state;
+			}
 			if (req.args.csa) {
 				freq_info.csa_count = req.args.csa_count ?? 10;
 				ret = iface.switch_channel(freq_info);
@@ -1175,6 +1182,11 @@ function bss_event(type, name, data) {
 	data.name = name;
 	hostapd.data.obj.notify(`bss.${type}`, data, null, null, null, -1);
 	ubus.call("service", "event", { type: `hostapd.${name}.${type}`, data: {} });
+}
+
+function notify_csa_finish_event(freq) {
+	hostapd.printf(`notify_chan_switch_compl_event ${freq}`);
+	ubus.defer("wpa_supplicant", "csa_finish_event", {freq: freq} );
 }
 
 return {
@@ -1362,5 +1374,8 @@ return {
 		hostapd.printf(`[debug] radio mask ${radio_mask} updated for ML BSS ${ifname} hw index ${hw_idx}`);
 
 		return true;
+	},
+	notify_chan_switch_compl_event: function(freq) {
+		notify_csa_finish_event(freq);
 	},
 };
