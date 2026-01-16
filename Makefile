@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=hostapd
 PKG_RELEASE:=2
 
-PKG_SOURCE_URL:=https://w1.fi/hostap.git
+PKG_SOURCE_URL:=https://git.w1.fi/hostap.git
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_DATE:=2025-11-11
 PKG_SOURCE_VERSION:=8990591d07d823eca4d9be27491b660b67ba054e
