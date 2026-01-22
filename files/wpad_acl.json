@@ -5,13 +5,13 @@
 			"methods": [ "event" ]
 		},
 		"wpa_supplicant": {
-			"methods": [ "phy_set_state", "phy_set_macaddr_list", "phy_status", "csa_finish_event" ]
+			"methods": [ "phy_set_state", "phy_set_macaddr_list", "phy_status", "csa_finish_event", "start_scan_post_acs" ]
 		},
 		"hostapd": {
 			"methods": [ "apsta_state" ]
 		},
 		"rptr_mgr": {
-			"methods": [ "forward_to_hostapd", "csa_finish_event_to_supp" ]
+			"methods": [ "forward_to_hostapd", "csa_finish_event_to_supp", "acs_completed" ]
 		},
 		"udebug": {
 			"methods": [ "get_config" ]

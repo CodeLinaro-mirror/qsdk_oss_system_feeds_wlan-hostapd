@@ -985,6 +985,11 @@ let main_obj = {
 
 			let iface = hostapd.interfaces[phy];
 			if (!iface) {
+				if (req.args.wpa_state == "PRE_CONNECT") {
+					hostapd.printf(`apsta_state: iface not found, In pre-connect state notify wpa_supplicant`);
+					notify_csa_finish_event(req.args.frequency);
+				}
+
 				hostapd.printf(`apsta_state: iface not found for radio ${req.args.radio}`);
 				return 0;
 			}
@@ -1377,5 +1382,14 @@ return {
 	},
 	notify_chan_switch_compl_event: function(freq) {
 		notify_csa_finish_event(freq);
+	},
+	notify_acs_completed: function(iface, success, channel, freq) {
+		hostapd.printf(`Send acs_completed event success=${success} channel=${channel} freq=${freq}`);
+		ubus.call("rptr_mgr", "acs_completed", {
+			event: "ACS-COMPLETED",
+			success: success,
+			channel: channel,
+			freq: freq
+		});
 	},
 };

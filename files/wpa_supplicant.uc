@@ -374,6 +374,16 @@ let main_obj = {
 			return 0;
 		}
 	},
+	start_scan_post_acs: {
+		args: {
+			success: 0
+		},
+		call: function(req) {
+			wpas.printf(`start_scan_post_acs received from rptr_mgr with status: ${req.args.success}`);
+			wpas.start_scan_post_acs();
+			return 0;
+		}
+	},
 };
 
 wpas.data.ubus = ubus;
@@ -553,7 +563,6 @@ return {
 		if (!phy_data)
 			return;
 
-		if (radio)
-			iface_pre_connect_hostapd_notify(phy_data.name, radio, ifname, iface, state, info);
+		iface_pre_connect_hostapd_notify(phy_data.name, radio, ifname, iface, state, info);
 	}
 };
