@@ -935,6 +935,11 @@ function get_bw(curr_chan_width) {
         }
 }
 
+function notify_csa_finish_event(freq) {
+        hostapd.printf(`notify_chan_switch_compl_event ${freq}`);
+        ubus.defer("wpa_supplicant", "csa_finish_event", {freq: freq} );
+}
+
 let main_obj = {
 	reload: {
 		args: {
@@ -1187,11 +1192,6 @@ function bss_event(type, name, data) {
 	data.name = name;
 	hostapd.data.obj.notify(`bss.${type}`, data, null, null, null, -1);
 	ubus.call("service", "event", { type: `hostapd.${name}.${type}`, data: {} });
-}
-
-function notify_csa_finish_event(freq) {
-	hostapd.printf(`notify_chan_switch_compl_event ${freq}`);
-	ubus.defer("wpa_supplicant", "csa_finish_event", {freq: freq} );
 }
 
 return {
