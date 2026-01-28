@@ -1194,6 +1194,24 @@ function bss_event(type, name, data) {
 	ubus.call("service", "event", { type: `hostapd.${name}.${type}`, data: {} });
 }
 
+function iface_channel_switch(phy, radio, iface, info)
+{
+	let msg = {
+		phy: phy,
+		radio: radio,
+		frequency: info.frequency,
+		channel: info.channel,
+		csa_count: info.csa_count,
+		new_ch_width: info.new_ch_width,
+		ch_seg_0: info.ch_seg_0,
+		ch_seg_1: info.ch_seg_1,
+	};
+	hostapd.printf(`notify supplicant ${msg}`);
+	let status = ubus.defer("wpa_supplicant", "uplink_csa_notify", msg);
+	if (!status)
+	    hostapd.printf(`Failed to notify wpa_supplicant about channel switch for phy ${phy}`);
+}
+
 return {
 	shutdown: function() {
 		for (let phy in hostapd.data.config)
@@ -1392,4 +1410,41 @@ return {
 			freq: freq
 		});
 	},
+	event: function(phy, radio, iface, ev, info) {
+		let intf = hostapd.interfaces[phy];
+		if (!intf) {
+			hostapd.printf(`no PHY for ifname ${phy}`);
+			return;
+		}
+		let phy_data = hostapd.data.config[phy];
+		if (!phy_data) {
+			hostapd.printf(`no PHY data for ifname ${phy} ${ev}`);
+			return;
+		}
+
+		hostapd.printf(`received event for ${phy} ${ev}`);
+
+		if (ev == "DFS_UPLINK_CHANNEL_SELECTED")
+			iface_channel_switch(phy, radio, intf, info);
+		 },
+	disconnect_backhaul: function(phy, radio, iface) {
+		let intf = hostapd.interfaces[phy];
+		if (!intf) {
+			hostapd.printf(`no PHY for ifname ${phy}`);
+			return;
+		}
+		let phy_data = hostapd.data.config[phy];
+		if (!phy_data) {
+			 hostapd.printf(`no PHY data for ifname ${phy} ${radio}`);
+			 return;
+		}
+		hostapd.printf(`disconnect backhaul for ${phy} ${radio}`);
+		let msg = {
+			phy: phy,
+			radio: radio,
+		};
+
+		ubus.call("wpa_supplicant", "disconnect_request", msg);
+	}
+
 };
