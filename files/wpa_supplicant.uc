@@ -364,6 +364,26 @@ let main_obj = {
 			return ret;
 		}
 	},
+	csa_finish_event: {
+		args: {
+			freq: 0
+		},
+		call: function(req) {
+			wpas.printf(`csa_finish_event req.args.freq ${req.args.freq}`);
+			wpas.recvd_ch_sw_comp_ev(req.args.freq);
+			return 0;
+		}
+	},
+	start_scan_post_acs: {
+		args: {
+			success: 0
+		},
+		call: function(req) {
+			wpas.printf(`start_scan_post_acs received from rptr_mgr with status: ${req.args.success}`);
+			wpas.start_scan_post_acs();
+			return 0;
+		}
+	},
 };
 
 wpas.data.ubus = ubus;
@@ -379,11 +399,16 @@ function iface_event(type, name, data) {
 	ubus.call("service", "event", { type: `wpa_supplicant.${name}.${type}`, data: {} });
 }
 
-function iface_hostapd_notify(phy, radio, ifname, iface, state)
+function iface_hostapd_notify(phy, radio, ifname, iface, state, athnewind)
 {
 	let ubus = wpas.data.ubus;
 	let status = iface.status(radio);
 	let msg = { phy: phy, radio: radio, mon_ifaces: mon_ifaces[radio]};
+
+	if (athnewind)
+		return;
+
+	msg.wpa_state = state;
 
 	switch (state) {
 	case "DISCONNECTED":
@@ -409,6 +434,8 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state)
 			msg.center_freq2 = status.center_freq2;
 		if (status.punct_bitmap != null)
 			msg.punct_bitmap = status.punct_bitmap;
+		if (status.is_dfs != null)
+			msg.is_dfs = status.is_dfs;
 		break;
 	default:
 		return;
@@ -432,8 +459,34 @@ function iface_channel_switch(phy, radio, ifname, iface, info)
 		csa: true,
 		csa_count: info.csa_count ? info.csa_count - 1 : 0,
 		punct_bitmap: info.punct_bitmap,
+		is_dfs: info.is_dfs,
+		wpa_state: info.wpa_state,
 	};
 	ubus.call("hostapd", "apsta_state", msg);
+}
+
+function iface_pre_connect_hostapd_notify(phy, radio, ifname, iface, state, info)
+{
+	let ubus = wpas.data.ubus;
+	let msg = {
+		phy: phy,
+		radio: radio,
+		up: true,
+		frequency: info.frequency,
+		chan_width: info.chan_width,
+		sec_chan_offset: info.sec_chan_offset,
+		center_freq1: info.center_freq1,
+		center_freq2: info.center_freq2,
+		csa: true,
+		csa_count: 10,
+		punct_bitmap: info.punct_bitmap,
+		mon_ifaces: "",
+		is_dfs: info.is_dfs,
+		wpa_state: state,
+	 };
+
+	wpas.printf(`apsta_state:iface_pre_connect_hostapd_notify message passed ${msg}`);
+	ubus.defer("hostapd", "apsta_state", msg);
 }
 
 return {
@@ -448,7 +501,7 @@ return {
 	iface_remove: function(name, obj) {
 		iface_event("remove", name);
 	},
-	state: function(ifname, radio, iface, state) {
+	state: function(ifname, radio, iface, state, athnewind) {
 		let phy = wpas.data.iface_phy[ifname];
 		if (!phy) {
 			wpas.printf(`no PHY for ifname ${ifname}`);
@@ -460,12 +513,12 @@ return {
                         return;
 
 		if (!radio)
-			iface_hostapd_notify(phy_data.name, -1, ifname, iface, state);
+			iface_hostapd_notify(phy_data.name, -1, ifname, iface, state, athnewind);
 
 		let radio_id = 0;
 		while (radio) {
 			if (radio & 1) {
-				iface_hostapd_notify(phy_data.name, radio_id, ifname, iface, state);
+				iface_hostapd_notify(phy_data.name, radio_id, ifname, iface, state, athnewind);
 			}
 			radio >>= 1;
 			radio_id++;
@@ -494,7 +547,22 @@ return {
 		if (!phy_data)
 			return;
 
-		if (ev == "CH_SWITCH_STARTED")
+		if (ev == "CH_SWITCH_STARTED" || ev == "LINK_CH_SWITCH_STARTED")
 			iface_channel_switch(phy_data.name, radio, ifname, iface, info);
+	},
+	pre_connect_state: function(ifname, radio, iface, state, info) {
+		let phy = wpas.data.iface_phy[ifname];
+		if (!phy) {
+			wpas.printf(`no PHY for ifname ${ifname}`);
+			return;
+		}
+		if (state != "PRE_CONNECT")
+			return;
+
+		let phy_data = wpas.data.config[phy];
+		if (!phy_data)
+			return;
+
+		iface_pre_connect_hostapd_notify(phy_data.name, radio, ifname, iface, state, info);
 	}
 };

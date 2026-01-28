@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=hostapd
 PKG_RELEASE:=2
 
-PKG_SOURCE_URL:=https://w1.fi/hostap.git
+PKG_SOURCE_URL:=https://git.w1.fi/hostap.git
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_DATE:=2025-11-11
 PKG_SOURCE_VERSION:=8990591d07d823eca4d9be27491b660b67ba054e
@@ -103,7 +103,8 @@ DRIVER_MAKEOPTS= \
 	CONFIG_MBO=$(CONFIG_WPA_MBO_SUPPORT) \
 	CONFIG_UCODE=y \
 	CONFIG_ATF_OFFLOAD=y \
-	CONFIG_TESTING_OPTIONS=y
+	CONFIG_TESTING_OPTIONS=y \
+	CONFIG_PROCESS_COORDINATION=y
 
 ifeq ($(SSL_VARIANT),openssl)
   DRIVER_MAKEOPTS += CONFIG_TLS=openssl CONFIG_SAE=y
@@ -644,7 +645,9 @@ ifneq ($(LOCAL_VARIANT),macsec)
 		$(PKG_BUILD_DIR)/build/hostapd/src/common/wpa_ctrl.o \
 		$(PKG_BUILD_DIR)/build/hostapd/src/utils/os_unix.o \
 		$(PKG_BUILD_DIR)/build/hostapd/src/utils/wpa_debug.o \
-		$(PKG_BUILD_DIR)/build/hostapd/src/utils/common.o
+		$(PKG_BUILD_DIR)/build/hostapd/src/utils/common.o \
+		$(PKG_BUILD_DIR)/build/hostapd/src/utils/eloop.o \
+		$(PKG_BUILD_DIR)/build/hostapd/src/utils/uloop.o
 endif
 endef
 
