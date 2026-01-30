@@ -27,6 +27,7 @@ else
 endif
 HOSTAPD_SRC_DIR:=$(TOPDIR)/qca/src/network/services/hostapd/
 EXTENSIONS_DIR:=$(TOPDIR)/qca/src/wlan-app-extns/hostapd
+QCN_APP_EXTNS_DIR:=$(TOPDIR)/qca/src/qcn-app-extns
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_hostapd \
@@ -605,6 +606,9 @@ define Build/Patch
 	$(CP) -r $(HOSTAPD_SRC_DIR)/* $(PKG_BUILD_DIR)/
 ifdef CONFIG_PACKAGE_QCN_EXTN
 	$(CP) $(EXTENSIONS_DIR)/src $(PKG_BUILD_DIR)/qcn_extns
+	$(if $(wildcard $(QCN_APP_EXTNS_DIR)/qacs/qacs.c), \
+		$(CP) $(QCN_APP_EXTNS_DIR)/qacs $(PKG_BUILD_DIR)/qcn_extns
+	)
 endif
 endef
 
