@@ -384,6 +384,77 @@ let main_obj = {
 			return 0;
 		}
 	},
+	uplink_csa_notify: {
+		args: {
+			phy: "",
+			radio: 0,
+			frequency: 0,
+			channel: 0,
+			csa_count: 0,
+			new_ch_width: 0,
+			ch_seg_0: 0,
+			ch_seg_1: 0,
+		},
+		call: function(req) {
+			wpas.printf(`uplink_csa_notify received for ${req.args.phy} ${req.args.radio}`);
+			if (!req.args.frequency)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			let phy_data = wpas.data.config[req.args.phy];
+			if (!phy_data) {
+				wpas.printf(`uplink_csa_notify: interface not found`);
+				return libubus.STATUS_INVALID_ARGUMENT;
+			}
+
+			let ret = false;
+			for (let ifname in phy_data.data) {
+				let iface = wpas.interfaces[ifname];
+				if (!iface)
+					continue;
+				let status = iface.status(req.args.radio);
+				if (!status)
+					continue;
+				wpas.printf(`uplink_csa_notify: state is ${status.state} ${req.args.csa}`);
+				if (status.state == "INTERFACE_DISABLED")
+					continue;
+				let freq_info = {};
+				freq_info.frequency = req.args.frequency;
+				freq_info.csa_count = req.args.csa_count ?? 10;
+				freq_info.channel = req.args.channel;
+				freq_info.new_ch_width = req.args.new_ch_width;
+				freq_info.ch_seg_0 = req.args.ch_seg_0;
+				freq_info.ch_seg_1 = req.args.ch_seg_1;
+				wpas.printf(`notify: freq_info ${freq_info}`);
+				ret = iface.notify_uplink_csa(freq_info);
+			}
+			if (!ret)
+				return libubus.STATUS_UNKNOWN_ERROR;
+			return 0;
+		}
+	},
+	disconnect_request: {
+		args: {
+			phy: "",
+			radio: 0,
+		},
+		call: function(req) {
+			wpas.printf(`reconnect request received for ${req.args.phy} ${req.args.radio}`);
+			let phy_data = wpas.data.config[req.args.phy];
+			if (!phy_data)
+				return libubus.STATUS_INVALID_ARGUMENT;
+			let ret = false;
+			for (let ifname in phy_data.data) {
+				let iface = wpas.interfaces[ifname];
+				if (!iface)
+					continue;
+				wpas.printf(`trigger reconnect`);
+				ret = iface.reconnect(req.args.radio);
+			}
+			if (!ret)
+				return libubus.STATUS_UNKNOWN_ERROR;
+			return 0;
+		}
+	}
 };
 
 wpas.data.ubus = ubus;
@@ -462,6 +533,8 @@ function iface_channel_switch(phy, radio, ifname, iface, info)
 		is_dfs: info.is_dfs,
 		wpa_state: info.wpa_state,
 	};
+	wpas.printf(`channel switch ${msg}`);
+
 	ubus.call("hostapd", "apsta_state", msg);
 }
 
