@@ -21,9 +21,13 @@ PKG_BUILD_PARALLEL:=1
 PKG_ASLR_PIE_REGULAR:=1
 
 ifeq ($(CONFIG_USE_PRPLMESH_WHM),y)
-	HOSTAPD_PATCH_DIR:=$(TOPDIR)/prpl-patches/package/network/services/hostapd/openwrt_patches
+	HOSTAPD_PATCH_DIR:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/openwrt_patches
+	FILE_DIR_HOSTAPD:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/
+	EXTERNAL_DIR:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/
 else
 	HOSTAPD_PATCH_DIR:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/openwrt_patches
+	FILE_DIR_HOSTAPD:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/
+	EXTERNAL_DIR:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/
 endif
 HOSTAPD_SRC_DIR:=$(TOPDIR)/qca/src/network/services/hostapd/
 EXTENSIONS_DIR:=$(TOPDIR)/qca/src/wlan-app-extns/hostapd
@@ -77,7 +81,6 @@ ifeq ($(LOCAL_VARIANT),mesh)
   CONFIG_VARIANT:=full
 endif
 
-FILE_DIR_HOSTAPD:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/
 ifneq ("$(wildcard $(FILE_DIR_HOSTAPD)/wlan-hostapd.mk)","")
    include $(FILE_DIR_HOSTAPD)/wlan-hostapd.mk
 endif
@@ -290,7 +293,7 @@ define Package/wpad/Default
   SUBMENU:=WirelessAPD
   TITLE:=IEEE 802.1x Auth/Supplicant
   DEPENDS:=$(DRV_DEPENDS) +hostapd-common $(CORE_DEPENDS)
-  EXTRA_DEPENDS:=hostapd-common (=$(PKG_VERSION)-r$(PKG_RELEASE))
+  EXTRA_DEPENDS:=hostapd-common
   USERID:=network=101:network=101
   URL:=http://hostap.epitest.fi/
   PROVIDES:=hostapd wpa-supplicant
@@ -405,6 +408,7 @@ $(call Package/wpad-mesh,$(1))
   TITLE+= (OpenSSL, 11s, SAE)
   DEPENDS+=$(OPENSSL_DEPENDS)
   VARIANT:=wpad-mesh-openssl
+  PROVIDES:=hostapd-openssl wpa-supplicant-openssl hostapd-qca-openssl wpa-supplicant-qca-openssl wpad-qca-mesh-openssl
 endef
 
 Package/wpad-mesh-openssl/description = $(Package/wpad-mesh/description)
@@ -842,8 +846,6 @@ ifneq ($(LOCAL_VARIANT),macsec)
 endif
 endif
 
-EXTERNAL_DIR:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/
-
 define Package/wpad/install
 	$(call Install/hostapd,$(1))
 	$(call Install/supplicant,$(1))
@@ -923,38 +925,38 @@ $(eval $(call BuildPackage,hostapd-common))
 $(eval $(call BuildPackage,hostapd))
 $(eval $(call BuildPackage,hostapd-basic))
 $(eval $(call BuildPackage,hostapd-basic-openssl))
-$(eval $(call BuildPackage,hostapd-basic-wolfssl))
+#$(eval $(call BuildPackage,hostapd-basic-wolfssl))
 $(eval $(call BuildPackage,hostapd-basic-mbedtls))
 $(eval $(call BuildPackage,hostapd-mini))
-$(eval $(call BuildPackage,hostapd-openssl))
-$(eval $(call BuildPackage,hostapd-wolfssl))
+#$(eval $(call BuildPackage,hostapd-openssl))
+#$(eval $(call BuildPackage,hostapd-wolfssl))
 $(eval $(call BuildPackage,hostapd-mbedtls))
 $(eval $(call BuildPackage,wpad))
 $(eval $(call BuildPackage,wpad-mesh-openssl))
-$(eval $(call BuildPackage,wpad-mesh-wolfssl))
+#$(eval $(call BuildPackage,wpad-mesh-wolfssl))
 $(eval $(call BuildPackage,wpad-mesh-mbedtls))
 $(eval $(call BuildPackage,wpad-basic))
 $(eval $(call BuildPackage,wpad-basic-openssl))
-$(eval $(call BuildPackage,wpad-basic-wolfssl))
+#$(eval $(call BuildPackage,wpad-basic-wolfssl))
 $(eval $(call BuildPackage,wpad-basic-mbedtls))
 $(eval $(call BuildPackage,wpad-mini))
 $(eval $(call BuildPackage,wpad-openssl))
-$(eval $(call BuildPackage,wpad-wolfssl))
+#$(eval $(call BuildPackage,wpad-wolfssl))
 $(eval $(call BuildPackage,wpad-mbedtls))
 $(eval $(call BuildPackage,wpa-supplicant))
 $(eval $(call BuildPackage,wpa-supplicant-mesh-openssl))
-$(eval $(call BuildPackage,wpa-supplicant-mesh-wolfssl))
+#$(eval $(call BuildPackage,wpa-supplicant-mesh-wolfssl))
 $(eval $(call BuildPackage,wpa-supplicant-mesh-mbedtls))
 $(eval $(call BuildPackage,wpa-supplicant-basic))
 $(eval $(call BuildPackage,wpa-supplicant-mini))
 $(eval $(call BuildPackage,wpa-supplicant-p2p))
-$(eval $(call BuildPackage,wpa-supplicant-openssl))
-$(eval $(call BuildPackage,wpa-supplicant-wolfssl))
+#$(eval $(call BuildPackage,wpa-supplicant-openssl))
+#$(eval $(call BuildPackage,wpa-supplicant-wolfssl))
 $(eval $(call BuildPackage,wpa-supplicant-mbedtls))
 $(eval $(call BuildPackage,wpa-cli))
 $(eval $(call BuildPackage,hostapd-utils))
 $(eval $(call BuildPackage,eapol-test))
 $(eval $(call BuildPackage,eapol-test-openssl))
-$(eval $(call BuildPackage,eapol-test-wolfssl))
+#$(eval $(call BuildPackage,eapol-test-wolfssl))
 $(eval $(call BuildPackage,eapol-test-mbedtls))
 $(eval $(call BuildPackage,wpad-macsec))
