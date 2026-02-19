@@ -185,6 +185,119 @@ function start_pending(phy_name)
 		iface_start(phydev, phy.data[ifname]);
 }
 
+
+function get_sta_channel_info_per_band(band)
+{
+	/* band: 0 = 2G, 1 = 5G, 2 = 6G */
+	wpas.printf(`get_sta_channel_info_per_band: band=${band}`);
+	for (let phy_name, phy_data in wpas.data.config) {
+		if (!phy_data || !phy_data.data)
+			continue;
+
+		for (let ifname in phy_data.data) {
+			let iface_data = phy_data.data[ifname];
+			if (!iface_data || !iface_data.config)
+				continue;
+
+			if (iface_data.config.mode != "sta")
+				continue;
+
+			if (!wpas.interfaces) {
+				wpas.printf(`get_sta_channel_info_per_band: `
+					    `wpas.interfaces is null`);
+				continue;
+			}
+
+			let iface = wpas.interfaces[ifname];
+			if (!iface) {
+				wpas.printf(`get_sta_channel_info_per_band: `
+					    `no iface object for ${ifname}`);
+				continue;
+			}
+
+			/* Log and use configured radio if present, else 0 */
+			let cfg_radio = iface_data.config.radio;
+			let radio = cfg_radio != null ? cfg_radio : 0;
+			wpas.printf(`get_sta_channel_info_per_band: ${ifname} `
+				    `cfg_radio=${cfg_radio} using_radio=${radio}`);
+
+			let status = iface.status(radio);
+			if (!status) {
+				wpas.printf(`get_sta_channel_info_per_band: ${ifname} `
+					    `status(null) on radio ${radio}`);
+				continue;
+			}
+
+			wpas.printf(`get_sta_channel_info_per_band: ${ifname} status on `
+				    `radio ${radio}: state=${status.state} `
+				    `freq=${status.frequency}`);
+
+			/* STRICT: only accept if STA is COMPLETED */
+			if (status.state != "COMPLETED") {
+				wpas.printf(`get_sta_channel_info_per_band: `
+					    `${ifname} not COMPLETED`);
+				continue;
+			}
+
+			let freq = status.frequency;
+			if (freq == null) {
+				wpas.printf(`get_sta_channel_info_per_band: `
+					    `${ifname} has no frequency`);
+				continue;
+			}
+
+			if (band == 0 && !(freq >= 2400 && freq <= 2484))
+				continue;
+			if (band == 1 && !(freq >= 5150 && freq <= 5885))
+				continue;
+			if (band == 2 && !(freq >= 5935 && freq <= 7115))
+				continue;
+
+			let bandwidth;
+			switch (status.chan_width) {
+			case 0: /* CHAN_WIDTH_20_NOHT */
+			case 1: /* CHAN_WIDTH_20 */
+				bandwidth = 20;
+				break;
+			case 2: /* CHAN_WIDTH_40 */
+				bandwidth = 40;
+				break;
+			case 3: /* CHAN_WIDTH_80 */
+				bandwidth = 80;
+				break;
+			case 4: /* CHAN_WIDTH_80P80 */
+				/* Effective per-segment bandwidth is 80 MHz */
+				bandwidth = 80;
+				break;
+			case 5: /* CHAN_WIDTH_160 */
+				bandwidth = 160;
+				break;
+			case 10: /* CHAN_WIDTH_320 */
+				bandwidth = 320;
+				break;
+			default:
+				/* Very wide EHT widths or UNKNOWN */
+				bandwidth = null;
+				break;
+			}
+
+			let result = {
+				frequency: status.frequency,
+				bandwidth: bandwidth,
+				sec_channel_offset: status.sec_chan_offset,
+				center_freq1: status.center_freq1,
+				center_freq2: status.center_freq2,
+				punct_bitmap: status.punct_bitmap
+			};
+                        wpas.printf(`get_sta_channel_info_per_band: `
+				    `${ifname} COMPLETED: ${result}`);
+                        return result;
+                }
+        }
+
+        return null;
+}
+
 let main_obj = {
 	phy_set_state: {
 		args: {
@@ -265,6 +378,32 @@ let main_obj = {
 			}
 
 			return libubus.STATUS_NOT_FOUND;
+		}
+	},
+	get_sta_channel_per_band: {
+		args: {
+			band: 0,
+		},
+		call: function(req) {
+			let band = req.args.band;
+			wpas.printf(`get_sta_channel_per_band ubus call: band=${band}`);
+
+			if (band == null)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			try {
+				let info = get_sta_channel_info_per_band(band);
+				wpas.printf(`get_sta_channel_per_band ubus call: info=${info}`);
+				if (!info)
+					return libubus.STATUS_NOT_FOUND;
+				return { channel_info: info };
+			} catch (e) {
+				wpas.printf(`get_sta_channel_info_per_band call exception: ${e}`);
+				if (e && e.stacktrace && e.stacktrace[0])
+					wpas.printf(`get_sta_channel_info_per_band ubus `
+						    `stack: ${e.stacktrace[0].context}`);
+				return libubus.STATUS_UNKNOWN_ERROR;
+			}
 		}
 	},
 	config_set: {

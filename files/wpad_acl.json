@@ -5,7 +5,7 @@
 			"methods": [ "event" ]
 		},
 		"wpa_supplicant": {
-			"methods": [ "phy_set_state", "phy_set_macaddr_list", "phy_status", "csa_finish_event", "start_scan_post_acs", "uplink_csa_notify", "disconnect_request" ]
+			"methods": [ "phy_set_state", "phy_set_macaddr_list", "phy_status", "csa_finish_event", "start_scan_post_acs", "uplink_csa_notify", "disconnect_request", "get_sta_channel_per_band" ]
 		},
 		"hostapd": {
 			"methods": [ "apsta_state" ]

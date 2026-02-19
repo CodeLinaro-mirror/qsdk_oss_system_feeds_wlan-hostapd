@@ -192,6 +192,48 @@ function iface_add(phy, config, phy_status)
 	return iface.start(freq_info) >= 0;
 }
 
+function get_sta_channel_per_band(iface, band)
+{
+	if (!iface) {
+		hostapd.printf(`get_sta_channel_per_band: iface is null`);
+		return null;
+	}
+
+	if (band == null || band < 0 || band > 2) {
+		hostapd.printf(`get_sta_channel_per_band: invalid band=${band}`);
+		return null;
+	}
+
+	hostapd.printf(`get_sta_channel_per_band: band=${band}`);
+
+	let resp;
+	try {
+		resp = ubus.call("wpa_supplicant", "get_sta_channel_per_band", {
+				 band: band});
+	} catch (e) {
+		hostapd.printf(`get_sta_channel_per_band: ubus call failed: ${e}`);
+		return null;
+	}
+
+	if (!resp) {
+		hostapd.printf("get_sta_channel_per_band: no response from supplicant");
+		return null;
+	}
+
+	if (resp.channel != null) {
+		hostapd.printf(`get_sta_channel_per_band(): resp.channel=${resp.channel}`);
+		return resp;
+	}
+
+	if (resp.channel_info != null) {
+		hostapd.printf(`get_sta_channel_per_band: resp.channel_info=${resp.channel_info}`);
+		return { channel: resp.channel_info };
+	}
+
+	hostapd.printf("get_sta_channel_per_band: no channel info in response");
+	return { channel: null };
+}
+
 function iface_config_macaddr_list(config)
 {
 	let macaddr_list = {};
@@ -1445,6 +1487,9 @@ return {
 		};
 
 		ubus.call("wpa_supplicant", "disconnect_request", msg);
+	},
+	get_sta_channel_per_band: function(iface, band) {
+		return get_sta_channel_per_band(iface, band);
 	}
 
 };
