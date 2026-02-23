@@ -1,0 +1,116 @@
+From 958a591659643b0d278e0d3e551c296a7e8c0721 Mon Sep 17 00:00:00 2001
+From: Sowmiya Sree Elavalagan <ssreeela@qti.qualcomm.com>
+Date: Mon, 23 Feb 2026 11:21:09 +0530
+Subject: [PATCH] UPSTREAM:SECURITY:hostapd: Fix SA Query comeback timeout for
+ MLO and avoid duplicate queries
+
+When association is rejected temporarily due to an ongoing SA Query, calculate
+the comeback time from the STA that actually triggered the SA Query (in MLO this
+may be the associated link STA). Track the triggering STA on the current link to
+avoid starting multiple SA Queries across partner links and to return a correct
+timeout interval.
+
+Signed-off-by: Sowmiya Sree Elavalagan <ssreeela@qti.qualcomm.com>
+---
+ src/ap/ieee802_11.c        | 19 ++++++++++++++++---
+ src/ap/ieee802_11_shared.c |  9 ++++++++-
+ src/ap/sta_info.h          |  1 +
+ 3 files changed, 25 insertions(+), 4 deletions(-)
+
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 5810990..ae22216 100644
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -4441,8 +4441,18 @@ static bool hapd_is_known_sta(struct hostapd_data *hapd, struct sta_info *sta,
+ }
+ 
+ static bool check_sa_query(struct hostapd_data *hapd, struct sta_info *sta,
+-			   int reassoc, const u8 *ies, size_t ies_len)
++			   int reassoc, const u8 *ies, size_t ies_len,
++			   struct sta_info *current_sta)
+ {
++	struct hostapd_data *assoc_hapd;
++	struct sta_info *assoc_sta;
++
++	assoc_sta = hostapd_ml_get_assoc_sta(hapd, sta, &assoc_hapd);
++	if (assoc_sta) {
++		sta = assoc_sta;
++		hapd = assoc_hapd;
++	}
++
+ 	if ((sta->flags &
+ 	     (WLAN_STA_ASSOC | WLAN_STA_MFP | WLAN_STA_AUTHORIZED)) !=
+ 	    (WLAN_STA_ASSOC | WLAN_STA_MFP | WLAN_STA_AUTHORIZED))
+@@ -4464,6 +4474,8 @@ static bool check_sa_query(struct hostapd_data *hapd, struct sta_info *sta,
+ 		if (sta->sa_query_count == 0)
+ 			ap_sta_start_sa_query(hapd, sta);
+ 
++		current_sta->sa_query_triggered_sta = sta;
++
+ 		return true;
+ 	}
+ 
+@@ -4484,8 +4496,9 @@ static bool check_sa_query_partner_link(struct hostapd_data *hapd, struct sta_in
+ 			if (bss == hapd)
+ 				continue;
+ 			lsta = ap_get_sta(bss, sta->addr);
+-			if (lsta && check_sa_query(bss, lsta, type, ies, ies_len))
++			if (lsta && check_sa_query(bss, lsta, type, ies, ies_len, sta))
+ 				return true;
++
+ 		}
+ 	}
+ 	return false;
+@@ -6517,7 +6530,7 @@ static void handle_assoc(struct hostapd_data *hapd,
+ 	}
+ #endif /* CONFIG_MBO */
+ 
+-	if (hapd->conf->wpa && check_sa_query(hapd, sta, reassoc, pos, left)) {
++	if (hapd->conf->wpa && check_sa_query(hapd, sta, reassoc, pos, left, sta)) {
+ 		resp = WLAN_STATUS_ASSOC_REJECTED_TEMPORARILY;
+ 		goto fail;
+ 	}
+diff --git a/src/ap/ieee802_11_shared.c b/src/ap/ieee802_11_shared.c
+index d579e51..43fb9da 100644
+--- a/src/ap/ieee802_11_shared.c
++++ b/src/ap/ieee802_11_shared.c
+@@ -39,9 +39,15 @@ u8 * hostapd_eid_assoc_comeback_time(struct hostapd_data *hapd,
+ 	u32 timeout, tu;
+ 	struct os_reltime now, passed;
+ 	u8 type = WLAN_TIMEOUT_ASSOC_COMEBACK;
++	struct sta_info *temp_sta = NULL;
++
++	if (sta->sa_query_triggered_sta)
++		temp_sta = sta->sa_query_triggered_sta;
++	else
++		temp_sta = sta;
+ 
+ 	os_get_reltime(&now);
+-	os_reltime_sub(&now, &sta->sa_query_start, &passed);
++	os_reltime_sub(&now, &temp_sta->sa_query_start, &passed);
+ 	tu = (passed.sec * 1000000 + passed.usec) / 1024;
+ 	if (hapd->conf->assoc_sa_query_max_timeout > tu)
+ 		timeout = hapd->conf->assoc_sa_query_max_timeout - tu;
+@@ -50,6 +56,7 @@ u8 * hostapd_eid_assoc_comeback_time(struct hostapd_data *hapd,
+ 	if (timeout < hapd->conf->assoc_sa_query_max_timeout)
+ 		timeout++; /* add some extra time for local timers */
+ 
++	sta->sa_query_triggered_sta = NULL;
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	if (hapd->conf->test_assoc_comeback_type != -1)
+ 		type = hapd->conf->test_assoc_comeback_type;
+diff --git a/src/ap/sta_info.h b/src/ap/sta_info.h
+index 7e40d3c..c7f5ed3 100644
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
+@@ -357,6 +357,7 @@ struct sta_info {
+ 	u8 reply_addr[6];
+ #endif /* CONFIG_IEEE80211BE */
+ 	u8 skip_kernel_delete;
++	struct sta_info *sa_query_triggered_sta;
+ 
+ 	u16 max_idle_period; /* if nonzero, the granted BSS max idle period in
+ 			      * units of 1000 TUs */
+-- 
+2.34.1
+
