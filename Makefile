@@ -626,6 +626,19 @@ define Build/Configure
 	)
 endef
 
+## Build libwpa_ctrl.a objects at top-level to avoid conditionals inside define
+ifneq ($(LOCAL_VARIANT),macsec)
+OBJS_LIBWPA_CTRL := \
+	$(PKG_BUILD_DIR)/build/hostapd/src/common/wpa_ctrl.o \
+	$(PKG_BUILD_DIR)/build/hostapd/src/utils/os_unix.o \
+	$(PKG_BUILD_DIR)/build/hostapd/src/utils/wpa_debug.o \
+	$(PKG_BUILD_DIR)/build/hostapd/src/utils/common.o \
+	$(PKG_BUILD_DIR)/build/hostapd/src/utils/eloop.o
+ifeq ($(CONFIG_UCODE),y)
+OBJS_LIBWPA_CTRL += $(PKG_BUILD_DIR)/build/hostapd/src/utils/uloop.o
+endif
+endif
+
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include
 	$(INSTALL_DIR) $(1)/usr/lib/
@@ -635,15 +648,7 @@ define Build/InstallDev
 	$(CP) $(PKG_BUILD_DIR)/src/utils/os.h $(1)/usr/include
 	$(CP) $(PKG_BUILD_DIR)/src/utils/common.h $(1)/usr/include
 	$(CP) $(PKG_BUILD_DIR)/src/utils/wpa_debug.h $(1)/usr/include
-ifneq ($(LOCAL_VARIANT),macsec)
-	ar rcs $(1)/usr/lib/libwpa_ctrl.a \
-		$(PKG_BUILD_DIR)/build/hostapd/src/common/wpa_ctrl.o \
-		$(PKG_BUILD_DIR)/build/hostapd/src/utils/os_unix.o \
-		$(PKG_BUILD_DIR)/build/hostapd/src/utils/wpa_debug.o \
-		$(PKG_BUILD_DIR)/build/hostapd/src/utils/common.o \
-		$(PKG_BUILD_DIR)/build/hostapd/src/utils/eloop.o \
-		$(PKG_BUILD_DIR)/build/hostapd/src/utils/uloop.o
-endif
+	$(if $(strip $(OBJS_LIBWPA_CTRL)),ar rcs $(1)/usr/lib/libwpa_ctrl.a $(OBJS_LIBWPA_CTRL))
 endef
 
 TARGET_CPPFLAGS := \
