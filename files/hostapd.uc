@@ -1044,7 +1044,7 @@ let main_obj = {
 			let ret;
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
-				iface.stop();
+				iface.stop({ wpa_state: req.args.wpa_state });
 				for (let mon in mon_if_names) {
 					if (mon == null)
 						continue;
