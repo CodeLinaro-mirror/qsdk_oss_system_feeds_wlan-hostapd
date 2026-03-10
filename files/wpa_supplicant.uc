@@ -615,9 +615,6 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state, athnewind)
 	let status = iface.status(radio);
 	let msg = { phy: phy, radio: radio, mon_ifaces: mon_ifaces[radio]};
 
-	if (athnewind)
-		return;
-
 	msg.wpa_state = state;
 
 	switch (state) {
