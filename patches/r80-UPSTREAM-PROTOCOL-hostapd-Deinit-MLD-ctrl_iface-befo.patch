@@ -1,0 +1,57 @@
+From 785a9c6d14102d456fc7ebd78beaf04e47fb18c0 Mon Sep 17 00:00:00 2001
+From: Yuvarani V <yuvarani@qti.qualcomm.com>
+Date: Thu, 12 Mar 2026 22:22:19 +0530
+Subject: [PATCH] UPSTREAM:PROTOCOL:hostapd: Deinit MLD ctrl_iface before
+ freeing new MLD on failure
+
+When reusing an existing hostapd_mld for an ML AP, a failure in
+hostapd_bss_alloc_link_id() jumped to the common fail path which
+unconditionally freed the MLD. That MLD may already be registered
+with the MLD control interface, so freeing it leads to
+use-after-free and a crash.
+
+Fix this by decrementing the MLD reference count and clearing
+hapd->mld, then returning early without freeing the shared MLD when
+operating on an existing MLD. Additionally, ensure the MLD control
+interface is deinitialized before freeing a newly created MLD in the
+failure path to avoid dangling references.
+
+Patch-dependency: I9531e39bf39 (UPSTREAM:PROTOCOL: hostapd: add support
+ to use bitmap to get link ids)
+
+Patch-work: None
+
+Signed-off-by: Yuvarani V <yuvarani@qti.qualcomm.com>
+---
+ src/ap/hostapd.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index 70fc47a..79b540e 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3675,8 +3675,11 @@ void hostapd_bss_setup_multi_link(struct hostapd_data *hapd,
+ 
+ 		hapd->mld = mld;
+ 		hostapd_mld_ref_inc(mld);
+-		if (hostapd_bss_alloc_link_id(hapd))
+-			goto fail;
++		if (hostapd_bss_alloc_link_id(hapd)) {
++			hostapd_mld_ref_dec(mld);
++			hapd->mld = NULL;
++			return;
++		}
+ 		break;
+ 	}
+ 
+@@ -3721,6 +3724,7 @@ fail:
+ 	if (!mld)
+ 		return;
+ 
++	interfaces->mld_ctrl_iface_deinit(mld);
+ 	wpa_printf(MSG_DEBUG, "AP MLD %s: free mld %p", mld->name, mld);
+ 	os_free(mld->epcs_authorized_mac);
+ 	os_free(mld);
+-- 
+2.34.1
+
