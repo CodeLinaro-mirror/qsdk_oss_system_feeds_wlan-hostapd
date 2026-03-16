@@ -200,8 +200,12 @@ local ifname=$2
 }
 
 is_mld() {
-	mld_group=$1
-	mld_iface=$(uci get wireless."$1".ifname)
+	local _group=$1
+	local _iface=$(uci get wireless."$1".ifname)
+	if [ "${IFNAME#*$_iface}" != "$IFNAME" ]; then
+		mld_iface=$_iface
+		mld_group=$_group
+	fi
 }
 
 if [[ "$CMD" == *DPP* ]]; then
