@@ -840,6 +840,11 @@ define Package/wpad-macsec/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wpad $(1)/usr/sbin/wpad-macsec
 	$(LN) wpad-macsec $(1)/usr/sbin/hostapd-macsec
 	$(LN) wpad-macsec $(1)/usr/sbin/wpa_supplicant-macsec
+	$(INSTALL_DIR) $(1)/etc/802.1x
+	$(INSTALL_BIN) ./files/8021x-client $(1)/usr/sbin/8021x-client
+	$(INSTALL_BIN) ./files/8021x_action.sh $(1)/etc/802.1x/8021x_action.sh
+	$(INSTALL_BIN) ./files/dhcp_wan_renew.sh $(1)/etc/802.1x/dhcp_wan_renew.sh
+	$(INSTALL_DATA) ./files/wpa-wired-reference.conf $(1)/etc/802.1x/wpa-wired-reference.conf
 endef
 
 ifneq ($(LOCAL_TYPE),supplicant)
