@@ -609,13 +609,14 @@ function iface_event(type, name, data) {
 	ubus.call("service", "event", { type: `wpa_supplicant.${name}.${type}`, data: {} });
 }
 
-function iface_hostapd_notify(phy, radio, ifname, iface, state, athnewind)
+function iface_hostapd_notify(phy, radio, ifname, iface, state, vap_type)
 {
 	let ubus = wpas.data.ubus;
 	let status = iface.status(radio);
 	let msg = { phy: phy, radio: radio, mon_ifaces: mon_ifaces[radio]};
 
 	msg.wpa_state = state;
+	msg.vap_type = vap_type;
 
 	switch (state) {
 	case "DISCONNECTED":
@@ -652,7 +653,7 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state, athnewind)
 	ubus.call("hostapd", "apsta_state", msg);
 }
 
-function iface_channel_switch(phy, radio, ifname, iface, info)
+function iface_channel_switch(phy, radio, ifname, iface, info, vap_type)
 {
 	let msg = {
 		phy: phy,
@@ -669,12 +670,13 @@ function iface_channel_switch(phy, radio, ifname, iface, info)
 		is_dfs: info.is_dfs,
 		wpa_state: info.wpa_state,
 	};
+	msg.vap_type = vap_type;
 	wpas.printf(`channel switch ${msg}`);
 
 	ubus.call("hostapd", "apsta_state", msg);
 }
 
-function iface_pre_connect_hostapd_notify(phy, radio, ifname, iface, state, info)
+function iface_pre_connect_hostapd_notify(phy, radio, ifname, iface, state, info, vap_type)
 {
 	let ubus = wpas.data.ubus;
 	let msg = {
@@ -694,6 +696,7 @@ function iface_pre_connect_hostapd_notify(phy, radio, ifname, iface, state, info
 		wpa_state: state,
 	 };
 
+	msg.vap_type = vap_type;
 	wpas.printf(`apsta_state:iface_pre_connect_hostapd_notify message passed ${msg}`);
 	ubus.defer("hostapd", "apsta_state", msg);
 }
@@ -710,7 +713,7 @@ return {
 	iface_remove: function(name, obj) {
 		iface_event("remove", name);
 	},
-	state: function(ifname, radio, iface, state, athnewind) {
+	state: function(ifname, radio, iface, state, vap_type) {
 		let phy = wpas.data.iface_phy[ifname];
 		if (!phy) {
 			wpas.printf(`no PHY for ifname ${ifname}`);
@@ -722,12 +725,12 @@ return {
                         return;
 
 		if (!radio)
-			iface_hostapd_notify(phy_data.name, -1, ifname, iface, state, athnewind);
+			iface_hostapd_notify(phy_data.name, -1, ifname, iface, state, vap_type);
 
 		let radio_id = 0;
 		while (radio) {
 			if (radio & 1) {
-				iface_hostapd_notify(phy_data.name, radio_id, ifname, iface, state, athnewind);
+				iface_hostapd_notify(phy_data.name, radio_id, ifname, iface, state, vap_type);
 			}
 			radio >>= 1;
 			radio_id++;
@@ -746,7 +749,7 @@ return {
 
 		wdev_set_mesh_params(ifname, wdev_config);
 	},
-	event: function(ifname, radio, iface, ev, info) {
+	event: function(ifname, radio, iface, ev, info, vap_type) {
 		let phy = wpas.data.iface_phy[ifname];
 		if (!phy) {
 			wpas.printf(`no PHY for ifname ${ifname}`);
@@ -757,9 +760,9 @@ return {
 			return;
 
 		if (ev == "CH_SWITCH_STARTED" || ev == "LINK_CH_SWITCH_STARTED")
-			iface_channel_switch(phy_data.name, radio, ifname, iface, info);
+			iface_channel_switch(phy_data.name, radio, ifname, iface, info, vap_type);
 	},
-	pre_connect_state: function(ifname, radio, iface, state, info) {
+	pre_connect_state: function(ifname, radio, iface, state, info, vap_type) {
 		let phy = wpas.data.iface_phy[ifname];
 		if (!phy) {
 			wpas.printf(`no PHY for ifname ${ifname}`);
@@ -772,6 +775,6 @@ return {
 		if (!phy_data)
 			return;
 
-		iface_pre_connect_hostapd_notify(phy_data.name, radio, ifname, iface, state, info);
+		iface_pre_connect_hostapd_notify(phy_data.name, radio, ifname, iface, state, info, vap_type);
 	}
 };
