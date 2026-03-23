@@ -196,6 +196,11 @@ validate_ifname() {
     log_error "Invalid interface name: '$name' (cannot start with . or -)"
     return 1
   fi
+  # Reject consecutive dots to prevent path traversal
+  if echo "$name" | grep -q '\.\.'; then
+    log_error "Invalid interface name: '$name' (consecutive dots not allowed)"
+    return 1
+  fi
   return 0
 }
 
@@ -270,6 +275,17 @@ cmd_start() {
 
   PID_FILE="$(get_pid_file "$ifname")"
   LISTENER_PID_FILE="$(get_listener_pid_file "$ifname")"
+
+  # Treat each explicit start as a new session and clear any
+  # leftover 8021x_action throttle/tail state from a previous run.
+  if [ -d "$STATE_DIR" ]; then
+    rm -f "$STATE_DIR/${ifname}.state" 2>/dev/null || true
+    rm -f "$STATE_DIR/${ifname}.lock"  2>/dev/null || true
+    rm -f "$STATE_DIR/${ifname}.stop"  2>/dev/null || true
+    # compatibility: old versions used a lock *directory*
+    rmdir "$STATE_DIR/${ifname}.lock"  2>/dev/null || true
+    log_msg "Cleared stale 8021x_action state for $ifname"
+  fi
 
   # Remove stale PID file with ownership verification
   if [ -f "$PID_FILE" ]; then
@@ -451,9 +467,13 @@ cmd_stop() {
   log_msg "Stopping 802.1X client on $ifname"
 
   # 1) stop flag for 8021x_action tail worker
-  mkdir -p "$STATE_DIR" 2>/dev/null || true
+  if ! mkdir -p "$STATE_DIR" 2>/dev/null; then
+    log_msg "Warning: Failed to create state directory $STATE_DIR"
+  fi
   STOP_FILE="$STATE_DIR/${ifname}.stop"
-  echo "stop $(date +%s)" > "$STOP_FILE" 2>/dev/null || true
+  if ! echo "stop $(date +%s)" > "$STOP_FILE" 2>/dev/null; then
+    log_msg "Warning: Failed to write stop flag to $STOP_FILE"
+  fi
 
   # 2) try kill tail worker by reading TAIL_PID from state file
   STATE_FILE="$STATE_DIR/${ifname}.state"
@@ -524,9 +544,15 @@ cmd_stop() {
   # 6) cleanup 8021x_action state/lock/stop files (best-effort)
   if [ -d "$STATE_DIR" ]; then
     log_msg "Cleaning up 8021x_action state for $ifname"
-    rm -f "$STATE_DIR/${ifname}.state" 2>/dev/null || true
-    rm -f "$STATE_DIR/${ifname}.lock" 2>/dev/null || true
-    rm -f "$STATE_DIR/${ifname}.stop" 2>/dev/null || true
+    if ! rm -f "$STATE_DIR/${ifname}.state" 2>/dev/null; then
+      log_msg "Warning: Failed to remove state file $STATE_DIR/${ifname}.state"
+    fi
+    if ! rm -f "$STATE_DIR/${ifname}.lock" 2>/dev/null; then
+      log_msg "Warning: Failed to remove lock file $STATE_DIR/${ifname}.lock"
+    fi
+    if ! rm -f "$STATE_DIR/${ifname}.stop" 2>/dev/null; then
+      log_msg "Warning: Failed to remove stop file $STATE_DIR/${ifname}.stop"
+    fi
 
     # compatibility: old versions used lock *directory*
     rmdir "$STATE_DIR/${ifname}.lock" 2>/dev/null || true
