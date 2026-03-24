@@ -370,20 +370,10 @@ fi
 
 tail_pid=$!
 
-# Re-acquire lock to safely update TAIL_PID in state file
-if ! acquire_lock "$LOCK_FILE" "$LOCK_TIMEOUT_SEC"; then
-  # Lock failed, cleanup worker
-  kill "$tail_pid" 2>/dev/null || true
-  log_msg "ERROR: failed to acquire lock for recording tail worker PID"
-  exit 1
-fi
-
-# Write all state atomically under lock protection
+# record the tail worker PID under the existing lock.
 echo "LAST_TRIGGER_TS=$LAST_TRIGGER_TS" > "$STATE_FILE"
 echo "NEXT_TRIGGER_TS=$NEXT_TRIGGER_TS" >> "$STATE_FILE"
 echo "TAIL_PID=$tail_pid" >> "$STATE_FILE"
-
-release_lock "$LOCK_FILE"
 
 log_msg "THROTTLE: started tail worker pid=$tail_pid, NEXT_TRIGGER_TS=$NEXT_TRIGGER_TS"
 
