@@ -129,7 +129,7 @@ local ifname=$2
 				sae-ext-key)
 					hostapd_cli -i"$ifname" set wpa_key_mgmt "SAE-EXT-KEY"
 					hostapd_cli -i"$ifname" set rsn_pairwise "GCMP-256"
-					hostapd_cli -i"$ifname" set group_cipher "GCMP-256"
+					hostapd_cli -i"$ifname" set group_cipher "CCMP"
 					hostapd_cli -i"$ifname" set ieee80211w 2
 					hostapd_cli -i"$ifname" set sae_pwe 2
 					encryption="sae-ext-key"
