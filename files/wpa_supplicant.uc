@@ -671,7 +671,7 @@ function iface_channel_switch(phy, radio, ifname, iface, info)
 	};
 	wpas.printf(`channel switch ${msg}`);
 
-	ubus.call("hostapd", "apsta_state", msg);
+	ubus.defer("hostapd", "apsta_state", msg);
 }
 
 function iface_pre_connect_hostapd_notify(phy, radio, ifname, iface, state, info)
