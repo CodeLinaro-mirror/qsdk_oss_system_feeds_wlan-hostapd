@@ -1,0 +1,57 @@
+From a277eb85d761909d05fe0c315689e7ac7e6e0591 Mon Sep 17 00:00:00 2001
+From: Naveen Sivasamy <naves@qti.qualcomm.com>
+Date: Tue, 17 Mar 2026 23:01:16 +0530
+Subject: [PATCH] UPSTREAM:PROTOCOL:hostapd: fix incomplete BSS cleanup on
+ MBSSID beacon start failure
+
+In hostapd_setup_interface_complete_sync(), when MBSSID is enabled,
+hostapd_setup_bss() is called for all BSSs first, followed by a
+separate loop calling hostapd_start_beacon() for each BSS. If
+hostapd_start_beacon() fails at index j, the error handler only
+cleans up BSSs from j down to 0, leaving non-TX BSSs at indices
+j+1 through num_bss-1 with wpa_auth allocated but never freed.
+
+These leaked non-TX BSSs have wpa_auth->conf.tx_bss_auth pointing
+to the TX BSS's wpa_auth. When the interface is subsequently
+disabled and the TX BSS's wpa_auth is freed, tx_bss_auth in the
+leaked non-TX BSSs becomes a dangling pointer, causing a
+use-after-free when the GTK rekey eloop timer fires and
+dereferences it.
+
+Fix by resetting j to num_bss-1 before the cleanup loop so a single
+downward pass covers all BSSs initialized by hostapd_setup_bss(),
+regardless of where hostapd_start_beacon() failed.
+
+Patch-dependency: none
+
+Signed-off-by: Naveen Sivasamy <naves@qti.qualcomm.com>
+---
+ src/ap/hostapd.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index 889c1a0f88..4adaa33a34 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3848,6 +3848,18 @@ static int hostapd_setup_interface_complete_sync(struct hostapd_iface *iface,
+ 		for (j = 0; hapd->iconf->mbssid && j < iface->num_bss; j++) {
+ 			hapd = iface->bss[j];
+ 			if (hostapd_start_beacon(hapd, true)) {
++				/*
++				 * Start cleanup from num_bss - 1 (not just j)
++				 * so that BSSs above j which were already set
++				 * up by hostapd_setup_bss() but not yet
++				 * reached by hostapd_start_beacon() are also
++				 * cleaned up. Without this, their wpa_auth
++				 * allocations are leaked and tx_bss_auth
++				 * pointers become dangling references into
++				 * freed memory, causing use-after-free crashes
++				 * (e.g. when the GTK rekey eloop timer fires).
++				 */
++				j = iface->num_bss - 1;
+ 				for (;;) {
+ 					hapd = iface->bss[j];
+ 					hostapd_bss_deinit_no_free(hapd);
+-- 
+2.34.1
+
