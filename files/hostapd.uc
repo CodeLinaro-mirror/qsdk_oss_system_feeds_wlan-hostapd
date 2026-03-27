@@ -1015,6 +1015,7 @@ let main_obj = {
 			mon_ifaces: "",
 			is_dfs: false,
 			wpa_state: "",
+			vap_type: 0,
 		},
 		call: ex_wrap(function(req) {
 			let phy = phy_name(req.args.phy, req.args.radio);
@@ -1044,7 +1045,8 @@ let main_obj = {
 			let ret;
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
-				iface.stop({ wpa_state: req.args.wpa_state });
+				iface.stop({ wpa_state: req.args.wpa_state,
+					     vap_type: req.args.vap_type });
 				for (let mon in mon_if_names) {
 					if (mon == null)
 						continue;
@@ -1069,6 +1071,7 @@ let main_obj = {
 				hostapd.printf(`apsta_state: received wpa_state ${req.args.wpa_state} for radio ${req.args.radio}`);
 				freq_info.wpa_state = req.args.wpa_state;
 			}
+			freq_info.vap_type = req.args.vap_type;
 			if (req.args.csa) {
 				freq_info.csa_count = req.args.csa_count ?? 10;
 				ret = iface.switch_channel(freq_info);
