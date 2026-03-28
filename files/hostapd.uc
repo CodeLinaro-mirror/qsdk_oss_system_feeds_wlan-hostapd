@@ -977,9 +977,9 @@ function get_bw(curr_chan_width) {
         }
 }
 
-function notify_csa_finish_event(freq) {
-        hostapd.printf(`notify_chan_switch_compl_event ${freq}`);
-        ubus.defer("wpa_supplicant", "csa_finish_event", {freq: freq} );
+function notify_csa_result_event(freq, ret) {
+	hostapd.printf(`notify_chan_switch_result_event freq=${freq} ret=${ret}`);
+	ubus.defer("wpa_supplicant", "csa_finish_event", {freq: freq, ret: ret} );
 }
 
 let main_obj = {
@@ -1027,7 +1027,7 @@ let main_obj = {
 			let config = hostapd.data.config[phy];
 			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname) {
 				hostapd.printf(`apsta_state: config not found for radio ${req.args.radio}`);
-				notify_csa_finish_event(req.args.frequency);
+				notify_csa_result_event(req.args.frequency, 0);
 				return 0;
 			}
 
@@ -1035,7 +1035,7 @@ let main_obj = {
 			if (!iface) {
 				if (req.args.wpa_state == "PRE_CONNECT") {
 					hostapd.printf(`apsta_state: iface not found, In pre-connect state notify wpa_supplicant`);
-					notify_csa_finish_event(req.args.frequency);
+					notify_csa_result_event(req.args.frequency, 0);
 				}
 
 				hostapd.printf(`apsta_state: iface not found for radio ${req.args.radio}`);
@@ -1443,8 +1443,8 @@ return {
 
 		return true;
 	},
-	notify_chan_switch_compl_event: function(freq) {
-		notify_csa_finish_event(freq);
+	notify_chan_switch_result_event: function(freq, ret) {
+		notify_csa_result_event(freq, ret ?? 0);
 	},
 	notify_acs_completed: function(iface, success, channel, freq) {
 		hostapd.printf(`Send acs_completed event success=${success} channel=${channel} freq=${freq}`);

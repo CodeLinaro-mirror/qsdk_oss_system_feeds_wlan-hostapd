@@ -505,11 +505,12 @@ let main_obj = {
 	},
 	csa_finish_event: {
 		args: {
-			freq: 0
+			freq: 0,
+			ret: 0,
 		},
 		call: function(req) {
-			wpas.printf(`csa_finish_event req.args.freq ${req.args.freq}`);
-			wpas.recvd_ch_sw_comp_ev(req.args.freq);
+			wpas.printf(`csa_finish_event freq=${req.args.freq} ret=${req.args.ret}`);
+			wpas.recvd_ch_sw_result_ev(req.args.freq, req.args.ret);
 			return 0;
 		}
 	},
