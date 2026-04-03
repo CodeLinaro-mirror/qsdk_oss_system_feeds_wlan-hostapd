@@ -47,6 +47,10 @@ hostapd.data.bss_info_fields = {
 	ieee80211w: true,
 };
 
+function bss_key(ifname, phy, radio_idx) {
+	return `${ifname}:${phy}.${radio_idx}`;
+}
+
 //check if any ml bss is present on other radios
 function is_ml_bss(bss_name, radio_id) {
 	if (radio_id == -1)
@@ -258,6 +262,26 @@ function iface_update_supplicant_macaddr(phydev, config)
 	});
 }
 
+function bss_apply_start_disabled(bss_obj, config)
+{
+	// Check if start_disabled is set in BSS configuration
+	for (let line in config.data) {
+		let val = split(line, "=", 2);
+		if (val[0] == "start_disabled" && val[1] == "1") {
+			hostapd.printf(`Deleting BSS ${config.ifname} due to start_disabled=1`);
+			try {
+				bss_obj.delete();
+				hostapd.printf(`Successfully deleted BSS ${config.ifname}`);
+				return true; // Return true to indicate BSS was deleted
+			} catch (e) {
+				hostapd.printf(`Failed to delete BSS ${config.ifname}: ${e}`);
+			}
+			break;
+		}
+	}
+	return false; // Return false to indicate BSS was not deleted
+}
+
 function __iface_pending_next(pending, state, ret, data)
 {
 	let config = pending.config;
@@ -308,8 +332,16 @@ function __iface_pending_next(pending, state, ret, data)
 	case "check_phy":
 		let phy_status = data;
 		if (phy_status && phy_status.state == "COMPLETED") {
-			if (iface_add(phy, config, phy_status))
+			if (iface_add(phy, config, phy_status)) {
+				// Apply bss.delete() if start_disabled=1 is set for any interface.
+				for (let i = 0; i < length(config.bss); i++) {
+					let bss_obj = hostapd.bss[bss_key(config.bss[i].ifname, config.phy, config.radio_idx)];
+					if (bss_obj) {
+						bss_apply_start_disabled(bss_obj, config.bss[i]);
+					}
+				}
 				return "done";
+			}
 
 			hostapd.printf(`Failed to bring up phy ${phy} ifname=${bss.ifname} with supplicant provided frequency`);
 		}
@@ -320,8 +352,17 @@ function __iface_pending_next(pending, state, ret, data)
 		});
 		return "wpas_stopped";
 	case "wpas_stopped":
-		if (!iface_add(phy, config))
+		if (!iface_add(phy, config)) {
 			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
+		} else {
+			// Apply bss.delete() if start_disabled=1 is set for any interface.
+			for (let i = 0; i < length(config.bss); i++) {
+				let bss_obj = hostapd.bss[bss_key(config.bss[i].ifname, config.phy, config.radio_idx)];
+				if (bss_obj) {
+					bss_apply_start_disabled(bss_obj, config.bss[i]);
+				}
+			}
+		}
 		pending.call("wpa_supplicant", "phy_set_state", {
 			phy: phydev.phy,
 			radio: phydev.radio,
@@ -409,6 +450,7 @@ function iface_restart(phydev, config, old_config)
 		pending.abort();
 
 	hostapd.remove_iface(phy, phydev.radio);
+
 	iface_remove(old_config,  phydev.radio);
 	iface_remove(config,  phydev.radio);
 
@@ -531,7 +573,7 @@ function get_config_bss(config, idx)
 	if (!ifname)
 		hostapd.printf(`Could not find bss ${config.bss[idx].ifname}`);
 
-	return hostapd.bss[ifname];
+	return hostapd.bss[bss_key(ifname, config.phy, config.radio_idx)];
 }
 
 function iface_reload_config(name, phydev, config, old_config)
@@ -557,10 +599,10 @@ function iface_reload_config(name, phydev, config, old_config)
 		return false;
 	}
 
-	let first_bss = hostapd.bss[iface_name];
+	let first_bss = hostapd.bss[bss_key(iface_name, old_config.phy, old_config.radio_idx)];
 	if (!first_bss) {
+		//first bss might be started disabled. This might be ok. Try to continue.
 		hostapd.printf(`Could not find bss of previous interface ${iface_name}`);
-		return false;
 	}
 
 	let macaddr_list = iface_config_macaddr_list(config);
@@ -625,6 +667,16 @@ function iface_reload_config(name, phydev, config, old_config)
 			config.bss[0].bssid = old_config.bss[0].bssid;
 		}
 
+		// If the old first BSS is an ML BSS shared with another radio, we must
+		// not preserve or rename it here — doing so would disrupt the MLD on the
+		// other radio.  Fall back to iface_restart, which skips wdev_remove for
+		// ML BSS interfaces (via iface_remove) and creates a fresh wdev for the
+		// new non-ML interface name via the pending state machine.
+		if (is_ml_bss(old_config.bss[0].ifname, config.radio_idx)) {
+			hostapd.printf(`First BSS ${old_config.bss[0].ifname} is ML BSS on another radio, cannot hot-reload`);
+			return false;
+		}
+
 		let prev_bss = get_config_bss(old_config, 0);
 		if (!prev_bss)
 			return false;
@@ -641,13 +693,19 @@ function iface_reload_config(name, phydev, config, old_config)
 			continue;
 
 		let prev_bss = get_config_bss(old_config, i);
-		if (!prev_bss)
-			return false;
+		if (!prev_bss) {
+			// bss might be started disabled. Hostapd would have removed it.
+			// It should be ok. try to continue.
+			continue;
+		}
 
 		let ifname = old_config.bss[i].ifname;
 		hostapd.printf(`Remove bss '${ifname}' on phy '${name}'`);
 		prev_bss.delete();
-		wdev_remove(ifname);
+		if (!is_ml_bss(ifname, config.radio_idx)) {
+			hostapd.printf(`Delete wdev '${ifname}'`);
+			wdev_remove(ifname);
+		}
 	}
 
 	// Step 4: rename preserved interfaces, use temporary name on duplicates
@@ -661,7 +719,7 @@ function iface_reload_config(name, phydev, config, old_config)
 		if (old_ifname == new_ifname)
 			continue;
 
-		if (hostapd.bss[new_ifname]) {
+		if (hostapd.bss[bss_key(new_ifname, config.phy, config.radio_idx)]) {
 			new_ifname = "tmp_" + substr(hostapd.sha1(new_ifname), 0, 8);
 			push(rename_list, i);
 		}
@@ -723,8 +781,12 @@ function iface_reload_config(name, phydev, config, old_config)
 		let ifname = config.bss[i].ifname;
 		let bss = bss_list[i];
 
-		if (bss)
+		// mark created as true to existing bss and newly added bss.
+		// This is needed to avoid unnecessar update in Step 9.
+		if (bss) {
+			config.bss[i].created = true;
 			continue;
+		}
 
 		hostapd.printf(`Add bss ${ifname} on phy ${name}`);
 		bss_list[i] = iface.add_bss(config_inline, i);
@@ -732,10 +794,18 @@ function iface_reload_config(name, phydev, config, old_config)
 			hostapd.printf(`Failed to add new bss ${ifname} on phy ${name}`);
 			return false;
 		}
+
+		config.bss[i].created = true;
+
+		// Apply bss.delete() if start_disabled=1 is set for new interfaces.
+		// If deleted, clear the entry from bss_list so set_bss_order in
+		// Step 8 does not include the deleted BSS in the list sent to hostapd.
+		if (bss_apply_start_disabled(bss_list[i], config.bss[i]))
+			bss_list[i] = null;
 	}
 
-	// Step 8: update interface bss order
-	if (!iface.set_bss_order(bss_list)) {
+	// Step 8: update interface bss order (exclude deleted start_disabled BSS entries)
+	if (!iface.set_bss_order(filter(bss_list, (b) => b != null))) {
 		hostapd.printf(`Failed to update BSS order on phy '${name}'`);
 		return false;
 	}
@@ -743,6 +813,10 @@ function iface_reload_config(name, phydev, config, old_config)
 	// Step 9: update config
 	for (let i = 0; i < length(config.bss); i++) {
 		if (!bss_list_cfg[i])
+			continue;
+
+		// Skip BSS entries that were deleted in Step 7 due to start_disabled=1
+		if (!bss_list[i])
 			continue;
 
 		let ifname = config.bss[i].ifname;
@@ -767,11 +841,14 @@ function iface_reload_config(name, phydev, config, old_config)
 		if (is_equal(config.bss[i], bss_list_cfg[i]))
 			continue;
 
-		hostapd.printf(`Reload config for bss '${config.bss[0].ifname}' on phy '${name}'`);
+		hostapd.printf(`Reload config for bss '${config.bss[i].ifname}' on phy '${name}'`);
 		if (bss.set_config(config_inline, i) < 0) {
 			hostapd.printf(`Failed to set config for bss ${ifname}`);
 			return false;
 		}
+
+		// Apply bss.delete() if start_disabled=1 is set.
+		bss_apply_start_disabled(bss, config.bss[i]);
 	}
 
 	return true;
@@ -891,8 +968,15 @@ function iface_load_config(phy, radio, filename)
 			bss.mld_ap = lc(val[1]);
 		}
 
-		if (val[0] == "nas_identifier")
+		if (val[0] == "nas_identifier") {
 			bss.nasid = val[1];
+			continue;
+		}
+
+               if (val[0] == "config_id") {
+                       bss.config_id = val[1];
+                       continue;
+               }
 
 		if (val[0] == "bss") {
 			bss = config_add_bss(config, val[1]);
