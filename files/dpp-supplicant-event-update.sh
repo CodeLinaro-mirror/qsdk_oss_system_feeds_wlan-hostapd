@@ -75,8 +75,11 @@ get_config_val() {
 }
 
 is_mld() {
-        mld_group=$1
-        mld_iface=$(uci get wireless."$1".ifname)
+	local _iface=$(uci get wireless."$1".ifname)
+	if [ "$_iface" == "$ifname" ]; then
+		mld_iface=$_iface
+		mld_group=$1
+	fi
 }
 
 apply_mld_config() {
