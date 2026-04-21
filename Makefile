@@ -110,6 +110,11 @@ DRIVER_MAKEOPTS= \
 	CONFIG_TESTING_OPTIONS=y \
 	CONFIG_PROCESS_COORDINATION=y
 
+ifdef CONFIG_PACKAGE_QCN_EXTN
+  # Intended only for QCN lab test purpose, not for production builds as it may overrides regulatory requirements
+  DRIVER_MAKEOPTS += CONFIG_QCA_LAB_TEST_FEATURES=y
+endif
+
 ifeq ($(SSL_VARIANT),openssl)
   DRIVER_MAKEOPTS += CONFIG_TLS=openssl CONFIG_SAE=y
   TARGET_LDFLAGS += -lcrypto -lssl
