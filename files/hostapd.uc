@@ -1236,7 +1236,7 @@ function bss_event(type, name, data) {
 	data ??= {};
 	data.name = name;
 	hostapd.data.obj.notify(`bss.${type}`, data, null, null, null, -1);
-	ubus.call("service", "event", { type: `hostapd.${name}.${type}`, data: {} });
+	ubus.defer("service", "event", { type: `hostapd.${name}.${type}`, data: {} });
 }
 
 function iface_channel_switch(phy, radio, iface, info)
