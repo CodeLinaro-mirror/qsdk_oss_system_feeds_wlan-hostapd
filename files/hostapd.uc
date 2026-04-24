@@ -166,7 +166,7 @@ function iface_freq_info(iface, config, params)
 
 	return hostapd.freq_info(freq, sec_offset, width, params.chan_width,
 				 params.center_freq1, params.center_freq2,
-				 params.punct_bitmap, params.is_dfs);
+				 params.punct_bitmap, params.is_dfs, params.mcst);
 }
 
 function iface_add(phy, config, phy_status)
@@ -1104,6 +1104,7 @@ let main_obj = {
 			is_dfs: false,
 			wpa_state: "",
 			vap_type: 0,
+			mcst: 0,
 		},
 		call: ex_wrap(function(req) {
 			let phy = phy_name(req.args.phy, req.args.radio);
@@ -1338,6 +1339,7 @@ function iface_channel_switch(phy, radio, iface, info)
 		new_ch_width: info.new_ch_width,
 		ch_seg_0: info.ch_seg_0,
 		ch_seg_1: info.ch_seg_1,
+		cac_abort: info.cac_abort ?? 0,
 	};
 	hostapd.printf(`notify supplicant ${msg}`);
 	let status = ubus.defer("wpa_supplicant", "uplink_csa_notify", msg);

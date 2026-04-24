@@ -534,6 +534,7 @@ let main_obj = {
 			new_ch_width: 0,
 			ch_seg_0: 0,
 			ch_seg_1: 0,
+			cac_abort: 0,
 		},
 		call: function(req) {
 			wpas.printf(`uplink_csa_notify received for ${req.args.phy} ${req.args.radio}`);
@@ -564,6 +565,7 @@ let main_obj = {
 				freq_info.new_ch_width = req.args.new_ch_width;
 				freq_info.ch_seg_0 = req.args.ch_seg_0;
 				freq_info.ch_seg_1 = req.args.ch_seg_1;
+				freq_info.cac_abort = req.args.cac_abort ?? 0;
 				wpas.printf(`notify: freq_info ${freq_info}`);
 				ret = iface.notify_uplink_csa(freq_info);
 			}
@@ -670,6 +672,7 @@ function iface_channel_switch(phy, radio, ifname, iface, info, vap_type)
 		punct_bitmap: info.punct_bitmap,
 		is_dfs: info.is_dfs,
 		wpa_state: info.wpa_state,
+		mcst: info.mcst ? info.mcst : 0,
 	};
 	msg.vap_type = vap_type;
 	wpas.printf(`channel switch ${msg}`);
