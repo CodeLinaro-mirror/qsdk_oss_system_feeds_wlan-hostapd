@@ -1201,6 +1201,33 @@ function bss_config(bss_name) {
 	}
 }
 
+function phy_ap_status(phy, radio)
+{
+	let name = phy_name(phy, radio);
+
+	if (!name)
+		return { running: false };
+
+	let config = hostapd.data.config[name];
+	let iface = hostapd.interfaces[name];
+
+	if (!config || !config.bss)
+		return { running: false };
+
+	for (let bss in config.bss) {
+		if (!bss || !bss.ifname)
+			continue;
+
+		if (iface != null &&
+		    hostapd.bss[bss_key(bss.ifname, config.phy,
+					config.radio_idx)]) {
+			return { running: true };
+		}
+	}
+
+	return { running: false };
+}
+
 function notify_csa_result_event(freq, ret) {
 	hostapd.printf(`notify_chan_switch_result_event freq=${freq} ret=${ret}`);
 	ubus.defer("wpa_supplicant", "csa_finish_event", {freq: freq, ret: ret} );
@@ -1305,6 +1332,18 @@ let main_obj = {
 			};
 		})
 	},
+	phy_ap_status: {
+		args: {
+			phy: "",
+			radio: 0,
+		},
+		call: ex_wrap(function(req) {
+			if (!req.args.phy)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			return phy_ap_status(req.args.phy, req.args.radio);
+		})
+	},
 	apsta_state: {
 		args: {
 			phy: "",
@@ -1381,6 +1420,7 @@ let main_obj = {
 					freq_info.wpa_state = req.args.wpa_state;
 				}
 				freq_info.vap_type = req.args.vap_type;
+				freq_info.mesh_origin = req.args.vap_type == 1;
 				if (req.args.csa) {
 					freq_info.csa_count = req.args.csa_count ?? 10;
 					ret = iface.switch_channel(freq_info);
