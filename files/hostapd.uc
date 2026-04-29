@@ -116,11 +116,11 @@ channel=${config.radio.channel}
 		let bss = config.bss[i];
 		let type = i > 0 ? "bss" : "interface";
 		let nasid = bss.nasid ?? replace(bss.bssid, ":", "");
+		let bssid_line = match(bss.bssid, /^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/) ? `bssid=${bss.bssid}\n` : "";
 
 		str += `
 ${type}=${bss.ifname}
-bssid=${bss.bssid}
-${join("\n", bss.data)}
+${bssid_line}${join("\n", bss.data)}
 nas_identifier=${nasid}
 `;
 		if (start_disabled)
@@ -744,34 +744,38 @@ function iface_reload_config(name, phydev, config, old_config)
 	}
 
 	// Step 6: assign BSSID for newly created interfaces
-	macaddr_list = iface_macaddr_init(phydev, config, macaddr_list);
-	for (let i = 0; i < length(config.bss); i++) {
-		if (bss_list[i])
-			continue;
-		let bsscfg = config.bss[i];
+	// Skip if driver/vendor address assignment is in use
+	hostapd.printf(`[debug] Step 6: config.radio.data=${config.radio.data}`);
+	if (filter(config.radio.data, (line) => match(line, /^use_driver_vendor_addr=1$/)).length) {
+		macaddr_list = iface_macaddr_init(phydev, config, macaddr_list);
+		for (let i = 0; i < length(config.bss); i++) {
+			if (bss_list[i])
+				continue;
+			let bsscfg = config.bss[i];
 
-		let mac_idx = macaddr_list[bsscfg.bssid];
-		if (mac_idx < 0)
-			macaddr_list[bsscfg.bssid] = i;
-		if (mac_idx == i)
-			continue;
+			let mac_idx = macaddr_list[bsscfg.bssid];
+			if (mac_idx < 0)
+				macaddr_list[bsscfg.bssid] = i;
+			if (mac_idx == i)
+				continue;
 
-		// statically assigned bssid of the new interface is in conflict
-		// with the bssid of a reused interface. reassign the reused interface
-		if (!bsscfg.default_macaddr) {
-			// can't update bssid of the first BSS, need to restart
-			if (!mac_idx < 0)
+			// statically assigned bssid of the new interface is in conflict
+			// with the bssid of a reused interface. reassign the reused interface
+			if (!bsscfg.default_macaddr) {
+				// can't update bssid of the first BSS, need to restart
+				if (!mac_idx < 0)
+					return false;
+
+				bsscfg = config.bss[mac_idx];
+			}
+
+			let addr = phydev.macaddr_next(i);
+			if (!addr) {
+				hostapd.printf(`Failed to generate mac address for phy ${name}`);
 				return false;
-
-			bsscfg = config.bss[mac_idx];
+			}
+			bsscfg.bssid = addr;
 		}
-
-		let addr = phydev.macaddr_next(i);
-		if (!addr) {
-			hostapd.printf(`Failed to generate mac address for phy ${name}`);
-			return false;
-		}
-		bsscfg.bssid = addr;
 	}
 
 	let config_inline = iface_gen_config(config);
