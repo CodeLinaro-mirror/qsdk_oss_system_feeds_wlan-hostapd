@@ -50,7 +50,8 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_WPA_RFKILL_SUPPORT \
 	CONFIG_DRIVER_11AC_SUPPORT \
 	CONFIG_DRIVER_11AX_SUPPORT \
-	CONFIG_WPA_ENABLE_WEP
+	CONFIG_WPA_ENABLE_WEP \
+	CONFIG_WPA_MQTT_SUPPORT
 
 PKG_BUILD_FLAGS:=gc-sections lto
 
@@ -107,7 +108,7 @@ ifneq ($(CONFIG_DRIVER_11AX_SUPPORT),)
   HOSTAPD_IEEE80211AX:=y
 endif
 
-CORE_DEPENDS = +ucode +libubus +libucode +ucode-mod-fs +ucode-mod-nl80211 +ucode-mod-rtnl +ucode-mod-ubus +ucode-mod-uloop +libblobmsg-json +libudebug +libmnl
+CORE_DEPENDS = +ucode +libubus +libucode +ucode-mod-fs +ucode-mod-nl80211 +ucode-mod-rtnl +ucode-mod-ubus +ucode-mod-uloop +libblobmsg-json +libudebug +libmnl +CONFIG_WPA_MQTT_SUPPORT:libmosquitto-ssl
 OPENSSL_DEPENDS = +PACKAGE_$(1):libopenssl +PACKAGE_$(1):libopenssl-legacy
 
 DRIVER_MAKEOPTS= \
@@ -118,6 +119,11 @@ DRIVER_MAKEOPTS= \
 	CONFIG_ATF_OFFLOAD=y \
 	CONFIG_TESTING_OPTIONS=y \
 	CONFIG_PROCESS_COORDINATION=y
+
+ifneq ($(CONFIG_WPA_MQTT_SUPPORT),)
+  DRIVER_MAKEOPTS += CONFIG_MQTT=y
+  TARGET_LDFLAGS += -lmosquitto
+endif
 
 ifdef CONFIG_PACKAGE_QCN_EXTN
   # Intended only for QCN lab test purpose, not for production builds as it may overrides regulatory requirements
@@ -739,11 +745,13 @@ define Build/Compile/wpad
 		$(PKG_BUILD_DIR)/hostapd/hostapd_multi.a \
 		$(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant_multi.a \
 		$(TARGET_LDFLAGS)
+	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(if $(findstring macsec,$(BUILD_VARIANT)),,+$(call Build/RunMake,hostapd,mqtt_test)))
 endef
 
 define Build/Compile/hostapd
 	+$(call Build/RunMake,hostapd, \
 		hostapd hostapd_cli \
+		$(if $(CONFIG_WPA_MQTT_SUPPORT),mqtt_test) \
 	)
 endef
 
@@ -849,6 +857,7 @@ endef
 define Package/hostapd/install
 	$(call Install/hostapd,$(1))
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd $(1)/usr/sbin/
+	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/mqtt_test $(1)/usr/sbin/,)
 endef
 Package/hostapd-basic/install = $(Package/hostapd/install)
 Package/hostapd-basic-openssl/install = $(Package/hostapd/install)
@@ -888,6 +897,7 @@ define Package/wpad/install
 	$(LN) wpad $(1)/usr/sbin/hostapd
 	$(LN) wpad $(1)/usr/sbin/wpa_supplicant
 	$(INSTALL_BIN) $(EXTERNAL_DIR)/files/hostapd.sysctl $(1)/etc/sysctl.d/hostapd.conf
+	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/mqtt_test $(1)/usr/sbin/,)
 endef
 Package/wpad-basic/install = $(Package/wpad/install)
 Package/wpad-basic-openssl/install = $(Package/wpad/install)

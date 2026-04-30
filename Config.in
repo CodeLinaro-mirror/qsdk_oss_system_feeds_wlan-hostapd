@@ -59,3 +59,13 @@ config WPA_MBO_SUPPORT
 	  that facilitate efficient use of multiple frequency bands.
 	  Enabling MBO on an AP using RSN requires 802.11w to be enabled.
 	  Hostapd will refuse to start if MBO and RSN are enabled without 11w.
+
+config WPA_MQTT_SUPPORT
+	bool "MQTT telemetry support"
+	depends on PACKAGE_hostapd-common
+	select PACKAGE_libmosquitto-ssl
+	default n
+	help
+	  Enables MQTT client integration in hostapd. When enabled, hostapd
+	  connects to a configured MQTT broker and publishes MLME and map
+	  events. Requires libmosquitto.
