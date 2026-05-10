@@ -1347,6 +1347,28 @@ function iface_channel_switch(phy, radio, iface, info)
 	    hostapd.printf(`Failed to notify wpa_supplicant about channel switch for phy ${phy}`);
 }
 
+function iface_rcsa_tx(phy, radio, iface, info)
+{
+	if (!info || info.frequency == null || info.channel == null || info.switch_mode == null) {
+		hostapd.printf(`missing RCSA payload for ${phy}`);
+		return;
+	}
+
+	let msg = {
+		phy: phy,
+		radio: radio,
+		frequency: info.frequency,
+		channel: info.channel,
+		csa_count: info.csa_count,
+		switch_mode: info.switch_mode,
+		optional_ie_hex: info.optional_ie_hex ?? "",
+	};
+	hostapd.printf(`forward RCSA TX request ${msg}`);
+	let status = ubus.defer("wpa_supplicant", "notify_rcsa", msg);
+	if (!status)
+		hostapd.printf(`Failed to notify wpa_supplicant about RCSA for phy ${phy}`);
+}
+
 return {
 	shutdown: function() {
 		for (let phy in hostapd.data.config)
@@ -1559,9 +1581,14 @@ return {
 
 		hostapd.printf(`received event for ${phy} ${ev}`);
 
+		if (ev == "DFS_RCSA_TX") {
+			iface_rcsa_tx(phy, radio, intf, info);
+			return;
+		}
+
 		if (ev == "DFS_UPLINK_CHANNEL_SELECTED")
 			iface_channel_switch(phy, radio, intf, info);
-		 },
+	},
 	disconnect_backhaul: function(phy, radio, iface) {
 		let intf = hostapd.interfaces[phy];
 		if (!intf) {

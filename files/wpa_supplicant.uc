@@ -574,6 +574,72 @@ let main_obj = {
 			return 0;
 		}
 	},
+	notify_rcsa: {
+		args: {
+			phy: "",
+			radio: 0,
+			frequency: 0,
+			channel: 0,
+			switch_mode: 0,
+			csa_count: 0,
+			optional_ie_hex: "",
+		},
+		call: function(req) {
+			if (req == null) {
+				wpas.printf(`rcsa_notify: null req`);
+				return libubus.STATUS_INVALID_ARGUMENT;
+			}
+
+			if (req.args == null) {
+				wpas.printf(`rcsa_notify: null args`);
+				return libubus.STATUS_INVALID_ARGUMENT;
+			}
+
+			let phy = req.args.phy;
+			if (phy == null) {
+				wpas.printf(`rcsa_notify: null phy`);
+				return libubus.STATUS_INVALID_ARGUMENT;
+			}
+			let radio = req.args.radio;
+			if (radio == null) {
+				wpas.printf(`rcsa_notify: null radio`);
+				return libubus.STATUS_INVALID_ARGUMENT;
+			}
+
+			let phy_data = wpas.data.config[phy];
+			if (phy_data == null) {
+				wpas.printf(`rcsa_notify: null phy_data`);
+				return libubus.STATUS_INVALID_ARGUMENT;
+			}
+
+			let ret = false;
+			for (let ifname in phy_data.data) {
+				let iface = wpas.interfaces[ifname];
+				if (iface == null)
+					continue;
+
+				let status = iface.status(req.args.radio);
+				if (status == null)
+					continue;
+
+				if (status.state == "INTERFACE_DISABLED")
+					continue;
+
+				let rcsa_info = {};
+				rcsa_info.frequency = req.args.frequency;
+				rcsa_info.channel = req.args.channel;
+				rcsa_info.csa_count = req.args.csa_count;
+				rcsa_info.switch_mode = req.args.switch_mode;
+				rcsa_info.optional_ie_hex = req.args.optional_ie_hex ?? "";
+
+				wpas.printf(`notify_rcsa: rcsa_info ${rcsa_info}`);
+				ret = iface.notify_rcsa(rcsa_info);
+			}
+			if (!ret)
+				return libubus.STATUS_UNKNOWN_ERROR;
+			return 0;
+		}
+	},
 	disconnect_request: {
 		args: {
 			phy: "",
