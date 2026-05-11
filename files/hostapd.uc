@@ -100,6 +100,40 @@ function bss_key(ifname, phy, radio_idx) {
 	return `${ifname}:${phy}.${radio_idx}`;
 }
 
+let chan_width = {
+        "0" : "CHAN_WIDTH_20_NOHT",
+        "1" : "CHAN_WIDTH_20",
+        "2" : "CHAN_WIDTH_40",
+        "3" : "CHAN_WIDTH_80",
+        "4" : "CHAN_WIDTH_80P80",
+        "5" : "CHAN_WIDTH_160",
+        "6" : "CHAN_WIDTH_2160",
+        "7" : "CHAN_WIDTH_4320",
+        "8" : "CHAN_WIDTH_6480",
+        "9" : "CHAN_WIDTH_8640",
+        "10" : "CHAN_WIDTH_320",
+        "11" : "CHAN_WIDTH_UNKNOWN",
+};
+
+function get_bw(curr_chan_width) {
+
+        switch (chan_width[curr_chan_width]) {
+        case "CHAN_WIDTH_20_NOHT":
+        case "CHAN_WIDTH_20":
+                return 20;
+        case "CHAN_WIDTH_40":
+                return 40;
+        case "CHAN_WIDTH_80":
+                return 80;
+        case "CHAN_WIDTH_160":
+                return 160;
+        case "CHAN_WIDTH_320":
+                return 320;
+        default:
+                return 20;
+        }
+}
+
 //check if any ml bss is present on other radios
 function is_ml_bss(bss_name, radio_id) {
 	if (radio_id == -1)
@@ -181,11 +215,31 @@ start_disabled=1
 	return str;
 }
 
+function is_dfs_channel(center_freq, bw_mhz)
+{
+	if (center_freq < 5000 || center_freq > 5900)
+		return false;
+
+	let half_bw    = bw_mhz / 2;
+	let start_freq = center_freq - half_bw + 10;
+	let end_freq   = center_freq + half_bw - 10;
+
+	for (let sub = start_freq; sub <= end_freq; sub += 20) {
+		if (sub >= 5260 && sub <= 5320)
+			return true;
+		if (sub >= 5500 && sub <= 5720)
+			return true;
+	}
+	return false;
+}
+
 function iface_freq_info(iface, config, params)
 {
 	let freq = params.frequency;
 	if (!freq)
 		return null;
+
+	let rpt_max_phy = config.rpt_max_phy;
 
 	let sec_offset = params.sec_chan_offset;
 	if (sec_offset != -1 && sec_offset != 1)
@@ -209,6 +263,28 @@ function iface_freq_info(iface, config, params)
 
 	if (freq < 4000)
 		width = 0;
+
+	if (rpt_max_phy) {
+
+		let cfg_bw_mhz = 20;
+		if (sec_offset != null && sec_offset != 0 && width == 0)
+			cfg_bw_mhz = 40;
+		else if (width == 1)
+			cfg_bw_mhz = 80;
+		else if (width == 2)
+			cfg_bw_mhz = 160;
+		else if (width == 3)
+			cfg_bw_mhz = 320;
+
+		let center_freq = (cfg_bw_mhz > 20) ? (freq + cfg_bw_mhz / 2 - 10) : freq;
+
+		let is_dfs = is_dfs_channel(center_freq, cfg_bw_mhz);
+
+		let info = hostapd.freq_info(freq, sec_offset, width, null,
+					     0, 0, params.punct_bitmap,
+					     is_dfs);
+		return info;
+	}
 
 	if (params.chan_width != null && params.chan_width <=1)
 		sec_offset = 0;
@@ -1027,6 +1103,10 @@ function iface_load_config(phy, radio, filename)
 			continue;
 		}
 
+		if (val[0] == "rpt_max_phy") {
+			config.rpt_max_phy = int(val[1]);
+		}
+
 		push(config.radio.data, line);
 	}
 
@@ -1104,40 +1184,6 @@ function bss_config(bss_name) {
 			if (bss.ifname == bss_name)
 				return [ config, bss ];
 	}
-}
-
-let chan_width = {
-        "0" : "CHAN_WIDTH_20_NOHT",
-        "1" : "CHAN_WIDTH_20",
-        "2" : "CHAN_WIDTH_40",
-        "3" : "CHAN_WIDTH_80",
-        "4" : "CHAN_WIDTH_80P80",
-        "5" : "CHAN_WIDTH_160",
-        "6" : "CHAN_WIDTH_2160",
-        "7" : "CHAN_WIDTH_4320",
-        "8" : "CHAN_WIDTH_6480",
-        "9" : "CHAN_WIDTH_8640",
-        "10" : "CHAN_WIDTH_320",
-        "11" : "CHAN_WIDTH_UNKNOWN",
-};
-
-function get_bw(curr_chan_width) {
-
-        switch (chan_width[curr_chan_width]) {
-        case "CHAN_WIDTH_20_NOHT":
-        case "CHAN_WIDTH_20":
-                return 20;
-        case "CHAN_WIDTH_40":
-                return 40;
-        case "CHAN_WIDTH_80":
-                return 80;
-        case "CHAN_WIDTH_160":
-                return 160;
-        case "CHAN_WIDTH_320":
-                return 320;
-        default:
-                return 20;
-        }
 }
 
 function notify_csa_result_event(freq, ret) {
