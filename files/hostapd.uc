@@ -47,6 +47,55 @@ hostapd.data.bss_info_fields = {
 	ieee80211w: true,
 };
 
+function bss_is_mlo(bss)
+{
+	return bss.mld_ap != null && bss.mld_ap != "0" && bss.mld_ap != "false";
+}
+
+function is_mlo_bss(ifname)
+{
+	for (let phy, config in hostapd.data.config) {
+		if (!config || !config.bss)
+			continue;
+
+		for (let bss in config.bss)
+			if (bss.ifname == ifname && bss_is_mlo(bss))
+				return true;
+	}
+
+	return false;
+}
+
+function bss_radio_mask(ifname, hw_idx)
+{
+	let radio_mask = 0;
+	let mlo = false;
+
+	for (let phy, config in hostapd.data.config) {
+		if (!config || config.radio_idx == null || config.radio_idx < 0 || !config.bss)
+			continue;
+
+		for (let bss in config.bss) {
+			if (bss.ifname != ifname)
+				continue;
+
+			if (bss_is_mlo(bss))
+				mlo = true;
+
+			radio_mask |= 1 << config.radio_idx;
+			break;
+		}
+	}
+
+	if (!mlo && hw_idx != null && hw_idx >= 0)
+		return 1 << hw_idx;
+
+	if (!radio_mask && hw_idx != null && hw_idx >= 0)
+		radio_mask = 1 << hw_idx;
+
+	return radio_mask;
+}
+
 function bss_key(ifname, phy, radio_idx) {
 	return `${ifname}:${phy}.${radio_idx}`;
 }
@@ -56,24 +105,24 @@ function is_ml_bss(bss_name, radio_id) {
 	if (radio_id == -1)
 		return false;
 
-        for (let phy, config in hostapd.data.config) {
-                if (!config || config.radio_idx == null)
-                        continue;
+	for (let phy, config in hostapd.data.config) {
+		if (!config || config.radio_idx == null || !config.bss)
+			continue;
 
-                if (config.radio_idx == radio_id)
-                        continue;
+		if (config.radio_idx == radio_id)
+			continue;
 
-                for (let bss in config.bss) {
-                       if (!bss.mld_ap)
-                               continue;
-                        if (bss.ifname == bss_name) {
-                                hostapd.printf(`[debug] confirmed ml vap ${bss.created} mld_ap : ${bss.mld_ap} in ${config.radio_idx} checked for ${radio_id}`);
-                               return bss.created;
-                       }
-               }
-        }
+		for (let bss in config.bss) {
+			if (!bss_is_mlo(bss))
+				continue;
+			if (bss.ifname == bss_name) {
+				hostapd.printf(`[debug] confirmed ml vap ${bss.created} mld_ap : ${bss.mld_ap} in ${config.radio_idx} checked for ${radio_id}`);
+				return bss.created;
+			}
+		}
+	}
 
-       return false;
+	return false;
 }
 
 function update_bss(cfg)
@@ -298,7 +347,7 @@ function __iface_pending_next(pending, state, ret, data)
 		return "create_bss";
 	case "create_bss":
 		hostapd.printf(`[debug] create ${bss.ifname} on phy ${phy}`);
-		let skip_wdev_add = is_ml_bss(bss.ifname, config.radio_idx);
+		let skip_wdev_add = bss_is_mlo(bss) && is_ml_bss(bss.ifname, config.radio_idx);
 		if (!skip_wdev_add) {
 			let err = phydev.wdev_add(bss.ifname, {
 				mode: "ap",
@@ -309,17 +358,17 @@ function __iface_pending_next(pending, state, ret, data)
 				return null;
 			}
 		} else {
-			let radio_mask = wdev_get_radio_mask(bss.ifname);
+			let old_radio_mask = wdev_get_radio_mask(bss.ifname);
+			let radio_mask = bss_radio_mask(bss.ifname, phydev.radio);
 
-			if (radio_mask == null) {
+			if (old_radio_mask == null || !radio_mask) {
 				hostapd.printf(`[error] Failed to get radio mask for ${bss.ifname}`);
 				return null;
 			}
 
-			// Configure the radio mask for each radio during BSS creation
-			radio_mask = (radio_mask | (1 << phydev.radio));
-			wdev_set_radio_mask(bss.ifname, radio_mask);
-			hostapd.printf(`[debug] preserving radio mask ${radio_mask} for ML BSS ${bss.ifname} radio index ${phydev.radio}`);
+			if (old_radio_mask != radio_mask)
+				wdev_set_radio_mask(bss.ifname, radio_mask);
+			hostapd.printf(`[debug] radio mask ${radio_mask} set for ML BSS ${bss.ifname} radio index ${phydev.radio}, old mask ${old_radio_mask}`);
 		}
 		bss.created = true;
 		update_bss(config);
@@ -1381,8 +1430,12 @@ return {
 		if (!phy)
 			return;
 
-		if (phy.radio_idx != null && phy.radio_idx >= 0)
-			wdev_set_radio_mask(name, 1 << phy.radio_idx);
+		if (phy.radio_idx != null && phy.radio_idx >= 0) {
+			let radio_mask = bss_radio_mask(name, phy.radio_idx);
+			hostapd.printf(`[debug] bss_create set mask ${radio_mask} for ${name} radio_idx ${phy.radio_idx}`);
+			if (radio_mask)
+				wdev_set_radio_mask(name, radio_mask);
+		}
 	},
 	bss_add: function(phy, name, obj) {
 		bss_event("add", name);
@@ -1536,22 +1589,17 @@ return {
 		}
 	},
 	update_radio_mask: function(ifname, hw_idx) {
-		const mask_bit = 1 << hw_idx;
-		let radio_mask = wdev_get_radio_mask(ifname);
+		let old_mask = wdev_get_radio_mask(ifname);
+		let radio_mask = bss_radio_mask(ifname, hw_idx);
 
-		if (radio_mask == null) {
+		if (old_mask == null || !radio_mask) {
 			hostapd.printf(`[error] Failed to get radio mask for ${ifname}`);
 			return false;
 		}
 
-		if (radio_mask & mask_bit) {
-			hostapd.printf(`[debug] hw_idx ${hw_idx} already set for ${ifname}`);
-			return true;
-		}
-
-		radio_mask |= mask_bit;
-		wdev_set_radio_mask(ifname, radio_mask);
-		hostapd.printf(`[debug] radio mask ${radio_mask} updated for ML BSS ${ifname} hw index ${hw_idx}`);
+		if (old_mask != radio_mask)
+			wdev_set_radio_mask(ifname, radio_mask);
+		hostapd.printf(`[debug] radio mask ${radio_mask} set for BSS ${ifname} hw index ${hw_idx}, old mask ${old_mask}, mlo ${is_mlo_bss(ifname)}`);
 
 		return true;
 	},
