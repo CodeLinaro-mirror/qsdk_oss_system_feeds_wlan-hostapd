@@ -534,6 +534,8 @@ let main_obj = {
 			new_ch_width: 0,
 			ch_seg_0: 0,
 			ch_seg_1: 0,
+			nol_channel: {},
+			nol_channels: [],
 			cac_abort: 0,
 		},
 		call: function(req) {
@@ -566,6 +568,14 @@ let main_obj = {
 				freq_info.ch_seg_0 = req.args.ch_seg_0;
 				freq_info.ch_seg_1 = req.args.ch_seg_1;
 				freq_info.cac_abort = req.args.cac_abort ?? 0;
+				/* C glue expects singular key: nol_channel */
+				if (req.args.nol_channel) {
+					freq_info.nol_channel = req.args.nol_channel;
+				} else if (req.args.nol_channels &&
+					   length(req.args.nol_channels) > 0) {
+					/* Backward compatibility */
+					freq_info.nol_channel = req.args.nol_channels[0];
+				}
 				wpas.printf(`notify: freq_info ${freq_info}`);
 				ret = iface.notify_uplink_csa(freq_info);
 			}
