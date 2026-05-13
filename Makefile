@@ -105,7 +105,6 @@ DRIVER_MAKEOPTS= \
 	CONFIG_IEEE80211AC=$(HOSTAPD_IEEE80211AC) \
 	CONFIG_IEEE80211AX=$(HOSTAPD_IEEE80211AX) \
 	CONFIG_MBO=$(CONFIG_WPA_MBO_SUPPORT) \
-	CONFIG_UCODE=y \
 	CONFIG_ATF_OFFLOAD=y \
 	CONFIG_TESTING_OPTIONS=y \
 	CONFIG_PROCESS_COORDINATION=y
@@ -113,6 +112,10 @@ DRIVER_MAKEOPTS= \
 ifdef CONFIG_PACKAGE_QCN_EXTN
   # Intended only for QCN lab test purpose, not for production builds as it may overrides regulatory requirements
   DRIVER_MAKEOPTS += CONFIG_QCA_LAB_TEST_FEATURES=y
+endif
+
+ifneq ($(CONFIG_USE_PRPLMESH_WHM),y)
+  DRIVER_MAKEOPTS += CONFIG_UCODE=y
 endif
 
 ifeq ($(SSL_VARIANT),openssl)
@@ -629,6 +632,12 @@ define Build/Configure
 	$(if $(wildcard ./files/wpa_supplicant-$(CONFIG_VARIANT).config), \
 		$(CP) ./files/wpa_supplicant-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/wpa_supplicant/.config
 	)
+
+ifeq ($(CONFIG_USE_PRPLMESH_WHM),y)
+	-sed -i 's/^CONFIG_UBUS=y/# CONFIG_UBUS is not set/' \
+		$(PKG_BUILD_DIR)/hostapd/.config \
+		$(PKG_BUILD_DIR)/wpa_supplicant/.config
+endif
 endef
 
 ## Build libwpa_ctrl.a objects at top-level to avoid conditionals inside define
