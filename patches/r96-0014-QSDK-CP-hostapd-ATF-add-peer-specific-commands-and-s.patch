@@ -257,7 +257,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  
  	algo = iface->atf_algo;
  
-@@ -1202,6 +1240,352 @@ hostapd_ctrl_iface_atf_offload_delssid(s
+@@ -1202,6 +1240,354 @@ hostapd_ctrl_iface_atf_offload_delssid(s
  }
  
  
@@ -460,7 +460,9 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +
 +	dl_list_for_each(group, &algo->groups, struct atf_group, list) {
 +		wpa_printf(MSG_INFO, "%-50s %-15.1f %.1f\n",
-+			   group->name, group->calculated_airtime / 10.0,
++			   group->name,
++			   group->is_configured ? group->calculated_airtime / 10.0 :
++			   group->user_cfg_airtime / 10.0,
 +			   group->user_cfg_airtime / 10.0);
 +
 +		if (dl_list_empty(&group->explicit_peers))
@@ -552,7 +554,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +	if (!os_snprintf_error(buflen, ret))
 +		len += ret;
 +	ret = os_snprintf(buf + len, buflen - len,
-+			  " Client(MAC Address)        Air time(Percentage 1000)\n");
++			  " Client(MAC Address)        Air time(Percentage)\n");
 +	if (!os_snprintf_error(buflen - len, ret))
 +		len += ret;
 +
@@ -571,8 +573,8 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
 +			len += ret;
 +
 +		ret = os_snprintf(buf + len, buflen - len,
-+				  "	%d\n",
-+				  peer->user_cfg_airtime);
++				  "	%.1f\n",
++				  peer->user_cfg_airtime / 10.0);
 +		if (!os_snprintf_error(buflen - len, ret))
 +			len += ret;
 +	}
@@ -610,7 +612,7 @@ Signed-off-by: Harish Rachakonda <rachakon@qti.qualcomm.com>
  int
  hostapd_ctrl_iface_config_atf_offload(struct hostapd_data *hapd,
  		const char *cmd, char *buf, size_t buflen)
-@@ -1238,6 +1622,16 @@ hostapd_ctrl_iface_config_atf_offload(st
+@@ -1238,6 +1624,16 @@ hostapd_ctrl_iface_config_atf_offload(st
  		return hostapd_ctrl_iface_atf_offload_addssid(hapd, cmd + 8, buf, buflen);
  	else if (os_strncmp(cmd, "delssid ", 8) == 0)
  		return hostapd_ctrl_iface_atf_offload_delssid(hapd, cmd + 8, buf, buflen);

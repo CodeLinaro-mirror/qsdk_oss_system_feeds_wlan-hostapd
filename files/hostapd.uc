@@ -47,6 +47,10 @@ hostapd.data.bss_info_fields = {
 	ieee80211w: true,
 };
 
+function bss_key(ifname, phy, radio_idx) {
+	return `${ifname}:${phy}.${radio_idx}`;
+}
+
 //check if any ml bss is present on other radios
 function is_ml_bss(bss_name, radio_id) {
 	if (radio_id == -1)
@@ -112,11 +116,11 @@ channel=${config.radio.channel}
 		let bss = config.bss[i];
 		let type = i > 0 ? "bss" : "interface";
 		let nasid = bss.nasid ?? replace(bss.bssid, ":", "");
+		let bssid_line = match(bss.bssid, /^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/) ? `bssid=${bss.bssid}\n` : "";
 
 		str += `
 ${type}=${bss.ifname}
-bssid=${bss.bssid}
-${join("\n", bss.data)}
+${bssid_line}${join("\n", bss.data)}
 nas_identifier=${nasid}
 `;
 		if (start_disabled)
@@ -162,7 +166,7 @@ function iface_freq_info(iface, config, params)
 
 	return hostapd.freq_info(freq, sec_offset, width, params.chan_width,
 				 params.center_freq1, params.center_freq2,
-				 params.punct_bitmap);
+				 params.punct_bitmap, params.is_dfs, params.mcst);
 }
 
 function iface_add(phy, config, phy_status)
@@ -192,6 +196,48 @@ function iface_add(phy, config, phy_status)
 	return iface.start(freq_info) >= 0;
 }
 
+function get_sta_channel_per_band(iface, band)
+{
+	if (!iface) {
+		hostapd.printf(`get_sta_channel_per_band: iface is null`);
+		return null;
+	}
+
+	if (band == null || band < 0 || band > 2) {
+		hostapd.printf(`get_sta_channel_per_band: invalid band=${band}`);
+		return null;
+	}
+
+	hostapd.printf(`get_sta_channel_per_band: band=${band}`);
+
+	let resp;
+	try {
+		resp = ubus.call("wpa_supplicant", "get_sta_channel_per_band", {
+				 band: band});
+	} catch (e) {
+		hostapd.printf(`get_sta_channel_per_band: ubus call failed: ${e}`);
+		return null;
+	}
+
+	if (!resp) {
+		hostapd.printf("get_sta_channel_per_band: no response from supplicant");
+		return null;
+	}
+
+	if (resp.channel != null) {
+		hostapd.printf(`get_sta_channel_per_band(): resp.channel=${resp.channel}`);
+		return resp;
+	}
+
+	if (resp.channel_info != null) {
+		hostapd.printf(`get_sta_channel_per_band: resp.channel_info=${resp.channel_info}`);
+		return { channel: resp.channel_info };
+	}
+
+	hostapd.printf("get_sta_channel_per_band: no channel info in response");
+	return { channel: null };
+}
+
 function iface_config_macaddr_list(config)
 {
 	let macaddr_list = {};
@@ -214,6 +260,26 @@ function iface_update_supplicant_macaddr(phydev, config)
 		radio: phydev.radio ?? -1,
 		macaddr: macaddr_list
 	});
+}
+
+function bss_apply_start_disabled(bss_obj, config)
+{
+	// Check if start_disabled is set in BSS configuration
+	for (let line in config.data) {
+		let val = split(line, "=", 2);
+		if (val[0] == "start_disabled" && val[1] == "1") {
+			hostapd.printf(`Deleting BSS ${config.ifname} due to start_disabled=1`);
+			try {
+				bss_obj.delete();
+				hostapd.printf(`Successfully deleted BSS ${config.ifname}`);
+				return true; // Return true to indicate BSS was deleted
+			} catch (e) {
+				hostapd.printf(`Failed to delete BSS ${config.ifname}: ${e}`);
+			}
+			break;
+		}
+	}
+	return false; // Return false to indicate BSS was not deleted
 }
 
 function __iface_pending_next(pending, state, ret, data)
@@ -266,8 +332,16 @@ function __iface_pending_next(pending, state, ret, data)
 	case "check_phy":
 		let phy_status = data;
 		if (phy_status && phy_status.state == "COMPLETED") {
-			if (iface_add(phy, config, phy_status))
+			if (iface_add(phy, config, phy_status)) {
+				// Apply bss.delete() if start_disabled=1 is set for any interface.
+				for (let i = 0; i < length(config.bss); i++) {
+					let bss_obj = hostapd.bss[bss_key(config.bss[i].ifname, config.phy, config.radio_idx)];
+					if (bss_obj) {
+						bss_apply_start_disabled(bss_obj, config.bss[i]);
+					}
+				}
 				return "done";
+			}
 
 			hostapd.printf(`Failed to bring up phy ${phy} ifname=${bss.ifname} with supplicant provided frequency`);
 		}
@@ -278,8 +352,17 @@ function __iface_pending_next(pending, state, ret, data)
 		});
 		return "wpas_stopped";
 	case "wpas_stopped":
-		if (!iface_add(phy, config))
+		if (!iface_add(phy, config)) {
 			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
+		} else {
+			// Apply bss.delete() if start_disabled=1 is set for any interface.
+			for (let i = 0; i < length(config.bss); i++) {
+				let bss_obj = hostapd.bss[bss_key(config.bss[i].ifname, config.phy, config.radio_idx)];
+				if (bss_obj) {
+					bss_apply_start_disabled(bss_obj, config.bss[i]);
+				}
+			}
+		}
 		pending.call("wpa_supplicant", "phy_set_state", {
 			phy: phydev.phy,
 			radio: phydev.radio,
@@ -367,6 +450,7 @@ function iface_restart(phydev, config, old_config)
 		pending.abort();
 
 	hostapd.remove_iface(phy, phydev.radio);
+
 	iface_remove(old_config,  phydev.radio);
 	iface_remove(config,  phydev.radio);
 
@@ -489,7 +573,7 @@ function get_config_bss(config, idx)
 	if (!ifname)
 		hostapd.printf(`Could not find bss ${config.bss[idx].ifname}`);
 
-	return hostapd.bss[ifname];
+	return hostapd.bss[bss_key(ifname, config.phy, config.radio_idx)];
 }
 
 function iface_reload_config(name, phydev, config, old_config)
@@ -515,10 +599,10 @@ function iface_reload_config(name, phydev, config, old_config)
 		return false;
 	}
 
-	let first_bss = hostapd.bss[iface_name];
+	let first_bss = hostapd.bss[bss_key(iface_name, old_config.phy, old_config.radio_idx)];
 	if (!first_bss) {
+		//first bss might be started disabled. This might be ok. Try to continue.
 		hostapd.printf(`Could not find bss of previous interface ${iface_name}`);
-		return false;
 	}
 
 	let macaddr_list = iface_config_macaddr_list(config);
@@ -583,6 +667,16 @@ function iface_reload_config(name, phydev, config, old_config)
 			config.bss[0].bssid = old_config.bss[0].bssid;
 		}
 
+		// If the old first BSS is an ML BSS shared with another radio, we must
+		// not preserve or rename it here — doing so would disrupt the MLD on the
+		// other radio.  Fall back to iface_restart, which skips wdev_remove for
+		// ML BSS interfaces (via iface_remove) and creates a fresh wdev for the
+		// new non-ML interface name via the pending state machine.
+		if (is_ml_bss(old_config.bss[0].ifname, config.radio_idx)) {
+			hostapd.printf(`First BSS ${old_config.bss[0].ifname} is ML BSS on another radio, cannot hot-reload`);
+			return false;
+		}
+
 		let prev_bss = get_config_bss(old_config, 0);
 		if (!prev_bss)
 			return false;
@@ -599,13 +693,19 @@ function iface_reload_config(name, phydev, config, old_config)
 			continue;
 
 		let prev_bss = get_config_bss(old_config, i);
-		if (!prev_bss)
-			return false;
+		if (!prev_bss) {
+			// bss might be started disabled. Hostapd would have removed it.
+			// It should be ok. try to continue.
+			continue;
+		}
 
 		let ifname = old_config.bss[i].ifname;
 		hostapd.printf(`Remove bss '${ifname}' on phy '${name}'`);
 		prev_bss.delete();
-		wdev_remove(ifname);
+		if (!is_ml_bss(ifname, config.radio_idx)) {
+			hostapd.printf(`Delete wdev '${ifname}'`);
+			wdev_remove(ifname);
+		}
 	}
 
 	// Step 4: rename preserved interfaces, use temporary name on duplicates
@@ -619,7 +719,7 @@ function iface_reload_config(name, phydev, config, old_config)
 		if (old_ifname == new_ifname)
 			continue;
 
-		if (hostapd.bss[new_ifname]) {
+		if (hostapd.bss[bss_key(new_ifname, config.phy, config.radio_idx)]) {
 			new_ifname = "tmp_" + substr(hostapd.sha1(new_ifname), 0, 8);
 			push(rename_list, i);
 		}
@@ -644,34 +744,38 @@ function iface_reload_config(name, phydev, config, old_config)
 	}
 
 	// Step 6: assign BSSID for newly created interfaces
-	macaddr_list = iface_macaddr_init(phydev, config, macaddr_list);
-	for (let i = 0; i < length(config.bss); i++) {
-		if (bss_list[i])
-			continue;
-		let bsscfg = config.bss[i];
+	// Skip if driver/vendor address assignment is in use
+	hostapd.printf(`[debug] Step 6: config.radio.data=${config.radio.data}`);
+	if (filter(config.radio.data, (line) => match(line, /^use_driver_vendor_addr=1$/)).length) {
+		macaddr_list = iface_macaddr_init(phydev, config, macaddr_list);
+		for (let i = 0; i < length(config.bss); i++) {
+			if (bss_list[i])
+				continue;
+			let bsscfg = config.bss[i];
 
-		let mac_idx = macaddr_list[bsscfg.bssid];
-		if (mac_idx < 0)
-			macaddr_list[bsscfg.bssid] = i;
-		if (mac_idx == i)
-			continue;
+			let mac_idx = macaddr_list[bsscfg.bssid];
+			if (mac_idx < 0)
+				macaddr_list[bsscfg.bssid] = i;
+			if (mac_idx == i)
+				continue;
 
-		// statically assigned bssid of the new interface is in conflict
-		// with the bssid of a reused interface. reassign the reused interface
-		if (!bsscfg.default_macaddr) {
-			// can't update bssid of the first BSS, need to restart
-			if (!mac_idx < 0)
+			// statically assigned bssid of the new interface is in conflict
+			// with the bssid of a reused interface. reassign the reused interface
+			if (!bsscfg.default_macaddr) {
+				// can't update bssid of the first BSS, need to restart
+				if (!mac_idx < 0)
+					return false;
+
+				bsscfg = config.bss[mac_idx];
+			}
+
+			let addr = phydev.macaddr_next(i);
+			if (!addr) {
+				hostapd.printf(`Failed to generate mac address for phy ${name}`);
 				return false;
-
-			bsscfg = config.bss[mac_idx];
+			}
+			bsscfg.bssid = addr;
 		}
-
-		let addr = phydev.macaddr_next(i);
-		if (!addr) {
-			hostapd.printf(`Failed to generate mac address for phy ${name}`);
-			return false;
-		}
-		bsscfg.bssid = addr;
 	}
 
 	let config_inline = iface_gen_config(config);
@@ -681,8 +785,12 @@ function iface_reload_config(name, phydev, config, old_config)
 		let ifname = config.bss[i].ifname;
 		let bss = bss_list[i];
 
-		if (bss)
+		// mark created as true to existing bss and newly added bss.
+		// This is needed to avoid unnecessar update in Step 9.
+		if (bss) {
+			config.bss[i].created = true;
 			continue;
+		}
 
 		hostapd.printf(`Add bss ${ifname} on phy ${name}`);
 		bss_list[i] = iface.add_bss(config_inline, i);
@@ -690,10 +798,18 @@ function iface_reload_config(name, phydev, config, old_config)
 			hostapd.printf(`Failed to add new bss ${ifname} on phy ${name}`);
 			return false;
 		}
+
+		config.bss[i].created = true;
+
+		// Apply bss.delete() if start_disabled=1 is set for new interfaces.
+		// If deleted, clear the entry from bss_list so set_bss_order in
+		// Step 8 does not include the deleted BSS in the list sent to hostapd.
+		if (bss_apply_start_disabled(bss_list[i], config.bss[i]))
+			bss_list[i] = null;
 	}
 
-	// Step 8: update interface bss order
-	if (!iface.set_bss_order(bss_list)) {
+	// Step 8: update interface bss order (exclude deleted start_disabled BSS entries)
+	if (!iface.set_bss_order(filter(bss_list, (b) => b != null))) {
 		hostapd.printf(`Failed to update BSS order on phy '${name}'`);
 		return false;
 	}
@@ -701,6 +817,10 @@ function iface_reload_config(name, phydev, config, old_config)
 	// Step 9: update config
 	for (let i = 0; i < length(config.bss); i++) {
 		if (!bss_list_cfg[i])
+			continue;
+
+		// Skip BSS entries that were deleted in Step 7 due to start_disabled=1
+		if (!bss_list[i])
 			continue;
 
 		let ifname = config.bss[i].ifname;
@@ -725,11 +845,14 @@ function iface_reload_config(name, phydev, config, old_config)
 		if (is_equal(config.bss[i], bss_list_cfg[i]))
 			continue;
 
-		hostapd.printf(`Reload config for bss '${config.bss[0].ifname}' on phy '${name}'`);
+		hostapd.printf(`Reload config for bss '${config.bss[i].ifname}' on phy '${name}'`);
 		if (bss.set_config(config_inline, i) < 0) {
 			hostapd.printf(`Failed to set config for bss ${ifname}`);
 			return false;
 		}
+
+		// Apply bss.delete() if start_disabled=1 is set.
+		bss_apply_start_disabled(bss, config.bss[i]);
 	}
 
 	return true;
@@ -849,8 +972,15 @@ function iface_load_config(phy, radio, filename)
 			bss.mld_ap = lc(val[1]);
 		}
 
-		if (val[0] == "nas_identifier")
+		if (val[0] == "nas_identifier") {
 			bss.nasid = val[1];
+			continue;
+		}
+
+               if (val[0] == "config_id") {
+                       bss.config_id = val[1];
+                       continue;
+               }
 
 		if (val[0] == "bss") {
 			bss = config_add_bss(config, val[1]);
@@ -935,6 +1065,11 @@ function get_bw(curr_chan_width) {
         }
 }
 
+function notify_csa_result_event(freq, ret) {
+	hostapd.printf(`notify_chan_switch_result_event freq=${freq} ret=${ret}`);
+	ubus.defer("wpa_supplicant", "csa_finish_event", {freq: freq, ret: ret} );
+}
+
 let main_obj = {
 	reload: {
 		args: {
@@ -966,6 +1101,10 @@ let main_obj = {
 			csa_count: 0,
 			punct_bitmap: 0,
 			mon_ifaces: "",
+			is_dfs: false,
+			wpa_state: "",
+			vap_type: 0,
+			mcst: 0,
 		},
 		call: ex_wrap(function(req) {
 			let phy = phy_name(req.args.phy, req.args.radio);
@@ -977,11 +1116,17 @@ let main_obj = {
 			let config = hostapd.data.config[phy];
 			if (!config || !config.bss || !config.bss[0] || !config.bss[0].ifname) {
 				hostapd.printf(`apsta_state: config not found for radio ${req.args.radio}`);
+				notify_csa_result_event(req.args.frequency, 0);
 				return 0;
 			}
 
 			let iface = hostapd.interfaces[phy];
 			if (!iface) {
+				if (req.args.wpa_state == "PRE_CONNECT") {
+					hostapd.printf(`apsta_state: iface not found, In pre-connect state notify wpa_supplicant`);
+					notify_csa_result_event(req.args.frequency, 0);
+				}
+
 				hostapd.printf(`apsta_state: iface not found for radio ${req.args.radio}`);
 				return 0;
 			}
@@ -989,7 +1134,8 @@ let main_obj = {
 			let ret;
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
-				iface.stop();
+				iface.stop({ wpa_state: req.args.wpa_state,
+					     vap_type: req.args.vap_type });
 				for (let mon in mon_if_names) {
 					if (mon == null)
 						continue;
@@ -1010,6 +1156,11 @@ let main_obj = {
 				return libubus.STATUS_UNKNOWN_ERROR;
 
 			hostapd.printf(`apsta_state: freq_info for radio ${req.args.radio} is ${freq_info}`);
+			if (req.args.wpa_state) {
+				hostapd.printf(`apsta_state: received wpa_state ${req.args.wpa_state} for radio ${req.args.radio}`);
+				freq_info.wpa_state = req.args.wpa_state;
+			}
+			freq_info.vap_type = req.args.vap_type;
 			if (req.args.csa) {
 				freq_info.csa_count = req.args.csa_count ?? 10;
 				ret = iface.switch_channel(freq_info);
@@ -1174,7 +1325,48 @@ function bss_event(type, name, data) {
 	data ??= {};
 	data.name = name;
 	hostapd.data.obj.notify(`bss.${type}`, data, null, null, null, -1);
-	ubus.call("service", "event", { type: `hostapd.${name}.${type}`, data: {} });
+	ubus.defer("service", "event", { type: `hostapd.${name}.${type}`, data: {} });
+}
+
+function iface_channel_switch(phy, radio, iface, info)
+{
+	let msg = {
+		phy: phy,
+		radio: radio,
+		frequency: info.frequency,
+		channel: info.channel,
+		csa_count: info.csa_count,
+		new_ch_width: info.new_ch_width,
+		ch_seg_0: info.ch_seg_0,
+		ch_seg_1: info.ch_seg_1,
+		cac_abort: info.cac_abort ?? 0,
+	};
+	hostapd.printf(`notify supplicant ${msg}`);
+	let status = ubus.defer("wpa_supplicant", "uplink_csa_notify", msg);
+	if (!status)
+	    hostapd.printf(`Failed to notify wpa_supplicant about channel switch for phy ${phy}`);
+}
+
+function iface_rcsa_tx(phy, radio, iface, info)
+{
+	if (!info || info.frequency == null || info.channel == null || info.switch_mode == null) {
+		hostapd.printf(`missing RCSA payload for ${phy}`);
+		return;
+	}
+
+	let msg = {
+		phy: phy,
+		radio: radio,
+		frequency: info.frequency,
+		channel: info.channel,
+		csa_count: info.csa_count,
+		switch_mode: info.switch_mode,
+		optional_ie_hex: info.optional_ie_hex ?? "",
+	};
+	hostapd.printf(`forward RCSA TX request ${msg}`);
+	let status = ubus.defer("wpa_supplicant", "notify_rcsa", msg);
+	if (!status)
+		hostapd.printf(`Failed to notify wpa_supplicant about RCSA for phy ${phy}`);
 }
 
 return {
@@ -1363,4 +1555,61 @@ return {
 
 		return true;
 	},
+	notify_chan_switch_result_event: function(freq, ret) {
+		notify_csa_result_event(freq, ret ?? 0);
+	},
+	notify_acs_completed: function(iface, success, channel, freq) {
+		hostapd.printf(`Send acs_completed event success=${success} channel=${channel} freq=${freq}`);
+		ubus.call("rptr_mgr", "acs_completed", {
+			event: "ACS-COMPLETED",
+			success: success,
+			channel: channel,
+			freq: freq
+		});
+	},
+	event: function(phy, radio, iface, ev, info) {
+		let intf = hostapd.interfaces[phy];
+		if (!intf) {
+			hostapd.printf(`no PHY for ifname ${phy}`);
+			return;
+		}
+		let phy_data = hostapd.data.config[phy];
+		if (!phy_data) {
+			hostapd.printf(`no PHY data for ifname ${phy} ${ev}`);
+			return;
+		}
+
+		hostapd.printf(`received event for ${phy} ${ev}`);
+
+		if (ev == "DFS_RCSA_TX") {
+			iface_rcsa_tx(phy, radio, intf, info);
+			return;
+		}
+
+		if (ev == "DFS_UPLINK_CHANNEL_SELECTED")
+			iface_channel_switch(phy, radio, intf, info);
+	},
+	disconnect_backhaul: function(phy, radio, iface) {
+		let intf = hostapd.interfaces[phy];
+		if (!intf) {
+			hostapd.printf(`no PHY for ifname ${phy}`);
+			return;
+		}
+		let phy_data = hostapd.data.config[phy];
+		if (!phy_data) {
+			 hostapd.printf(`no PHY data for ifname ${phy} ${radio}`);
+			 return;
+		}
+		hostapd.printf(`disconnect backhaul for ${phy} ${radio}`);
+		let msg = {
+			phy: phy,
+			radio: radio,
+		};
+
+		ubus.call("wpa_supplicant", "disconnect_request", msg);
+	},
+	get_sta_channel_per_band: function(iface, band) {
+		return get_sta_channel_per_band(iface, band);
+	}
+
 };
