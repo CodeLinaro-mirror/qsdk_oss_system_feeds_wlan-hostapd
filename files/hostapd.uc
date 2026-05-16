@@ -1606,6 +1606,10 @@ return {
 	notify_chan_switch_result_event: function(freq, ret) {
 		notify_csa_result_event(freq, ret ?? 0);
 	},
+	notify_acs_start: function(iface) {
+		hostapd.printf(`ACS start notification received`);
+		ubus.defer("wpa_supplicant", "abort_scan_for_acs", {});
+	},
 	notify_acs_completed: function(iface, success, channel, freq) {
 		hostapd.printf(`Send acs_completed event success=${success} channel=${channel} freq=${freq}`);
 		ubus.call("rptr_mgr", "acs_completed", {
@@ -1654,7 +1658,7 @@ return {
 			radio: radio,
 		};
 
-		ubus.call("wpa_supplicant", "disconnect_request", msg);
+		ubus.defer("wpa_supplicant", "disconnect_request", msg);
 	},
 	get_sta_channel_per_band: function(iface, band) {
 		return get_sta_channel_per_band(iface, band);
