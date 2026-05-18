@@ -701,7 +701,6 @@ function iface_reload_config(name, phydev, config, old_config)
 
 	if (config.mbssid && !bss_list_cfg[0]) {
 		hostapd.printf("First BSS changed with MBSSID enabled");
-		return false;
 	}
 
 	// Step 2: if none were found, rename and preserve the first one
@@ -754,6 +753,27 @@ function iface_reload_config(name, phydev, config, old_config)
 		if (!is_ml_bss(ifname, config.radio_idx)) {
 			hostapd.printf(`Delete wdev '${ifname}'`);
 			wdev_remove(ifname);
+		}
+	}
+
+	// Sync bss_list immediately after Step 3 (cascade deletion fix)
+	// When a TX BSS is deleted, MBSSID case, hostapd may
+	// remove associated non-TX BSSes. These BSSes were matched in Step 1 and are
+	// in bss_list[], but they're now deleted. We must clear them so Step 7 can recreate them.
+	if (old_config.mbssid) {
+		for (let j = 0; j < length(bss_list); j++) {
+			if (!bss_list[j])
+				continue;
+
+			let check_ifname = bss_list_cfg[j].ifname;
+			let check_key = bss_key(check_ifname, old_config.phy, old_config.radio_idx);
+			let test_bss = hostapd.bss[check_key];
+
+			if (!test_bss) {
+				hostapd.printf(`BSS '${check_ifname}' was auto-removed in Step 3 (non-TX cascade), clearing bss_list[${j}]`);
+				bss_list[j] = null;
+				bss_list_cfg[j] = null;
+			}
 		}
 	}
 
@@ -997,9 +1017,15 @@ function iface_load_config(phy, radio, filename)
 			continue;
 		}
 
-		if (val[0] == "#num_global_macaddr" ||
-		    val[0] == "mbssid")
+		if (val[0] == "#num_global_macaddr") {
 			config[substr(val[0], 1)] = int(val[1]);
+			continue;
+		}
+
+		if (val[0] == "mbssid") {
+			config.mbssid = int(val[1]);
+			continue;
+		}
 
 		push(config.radio.data, line);
 	}
