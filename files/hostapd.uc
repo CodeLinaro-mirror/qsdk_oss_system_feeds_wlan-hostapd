@@ -1693,7 +1693,7 @@ return {
 			radio: radio,
 		};
 
-		ubus.call("wpa_supplicant", "disconnect_request", msg);
+		ubus.defer("wpa_supplicant", "disconnect_request", msg);
 	},
 	get_sta_channel_per_band: function(iface, band) {
 		return get_sta_channel_per_band(iface, band);
