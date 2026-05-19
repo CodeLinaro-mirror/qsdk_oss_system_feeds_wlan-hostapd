@@ -677,6 +677,19 @@ function iface_reload_config(name, phydev, config, old_config)
 			return false;
 		}
 
+		// Check if first BSS is transitioning between ML and non-ML states on the same radio.
+		// The rename operation doesn't properly update ML/SLO properties at kernel/driver level,
+		// so we need a full restart to properly recreate the interface with correct properties.
+		// Note: mld_ap can be "1" (enabled), "0" (disabled), or undefined (not set).
+		// We need to check the actual state, not just JavaScript truthiness since "0" is truthy.
+		let old_is_ml = old_config.bss[0].mld_ap && old_config.bss[0].mld_ap != "0";
+		let new_is_ml = config.bss[0].mld_ap && config.bss[0].mld_ap != "0";
+
+		if (old_is_ml != new_is_ml) {
+			hostapd.printf(`First BSS ${old_config.bss[0].ifname} transitioning between ML states, need full restart`);
+			return false;
+		}
+
 		let prev_bss = get_config_bss(old_config, 0);
 		if (!prev_bss)
 			return false;
