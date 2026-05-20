@@ -1,0 +1,190 @@
+From: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+Subject: [PATCH] UPSTREAM:PROTOCOL: hostapd: clear PMKSA refs across partner MLD links
+
+ML PMKSA cache is shared across all MLO links. However, the PMKSA free
+callback clears PMKSA references only in the primary link's wpa_auth
+stored in ml_pmksa->ctx. When an ML PMKSA entry expires, only the
+primary link's STA list is updated, while STAs associated on partner
+links may retain stale PMKSA pointers. This can result in crashes
+when those pointers are later accessed.
+
+Mark PMKSA entries that are stored in the ML PMKSA cache and clear stale
+PMKSA references across partner MLD links when such an entry is freed.
+Guard the partner-auth callbacks with CONFIG_IEEE80211BE to match the
+mainline MLO-only implementation.
+
+Signed-off-by: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+---
+ 5 files changed, 47 insertions(+), 4 deletions(-)
+
+diff --git a/src/ap/pmksa_cache_auth.h b/src/ap/pmksa_cache_auth.h
+--- a/src/ap/pmksa_cache_auth.h
++++ b/src/ap/pmksa_cache_auth.h
+@@ -36,6 +36,13 @@
+	int opportunistic;
+
+	u64 acct_multi_session_id;
++#ifdef CONFIG_IEEE80211BE
++	/**
++	 * This field is used to identify whether the entry is
++	 * from ml_pmksa or pmksa
++	 */
++	bool is_ml;
++#endif /* CONFIG_IEEE80211BE */
+ };
+
+ struct rsn_pmksa_cache;
+diff --git a/src/ap/wpa_auth.c b/src/ap/wpa_auth.c
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -385,6 +385,7 @@
+	return wpa_auth->cb->for_each_auth(wpa_auth->cb_ctx, cb, cb_ctx);
+ }
+
++#ifdef CONFIG_IEEE80211BE
+ int wpa_auth_for_each_partner_auth(struct wpa_authenticator *wpa_auth,
+				   int (*cb)(struct wpa_authenticator *a, void *ctx),
+				   void *cb_ctx)
+@@ -393,6 +394,7 @@
+		return 0;
+	return wpa_auth->cb->for_each_partner_auth(wpa_auth->cb_ctx, cb, cb_ctx);
+ }
++#endif /* CONFIG_IEEE80211BE */
+
+ void wpa_auth_store_ptksa(struct wpa_authenticator *wpa_auth,
+			  const u8 *addr, int cipher,
+@@ -638,11 +640,30 @@
+ }
+
+
++#ifdef CONFIG_IEEE80211BE
++static int wpa_auth_pmksa_clear_auth_cb(struct wpa_authenticator *wpa_auth,
++					void *ctx)
++{
++	return wpa_auth_for_each_sta(wpa_auth, wpa_auth_pmksa_clear_cb, ctx);
++}
++#endif /* CONFIG_IEEE80211BE */
++
++
+ static void wpa_auth_pmksa_free_cb(struct rsn_pmksa_cache_entry *entry,
+				   void *ctx)
+ {
+	struct wpa_authenticator *wpa_auth = ctx;
++
++#ifdef CONFIG_IEEE80211BE
++	if (!entry->is_ml)
++		wpa_auth_for_each_sta(wpa_auth, wpa_auth_pmksa_clear_cb, entry);
++	else
++		/* Clear stale PMKSA references across partner MLD links. */
++		wpa_auth_for_each_partner_auth(wpa_auth, wpa_auth_pmksa_clear_auth_cb,
++					       entry);
++#else
+	wpa_auth_for_each_sta(wpa_auth, wpa_auth_pmksa_clear_cb, entry);
++#endif /* CONFIG_IEEE80211BE */
+ }
+
+
+@@ -6820,6 +6841,7 @@
+ {
+	struct rsn_pmksa_cache *pmksa = wpa_auth->pmksa;
+	const u8 *aa = wpa_auth->addr;
++	struct rsn_pmksa_cache_entry *entry;
+
+	if (wpa_auth->conf.disable_pmksa_caching)
+		return -1;
+@@ -6835,9 +6857,14 @@
+	}
+ #endif /* CONFIG_IEEE80211BE */
+
+-	if (pmksa_cache_auth_add(pmksa, pmk, pmk_len, pmkid, NULL, 0, aa, addr,
+-				 0, NULL, akmp))
++	entry = pmksa_cache_auth_add(pmksa, pmk, pmk_len, pmkid, NULL, 0, aa,
++				     addr, 0, NULL, akmp);
++	if (entry) {
++#ifdef CONFIG_IEEE80211BE
++		entry->is_ml = is_ml;
++#endif /* CONFIG_IEEE80211BE */
+		return 0;
++	}
+
+	return -1;
+ }
+@@ -6876,6 +6903,9 @@
+	if (!entry)
+		return -1;
+
++#ifdef CONFIG_IEEE80211BE
++	entry->is_ml = is_ml;
++#endif /* CONFIG_IEEE80211BE */
+	if (dpp_pkhash)
+		entry->dpp_pkhash = os_memdup(dpp_pkhash, SHA256_MAC_LEN);
+
+diff --git a/src/ap/wpa_auth.h b/src/ap/wpa_auth.h
+--- a/src/ap/wpa_auth.h
++++ b/src/ap/wpa_auth.h
+@@ -385,8 +385,10 @@
+						 void *ctx), void *cb_ctx);
+	int (*for_each_auth)(void *ctx, int (*cb)(struct wpa_authenticator *a,
+						  void *ctx), void *cb_ctx);
++#ifdef CONFIG_IEEE80211BE
+	int (*for_each_partner_auth)(void *ctx, int (*cb)(struct wpa_authenticator *a,
+							  void *ctx), void *cb_ctx);
++#endif /* CONFIG_IEEE80211BE */
+	int (*send_ether)(void *ctx, const u8 *dst, u16 proto, const u8 *data,
+			  size_t data_len);
+	int (*send_oui)(void *ctx, const u8 *dst, u8 oui_suffix, const u8 *data,
+diff --git a/src/ap/wpa_auth_i.h b/src/ap/wpa_auth_i.h
+--- a/src/ap/wpa_auth_i.h
++++ b/src/ap/wpa_auth_i.h
+@@ -341,9 +341,11 @@
+ int wpa_auth_for_each_auth(struct wpa_authenticator *wpa_auth,
+			   int (*cb)(struct wpa_authenticator *a, void *ctx),
+			   void *cb_ctx);
++#ifdef CONFIG_IEEE80211BE
+ int wpa_auth_for_each_partner_auth(struct wpa_authenticator *wpa_auth,
+				   int (*cb)(struct wpa_authenticator *a, void *ctx),
+				   void *cb_ctx);
++#endif /* CONFIG_IEEE80211BE */
+ void wpa_auth_store_ptksa(struct wpa_authenticator *wpa_auth,
+			  const u8 *addr, int cipher,
+			  u32 life_time, const struct wpa_ptk *ptk);
+diff --git a/src/ap/wpa_auth_glue.c b/src/ap/wpa_auth_glue.c
+--- a/src/ap/wpa_auth_glue.c
++++ b/src/ap/wpa_auth_glue.c
+@@ -746,6 +746,7 @@
+		hapd->iface->interfaces, wpa_auth_iface_iter, &data);
+ }
+
++#ifdef CONFIG_IEEE80211BE
+ static int hostapd_wpa_auth_for_each_partner_auth(
+	void *ctx, int (*cb)(struct wpa_authenticator *sm, void *ctx), void *cb_ctx)
+ {
+@@ -755,7 +756,6 @@
+	if (cb(hapd->wpa_auth, cb_ctx))
+		return 1;
+
+-#ifdef CONFIG_IEEE80211BE
+	if (!hapd->mld)
+		return 0;
+
+@@ -763,9 +763,9 @@
+		if (bss != hapd && bss->wpa_auth && cb(bss->wpa_auth, cb_ctx))
+			return 1;
+	}
+-#endif /* CONFIG_IEEE80211BE */
+	return 0;
+ }
++#endif /* CONFIG_IEEE80211BE */
+
+ #ifdef CONFIG_IEEE80211R_AP
+
+@@ -1892,7 +1892,9 @@
+		.get_sta_count = hostapd_wpa_auth_get_sta_count,
+		.for_each_sta = hostapd_wpa_auth_for_each_sta,
+		.for_each_auth = hostapd_wpa_auth_for_each_auth,
++#ifdef CONFIG_IEEE80211BE
+		.for_each_partner_auth = hostapd_wpa_auth_for_each_partner_auth,
++#endif /* CONFIG_IEEE80211BE */
+		.send_ether = hostapd_wpa_auth_send_ether,
+		.send_oui = hostapd_wpa_auth_send_oui,
+		.channel_info = hostapd_channel_info,
