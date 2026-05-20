@@ -1,0 +1,40 @@
+From: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+Subject: [PATCH] QSDK:HOSTAPD: Guard station flush on uninitialized BSS
+
+During hostapd reload, old BSS state is cleared before removing and
+reinitializing an interface whose BSS/interface configuration changed.
+Under MLO link/interface toggle stress, an AP link can already be in
+HAPD_IFACE_UNINITIALIZED state while still holding a stale driver private
+pointer. In that state, hostapd_flush_old_stations() calls into nl80211
+and dereferences the stale i802_bss pointer, resulting in a crash in
+nl80211_bss_msg().
+
+Skip the driver station flush for an uninitialized BSS and clear the
+stale drv_priv pointer so later cleanup does not reuse it.
+
+Signed-off-by: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+---
+ src/ap/hostapd.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index 6fddd7602ba4..111111111111 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1345,6 +1345,14 @@ static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason)
+ 	if (hostapd_drv_none(hapd) || hapd->drv_priv == NULL)
+ 		return 0;
+ 
++	if (hapd->iface && hapd->iface->state == HAPD_IFACE_UNINITIALIZED) {
++		wpa_dbg(hapd->msg_ctx, MSG_DEBUG,
++			"Skip station flush on uninitialized BSS %s",
++			hapd->conf ? hapd->conf->iface : "N/A");
++		hapd->drv_priv = NULL;
++		return 0;
++	}
++
+ 	if (!hapd->iface->driver_ap_teardown) {
+ 		wpa_dbg(hapd->msg_ctx, MSG_DEBUG,
+ 			"Flushing old station entries");
+-- 
+
