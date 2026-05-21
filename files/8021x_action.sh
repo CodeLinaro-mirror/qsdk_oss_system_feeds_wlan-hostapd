@@ -17,10 +17,9 @@
 #
 # Policy:
 #   1. Main triggers: CTRL-EVENT-EAP-SUCCESS, CTRL-EVENT-EAP-SUCCESS2
-#   2. Auxiliary trigger: CONNECTED(CTRL-EVENT-CONNECTED) (for initial bring-up confirmation)
-#   3. Gate on suppPortStatus=Authorized (timeout: 3s default)
-#   4. 10-second throttling window + tail-trigger (per-ifname)
-#   5. If gating passes: call adaptor script to trigger DHCP renew
+#   2. Gate on suppPortStatus=Authorized (timeout: 3s default)
+#   3. 10-second throttling window + tail-trigger (per-ifname)
+#   4. If gating passes: call adaptor script to trigger DHCP renew
 #
 # Logging:
 #   - Syslog always
@@ -153,10 +152,6 @@ fi
 case "$EVENT" in
   CTRL-EVENT-EAP-SUCCESS|CTRL-EVENT-EAP-SUCCESS2)
     # Primary triggers
-    ;;
-  CONNECTED)
-    # Auxiliary trigger (initial bring-up confirmation)
-    log_msg "CONNECTED event (auxiliary trigger)"
     ;;
   *)
     # Not a trigger event, exit silently
