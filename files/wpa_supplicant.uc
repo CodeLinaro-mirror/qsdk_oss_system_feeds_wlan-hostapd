@@ -514,6 +514,14 @@ let main_obj = {
 			return 0;
 		}
 	},
+	abort_scan_for_acs: {
+		args: {},
+		call: function(req) {
+			wpas.printf(`abort_scan_for_acs received from hostapd`);
+			wpas.abort_scan_for_acs();
+			return 0;
+		}
+	},
 	start_scan_post_acs: {
 		args: {
 			success: 0
