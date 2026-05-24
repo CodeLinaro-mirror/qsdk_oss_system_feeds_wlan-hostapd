@@ -1475,6 +1475,13 @@ function iface_channel_switch(phy, radio, iface, info)
 		ch_seg_1: info.ch_seg_1,
 		cac_abort: info.cac_abort ?? 0,
 	};
+
+	/* Keep compatibility with older producers using nol_channels[] */
+	if (info.nol_channel) {
+		msg.nol_channel = info.nol_channel;
+	} else if (info.nol_channels && length(info.nol_channels) > 0) {
+		msg.nol_channel = info.nol_channels[0];
+	}
 	hostapd.printf(`notify supplicant ${msg}`);
 	let status = ubus.defer("wpa_supplicant", "uplink_csa_notify", msg);
 	if (!status)
