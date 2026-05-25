@@ -6,6 +6,7 @@ let ubus = libubus.connect(null, 60);
 
 hostapd.data.config = {};
 hostapd.data.pending_config = {};
+hostapd.data.rpt_max_phy_override = {};
 
 hostapd.data.file_fields = {
 	vlan_file: true,
@@ -1220,6 +1221,88 @@ let main_obj = {
 			}
 
 			return 0;
+		})
+	},
+	set_rpt_max_phy: {
+		args: {
+			phy: "",
+			radio: 0,
+			value: 0,
+		},
+		call: ex_wrap(function(req) {
+			let phy = phy_name(req.args.phy, req.args.radio);
+			if (!phy)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			let val = int(req.args.value);
+			if (val != 0 && val != 1) {
+				hostapd.printf(`set_rpt_max_phy: invalid value ${val}, expected 0 or 1`);
+				return libubus.STATUS_INVALID_ARGUMENT;
+			}
+
+			let config = hostapd.data.config[phy];
+			if (!config) {
+				hostapd.printf(`set_rpt_max_phy: config not found for ${phy}`);
+				return libubus.STATUS_NOT_FOUND;
+			}
+
+			config.rpt_max_phy = val;
+
+			/* If STA is connected, reapply freq_info with the new rpt_max_phy settings
+			 * without watiting for apsta_state event.
+			 */
+			let iface = hostapd.interfaces[phy];
+			if (!iface) {
+				return libubus.STATUS_NOT_FOUND;
+			}
+
+			let phy_status;
+			try {
+				phy_status = ubus.call("wpa_supplicant", "phy_status", {
+							phy: req.args.phy,
+							radio: req.args.radio,
+						});
+			} catch (e) {
+				hostapd.printf(`rpt_max_phy_apply: phy_status call failed.`);
+				return  0;
+			}
+
+			if (!phy_status || phy_status.state != "COMPLETED")
+				return;
+
+			let freq_info = iface_freq_info(iface, config, phy_status);
+			if (!freq_info)
+				return;
+
+			hostapd.printf(`set_rpt_max_phy: re-applying freq_info for ${phy}`);
+
+			iface.start(freq_info);
+
+			return 0;
+		})
+	},
+	get_rpt_max_phy: {
+		args: {
+			phy: "",
+			radio: 0,
+		},
+		call: ex_wrap(function(req) {
+			let phy = phy_name(req.args.phy, req.args.radio);
+			if (!phy)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			let config = hostapd.data.config[phy];
+			if (!config) {
+				hostapd.printf(`get_rpt_max_phy: config not found for ${phy}`);
+				return libubus.STATUS_NOT_FOUND;
+			}
+
+			let cur_val = config.rpt_max_phy;
+			if (cur_val == null)
+				cur_val = hostapd.data.rpt_max_phy_override[phy];
+			return {
+				rpt_max_phy: cur_val ? 1 : 0,
+			};
 		})
 	},
 	apsta_state: {
