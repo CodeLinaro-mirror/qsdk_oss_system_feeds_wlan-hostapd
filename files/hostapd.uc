@@ -775,8 +775,9 @@ function iface_reload_config(name, phydev, config, old_config)
 		bss_list_cfg[i] = old_config.bss[prev];
 	}
 
-	if (config.mbssid && !bss_list_cfg[0]) {
+	if (old_config.mbssid && !bss_list_cfg[0]) {
 		hostapd.printf("First BSS changed with MBSSID enabled");
+		return false;
 	}
 
 	// Step 2: if none were found, rename and preserve the first one
