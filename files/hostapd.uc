@@ -1283,27 +1283,30 @@ let main_obj = {
 				return 0;
 			}
 
-			if (!req.args.frequency)
-				return libubus.STATUS_INVALID_ARGUMENT;
 
 			let freq_info = iface_freq_info(iface, config, req.args);
-			if (!freq_info)
-				return libubus.STATUS_UNKNOWN_ERROR;
-
-			hostapd.printf(`apsta_state: freq_info for radio ${req.args.radio} is ${freq_info}`);
-			if (req.args.wpa_state) {
-				hostapd.printf(`apsta_state: received wpa_state ${req.args.wpa_state} for radio ${req.args.radio}`);
-				freq_info.wpa_state = req.args.wpa_state;
-			}
-			freq_info.vap_type = req.args.vap_type;
-			if (req.args.csa) {
-				freq_info.csa_count = req.args.csa_count ?? 10;
-				ret = iface.switch_channel(freq_info);
-			} else {
+			if (!freq_info) {
 				ret = iface.start(freq_info);
+				if (!ret)
+					return libubus.STATUS_UNKNOWN_ERROR;
+
+				return 0;
+			} else {
+				hostapd.printf(`apsta_state: freq_info for radio ${req.args.radio} is ${freq_info}`);
+				if (req.args.wpa_state) {
+					hostapd.printf(`apsta_state: received wpa_state ${req.args.wpa_state} for radio ${req.args.radio}`);
+					freq_info.wpa_state = req.args.wpa_state;
+				}
+				freq_info.vap_type = req.args.vap_type;
+				if (req.args.csa) {
+					freq_info.csa_count = req.args.csa_count ?? 10;
+					ret = iface.switch_channel(freq_info);
+				} else {
+					ret = iface.start(freq_info);
+				}
+				if (!ret)
+					return libubus.STATUS_UNKNOWN_ERROR;
 			}
-			if (!ret)
-				return libubus.STATUS_UNKNOWN_ERROR;
 
 			let bw = get_bw(req.args.chan_width);
 
