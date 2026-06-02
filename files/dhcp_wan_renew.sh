@@ -54,5 +54,5 @@ if [ "$rc" -ne 0 ]; then
   exit 1
 fi
 
-log_msg "OK: ubus renew triggered (wan/wan6)"
+log_msg "OK: ubus renew triggered"
 exit 0
