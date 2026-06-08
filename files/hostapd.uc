@@ -88,11 +88,12 @@ function bss_radio_mask(ifname, hw_idx)
 		}
 	}
 
-	if (!mlo && hw_idx != null && hw_idx >= 0)
-		return 1 << hw_idx;
-
-	if (!radio_mask && hw_idx != null && hw_idx >= 0)
-		radio_mask = 1 << hw_idx;
+	if (hw_idx != null && hw_idx >= 0) {
+		if (mlo)
+			radio_mask |= 1 << hw_idx;
+		else
+			radio_mask = 1 << hw_idx;
+	}
 
 	return radio_mask;
 }
