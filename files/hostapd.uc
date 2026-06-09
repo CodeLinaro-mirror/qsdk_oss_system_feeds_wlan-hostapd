@@ -677,12 +677,41 @@ function bss_find_existing(config, prev_config, prev_hash)
 {
 	let hash = bss_config_hash(config.data);
 
+	// Primary match: identical config hash (fast path, covers all unchanged BSSes)
 	for (let i = 0; i < length(prev_config.bss); i++) {
 		if (!prev_hash[i] || hash != prev_hash[i])
 			continue;
 
 		prev_hash[i] = null;
 		return i;
+	}
+
+	// Secondary match: same ifname and BSSID, both old and new config are MLD,
+	// but config params changed (e.g. SSID change).  Preserve the existing
+	// interface so Step 9 handles it via bss_set_config (in-place beacon update).
+	//
+	// Restricted to MLD↔MLD only: ML↔non-ML transitions change the underlying
+	// netdevice architecture (link vs standalone netdev) and must go through the
+	// delete+re-add path.
+	let new_is_mld = config.mld_ap && config.mld_ap != "0";
+	if (new_is_mld) {
+		for (let i = 0; i < length(prev_config.bss); i++) {
+			if (!prev_hash[i])
+				continue;
+			if (prev_config.bss[i].ifname != config.ifname)
+				continue;
+			if (prev_config.bss[i].bssid != config.bssid)
+				continue;
+			// Both must be MLD: skip if old config was non-MLD (nonML→ML
+			// transition requires netdev recreation via delete+re-add).
+			let old_is_mld = prev_config.bss[i].mld_ap &&
+			                  prev_config.bss[i].mld_ap != "0";
+			if (!old_is_mld)
+				continue;
+
+			prev_hash[i] = null;
+			return i;
+		}
 	}
 
 	return -1;
@@ -776,8 +805,13 @@ function iface_reload_config(name, phydev, config, old_config)
 		bss_list_cfg[i] = old_config.bss[prev];
 	}
 
-	if (old_config.mbssid && !bss_list_cfg[0]) {
-		hostapd.printf("First BSS changed with MBSSID enabled");
+	// When MBSSID is enabled and the first BSS config changed (e.g. SSID
+	// change via wifi reload), fall through to Step 2 which preserves the
+	// first BSS interface and lets bss_set_config handle the config update.
+	// Only bail out if the BSSID itself changed, which is handled below.
+	if (old_config.mbssid && !bss_list_cfg[0] &&
+	    config.bss[0].bssid != old_config.bss[0].bssid) {
+		hostapd.printf("First BSS BSSID changed with MBSSID enabled");
 		return false;
 	}
 
@@ -793,12 +827,12 @@ function iface_reload_config(name, phydev, config, old_config)
 			config.bss[0].bssid = old_config.bss[0].bssid;
 		}
 
-		// If the old first BSS is an ML BSS shared with another radio, we must
-		// not preserve or rename it here — doing so would disrupt the MLD on the
-		// other radio.  Fall back to iface_restart, which skips wdev_remove for
-		// ML BSS interfaces (via iface_remove) and creates a fresh wdev for the
-		// new non-ML interface name via the pending state machine.
-		if (is_ml_bss(old_config.bss[0].ifname, config.radio_idx)) {
+		// If the ifname of BSS[0] is changing AND the BSS is shared with
+		// another radio as an ML BSS, we must fall back to iface_restart —
+		// renaming would disrupt the MLD on the other radio.  A pure config
+		// change (e.g. SSID) that keeps the same ifname is safe to hot-reload.
+		if (config.bss[0].ifname != old_config.bss[0].ifname &&
+		    is_ml_bss(old_config.bss[0].ifname, config.radio_idx)) {
 			hostapd.printf(`First BSS ${old_config.bss[0].ifname} is ML BSS on another radio, cannot hot-reload`);
 			return false;
 		}
@@ -984,7 +1018,11 @@ function iface_reload_config(name, phydev, config, old_config)
 			continue;
 
 		let ifname = config.bss[i].ifname;
-		let bss = bss_list[i];
+		// Always read the live bss object from hostapd.bss: a previous
+		// set_config() call (Phase 1/2) may have freed and re-added this
+		// BSS, making bss_list[i] stale.  Fall back to bss_list[i] only
+		// if the BSS is not found in the registry (e.g. not yet started).
+		let bss = hostapd.bss[bss_key(ifname, config.phy, config.radio_idx)] ?? bss_list[i];
 
 		if (is_equal(config.bss[i], bss_list_cfg[i]))
 			continue;
