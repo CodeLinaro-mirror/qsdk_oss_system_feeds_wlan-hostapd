@@ -28,17 +28,18 @@ function is_ml_config(if_name, radio_id) {
 
 	for (let phy, config in wpas.data.config) {
 		wpas.printf(`[debug] ml config check with phy:${phy} radio:${radio_id}`);
-		if (config == null || config.radio == radio_id)
+		if (config == null || config.radio == radio_id || config.data == null)
 			continue;
 
 		for (let ifname in config.data) {
 			let data = config.data[ifname];
 			if (ifname == if_name) {
-				if (data.config.mld == null)
-					return false;
+				if (data == null || data.config == null || data.config.mld == null)
+					continue;
 
 				if (data.running == null || data.running == false)
 					continue;
+
 				wpas.printf(`[debug] ml configuration is true for ${if_name}`);
 				return true;
 			}
@@ -75,25 +76,28 @@ function iface_start(phydev, iface, macaddr_list)
 	let phy = phydev.name;
 	let radio = phydev.radio;
 	let ifname = iface.config.iface;
+	let ml_cfg = false;
+	let ml_wdev_ready = false;
 
 	wpas.printf(`[debug] [iface_start] for ${ifname} radio index ${phydev.radio} running ${iface.running}`);
 
 	if (radio == null)
 		radio = -1;
 
-	if (is_ml_config(ifname, radio)) {
-		// Setting radio_mask even interface is running is allowed.
+	ml_cfg = is_ml_config(ifname, radio);
+	if (ml_cfg) {
+		// If a partner ML link already created the netdev, preserve it and extend radio mask.
 		let radio_mask = wdev_get_radio_mask(ifname);
 
-		if (radio_mask == null) {
-			wpas.printf(`[error] [iface_start] Failed to get radio mask for ${ifname}`);
-			return null;
+		if (radio_mask != null) {
+			// Configure the radio mask for each radio during BSS creation.
+			radio_mask = (radio_mask | (1 << phydev.radio));
+			wdev_set_radio_mask(ifname, radio_mask);
+			wpas.printf(`[debug] [iface_start] preserving radio mask ${radio_mask} for ML BSS ${ifname} radio index ${phydev.radio}`);
+			ml_wdev_ready = true;
+		} else {
+			wpas.printf(`[debug] [iface_start] ML partner config exists but ${ifname} is not created yet, creating fresh wdev on radio ${phydev.radio}`);
 		}
-
-		// Configure the radio mask for each radio during BSS creation
-		radio_mask = (radio_mask | (1 << phydev.radio));
-		wdev_set_radio_mask(ifname, radio_mask);
-		wpas.printf(`[debug] [iface_start] preserving radio mask ${radio_mask} for ML BSS ${ifname} radio index ${phydev.radio}`);
 	}
 
 	if (iface.running)
@@ -107,7 +111,7 @@ function iface_start(phydev, iface, macaddr_list)
 
 	wpas.data.iface_phy[ifname] = phy;
 
-	if (!is_ml_config(ifname, radio)) {
+	if (!ml_wdev_ready) {
 		wdev_remove(ifname);
 		wpas.printf(`[debug] Create device started ${ifname} ${radio}  ${wdev_config.macaddr}`);
 		let ret = phydev.wdev_add(ifname, wdev_config);
