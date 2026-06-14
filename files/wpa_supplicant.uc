@@ -819,7 +819,7 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state, vap_type)
 	}
 	
 	wpas.printf(`apsta_state message passed ${msg}`);
-	ubus.defer("hostapd", "apsta_state", msg);
+	ubus.call("hostapd", "apsta_state", msg);
 }
 
 function iface_channel_switch(phy, radio, ifname, iface, info, vap_type)
