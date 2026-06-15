@@ -8,6 +8,7 @@ let mon_ifaces = {};
 wpas.data.config = {};
 wpas.data.iface_phy = {};
 wpas.data.macaddr_list = {};
+wpas.data.mesh_csa_origin = {};
 
 function phy_name(phy, radio)
 {
@@ -380,6 +381,87 @@ let main_obj = {
 			return libubus.STATUS_NOT_FOUND;
 		}
 	},
+	mesh_switch_chan: {
+		args: {
+			phy: "",
+			radio: 0,
+			frequency: 0,
+			csa_count: 0,
+			ap_beacon_int: 0,
+			block_tx: true,
+			bandwidth: 0,
+			sec_chan_offset: 0,
+			center_freq1: 0,
+			center_freq2: 0,
+			punct_bitmap: 0,
+			ht: true,
+			vht: true,
+			he: true,
+			eht: true,
+			uhr: true,
+			power_mode: 0,
+			bandwidth_device: 0,
+			center_freq_device: 0,
+		},
+		call: function(req) {
+			let phy = phy_name(req.args.phy, req.args.radio);
+			let phy_data;
+			let mesh_found = false;
+			let csa_info;
+
+			if (!phy || !req.args.frequency || !req.args.bandwidth)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			phy_data = wpas.data.config[phy];
+			if (!phy_data || !phy_data.data)
+				return 0;
+
+			csa_info = {
+				frequency: req.args.frequency,
+				csa_count: req.args.csa_count ?? 5,
+				ap_beacon_int: req.args.ap_beacon_int,
+				block_tx: req.args.block_tx,
+				bandwidth: req.args.bandwidth,
+				sec_chan_offset: req.args.sec_chan_offset,
+				center_freq1: req.args.center_freq1,
+				center_freq2: req.args.center_freq2,
+				punct_bitmap: req.args.punct_bitmap,
+				ht: req.args.ht,
+				vht: req.args.vht,
+				he: req.args.he,
+				eht: req.args.eht,
+				uhr: req.args.uhr,
+				power_mode: req.args.power_mode,
+				bandwidth_device: req.args.bandwidth_device,
+				center_freq_device: req.args.center_freq_device,
+			};
+
+			for (let ifname in phy_data.data) {
+				let iface_data = phy_data.data[ifname];
+				let iface;
+
+				if (!iface_data || !iface_data.config ||
+				    iface_data.config.mode != "mesh" ||
+				    !iface_data.running)
+					continue;
+
+				iface = wpas.interfaces[ifname];
+				if (!iface)
+					continue;
+
+				wpas.data.mesh_csa_origin[ifname] = req.args.frequency;
+				wpas.printf(`mesh_switch_chan: mirroring CSA to ${ifname} on ${phy}`);
+				if (!iface.switch_channel(csa_info)) {
+					delete wpas.data.mesh_csa_origin[ifname];
+					return libubus.STATUS_UNKNOWN_ERROR;
+				}
+
+				mesh_found = true;
+			}
+
+			return { handled: mesh_found };
+		}
+	},
 	get_sta_channel_per_band: {
 		args: {
 			band: 0,
@@ -514,6 +596,14 @@ let main_obj = {
 			return 0;
 		}
 	},
+	abort_scan_for_acs: {
+		args: {},
+		call: function(req) {
+			wpas.printf(`abort_scan_for_acs received from hostapd`);
+			wpas.abort_scan_for_acs();
+			return 0;
+		}
+	},
 	start_scan_post_acs: {
 		args: {
 			success: 0
@@ -534,6 +624,8 @@ let main_obj = {
 			new_ch_width: 0,
 			ch_seg_0: 0,
 			ch_seg_1: 0,
+			nol_channel: {},
+			nol_channels: [],
 			cac_abort: 0,
 		},
 		call: function(req) {
@@ -566,6 +658,14 @@ let main_obj = {
 				freq_info.ch_seg_0 = req.args.ch_seg_0;
 				freq_info.ch_seg_1 = req.args.ch_seg_1;
 				freq_info.cac_abort = req.args.cac_abort ?? 0;
+				/* C glue expects singular key: nol_channel */
+				if (req.args.nol_channel) {
+					freq_info.nol_channel = req.args.nol_channel;
+				} else if (req.args.nol_channels &&
+					   length(req.args.nol_channels) > 0) {
+					/* Backward compatibility */
+					freq_info.nol_channel = req.args.nol_channels[0];
+				}
 				wpas.printf(`notify: freq_info ${freq_info}`);
 				ret = iface.notify_uplink_csa(freq_info);
 			}
@@ -719,11 +819,18 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state, vap_type)
 	}
 	
 	wpas.printf(`apsta_state message passed ${msg}`);
-	ubus.call("hostapd", "apsta_state", msg);
+	ubus.defer("hostapd", "apsta_state", msg);
 }
 
 function iface_channel_switch(phy, radio, ifname, iface, info, vap_type)
 {
+	if (vap_type == 1 &&
+	    wpas.data.mesh_csa_origin[ifname] == info.frequency) {
+		delete wpas.data.mesh_csa_origin[ifname];
+		wpas.printf(`channel switch notification suppressed for mesh ${ifname}`);
+		return;
+	}
+
 	let msg = {
 		phy: phy,
 		radio: radio,

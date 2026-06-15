@@ -5,10 +5,10 @@
 			"methods": [ "event" ]
 		},
 		"wpa_supplicant": {
-			"methods": [ "phy_set_state", "phy_set_macaddr_list", "phy_status", "csa_finish_event", "start_scan_post_acs", "uplink_csa_notify", "disconnect_request", "get_sta_channel_per_band", "notify_rcsa" ]
+			"methods": [ "phy_set_state", "phy_set_macaddr_list", "phy_status", "mesh_switch_chan", "csa_finish_event", "start_scan_post_acs", "uplink_csa_notify", "disconnect_request", "get_sta_channel_per_band", "notify_rcsa" ]
 		},
 		"hostapd": {
-			"methods": [ "apsta_state" ]
+			"methods": [ "apsta_state", "phy_ap_status" ]
 		},
 		"rptr_mgr": {
 			"methods": [ "forward_to_hostapd", "csa_finish_event_to_supp", "acs_completed" ]

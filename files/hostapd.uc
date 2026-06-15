@@ -6,6 +6,7 @@ let ubus = libubus.connect(null, 60);
 
 hostapd.data.config = {};
 hostapd.data.pending_config = {};
+hostapd.data.rpt_max_phy_override = {};
 
 hostapd.data.file_fields = {
 	vlan_file: true,
@@ -47,8 +48,92 @@ hostapd.data.bss_info_fields = {
 	ieee80211w: true,
 };
 
+function bss_is_mlo(bss)
+{
+	return bss.mld_ap != null && bss.mld_ap != "0" && bss.mld_ap != "false";
+}
+
+function is_mlo_bss(ifname)
+{
+	for (let phy, config in hostapd.data.config) {
+		if (!config || !config.bss)
+			continue;
+
+		for (let bss in config.bss)
+			if (bss.ifname == ifname && bss_is_mlo(bss))
+				return true;
+	}
+
+	return false;
+}
+
+function bss_radio_mask(ifname, hw_idx)
+{
+	let radio_mask = 0;
+	let mlo = false;
+
+	for (let phy, config in hostapd.data.config) {
+		if (!config || config.radio_idx == null || config.radio_idx < 0 || !config.bss)
+			continue;
+
+		for (let bss in config.bss) {
+			if (bss.ifname != ifname)
+				continue;
+
+			if (bss_is_mlo(bss))
+				mlo = true;
+
+			radio_mask |= 1 << config.radio_idx;
+			break;
+		}
+	}
+
+	if (hw_idx != null && hw_idx >= 0) {
+		if (mlo)
+			radio_mask |= 1 << hw_idx;
+		else
+			radio_mask = 1 << hw_idx;
+	}
+
+	return radio_mask;
+}
+
 function bss_key(ifname, phy, radio_idx) {
 	return `${ifname}:${phy}.${radio_idx}`;
+}
+
+let chan_width = {
+        "0" : "CHAN_WIDTH_20_NOHT",
+        "1" : "CHAN_WIDTH_20",
+        "2" : "CHAN_WIDTH_40",
+        "3" : "CHAN_WIDTH_80",
+        "4" : "CHAN_WIDTH_80P80",
+        "5" : "CHAN_WIDTH_160",
+        "6" : "CHAN_WIDTH_2160",
+        "7" : "CHAN_WIDTH_4320",
+        "8" : "CHAN_WIDTH_6480",
+        "9" : "CHAN_WIDTH_8640",
+        "10" : "CHAN_WIDTH_320",
+        "11" : "CHAN_WIDTH_UNKNOWN",
+};
+
+function get_bw(curr_chan_width) {
+
+        switch (chan_width[curr_chan_width]) {
+        case "CHAN_WIDTH_20_NOHT":
+        case "CHAN_WIDTH_20":
+                return 20;
+        case "CHAN_WIDTH_40":
+                return 40;
+        case "CHAN_WIDTH_80":
+                return 80;
+        case "CHAN_WIDTH_160":
+                return 160;
+        case "CHAN_WIDTH_320":
+                return 320;
+        default:
+                return 20;
+        }
 }
 
 //check if any ml bss is present on other radios
@@ -56,24 +141,24 @@ function is_ml_bss(bss_name, radio_id) {
 	if (radio_id == -1)
 		return false;
 
-        for (let phy, config in hostapd.data.config) {
-                if (!config || config.radio_idx == null)
-                        continue;
+	for (let phy, config in hostapd.data.config) {
+		if (!config || config.radio_idx == null || !config.bss)
+			continue;
 
-                if (config.radio_idx == radio_id)
-                        continue;
+		if (config.radio_idx == radio_id)
+			continue;
 
-                for (let bss in config.bss) {
-                       if (!bss.mld_ap)
-                               continue;
-                        if (bss.ifname == bss_name) {
-                                hostapd.printf(`[debug] confirmed ml vap ${bss.created} mld_ap : ${bss.mld_ap} in ${config.radio_idx} checked for ${radio_id}`);
-                               return bss.created;
-                       }
-               }
-        }
+		for (let bss in config.bss) {
+			if (!bss_is_mlo(bss))
+				continue;
+			if (bss.ifname == bss_name) {
+				hostapd.printf(`[debug] confirmed ml vap ${bss.created} mld_ap : ${bss.mld_ap} in ${config.radio_idx} checked for ${radio_id}`);
+				return bss.created;
+			}
+		}
+	}
 
-       return false;
+	return false;
 }
 
 function update_bss(cfg)
@@ -132,11 +217,31 @@ start_disabled=1
 	return str;
 }
 
+function is_dfs_channel(center_freq, bw_mhz)
+{
+	if (center_freq < 5000 || center_freq > 5900)
+		return false;
+
+	let half_bw    = bw_mhz / 2;
+	let start_freq = center_freq - half_bw + 10;
+	let end_freq   = center_freq + half_bw - 10;
+
+	for (let sub = start_freq; sub <= end_freq; sub += 20) {
+		if (sub >= 5260 && sub <= 5320)
+			return true;
+		if (sub >= 5500 && sub <= 5720)
+			return true;
+	}
+	return false;
+}
+
 function iface_freq_info(iface, config, params)
 {
 	let freq = params.frequency;
 	if (!freq)
 		return null;
+
+	let rpt_max_phy = config.rpt_max_phy;
 
 	let sec_offset = params.sec_chan_offset;
 	if (sec_offset != -1 && sec_offset != 1)
@@ -160,6 +265,28 @@ function iface_freq_info(iface, config, params)
 
 	if (freq < 4000)
 		width = 0;
+
+	if (rpt_max_phy) {
+
+		let cfg_bw_mhz = 20;
+		if (sec_offset != null && sec_offset != 0 && width == 0)
+			cfg_bw_mhz = 40;
+		else if (width == 1)
+			cfg_bw_mhz = 80;
+		else if (width == 2)
+			cfg_bw_mhz = 160;
+		else if (width == 3)
+			cfg_bw_mhz = 320;
+
+		let center_freq = (cfg_bw_mhz > 20) ? (freq + cfg_bw_mhz / 2 - 10) : freq;
+
+		let is_dfs = is_dfs_channel(center_freq, cfg_bw_mhz);
+
+		let info = hostapd.freq_info(freq, sec_offset, width, null,
+					     0, 0, params.punct_bitmap,
+					     is_dfs);
+		return info;
+	}
 
 	if (params.chan_width != null && params.chan_width <=1)
 		sec_offset = 0;
@@ -298,7 +425,7 @@ function __iface_pending_next(pending, state, ret, data)
 		return "create_bss";
 	case "create_bss":
 		hostapd.printf(`[debug] create ${bss.ifname} on phy ${phy}`);
-		let skip_wdev_add = is_ml_bss(bss.ifname, config.radio_idx);
+		let skip_wdev_add = bss_is_mlo(bss) && is_ml_bss(bss.ifname, config.radio_idx);
 		if (!skip_wdev_add) {
 			let err = phydev.wdev_add(bss.ifname, {
 				mode: "ap",
@@ -309,17 +436,17 @@ function __iface_pending_next(pending, state, ret, data)
 				return null;
 			}
 		} else {
-			let radio_mask = wdev_get_radio_mask(bss.ifname);
+			let old_radio_mask = wdev_get_radio_mask(bss.ifname);
+			let radio_mask = bss_radio_mask(bss.ifname, phydev.radio);
 
-			if (radio_mask == null) {
+			if (old_radio_mask == null || !radio_mask) {
 				hostapd.printf(`[error] Failed to get radio mask for ${bss.ifname}`);
 				return null;
 			}
 
-			// Configure the radio mask for each radio during BSS creation
-			radio_mask = (radio_mask | (1 << phydev.radio));
-			wdev_set_radio_mask(bss.ifname, radio_mask);
-			hostapd.printf(`[debug] preserving radio mask ${radio_mask} for ML BSS ${bss.ifname} radio index ${phydev.radio}`);
+			if (old_radio_mask != radio_mask)
+				wdev_set_radio_mask(bss.ifname, radio_mask);
+			hostapd.printf(`[debug] radio mask ${radio_mask} set for ML BSS ${bss.ifname} radio index ${phydev.radio}, old mask ${old_radio_mask}`);
 		}
 		bss.created = true;
 		update_bss(config);
@@ -650,7 +777,7 @@ function iface_reload_config(name, phydev, config, old_config)
 		bss_list_cfg[i] = old_config.bss[prev];
 	}
 
-	if (config.mbssid && !bss_list_cfg[0]) {
+	if (old_config.mbssid && !bss_list_cfg[0]) {
 		hostapd.printf("First BSS changed with MBSSID enabled");
 		return false;
 	}
@@ -674,6 +801,19 @@ function iface_reload_config(name, phydev, config, old_config)
 		// new non-ML interface name via the pending state machine.
 		if (is_ml_bss(old_config.bss[0].ifname, config.radio_idx)) {
 			hostapd.printf(`First BSS ${old_config.bss[0].ifname} is ML BSS on another radio, cannot hot-reload`);
+			return false;
+		}
+
+		// Check if first BSS is transitioning between ML and non-ML states on the same radio.
+		// The rename operation doesn't properly update ML/SLO properties at kernel/driver level,
+		// so we need a full restart to properly recreate the interface with correct properties.
+		// Note: mld_ap can be "1" (enabled), "0" (disabled), or undefined (not set).
+		// We need to check the actual state, not just JavaScript truthiness since "0" is truthy.
+		let old_is_ml = old_config.bss[0].mld_ap && old_config.bss[0].mld_ap != "0";
+		let new_is_ml = config.bss[0].mld_ap && config.bss[0].mld_ap != "0";
+
+		if (old_is_ml != new_is_ml) {
+			hostapd.printf(`First BSS ${old_config.bss[0].ifname} transitioning between ML states, need full restart`);
 			return false;
 		}
 
@@ -705,6 +845,27 @@ function iface_reload_config(name, phydev, config, old_config)
 		if (!is_ml_bss(ifname, config.radio_idx)) {
 			hostapd.printf(`Delete wdev '${ifname}'`);
 			wdev_remove(ifname);
+		}
+	}
+
+	// Sync bss_list immediately after Step 3 (cascade deletion fix)
+	// When a TX BSS is deleted, MBSSID case, hostapd may
+	// remove associated non-TX BSSes. These BSSes were matched in Step 1 and are
+	// in bss_list[], but they're now deleted. We must clear them so Step 7 can recreate them.
+	if (old_config.mbssid) {
+		for (let j = 0; j < length(bss_list); j++) {
+			if (!bss_list[j])
+				continue;
+
+			let check_ifname = bss_list_cfg[j].ifname;
+			let check_key = bss_key(check_ifname, old_config.phy, old_config.radio_idx);
+			let test_bss = hostapd.bss[check_key];
+
+			if (!test_bss) {
+				hostapd.printf(`BSS '${check_ifname}' was auto-removed in Step 3 (non-TX cascade), clearing bss_list[${j}]`);
+				bss_list[j] = null;
+				bss_list_cfg[j] = null;
+			}
 		}
 	}
 
@@ -948,9 +1109,19 @@ function iface_load_config(phy, radio, filename)
 			continue;
 		}
 
-		if (val[0] == "#num_global_macaddr" ||
-		    val[0] == "mbssid")
+		if (val[0] == "#num_global_macaddr") {
 			config[substr(val[0], 1)] = int(val[1]);
+			continue;
+		}
+
+		if (val[0] == "mbssid") {
+			config.mbssid = int(val[1]);
+			continue;
+		}
+
+		if (val[0] == "rpt_max_phy") {
+			config.rpt_max_phy = int(val[1]);
+		}
 
 		push(config.radio.data, line);
 	}
@@ -1031,38 +1202,31 @@ function bss_config(bss_name) {
 	}
 }
 
-let chan_width = {
-        "0" : "CHAN_WIDTH_20_NOHT",
-        "1" : "CHAN_WIDTH_20",
-        "2" : "CHAN_WIDTH_40",
-        "3" : "CHAN_WIDTH_80",
-        "4" : "CHAN_WIDTH_80P80",
-        "5" : "CHAN_WIDTH_160",
-        "6" : "CHAN_WIDTH_2160",
-        "7" : "CHAN_WIDTH_4320",
-        "8" : "CHAN_WIDTH_6480",
-        "9" : "CHAN_WIDTH_8640",
-        "10" : "CHAN_WIDTH_320",
-        "11" : "CHAN_WIDTH_UNKNOWN",
-};
+function phy_ap_status(phy, radio)
+{
+	let name = phy_name(phy, radio);
 
-function get_bw(curr_chan_width) {
+	if (!name)
+		return { running: false };
 
-        switch (chan_width[curr_chan_width]) {
-        case "CHAN_WIDTH_20_NOHT":
-        case "CHAN_WIDTH_20":
-                return 20;
-        case "CHAN_WIDTH_40":
-                return 40;
-        case "CHAN_WIDTH_80":
-                return 80;
-        case "CHAN_WIDTH_160":
-                return 160;
-        case "CHAN_WIDTH_320":
-                return 320;
-        default:
-                return 20;
-        }
+	let config = hostapd.data.config[name];
+	let iface = hostapd.interfaces[name];
+
+	if (!config || !config.bss)
+		return { running: false };
+
+	for (let bss in config.bss) {
+		if (!bss || !bss.ifname)
+			continue;
+
+		if (iface != null &&
+		    hostapd.bss[bss_key(bss.ifname, config.phy,
+					config.radio_idx)]) {
+			return { running: true };
+		}
+	}
+
+	return { running: false };
 }
 
 function notify_csa_result_event(freq, ret) {
@@ -1085,6 +1249,100 @@ let main_obj = {
 			}
 
 			return 0;
+		})
+	},
+	set_rpt_max_phy: {
+		args: {
+			phy: "",
+			radio: 0,
+			value: 0,
+		},
+		call: ex_wrap(function(req) {
+			let phy = phy_name(req.args.phy, req.args.radio);
+			if (!phy)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			let val = int(req.args.value);
+			if (val != 0 && val != 1) {
+				hostapd.printf(`set_rpt_max_phy: invalid value ${val}, expected 0 or 1`);
+				return libubus.STATUS_INVALID_ARGUMENT;
+			}
+
+			let config = hostapd.data.config[phy];
+			if (!config) {
+				hostapd.printf(`set_rpt_max_phy: config not found for ${phy}`);
+				return libubus.STATUS_NOT_FOUND;
+			}
+
+			config.rpt_max_phy = val;
+
+			/* If STA is connected, reapply freq_info with the new rpt_max_phy settings
+			 * without watiting for apsta_state event.
+			 */
+			let iface = hostapd.interfaces[phy];
+			if (!iface) {
+				return libubus.STATUS_NOT_FOUND;
+			}
+
+			let phy_status;
+			try {
+				phy_status = ubus.call("wpa_supplicant", "phy_status", {
+							phy: req.args.phy,
+							radio: req.args.radio,
+						});
+			} catch (e) {
+				hostapd.printf(`rpt_max_phy_apply: phy_status call failed.`);
+				return  0;
+			}
+
+			if (!phy_status || phy_status.state != "COMPLETED")
+				return;
+
+			let freq_info = iface_freq_info(iface, config, phy_status);
+			if (!freq_info)
+				return;
+
+			hostapd.printf(`set_rpt_max_phy: re-applying freq_info for ${phy}`);
+
+			iface.start(freq_info);
+
+			return 0;
+		})
+	},
+	get_rpt_max_phy: {
+		args: {
+			phy: "",
+			radio: 0,
+		},
+		call: ex_wrap(function(req) {
+			let phy = phy_name(req.args.phy, req.args.radio);
+			if (!phy)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			let config = hostapd.data.config[phy];
+			if (!config) {
+				hostapd.printf(`get_rpt_max_phy: config not found for ${phy}`);
+				return libubus.STATUS_NOT_FOUND;
+			}
+
+			let cur_val = config.rpt_max_phy;
+			if (cur_val == null)
+				cur_val = hostapd.data.rpt_max_phy_override[phy];
+			return {
+				rpt_max_phy: cur_val ? 1 : 0,
+			};
+		})
+	},
+	phy_ap_status: {
+		args: {
+			phy: "",
+			radio: 0,
+		},
+		call: ex_wrap(function(req) {
+			if (!req.args.phy)
+				return libubus.STATUS_INVALID_ARGUMENT;
+
+			return phy_ap_status(req.args.phy, req.args.radio);
 		})
 	},
 	apsta_state: {
@@ -1148,27 +1406,31 @@ let main_obj = {
 				return 0;
 			}
 
-			if (!req.args.frequency)
-				return libubus.STATUS_INVALID_ARGUMENT;
 
 			let freq_info = iface_freq_info(iface, config, req.args);
-			if (!freq_info)
-				return libubus.STATUS_UNKNOWN_ERROR;
-
-			hostapd.printf(`apsta_state: freq_info for radio ${req.args.radio} is ${freq_info}`);
-			if (req.args.wpa_state) {
-				hostapd.printf(`apsta_state: received wpa_state ${req.args.wpa_state} for radio ${req.args.radio}`);
-				freq_info.wpa_state = req.args.wpa_state;
-			}
-			freq_info.vap_type = req.args.vap_type;
-			if (req.args.csa) {
-				freq_info.csa_count = req.args.csa_count ?? 10;
-				ret = iface.switch_channel(freq_info);
-			} else {
+			if (!freq_info) {
 				ret = iface.start(freq_info);
+				if (!ret)
+					return libubus.STATUS_UNKNOWN_ERROR;
+
+				return 0;
+			} else {
+				hostapd.printf(`apsta_state: freq_info for radio ${req.args.radio} is ${freq_info}`);
+				if (req.args.wpa_state) {
+					hostapd.printf(`apsta_state: received wpa_state ${req.args.wpa_state} for radio ${req.args.radio}`);
+					freq_info.wpa_state = req.args.wpa_state;
+				}
+				freq_info.vap_type = req.args.vap_type;
+				freq_info.mesh_origin = req.args.vap_type == 1;
+				if (req.args.csa) {
+					freq_info.csa_count = req.args.csa_count ?? 10;
+					ret = iface.switch_channel(freq_info);
+				} else {
+					ret = iface.start(freq_info);
+				}
+				if (!ret)
+					return libubus.STATUS_UNKNOWN_ERROR;
 			}
-			if (!ret)
-				return libubus.STATUS_UNKNOWN_ERROR;
 
 			let bw = get_bw(req.args.chan_width);
 
@@ -1341,6 +1603,13 @@ function iface_channel_switch(phy, radio, iface, info)
 		ch_seg_1: info.ch_seg_1,
 		cac_abort: info.cac_abort ?? 0,
 	};
+
+	/* Keep compatibility with older producers using nol_channels[] */
+	if (info.nol_channel) {
+		msg.nol_channel = info.nol_channel;
+	} else if (info.nol_channels && length(info.nol_channels) > 0) {
+		msg.nol_channel = info.nol_channels[0];
+	}
 	hostapd.printf(`notify supplicant ${msg}`);
 	let status = ubus.defer("wpa_supplicant", "uplink_csa_notify", msg);
 	if (!status)
@@ -1381,8 +1650,12 @@ return {
 		if (!phy)
 			return;
 
-		if (phy.radio_idx != null && phy.radio_idx >= 0)
-			wdev_set_radio_mask(name, 1 << phy.radio_idx);
+		if (phy.radio_idx != null && phy.radio_idx >= 0) {
+			let radio_mask = bss_radio_mask(name, phy.radio_idx);
+			hostapd.printf(`[debug] bss_create set mask ${radio_mask} for ${name} radio_idx ${phy.radio_idx}`);
+			if (radio_mask)
+				wdev_set_radio_mask(name, radio_mask);
+		}
 	},
 	bss_add: function(phy, name, obj) {
 		bss_event("add", name);
@@ -1536,27 +1809,26 @@ return {
 		}
 	},
 	update_radio_mask: function(ifname, hw_idx) {
-		const mask_bit = 1 << hw_idx;
-		let radio_mask = wdev_get_radio_mask(ifname);
+		let old_mask = wdev_get_radio_mask(ifname);
+		let radio_mask = bss_radio_mask(ifname, hw_idx);
 
-		if (radio_mask == null) {
+		if (old_mask == null || !radio_mask) {
 			hostapd.printf(`[error] Failed to get radio mask for ${ifname}`);
 			return false;
 		}
 
-		if (radio_mask & mask_bit) {
-			hostapd.printf(`[debug] hw_idx ${hw_idx} already set for ${ifname}`);
-			return true;
-		}
-
-		radio_mask |= mask_bit;
-		wdev_set_radio_mask(ifname, radio_mask);
-		hostapd.printf(`[debug] radio mask ${radio_mask} updated for ML BSS ${ifname} hw index ${hw_idx}`);
+		if (old_mask != radio_mask)
+			wdev_set_radio_mask(ifname, radio_mask);
+		hostapd.printf(`[debug] radio mask ${radio_mask} set for BSS ${ifname} hw index ${hw_idx}, old mask ${old_mask}, mlo ${is_mlo_bss(ifname)}`);
 
 		return true;
 	},
 	notify_chan_switch_result_event: function(freq, ret) {
 		notify_csa_result_event(freq, ret ?? 0);
+	},
+	notify_acs_start: function(iface) {
+		hostapd.printf(`ACS start notification received`);
+		ubus.defer("wpa_supplicant", "abort_scan_for_acs", {});
 	},
 	notify_acs_completed: function(iface, success, channel, freq) {
 		hostapd.printf(`Send acs_completed event success=${success} channel=${channel} freq=${freq}`);
@@ -1606,7 +1878,7 @@ return {
 			radio: radio,
 		};
 
-		ubus.call("wpa_supplicant", "disconnect_request", msg);
+		ubus.defer("wpa_supplicant", "disconnect_request", msg);
 	},
 	get_sta_channel_per_band: function(iface, band) {
 		return get_sta_channel_per_band(iface, band);
