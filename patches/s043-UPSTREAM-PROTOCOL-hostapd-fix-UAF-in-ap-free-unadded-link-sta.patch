@@ -1,0 +1,78 @@
+From: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+Date: Thu, 11 Jun 2026 10:02:05 +0530
+Subject: [PATCH] UPSTREAM:PROTOCOL: hostapd: fix use-after-free in
+ ap_free_unadded_link_sta()
+
+Currently when ap_handle_timer() is invoked for a sta with
+unadded_sta=true, ap_free_unadded_link_sta() iterates over all MLD
+links including the calling hapd itself via for_each_mld_link(). When
+phapd == hapd, ap_get_sta() returns psta == sta (the same object passed
+in as argument), which is then freed via os_free(psta) at the end of
+the loop body. On the next loop iteration, sta->addr is dereferenced on
+the now-freed pointer, causing a SIGSEGV.
+
+This has a use-after-free that results in a hostapd crash.
+
+Fix this by copying sta->addr into a local stack buffer before entering
+the loop and using that copy for all subsequent lookups and log messages
+to keep the MAC address valid for the entire loop duration regardless of
+which psta gets freed during iteration.
+
+Patch-work: NA
+
+TAG: MLME
+
+Signed-off-by: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+---
+ src/ap/ieee802_11_shared.c | 6 +++---
+ src/ap/sta_info.c          | 8 ++++++--
+ 2 files changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/src/ap/ieee802_11_shared.c b/src/ap/ieee802_11_shared.c
+--- a/src/ap/ieee802_11_shared.c
++++ b/src/ap/ieee802_11_shared.c
+@@ -355,13 +355,13 @@
+ 		return;
+ 	}
+ 
+-#ifdef CONFIG_IEEE80211BE
+-	ap_free_unadded_link_sta(hapd, sta);
+-#endif /* CONFIG_IEEE80211BE */
+ 	hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
+ 		       HOSTAPD_LEVEL_DEBUG,
+ 		       "Reply to pending SA Query received");
+ 	ap_sta_stop_sa_query(hapd, sta);
++#ifdef CONFIG_IEEE80211BE
++	ap_free_unadded_link_sta(hapd, sta);
++#endif /* CONFIG_IEEE80211BE */
+ }
+ 
+ 
+diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -230,15 +230,20 @@
+ {
+ 	struct hostapd_data *phapd;
+ 	struct sta_info *psta;
++	u8 addr[ETH_ALEN];
+ 
+ 	if (!ap_sta_is_mld(hapd, sta))
+ 		return;
+ 
++	os_memcpy(addr, sta->addr, ETH_ALEN);
++
+ 	for_each_mld_link(phapd, hapd) {
+-		psta = ap_get_sta(phapd, sta->addr);
++		psta = ap_get_sta(phapd, addr);
+ 		if (!(psta && psta->unadded_sta))
+ 			continue;
+-		wpa_printf(MSG_DEBUG, "Remove unadded parter sta: "MACSTR"\n", MAC2STR(sta->addr));
++		wpa_printf(MSG_DEBUG,
++			   "Remove unadded parter sta: " MACSTR " for linkid=%u\n",
++			   MAC2STR(addr), phapd->mld_link_id);
+ 
+ 		accounting_sta_stop(phapd, psta);
+ 		ap_sta_ip6addr_del(phapd, psta);
+-- 
+2.34.1
