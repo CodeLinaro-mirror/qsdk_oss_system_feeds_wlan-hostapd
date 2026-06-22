@@ -687,32 +687,27 @@ function bss_find_existing(config, prev_config, prev_hash)
 		return i;
 	}
 
-	// Secondary match: same ifname and BSSID, both old and new config are MLD,
-	// but config params changed (e.g. SSID change).  Preserve the existing
-	// interface so Step 9 handles it via bss_set_config (in-place beacon update).
-	//
-	// Restricted to MLD↔MLD only: ML↔non-ML transitions change the underlying
-	// netdevice architecture (link vs standalone netdev) and must go through the
-	// delete+re-add path.
-	let new_is_mld = config.mld_ap && config.mld_ap != "0";
-	if (new_is_mld) {
-		for (let i = 0; i < length(prev_config.bss); i++) {
-			if (!prev_hash[i])
-				continue;
-			if (prev_config.bss[i].ifname != config.ifname)
-				continue;
-			if (prev_config.bss[i].bssid != config.bssid)
-				continue;
-			// Both must be MLD: skip if old config was non-MLD (nonML→ML
-			// transition requires netdev recreation via delete+re-add).
-			let old_is_mld = prev_config.bss[i].mld_ap &&
-			                  prev_config.bss[i].mld_ap != "0";
-			if (!old_is_mld)
-				continue;
+	// Secondary match: same ifname and BSSID, same MLD type (both MLD or both
+	// non-MLD), config params changed.  Preserve the existing interface and route
+	// through bss_set_config to avoid DEL_INTERFACE → ieee80211_stop_mbssid()
+	// cascade that tears down all MBSSID group BSSes.  Applies to both TX and
+	// non-TX BSSes.  MLD↔non-MLD transitions change the underlying netdevice
+	// architecture and must go through the delete+re-add path.
+	for (let i = 0; i < length(prev_config.bss); i++) {
+		if (!prev_hash[i])
+			continue;
+		if (prev_config.bss[i].ifname != config.ifname)
+			continue;
+		if (prev_config.bss[i].bssid != config.bssid)
+			continue;
+		let new_is_mld = config.mld_ap && config.mld_ap != "0";
+		let old_is_mld = prev_config.bss[i].mld_ap &&
+		                  prev_config.bss[i].mld_ap != "0";
+		if (new_is_mld != old_is_mld)
+			continue;
 
-			prev_hash[i] = null;
-			return i;
-		}
+		prev_hash[i] = null;
+		return i;
 	}
 
 	return -1;
