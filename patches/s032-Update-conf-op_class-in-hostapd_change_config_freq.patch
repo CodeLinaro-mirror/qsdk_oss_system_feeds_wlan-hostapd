@@ -1,0 +1,51 @@
+From 75747ac0d62e58a28a838b4da35161314e50fb61 Mon Sep 17 00:00:00 2001
+From: Lokitha Thangavel <lthangav@qti.qualcomm.com>
+Date: Thu, 4 Dec 2025 21:44:58 +0530
+Subject: [PATCH] Update conf->op_class in hostapd_change_config_freq()
+
+Some cases of channel switching, e.g., when changing from a 320 MHz
+channel to a 80 MHz channel in the 6 GHz band, has been observed to
+cause disconnections due to non-AP MLDs getting confused with inaccurate
+information.
+
+On the AP side, the new target channel's ccfs0 and ccfs1 have incorrect
+values in the EHT Operating Information element. This is because,
+in hostapd_eid_eht_operation(), the ch_width is calculated based on
+conf->op_class and during the channel switch, hostapd_change_config_freq()
+does not assign the target channel's op_class to conf->op_class during
+the construction of the Beacon frame template.
+
+Fix this issue by assigning conf->op_class in
+hostapd_change_config_freq().
+
+Also, change the datatype of channel in hostapd_change_config_freq()
+from int to u8, as IEEE 802.11 channel numbers are represented with 8
+bits, and can only be between 1 to 255.
+
+Feature: DFS
+Patch-dependency:none
+Link: https://git.w1.fi/cgit/hostap/commit/?id=3bc01a901803ce17dac04ca37bacbaad7e0418ba
+
+
+Signed-off-by: Hariharan Basuthkar <hbasuthk@qti.qualcomm.com>
+Signed-off-by: Lokitha Thangavel <lthangav@qti.qualcomm.com>
+---
+ src/ap/hostapd.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index ca76f0b..cb4651c 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -5698,7 +5698,7 @@ static int hostapd_change_config_freq(struct hostapd_data *hapd,
+ 	    ieee80211_freq_to_chan(params->center_freq2,
+ 				   &seg1) == NUM_HOSTAPD_MODES)
+ 		return -1;
+-	if (ieee80211_freq_to_channel_ext(hostapd_hw_get_freq(hapd, conf->channel),
++	if (ieee80211_freq_to_channel_ext(params->freq,
+ 					  conf->secondary_channel,
+ 					  hostapd_get_oper_chwidth(hapd->iconf),
+ 					  &op_class, &channel) == NUM_HOSTAPD_MODES)
+-- 
+2.34.1
+
