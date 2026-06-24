@@ -6,6 +6,7 @@ let ubus = libubus.connect(null, 60);
 
 hostapd.data.config = {};
 hostapd.data.pending_config = {};
+hostapd.data.bh_sta_phys = {};
 hostapd.data.rpt_max_phy_override = {};
 
 hostapd.data.file_fields = {
@@ -479,6 +480,7 @@ function __iface_pending_next(pending, state, ret, data)
 		});
 		return "wpas_stopped";
 	case "wpas_stopped":
+		delete hostapd.data.bh_sta_phys[phy];
 		if (!iface_add(phy, config)) {
 			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
 		} else {
@@ -1154,6 +1156,17 @@ function iface_load_config(phy, radio, filename)
 
 		if (val[0] == "rpt_max_phy") {
 			config.rpt_max_phy = int(val[1]);
+			continue;
+		}
+
+		if (val[0] == "repeater") {
+			config.repeater = int(val[1]);
+			continue;
+		}
+
+		if (val[0] == "athnewind") {
+			config.athnewind = int(val[1]);
+			continue;
 		}
 
 		push(config.radio.data, line);
@@ -1425,6 +1438,7 @@ let main_obj = {
 			let ret;
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
+				hostapd.data.bh_sta_phys[phy] = true;
 				iface.stop({ wpa_state: req.args.wpa_state,
 					     vap_type: req.args.vap_type });
 				for (let mon in mon_if_names) {
@@ -1440,6 +1454,7 @@ let main_obj = {
 			}
 
 
+			hostapd.data.bh_sta_phys[phy] = true;
 			let freq_info = iface_freq_info(iface, config, req.args);
 			if (!freq_info) {
 				ret = iface.start(freq_info);
@@ -1483,6 +1498,28 @@ let main_obj = {
 					hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
 				}
                         }
+
+			// BH STA connected — start any dependent-repeater AP phy that has
+			// no BH STA of its own (e.g. unmapped 2G fixed-channel link).
+			// Restricted to dependent repeater only: repeater=1, athnewind=0.
+			hostapd.printf(`apsta_state: BH up on ${phy}, State: ${req.args.wpa_state} repeater: ${config.repeater} athnewind: ${config.athnewind}`);
+			if (config.repeater && !config.athnewind && (req.args.wpa_state == "COMPLETED")) {
+				for (let tmp_phy, tmp_config in hostapd.data.config) {
+					if (tmp_phy == phy)
+						continue;
+					if (!tmp_config || !tmp_config.bss || !tmp_config.bss[0])
+						continue;
+					// Skip phys with a native BH STA or already started by a prior event
+					if (hostapd.data.bh_sta_phys[tmp_phy])
+						continue;
+					let unmapped_bh_iface = hostapd.interfaces[tmp_phy];
+					if (!unmapped_bh_iface)
+						continue;
+					hostapd.printf(`apsta_state: BH up on ${phy}, starting unmapped AP on ${tmp_phy}`);
+					hostapd.data.bh_sta_phys[tmp_phy] = true;
+					other_iface.start(null);
+				}
+			}
 
 			return 0;
 		})
