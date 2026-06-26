@@ -1342,6 +1342,10 @@ let main_obj = {
 
 			hostapd.printf(`set_rpt_max_phy: re-applying freq_info for ${phy}`);
 
+			freq_info.rpt_max_phy_override = 1;
+			iface.stop({ wpa_state: phy_status.state,
+				     vap_type: 0,
+				     rpt_max_phy_override: 1 });
 			iface.start(freq_info);
 
 			return 0;
@@ -1431,7 +1435,8 @@ let main_obj = {
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
 				iface.stop({ wpa_state: req.args.wpa_state,
-					     vap_type: req.args.vap_type });
+					     vap_type: req.args.vap_type,
+					     rpt_max_phy_override: 0 });
 				for (let mon in mon_if_names) {
 					if (mon == null)
 						continue;
@@ -1459,6 +1464,7 @@ let main_obj = {
 					freq_info.wpa_state = req.args.wpa_state;
 				}
 				freq_info.vap_type = req.args.vap_type;
+				freq_info.rpt_max_phy_override = 0;
 				freq_info.mesh_origin = req.args.vap_type == 1;
 				if (req.args.csa) {
 					freq_info.csa_count = req.args.csa_count ?? 10;
