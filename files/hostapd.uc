@@ -6,6 +6,7 @@ let ubus = libubus.connect(null, 60);
 
 hostapd.data.config = {};
 hostapd.data.pending_config = {};
+hostapd.data.bh_sta_phys = {};
 hostapd.data.rpt_max_phy_override = {};
 
 hostapd.data.file_fields = {
@@ -479,6 +480,7 @@ function __iface_pending_next(pending, state, ret, data)
 		});
 		return "wpas_stopped";
 	case "wpas_stopped":
+		delete hostapd.data.bh_sta_phys[phy];
 		if (!iface_add(phy, config)) {
 			hostapd.printf(`hostapd.add_iface failed for phy ${phy} ifname=${bss.ifname}`);
 		} else {
@@ -678,8 +680,32 @@ function bss_find_existing(config, prev_config, prev_hash)
 {
 	let hash = bss_config_hash(config.data);
 
+	// Primary match: identical config hash (fast path, covers all unchanged BSSes)
 	for (let i = 0; i < length(prev_config.bss); i++) {
 		if (!prev_hash[i] || hash != prev_hash[i])
+			continue;
+
+		prev_hash[i] = null;
+		return i;
+	}
+
+	// Secondary match: same ifname and BSSID, same MLD type (both MLD or both
+	// non-MLD), config params changed.  Preserve the existing interface and route
+	// through bss_set_config to avoid DEL_INTERFACE → ieee80211_stop_mbssid()
+	// cascade that tears down all MBSSID group BSSes.  Applies to both TX and
+	// non-TX BSSes.  MLD↔non-MLD transitions change the underlying netdevice
+	// architecture and must go through the delete+re-add path.
+	for (let i = 0; i < length(prev_config.bss); i++) {
+		if (!prev_hash[i])
+			continue;
+		if (prev_config.bss[i].ifname != config.ifname)
+			continue;
+		if (prev_config.bss[i].bssid != config.bssid)
+			continue;
+		let new_is_mld = config.mld_ap && config.mld_ap != "0";
+		let old_is_mld = prev_config.bss[i].mld_ap &&
+		                  prev_config.bss[i].mld_ap != "0";
+		if (new_is_mld != old_is_mld)
 			continue;
 
 		prev_hash[i] = null;
@@ -777,8 +803,13 @@ function iface_reload_config(name, phydev, config, old_config)
 		bss_list_cfg[i] = old_config.bss[prev];
 	}
 
-	if (old_config.mbssid && !bss_list_cfg[0]) {
-		hostapd.printf("First BSS changed with MBSSID enabled");
+	// When MBSSID is enabled and the first BSS config changed (e.g. SSID
+	// change via wifi reload), fall through to Step 2 which preserves the
+	// first BSS interface and lets bss_set_config handle the config update.
+	// Only bail out if the BSSID itself changed, which is handled below.
+	if (old_config.mbssid && !bss_list_cfg[0] &&
+	    config.bss[0].bssid != old_config.bss[0].bssid) {
+		hostapd.printf("First BSS BSSID changed with MBSSID enabled");
 		return false;
 	}
 
@@ -794,12 +825,12 @@ function iface_reload_config(name, phydev, config, old_config)
 			config.bss[0].bssid = old_config.bss[0].bssid;
 		}
 
-		// If the old first BSS is an ML BSS shared with another radio, we must
-		// not preserve or rename it here — doing so would disrupt the MLD on the
-		// other radio.  Fall back to iface_restart, which skips wdev_remove for
-		// ML BSS interfaces (via iface_remove) and creates a fresh wdev for the
-		// new non-ML interface name via the pending state machine.
-		if (is_ml_bss(old_config.bss[0].ifname, config.radio_idx)) {
+		// If the ifname of BSS[0] is changing AND the BSS is shared with
+		// another radio as an ML BSS, we must fall back to iface_restart —
+		// renaming would disrupt the MLD on the other radio.  A pure config
+		// change (e.g. SSID) that keeps the same ifname is safe to hot-reload.
+		if (config.bss[0].ifname != old_config.bss[0].ifname &&
+		    is_ml_bss(old_config.bss[0].ifname, config.radio_idx)) {
 			hostapd.printf(`First BSS ${old_config.bss[0].ifname} is ML BSS on another radio, cannot hot-reload`);
 			return false;
 		}
@@ -985,7 +1016,11 @@ function iface_reload_config(name, phydev, config, old_config)
 			continue;
 
 		let ifname = config.bss[i].ifname;
-		let bss = bss_list[i];
+		// Always read the live bss object from hostapd.bss: a previous
+		// set_config() call (Phase 1/2) may have freed and re-added this
+		// BSS, making bss_list[i] stale.  Fall back to bss_list[i] only
+		// if the BSS is not found in the registry (e.g. not yet started).
+		let bss = hostapd.bss[bss_key(ifname, config.phy, config.radio_idx)] ?? bss_list[i];
 
 		if (is_equal(config.bss[i], bss_list_cfg[i]))
 			continue;
@@ -1121,6 +1156,17 @@ function iface_load_config(phy, radio, filename)
 
 		if (val[0] == "rpt_max_phy") {
 			config.rpt_max_phy = int(val[1]);
+			continue;
+		}
+
+		if (val[0] == "repeater") {
+			config.repeater = int(val[1]);
+			continue;
+		}
+
+		if (val[0] == "athnewind") {
+			config.athnewind = int(val[1]);
+			continue;
 		}
 
 		push(config.radio.data, line);
@@ -1392,6 +1438,7 @@ let main_obj = {
 			let ret;
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
+				hostapd.data.bh_sta_phys[phy] = true;
 				iface.stop({ wpa_state: req.args.wpa_state,
 					     vap_type: req.args.vap_type });
 				for (let mon in mon_if_names) {
@@ -1407,6 +1454,7 @@ let main_obj = {
 			}
 
 
+			hostapd.data.bh_sta_phys[phy] = true;
 			let freq_info = iface_freq_info(iface, config, req.args);
 			if (!freq_info) {
 				ret = iface.start(freq_info);
@@ -1450,6 +1498,28 @@ let main_obj = {
 					hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
 				}
                         }
+
+			// BH STA connected — start any dependent-repeater AP phy that has
+			// no BH STA of its own (e.g. unmapped 2G fixed-channel link).
+			// Restricted to dependent repeater only: repeater=1, athnewind=0.
+			hostapd.printf(`apsta_state: BH up on ${phy}, State: ${req.args.wpa_state} repeater: ${config.repeater} athnewind: ${config.athnewind}`);
+			if (config.repeater && !config.athnewind && (req.args.wpa_state == "COMPLETED")) {
+				for (let tmp_phy, tmp_config in hostapd.data.config) {
+					if (tmp_phy == phy)
+						continue;
+					if (!tmp_config || !tmp_config.bss || !tmp_config.bss[0])
+						continue;
+					// Skip phys with a native BH STA or already started by a prior event
+					if (hostapd.data.bh_sta_phys[tmp_phy])
+						continue;
+					let unmapped_bh_iface = hostapd.interfaces[tmp_phy];
+					if (!unmapped_bh_iface)
+						continue;
+					hostapd.printf(`apsta_state: BH up on ${phy}, starting unmapped AP on ${tmp_phy}`);
+					hostapd.data.bh_sta_phys[tmp_phy] = true;
+					other_iface.start(null);
+				}
+			}
 
 			return 0;
 		})
