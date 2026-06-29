@@ -817,6 +817,8 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state, vap_type)
 			msg.punct_bitmap = status.punct_bitmap;
 		if (status.is_dfs != null)
 			msg.is_dfs = status.is_dfs;
+		if (status.mcst != null)
+			msg.mcst = status.mcst;
 		break;
 	default:
 		return;
@@ -874,6 +876,7 @@ function iface_pre_connect_hostapd_notify(phy, radio, ifname, iface, state, info
 		punct_bitmap: info.punct_bitmap,
 		mon_ifaces: "",
 		is_dfs: info.is_dfs,
+		mcst: info.mcst ? info.mcst : 0,
 		wpa_state: state,
 	 };
 
