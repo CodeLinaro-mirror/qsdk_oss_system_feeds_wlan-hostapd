@@ -1,0 +1,31 @@
+From bf9a9eac980b5423bd3f995108bd5beaad3841b2 Mon Sep 17 00:00:00 2001
+From: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+Date: Fri, 26 jun 2026 15:52:30 +0530
+Subject: [PATCH] nl80211: Fix a crash when stopping non-first BSS during ACS
+
+When a non-MLD interface is stopped during ACS while this BSS isn't the
+first of the DRV on a MLO capable phy, the BSS can be deleted without
+canceling the pending scan timeout. If the timeout fires later, hostapd
+can receive EVENT_SCAN_RESULTS with a stale context and crash.
+
+Cancel the pending nl80211 scan timeout when removing the underlying
+wlan interface since scan completion is no longer needed at that point.
+
+Patch-work: None
+
+Signed-off-by: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+---
+ src/drivers/driver_nl80211.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -9665,6 +9665,9 @@ static int wpa_driver_nl80211_if_remove(
+ 	wpa_printf(MSG_DEBUG, "nl80211: %s(type=%d ifname=%s) ifindex=%d added_if=%d",
+ 		   __func__, type, ifname, ifindex, bss->added_if);
++
++	eloop_cancel_timeout(wpa_driver_nl80211_scan_timeout, drv, bss->ctx);
++
+ 	if (ifindex > 0 && (bss->added_if || bss->ifindex != ifindex))
+ 		nl80211_remove_iface(drv, ifindex);
+ 	else if (ifindex > 0 && !bss->added_if) {
