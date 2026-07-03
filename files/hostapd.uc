@@ -1492,7 +1492,7 @@ let main_obj = {
 				if (freq_info.frequency == freq_info.center_freq1)
 					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw}`);
 				else
-					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1}`);
+					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1} punct ${freq_info.punct_bitmap}`);
 
 				if (ret) {
 					hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
