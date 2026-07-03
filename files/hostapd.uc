@@ -1517,7 +1517,7 @@ let main_obj = {
 						continue;
 					hostapd.printf(`apsta_state: BH up on ${phy}, starting unmapped AP on ${tmp_phy}`);
 					hostapd.data.bh_sta_phys[tmp_phy] = true;
-					other_iface.start(null);
+					unmapped_bh_iface.start(null);
 				}
 			}
 
