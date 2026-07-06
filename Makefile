@@ -121,7 +121,7 @@ DRIVER_MAKEOPTS= \
 	CONFIG_PROCESS_COORDINATION=y
 
 ifneq ($(CONFIG_WPA_MQTT_SUPPORT),)
-  DRIVER_MAKEOPTS += CONFIG_MQTT=y
+  DRIVER_MAKEOPTS += CONFIG_MQTT=y CONFIG_MQTT_TEST_APP_FORK=y
   TARGET_LDFLAGS += -lmosquitto
 endif
 
@@ -745,13 +745,13 @@ define Build/Compile/wpad
 		$(PKG_BUILD_DIR)/hostapd/hostapd_multi.a \
 		$(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant_multi.a \
 		$(TARGET_LDFLAGS)
-	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(if $(findstring macsec,$(BUILD_VARIANT)),,+$(call Build/RunMake,hostapd,mqtt_test)))
+	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(if $(findstring macsec,$(BUILD_VARIANT)),,+$(call Build/RunMake,hostapd,mqtt_test external_hif_mqtt_test_client)))
 endef
 
 define Build/Compile/hostapd
 	+$(call Build/RunMake,hostapd, \
 		hostapd hostapd_cli \
-		$(if $(CONFIG_WPA_MQTT_SUPPORT),mqtt_test) \
+		$(if $(CONFIG_WPA_MQTT_SUPPORT),mqtt_test external_hif_mqtt_test_client) \
 	)
 endef
 
@@ -858,6 +858,7 @@ define Package/hostapd/install
 	$(call Install/hostapd,$(1))
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd $(1)/usr/sbin/
 	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/mqtt_test $(1)/usr/sbin/,)
+	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/external_hif_mqtt_test_client $(1)/usr/sbin/,)
 endef
 Package/hostapd-basic/install = $(Package/hostapd/install)
 Package/hostapd-basic-openssl/install = $(Package/hostapd/install)
@@ -898,6 +899,7 @@ define Package/wpad/install
 	$(LN) wpad $(1)/usr/sbin/wpa_supplicant
 	$(INSTALL_BIN) $(EXTERNAL_DIR)/files/hostapd.sysctl $(1)/etc/sysctl.d/hostapd.conf
 	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/mqtt_test $(1)/usr/sbin/,)
+	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/external_hif_mqtt_test_client $(1)/usr/sbin/,)
 endef
 Package/wpad-basic/install = $(Package/wpad/install)
 Package/wpad-basic-openssl/install = $(Package/wpad/install)
