@@ -1492,7 +1492,7 @@ let main_obj = {
 				if (freq_info.frequency == freq_info.center_freq1)
 					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw}`);
 				else
-					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1}`);
+					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1} punct ${freq_info.punct_bitmap}`);
 
 				if (ret) {
 					hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
@@ -1517,7 +1517,7 @@ let main_obj = {
 						continue;
 					hostapd.printf(`apsta_state: BH up on ${phy}, starting unmapped AP on ${tmp_phy}`);
 					hostapd.data.bh_sta_phys[tmp_phy] = true;
-					other_iface.start(null);
+					unmapped_bh_iface.start(null);
 				}
 			}
 
