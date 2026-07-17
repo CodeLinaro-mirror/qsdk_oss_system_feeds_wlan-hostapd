@@ -49,6 +49,28 @@ function is_ml_config(if_name, radio_id) {
 	return false;
 }
 
+/*
+ * Check whether ifname has an MLD config on any phy regardless of running
+ * state.  Used in iface_stop() to prevent premature remove_iface() calls
+ * during serial per-radio reconfiguration: by the time the last radio's
+ * iface_stop runs, partner radios have already been stopped (running=false),
+ * causing is_ml_config() to return false and remove_iface() to fire and
+ * delete the ctrl socket that prplMesh / backhaul-manager needs.
+ */
+function has_ml_config(if_name)
+{
+	for (let phy, config in wpas.data.config) {
+		if (config == null || config.data == null)
+			continue;
+
+		let data = config.data[if_name];
+		if (data != null && data.config != null && data.config.mld != null)
+			return true;
+	}
+
+	return false;
+}
+
 function iface_stop(iface, radio)
 {
 	let ifname = iface.config.iface;
@@ -62,7 +84,7 @@ function iface_stop(iface, radio)
 	let iface_data = wpas.interfaces[ifname];
 
 	delete wpas.data.iface_phy[ifname];
-	if (!is_ml_config(ifname, radio)) {
+	if (!is_ml_config(ifname, radio) && !has_ml_config(ifname)) {
 		wpas.printf(`[debug] Removing interface ${ifname} ${radio}`);
 		wpas.remove_iface(ifname, radio);
 		wdev_remove(ifname);
