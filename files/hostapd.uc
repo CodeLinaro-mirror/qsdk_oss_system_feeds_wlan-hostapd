@@ -54,8 +54,38 @@ function bss_is_mlo(bss)
 	return bss.mld_ap != null && bss.mld_ap != "0" && bss.mld_ap != "false";
 }
 
+function bss_config_present(ifname)
+{
+	if (!ifname)
+		return false;
+
+	for (let phy, config in hostapd.data.config) {
+		if (!config || !config.bss)
+			continue;
+
+		for (let bss in config.bss)
+			if (bss.ifname == ifname)
+				return true;
+	}
+
+	for (let phy, pending in hostapd.data.pending_config) {
+		let config = pending && pending.config;
+		if (!config || !config.bss)
+			continue;
+
+		for (let bss in config.bss)
+			if (bss.ifname == ifname)
+				return true;
+	}
+
+	return false;
+}
+
 function is_mlo_bss(ifname)
 {
+	if (!ifname)
+		return false;
+
 	for (let phy, config in hostapd.data.config) {
 		if (!config || !config.bss)
 			continue;
@@ -65,7 +95,71 @@ function is_mlo_bss(ifname)
 				return true;
 	}
 
+	for (let phy, pending in hostapd.data.pending_config) {
+		let config = pending && pending.config;
+		if (!config || !config.bss)
+			continue;
+
+		for (let bss in config.bss)
+			if (bss.ifname == ifname && bss_is_mlo(bss))
+				return true;
+	}
+
 	return false;
+}
+
+function has_mlo_bss_on_radio(hw_idx)
+{
+	for (let phy, config in hostapd.data.config) {
+		if (!config || !config.bss)
+			continue;
+
+		if (hw_idx != null && hw_idx >= 0 &&
+		    (config.radio_idx == null || config.radio_idx != hw_idx))
+			continue;
+
+		for (let bss in config.bss)
+			if (bss_is_mlo(bss))
+				return true;
+	}
+
+	for (let phy, pending in hostapd.data.pending_config) {
+		let config = pending && pending.config;
+		if (!config || !config.bss)
+			continue;
+
+		if (hw_idx != null && hw_idx >= 0 &&
+		    (config.radio_idx == null || config.radio_idx != hw_idx))
+			continue;
+
+		for (let bss in config.bss)
+			if (bss_is_mlo(bss))
+				return true;
+	}
+
+	return false;
+}
+
+function infer_mlo_bss(ifname, hw_idx, old_mask)
+{
+	if (is_mlo_bss(ifname))
+		return { mlo: true, source: "ifname" };
+
+	/*
+	 * During early create/update windows, runtime BSS ifname can differ from
+	 * config ifname and temporarily fail exact-name lookup.
+	 */
+	if (has_mlo_bss_on_radio(hw_idx))
+		return { mlo: true, source: "radio_cfg" };
+
+	let bss_known = bss_config_present(ifname);
+
+	/* Fallback for early windows where only runtime mask carries MLO shape. */
+	if (!bss_known &&
+	    old_mask != null && (old_mask & (old_mask - 1)))
+		return { mlo: true, source: "old_mask" };
+
+	return { mlo: false, source: "none" };
 }
 
 function bss_radio_mask(ifname, hw_idx)
@@ -444,6 +538,9 @@ function __iface_pending_next(pending, state, ret, data)
 				hostapd.printf(`[error] Failed to get radio mask for ${bss.ifname}`);
 				return null;
 			}
+
+			if (bss_is_mlo(bss))
+				radio_mask |= old_radio_mask;
 
 			if (old_radio_mask != radio_mask)
 				wdev_set_radio_mask(bss.ifname, radio_mask);
@@ -1722,7 +1819,14 @@ return {
 
 		if (phy.radio_idx != null && phy.radio_idx >= 0) {
 			let radio_mask = bss_radio_mask(name, phy.radio_idx);
-			hostapd.printf(`[debug] bss_create set mask ${radio_mask} for ${name} radio_idx ${phy.radio_idx}`);
+			let old_mask = wdev_get_radio_mask(name);
+			let mlo_info = infer_mlo_bss(name, phy.radio_idx, old_mask);
+			let mlo = mlo_info.mlo;
+
+			if (mlo && old_mask != null)
+				radio_mask |= old_mask;
+
+			hostapd.printf(`[debug] bss_create set mask ${radio_mask} for ${name} radio_idx ${phy.radio_idx} old_mask ${old_mask} mlo ${mlo} mlo_src ${mlo_info.source}`);
 			if (radio_mask)
 				wdev_set_radio_mask(name, radio_mask);
 		}
@@ -1881,15 +1985,21 @@ return {
 	update_radio_mask: function(ifname, hw_idx) {
 		let old_mask = wdev_get_radio_mask(ifname);
 		let radio_mask = bss_radio_mask(ifname, hw_idx);
+		let mlo_info = infer_mlo_bss(ifname, hw_idx, old_mask);
+		let mlo = mlo_info.mlo;
 
 		if (old_mask == null || !radio_mask) {
 			hostapd.printf(`[error] Failed to get radio mask for ${ifname}`);
 			return false;
 		}
 
+		/* For MLO, avoid collapsing existing vif mask bits. */
+		if (mlo)
+			radio_mask |= old_mask;
+
 		if (old_mask != radio_mask)
 			wdev_set_radio_mask(ifname, radio_mask);
-		hostapd.printf(`[debug] radio mask ${radio_mask} set for BSS ${ifname} hw index ${hw_idx}, old mask ${old_mask}, mlo ${is_mlo_bss(ifname)}`);
+		hostapd.printf(`[debug] radio mask ${radio_mask} set for BSS ${ifname} hw index ${hw_idx}, old mask ${old_mask}, mlo ${mlo}, mlo_src ${mlo_info.source}`);
 
 		return true;
 	},
