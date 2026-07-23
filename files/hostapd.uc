@@ -1554,7 +1554,8 @@ let main_obj = {
 			hostapd.data.bh_sta_phys[phy] = true;
 			let freq_info = iface_freq_info(iface, config, req.args);
 			if (!freq_info) {
-				ret = iface.start(freq_info);
+				ret = iface.start({ wpa_state: req.args.wpa_state,
+						    vap_type: req.args.vap_type });
 				if (!ret)
 					return libubus.STATUS_UNKNOWN_ERROR;
 
@@ -1614,7 +1615,8 @@ let main_obj = {
 						continue;
 					hostapd.printf(`apsta_state: BH up on ${phy}, starting unmapped AP on ${tmp_phy}`);
 					hostapd.data.bh_sta_phys[tmp_phy] = true;
-					unmapped_bh_iface.start(null);
+					unmapped_bh_iface.start({ wpa_state: req.args.wpa_state,
+								  vap_type: req.args.vap_type });
 				}
 			}
 
