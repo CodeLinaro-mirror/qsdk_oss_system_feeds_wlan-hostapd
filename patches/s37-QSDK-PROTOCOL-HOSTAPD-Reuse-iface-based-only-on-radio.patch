@@ -1,0 +1,60 @@
+From 8b183ef99326b82a9bf0ff188fbb8894a3b4d6ba Mon Sep 17 00:00:00 2001
+From: Govindaraj Saminathan <gsaminat@qti.qualcomm.com>
+Date: Fri, 13 Mar 2026 15:33:43 +0530
+Subject: [PATCH] QSDK:PROTOCOL:HOSTAPD: Reuse iface based only on radio
+ identifier
+
+Drop the `hostapd_is_existing_interface()` helper and simplify
+'hostapd_interface_init_bss()` to reuse an existing interface when
+the PHY (radio identifier) matches, without additionally checking
+`hw_mode` and `channel` in the configuration.
+
+This enables newly added BSSes on an already operating radio to
+inherit the radio parameters (such as channel and hw_mode) from the
+existing BSS bound to the same PHY, instead of requiring the new
+configuration to match these parameters up front.
+
+The current hostapd_is_existing_interface implementation, introduced in:
+ - r44-001-hostapd-ML-reconfiguration-link-addition-support.patch
+is removed
+
+Patch-dependency: I7453a7963e0 ("hostapd: ML reconfiguration: link addition support")
+
+Change-Id: Ibd4fd0278572d568ea9b31f65e07f073b82a01d0
+Signed-off-by: Sathishkumar Muruganandam <murugana@qti.qualcomm.com>
+---
+ src/ap/hostapd.c | 11 +----------
+ 1 file changed, 1 insertion(+), 10 deletions(-)
+
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index b4671b6aa40c..e055b133ba36 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -4367,14 +4367,6 @@ fail:
+ 	return NULL;
+ }
+ 
+-bool hostapd_is_existing_interface(struct hostapd_iface *iface,
+-				   struct hostapd_config *new_conf)
+-{
+-	return (iface->conf->hw_mode == new_conf->hw_mode &&
+-		((iface->conf->channel &&
+-		iface->conf->channel == new_conf->channel)));
+-}
+-
+ 
+ /**
+  * hostapd_interface_init_bss - Read configuration file and init BSS data
+@@ -4405,8 +4397,7 @@ hostapd_interface_init_bss(struct hapd_interfaces *interfaces, const char *phy,
+ 		return NULL;
+ 
+ 	for (i = 0; i < interfaces->count; i++) {
+-		if (os_strcmp(interfaces->iface[i]->phy, phy) == 0 &&
+-		    hostapd_is_existing_interface(interfaces->iface[i], conf)) {
++		if (os_strcmp(interfaces->iface[i]->phy, phy) == 0) {
+ 			iface = interfaces->iface[i];
+ 			break;
+ 		}
+-- 
+2.34.1
+
