@@ -1,0 +1,58 @@
+From 8fe087c4ae7203edbed932658cbc9947d5949821 Mon Sep 17 00:00:00 2001
+From: krishna kumar <krisa@qti.qualcomm.com>
+Date: Fri, 24 Jul 2026 10:16:49 +0530
+Subject: [PATCH] QSDK:CP hostapd: Avoid accessing stale beacon during BSS
+ teardown
+
+Added a defensive check in  hostapd_mgmt_rx() to validate
+the interface state and BSS list before processing beacon frames.
+
+If a late/stale beacon is received after BSS teardown during SSR,
+the frame is safely ignored instead of accessing invalid memory.
+
+Signed-off-by: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+Signed-off-by: Kannan Saravanan <kannsara@qti.qualcomm.com>
+
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index 637cc87..a8ab624 100644
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -2021,8 +2021,18 @@ static int hostapd_mgmt_rx(struct hostapd_data *hapd, struct rx_mgmt *rx_mgmt)
+	if (rx_mgmt->ctx)
+		hapd = rx_mgmt->ctx;
+	hapd = switch_link_hapd(hapd, rx_mgmt->link_id);
++
++	if (!hapd || !hapd->iface)
++		return 0;
++
+	iface = hapd->iface;
+
++	if (iface->state == HAPD_IFACE_UNINITIALIZED) {
++		wpa_dbg(hapd->msg_ctx, MSG_DEBUG,
++			"Skip management RX on uninitialized interface");
++		return 0;
++	}
++
+ #ifdef CONFIG_TESTING_OPTIONS
+	if (hapd->ext_mgmt_frame_handling) {
+		size_t hex_len = 2 * rx_mgmt->frame_len + 1;
+@@ -2053,9 +2063,14 @@ static int hostapd_mgmt_rx(struct hostapd_data *hapd, struct rx_mgmt *rx_mgmt)
+		 * could be used to update neighbor information.
+		 */
+		if (WLAN_FC_GET_TYPE(fc) == WLAN_FC_TYPE_MGMT &&
+-		    WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_BEACON)
++		    WLAN_FC_GET_STYPE(fc) == WLAN_FC_STYPE_BEACON) {
++			if (!iface->bss || iface->num_bss == 0 || !iface->bss[0]) {
++				wpa_dbg(hapd->msg_ctx, MSG_DEBUG,
++					"Skip unknown beacon RX without active BSS");
++				return 0;
++			}
+			hapd = iface->bss[0];
+-		else
++		} else
+			return 0;
+	}
+
+--
+2.34.1
+
