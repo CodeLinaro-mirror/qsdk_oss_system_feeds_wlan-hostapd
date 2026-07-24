@@ -654,6 +654,12 @@ ifeq ($(CONFIG_USE_PRPLMESH_WHM),y)
 		$(PKG_BUILD_DIR)/hostapd/.config \
 		$(PKG_BUILD_DIR)/wpa_supplicant/.config
 endif
+
+ifndef CONFIG_PACKAGE_QCN_EXTN
+	-sed -i 's/^CONFIG_QCN_EXTN=y/# CONFIG_QCN_EXTN is not set/' \
+		$(PKG_BUILD_DIR)/hostapd/.config \
+		$(PKG_BUILD_DIR)/wpa_supplicant/.config
+endif
 endef
 
 ## Build libwpa_ctrl.a objects at top-level to avoid conditionals inside define
