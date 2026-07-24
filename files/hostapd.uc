@@ -1537,19 +1537,23 @@ let main_obj = {
 			}
 
 			let ret;
+
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
 				hostapd.data.bh_sta_phys[phy] = true;
 				iface.stop({ wpa_state: req.args.wpa_state,
 					     vap_type: req.args.vap_type,
 					     rpt_max_phy_override: 0 });
-				for (let mon in mon_if_names) {
-					if (mon == null)
-						continue;
+				//Independent repeater: mon ifaces need not go down
+				if (!config.athnewind) {
+					for (let mon in mon_if_names) {
+						if (mon == null)
+							continue;
 
-					ret = system(`ifconfig ${mon} down`);
-					if (ret) {
-						hostapd.printf(`Failed to bring down monitor interface ${mon}: ${ret}`);
+						ret = system(`ifconfig ${mon} down`);
+						if (ret) {
+							hostapd.printf(`Failed to bring down monitor interface ${mon}: ${ret}`);
+						}
 					}
 				}
 				return 0;
@@ -1585,22 +1589,25 @@ let main_obj = {
 
 			let bw = get_bw(req.args.chan_width);
 
-                        for (let mon in mon_if_names) {
-                                ret = system(`ifconfig ${mon} up`);
+			//Independent repeater: mon ifaces need not start
+			if (!config.athnewind) {
+				for (let mon in mon_if_names) {
+					ret = system(`ifconfig ${mon} up`);
 
-				if (ret) {
-					hostapd.printf(`Failed to bring up monitor interface ${mon}: ${ret}`);
-					continue;
-				}
-				if (freq_info.frequency == freq_info.center_freq1)
-					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw}`);
-				else
-					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1} punct ${freq_info.punct_bitmap}`);
+					if (ret) {
+						hostapd.printf(`Failed to bring up monitor interface ${mon}: ${ret}`);
+						continue;
+					}
+					if (freq_info.frequency == freq_info.center_freq1)
+						ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw}`);
+					else
+						ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1} punct ${freq_info.punct_bitmap}`);
 
-				if (ret) {
-					hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
+					if (ret) {
+						hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
+					}
 				}
-                        }
+			}
 
 			// BH STA connected — start any dependent-repeater AP phy that has
 			// no BH STA of its own (e.g. unmapped 2G fixed-channel link).
