@@ -824,6 +824,8 @@ function iface_hostapd_notify(phy, radio, ifname, iface, state, vap_type)
 		msg.up = true;
 		break;
 	case "COMPLETED":
+		if (status == null)
+			return;
 		msg.up = true;
 		if (status.frequency != null)
 			msg.frequency = status.frequency;
