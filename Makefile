@@ -77,8 +77,9 @@ LOCAL_VARIANT=$(patsubst %-internal,%,\
 	      $(patsubst %-openssl,%,\
 	      $(patsubst %-wolfssl,%,\
 	      $(patsubst %-mbedtls,%,\
+	      $(patsubst %-noextns,%,\
 	      $(LOCAL_AND_LIB_VARIANT)\
-	      ))))
+	      )))))
 
 SSL_VARIANT=$(strip \
 		$(if $(findstring openssl,$(LOCAL_AND_LIB_VARIANT)),openssl,\
@@ -90,6 +91,9 @@ SSL_VARIANT=$(strip \
 CONFIG_VARIANT:=$(LOCAL_VARIANT)
 ifeq ($(LOCAL_VARIANT),mesh)
   CONFIG_VARIANT:=full
+endif
+ifneq ($(filter noextns,$(subst -, ,$(BUILD_VARIANT))),)
+  CONFIG_VARIANT:=$(CONFIG_VARIANT)-noextns
 endif
 
 ifneq ("$(wildcard $(FILE_DIR_HOSTAPD)/wlan-hostapd.mk)","")
@@ -238,6 +242,24 @@ define Package/wpad-macsec
 endef
 
 Package/wpad-macsec/description = $(Package/wpad/description)
+
+define Package/wpad-macsec-noextns
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WirelessAPD
+  TITLE:=IEEE 802.1x Auth/Supplicant
+  TITLE+= (MACSEC, no QCN extn)
+  DEPENDS:=$(DRV_DEPENDS) +hostapd-common $(CORE_DEPENDS)
+  DEPENDS+=$(OPENSSL_DEPENDS) +kmod-qca-nss-macsec +libnl +libnl-genl +libnl-route
+  EXTRA_DEPENDS:=hostapd-common (=$(PKG_VERSION)-r$(PKG_RELEASE))
+  USERID:=network=101:network=101
+  URL:=http://hostap.epitest.fi/
+  PROVIDES:=hostapd-macsec wpa-supplicant-macsec
+  VARIANT:=wpad-macsec-noextns
+  DEFAULT:=m
+endef
+
+Package/wpad-macsec-noextns/description = $(Package/wpad-macsec/description)
 
 define Package/hostapd-wolfssl
 $(call Package/hostapd/Default,$(1))
@@ -437,6 +459,18 @@ endef
 
 Package/wpad-mesh-openssl/description = $(Package/wpad-mesh/description)
 
+define Package/wpad-mesh-openssl-noextns
+$(call Package/wpad-mesh,$(1))
+  TITLE+= (OpenSSL, 11s, SAE, no QCN extn)
+  DEPENDS+=$(OPENSSL_DEPENDS)
+  VARIANT:=wpad-mesh-openssl-noextns
+  DEFAULT:=m
+  PROVIDES:=hostapd-openssl wpa-supplicant-openssl hostapd-qca-openssl wpa-supplicant-qca-openssl wpad-qca-mesh-openssl
+  CONFLICTS:=
+endef
+
+Package/wpad-mesh-openssl-noextns/description = $(Package/wpad-mesh/description)
+
 define Package/wpad-mesh-wolfssl
 $(call Package/wpad-mesh,$(1))
   TITLE+= (wolfSSL, 11s, SAE)
@@ -633,20 +667,28 @@ endif
 define Build/Patch
 	$(CP) -r $(HOSTAPD_SRC_DIR)/* $(PKG_BUILD_DIR)/
 ifdef CONFIG_PACKAGE_QCN_EXTN
+ifeq ($(filter noextns,$(subst -, ,$(BUILD_VARIANT))),)
 	$(CP) $(EXTENSIONS_DIR)/src $(PKG_BUILD_DIR)/qcn_extns
 	$(if $(wildcard $(QCN_APP_EXTNS_DIR)/qacs/qacs.c), \
 		$(CP) $(QCN_APP_EXTNS_DIR)/qacs $(PKG_BUILD_DIR)/qcn_extns
 	)
+endif
 endif
 endef
 
 define Build/Configure
 	$(Build/Configure/rebuild)
 	$(if $(wildcard ./files/hostapd-$(CONFIG_VARIANT).config), \
-		$(CP) ./files/hostapd-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/hostapd/.config \
+		$(CP) ./files/hostapd-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/hostapd/.config, \
+		$(if $(wildcard ./files/hostapd-$(patsubst %-noextns,%,$(CONFIG_VARIANT)).config), \
+			$(CP) ./files/hostapd-$(patsubst %-noextns,%,$(CONFIG_VARIANT)).config $(PKG_BUILD_DIR)/hostapd/.config \
+		) \
 	)
 	$(if $(wildcard ./files/wpa_supplicant-$(CONFIG_VARIANT).config), \
-		$(CP) ./files/wpa_supplicant-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/wpa_supplicant/.config
+		$(CP) ./files/wpa_supplicant-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/wpa_supplicant/.config, \
+		$(if $(wildcard ./files/wpa_supplicant-$(patsubst %-noextns,%,$(CONFIG_VARIANT)).config), \
+			$(CP) ./files/wpa_supplicant-$(patsubst %-noextns,%,$(CONFIG_VARIANT)).config $(PKG_BUILD_DIR)/wpa_supplicant/.config \
+		) \
 	)
 
 ifeq ($(CONFIG_USE_PRPLMESH_WHM),y)
@@ -657,6 +699,16 @@ endif
 
 ifndef CONFIG_PACKAGE_QCN_EXTN
 	-sed -i 's/^CONFIG_QCN_EXTN=y/# CONFIG_QCN_EXTN is not set/' \
+		$(PKG_BUILD_DIR)/hostapd/.config \
+		$(PKG_BUILD_DIR)/wpa_supplicant/.config
+	-sed -i 's/^CONFIG_QCA_WPA_SUPPLICANT_BUILD=y/# CONFIG_QCA_WPA_SUPPLICANT_BUILD is not set/' \
+		$(PKG_BUILD_DIR)/hostapd/.config \
+		$(PKG_BUILD_DIR)/wpa_supplicant/.config
+else ifneq ($(filter noextns,$(subst -, ,$(BUILD_VARIANT))),)
+	-sed -i 's/^CONFIG_QCN_EXTN=y/# CONFIG_QCN_EXTN is not set/' \
+		$(PKG_BUILD_DIR)/hostapd/.config \
+		$(PKG_BUILD_DIR)/wpa_supplicant/.config
+	-sed -i 's/^CONFIG_QCA_WPA_SUPPLICANT_BUILD=y/# CONFIG_QCA_WPA_SUPPLICANT_BUILD is not set/' \
 		$(PKG_BUILD_DIR)/hostapd/.config \
 		$(PKG_BUILD_DIR)/wpa_supplicant/.config
 endif
@@ -754,13 +806,13 @@ define Build/Compile/wpad
 		$(PKG_BUILD_DIR)/hostapd/hostapd_multi.a \
 		$(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant_multi.a \
 		$(TARGET_LDFLAGS)
-	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(if $(findstring macsec,$(BUILD_VARIANT)),,+$(call Build/RunMake,hostapd,mqtt_test external_hif_mqtt_test_client)))
+	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(if $(findstring macsec,$(BUILD_VARIANT)),,+$(call Build/RunMake,hostapd,mqtt_test$(if $(filter noextns,$(subst -, ,$(BUILD_VARIANT))),, external_hif_mqtt_test_client))))
 endef
 
 define Build/Compile/hostapd
 	+$(call Build/RunMake,hostapd, \
 		hostapd hostapd_cli \
-		$(if $(CONFIG_WPA_MQTT_SUPPORT),mqtt_test external_hif_mqtt_test_client) \
+		$(if $(CONFIG_WPA_MQTT_SUPPORT),mqtt_test$(if $(filter noextns,$(subst -, ,$(BUILD_VARIANT))),, external_hif_mqtt_test_client)) \
 	)
 endef
 
@@ -813,8 +865,9 @@ define Package/hostapd-full/conffiles
 /etc/radius
 endef
 
-ifeq ($(CONFIG_VARIANT),full)
+ifneq ($(filter full full-noextns,$(CONFIG_VARIANT)),)
 Package/wpad-mesh-openssl/conffiles = $(Package/hostapd-full/conffiles)
+Package/wpad-mesh-openssl-noextns/conffiles = $(Package/hostapd-full/conffiles)
 Package/wpad-mesh-wolfssl/conffiles = $(Package/hostapd-full/conffiles)
 Package/wpad-mesh-mbedtls/conffiles = $(Package/hostapd-full/conffiles)
 Package/wpad/conffiles = $(Package/hostapd-full/conffiles)
@@ -867,7 +920,7 @@ define Package/hostapd/install
 	$(call Install/hostapd,$(1))
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd $(1)/usr/sbin/
 	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/mqtt_test $(1)/usr/sbin/,)
-	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/external_hif_mqtt_test_client $(1)/usr/sbin/,)
+	$(if $(and $(CONFIG_WPA_MQTT_SUPPORT),$(if $(filter noextns,$(subst -, ,$(BUILD_VARIANT))),,x)),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/external_hif_mqtt_test_client $(1)/usr/sbin/,)
 endef
 Package/hostapd-basic/install = $(Package/hostapd/install)
 Package/hostapd-basic-openssl/install = $(Package/hostapd/install)
@@ -879,6 +932,18 @@ Package/hostapd-wolfssl/install = $(Package/hostapd/install)
 Package/hostapd-mbedtls/install = $(Package/hostapd/install)
 
 define Package/wpad-macsec/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wpad $(1)/usr/sbin/wpad-macsec
+	$(LN) wpad-macsec $(1)/usr/sbin/hostapd-macsec
+	$(LN) wpad-macsec $(1)/usr/sbin/wpa_supplicant-macsec
+	$(INSTALL_DIR) $(1)/etc/802.1x
+	$(INSTALL_BIN) ./files/8021x-client $(1)/usr/sbin/8021x-client
+	$(INSTALL_BIN) ./files/8021x_action.sh $(1)/etc/802.1x/8021x_action.sh
+	$(INSTALL_BIN) ./files/dhcp_wan_renew.sh $(1)/etc/802.1x/dhcp_wan_renew.sh
+	$(INSTALL_DATA) ./files/wpa-wired-reference.conf $(1)/etc/802.1x/wpa-wired-reference.conf
+endef
+
+define Package/wpad-macsec-noextns/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wpad $(1)/usr/sbin/wpad-macsec
 	$(LN) wpad-macsec $(1)/usr/sbin/hostapd-macsec
@@ -908,7 +973,7 @@ define Package/wpad/install
 	$(LN) wpad $(1)/usr/sbin/wpa_supplicant
 	$(INSTALL_BIN) $(EXTERNAL_DIR)/files/hostapd.sysctl $(1)/etc/sysctl.d/hostapd.conf
 	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/mqtt_test $(1)/usr/sbin/,)
-	$(if $(CONFIG_WPA_MQTT_SUPPORT),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/external_hif_mqtt_test_client $(1)/usr/sbin/,)
+	$(if $(and $(CONFIG_WPA_MQTT_SUPPORT),$(if $(filter noextns,$(subst -, ,$(BUILD_VARIANT))),,x)),$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/external_hif_mqtt_test_client $(1)/usr/sbin/,)
 endef
 Package/wpad-basic/install = $(Package/wpad/install)
 Package/wpad-basic-openssl/install = $(Package/wpad/install)
@@ -919,6 +984,7 @@ Package/wpad-openssl/install = $(Package/wpad/install)
 Package/wpad-wolfssl/install = $(Package/wpad/install)
 Package/wpad-mbedtls/install = $(Package/wpad/install)
 Package/wpad-mesh-openssl/install = $(Package/wpad/install)
+Package/wpad-mesh-openssl-noextns/install = $(Package/wpad/install)
 Package/wpad-mesh-wolfssl/install = $(Package/wpad/install)
 Package/wpad-mesh-mbedtls/install = $(Package/wpad/install)
 
@@ -988,6 +1054,7 @@ $(eval $(call BuildPackage,hostapd-mini))
 $(eval $(call BuildPackage,hostapd-mbedtls))
 $(eval $(call BuildPackage,wpad))
 $(eval $(call BuildPackage,wpad-mesh-openssl))
+$(eval $(call BuildPackage,wpad-mesh-openssl-noextns))
 #$(eval $(call BuildPackage,wpad-mesh-wolfssl))
 $(eval $(call BuildPackage,wpad-mesh-mbedtls))
 $(eval $(call BuildPackage,wpad-basic))
@@ -1015,3 +1082,4 @@ $(eval $(call BuildPackage,eapol-test-openssl))
 #$(eval $(call BuildPackage,eapol-test-wolfssl))
 $(eval $(call BuildPackage,eapol-test-mbedtls))
 $(eval $(call BuildPackage,wpad-macsec))
+$(eval $(call BuildPackage,wpad-macsec-noextns))
