@@ -697,6 +697,9 @@ TARGET_CPPFLAGS := \
 
 TARGET_LDFLAGS += -lubox -lubus -lblobmsg_json -lucode -lm -lnl-tiny -ludebug -lmnl
 TARGET_CFLAGS += -fPIC -Wall -Werror -g
+ifndef CONFIG_PACKAGE_QCN_EXTN
+TARGET_CFLAGS += -DWPA_IGNORE_CONFIG_ERRORS
+endif
 
 ifdef CONFIG_WPA_ENABLE_WEP
     DRIVER_MAKEOPTS += CONFIG_WEP=y
