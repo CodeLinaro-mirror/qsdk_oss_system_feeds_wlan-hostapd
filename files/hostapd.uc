@@ -370,7 +370,7 @@ function iface_freq_info(iface, config, params)
 			cfg_bw_mhz = 80;
 		else if (width == 2)
 			cfg_bw_mhz = 160;
-		else if (width == 3)
+		else if (width == 9)
 			cfg_bw_mhz = 320;
 
 		let center_freq = (cfg_bw_mhz > 20) ? (freq + cfg_bw_mhz / 2 - 10) : freq;
