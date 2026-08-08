@@ -43,6 +43,17 @@ else
 	QCN_APP_EXTNS_DIR:=$(TOPDIR)/qca/src/qcn-app-extns
 endif
 
+ifeq ($(CONFIG_PACKAGE_udbg-enhanced),y)
+UDBG_CLIENT_CORE_INC:=$(STAGING_DIR)/usr/include/udbg_enh/client
+UDBG_CLIENT_CORE_LIB:=-L$(STAGING_DIR)/usr/lib -ludbg_client_core
+TARGET_LDFLAGS += $(UDBG_CLIENT_CORE_LIB)
+UDBG_PACKAGE_MAKEOPTS:=CONFIG_PACKAGE_udbg-enhanced=y \
+	UDBG_CLIENT_CORE_INC="$(UDBG_CLIENT_CORE_INC)" \
+	UDBG_CLIENT_CORE_LIB="$(UDBG_CLIENT_CORE_LIB)"
+else
+UDBG_PACKAGE_MAKEOPTS:=
+endif
+
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_hostapd \
 	CONFIG_PACKAGE_hostapd-basic \
@@ -51,7 +62,8 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_DRIVER_11AC_SUPPORT \
 	CONFIG_DRIVER_11AX_SUPPORT \
 	CONFIG_WPA_ENABLE_WEP \
-	CONFIG_WPA_MQTT_SUPPORT
+	CONFIG_WPA_MQTT_SUPPORT \
+	CONFIG_PACKAGE_udbg-enhanced
 
 PKG_BUILD_FLAGS:=gc-sections lto
 
@@ -110,6 +122,10 @@ endif
 
 CORE_DEPENDS = +ucode +libubus +libucode +ucode-mod-fs +ucode-mod-nl80211 +ucode-mod-rtnl +ucode-mod-ubus +ucode-mod-uloop +libblobmsg-json +libudebug +libmnl +WPA_MQTT_SUPPORT:libmosquitto-ssl
 OPENSSL_DEPENDS = +PACKAGE_$(1):libopenssl +PACKAGE_$(1):libopenssl-legacy
+
+ifeq ($(CONFIG_PACKAGE_udbg-enhanced),y)
+  CORE_DEPENDS += +udbg-enhanced
+endif
 
 DRIVER_MAKEOPTS= \
 	CONFIG_ACS=y CONFIG_DRIVER_NL80211=y \
@@ -704,7 +720,7 @@ endif
 
 ifneq ($(findstring macsec,$(BUILD_VARIANT)),)
 	TARGET_LDFLAGS += -lcrypto -lssl -lfal -L$(STAGING_DIR)/usr/lib -lnl-3 -lnl-genl-3 -lnl-route-3 -ldl -pie
-	TARGET_LDFLAGS := $(filter-out -lnl-tiny, $(TARGET_LDFLAGS))
+	TARGET_LDFLAGS := $(filter-out -lnl-tiny $(UDBG_CLIENT_CORE_LIB), $(TARGET_LDFLAGS))
 	TARGET_CFLAGS += -Wno-implicit-function-declaration -Wno-int-conversion -Wno-error=unused-function
 	TARGET_CPPFLAGS := \
 		-I$(STAGING_DIR)/usr/include \
@@ -712,7 +728,8 @@ ifneq ($(findstring macsec,$(BUILD_VARIANT)),)
 
 	DRV_DEPENDS := +libnl +libnl-genl +libnl-route
 	DRIVER_MAKEOPTS :=
-	CORE_DEPENDS := $(filter-out +ucode-mod-nl80211,$(CORE_DEPENDS))
+	UDBG_PACKAGE_MAKEOPTS :=
+	CORE_DEPENDS := $(filter-out +ucode-mod-nl80211 +udbg-enhanced,$(CORE_DEPENDS))
 endif
 
 define Build/RunMake
@@ -720,6 +737,7 @@ define Build/RunMake
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/$(1) \
 		$(TARGET_CONFIGURE_OPTS) \
 		$(DRIVER_MAKEOPTS) \
+		$(UDBG_PACKAGE_MAKEOPTS) \
 		LIBS="$(TARGET_LDFLAGS)" \
 		LIBS_c="$(TARGET_LDFLAGS_C)" \
 		AR="$(TARGET_CROSS)gcc-ar" \
