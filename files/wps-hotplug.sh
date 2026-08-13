@@ -22,6 +22,19 @@ wps_catch_credentials() {
 				json_select $ifc
 				json_get_vars ifname
 				[ "$ifname" = "$ifcname" ] && {
+					credfile="/etc/wireless/wps_creds-${ifname}.conf"
+					if ! grep -q "ssid=\"$ssid\"" "$credfile" 2>/dev/null; then
+						mkdir -p /etc/wireless
+						cat >> "$credfile" <<EOF
+network={
+	ssid="$ssid"
+	psk="$key"
+	key_mgmt=WPA-PSK SAE SAE-EXT-KEY
+	proto=RSN
+	ieee80211w=1
+}
+EOF
+					fi
 					ubus -S call uci set "{\"config\":\"wireless\", \"type\":\"wifi-iface\",		\
 								\"match\": { \"device\": \"$radio\", \"encryption\": \"wps\" },	\
 								\"values\": { \"encryption\": \"$encryption\", 			\
