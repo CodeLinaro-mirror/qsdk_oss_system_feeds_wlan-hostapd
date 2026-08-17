@@ -1,0 +1,40 @@
+From 3192116ad5c99ccd7f6edd59ad5e13cdd17d934d Mon Sep 17 00:00:00 2001
+From: sai Maddali <saimadda@qti.qualcomm.com>
+Date: Mon, 20 Apr 2026 16:30:04 +0530
+Subject: [PATCH] QSDK:PROTOCOL:HOSTAPD: Fix use-after-free crash in scan timeout
+
+A segfault can occur in wpa_driver_nl80211_scan_timeout() when accessing
+BSS state after the BSS structure has already been freed.
+
+The timeout is registered using a BSS context, but driver context can be
+updated by first-BSS switching. A context mismatch can make the original
+eloop_cancel_timeout() miss a pending scan timeout, leaving it to fire on
+stale BSS state.
+
+Fix this by using ELOOP_ALL_CTX in wpa_driver_nl80211_deinit() to cancel
+all scan timeouts for the driver, regardless of the context used during
+registration.
+
+Backported from QSDK commit 3192116ad
+("QSDK:PROTOCOL:HOSTAPD: Fix use-after-free crash in
+wpa_driver_nl80211_scan_timeout").
+
+Patch-dependency: None
+
+Signed-off-by: sai Maddali <saimadda@qti.qualcomm.com>
+Signed-off-by: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+---
+ src/drivers/driver_nl80211.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -3428,7 +3428,7 @@ static void wpa_driver_nl80211_deinit(st
+ 	eloop_cancel_timeout(wpa_driver_nl80211_send_rfkill, drv, drv->ctx);
+ 	rfkill_deinit(drv->rfkill);
+ 
+-	eloop_cancel_timeout(wpa_driver_nl80211_scan_timeout, drv, bss->ctx);
++	eloop_cancel_timeout(wpa_driver_nl80211_scan_timeout, drv, ELOOP_ALL_CTX);
+ 
+ 	if (!drv->start_iface_up)
+ 		(void) i802_set_iface_flags(bss, 0);
