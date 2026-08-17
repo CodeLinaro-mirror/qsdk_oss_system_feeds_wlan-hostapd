@@ -1,0 +1,42 @@
+From 25a12b5d418dae4a29f986da6c83a8e3085c9c47 Mon Sep 17 00:00:00 2001
+From: Sanskriti Bauri <sbauri@qti.qualcomm.com>
+Date: Tue, 21 Apr 2026 15:17:51 +0530
+Subject: [PATCH] QSDK:CP:hostapd: Ignore ACS scan event when iface state changed
+
+ACS scan is performed during VAP bring up for channel selection. In some
+cases, this scan result can be received after the interface is disabled
+or moved to another state. Since the scan results are no longer useful in
+that state, ignore the result and avoid accessing data structures that
+may no longer be valid.
+
+This is adapted from QSDK commit 25a12b5d4
+("QSDK:CP:hostapd: Ignore ACS scan event when iface is not in ACS or
+active state"). The QSDK helper acs_scan_event_expected_extn() is not
+available in this branch, so use an equivalent generic state check.
+
+Patch-dependency: None
+
+Signed-off-by: Sanskriti Bauri <sbauri@qti.qualcomm.com>
+Signed-off-by: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+---
+ src/ap/acs.c                    |  8 ++++++++
+ 1 files changed, 8 insertions(+)
+
+--- a/src/ap/acs.c
++++ b/src/ap/acs.c
+@@ -1533,6 +1533,14 @@ static void acs_scan_complete(struct hostapd_iface *iface)
+ 	int err;
+ 
+ 	iface->scan_cb = NULL;
++	if (iface->state != HAPD_IFACE_ACS &&
++	    iface->state != HAPD_IFACE_ENABLED) {
++		wpa_printf(MSG_DEBUG,
++			   "state %s, Ignore acs scan event",
++			   hostapd_state_text(iface->state));
++		return;
++	}
++
+ 	iface->acs_num_retries = 0;
+ 
+ 	wpa_printf(MSG_DEBUG, "ACS: Using survey based algorithm (acs_num_scans=%d)",
+-- 2.34.1
