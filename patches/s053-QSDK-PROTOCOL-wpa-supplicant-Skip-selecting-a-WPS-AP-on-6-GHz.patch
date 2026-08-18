@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: sivnag <sivnag@qti.qualcomm.com>
+Date: Mon, 18 Aug 2026 00:00:00 +0530
+Subject: [PATCH] qca-hostap: Skip selecting a WPS AP on 6 GHz
+
+WPS is not supported on 6 GHz band. Skip selecting a WPS AP
+when the BSS is on a 6 GHz frequency to avoid unnecessary
+WPS processing and connection attempts on 6 GHz.
+
+CR-Fixed: 4648027
+Change-Id: I4bb540a5b8a71c62bc6c2ab37edb4ea5501517e0
+Signed-off-by: Sivanandhini Nagarathinam <sivnag@qti.qualcomm.com>
+---
+ wpa_supplicant/wps_supplicant.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/wpa_supplicant/wps_supplicant.c b/wpa_supplicant/wps_supplicant.c
+--- a/wpa_supplicant/wps_supplicant.c
++++ b/wpa_supplicant/wps_supplicant.c
+@@ -1808,6 +1808,12 @@ int wpas_wps_ssid_bss_match(struct wpa_supplicant *wpa_s,
+ 		if (!wps_ie) {
+ 			wpa_printf(MSG_DEBUG, "   skip - non-WPS AP");
+ 			return 0;
+ 		}
+
++		if (is_6ghz_freq(bss->freq)) {
++			wpa_printf(MSG_DEBUG, "   skip - WPS AP "
++				   "in 6GHz");
++			wpabuf_free(wps_ie);
++			return 0;
++		}
+ 		if (!wps_is_selected_pbc_registrar(wps_ie)) {
+ 			wpa_printf(MSG_DEBUG, "   skip - WPS AP "
+ 				   "without active PBC Registrar");
+--
+2.34.1
