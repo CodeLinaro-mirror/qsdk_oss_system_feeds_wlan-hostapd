@@ -82,6 +82,13 @@ is_mld() {
 	fi
 }
 
+is_multi_ap() {
+	local _iface=$(uci get wireless."$1".ifname)
+	if [ "$_iface" == "$ifname" ]; then
+		multi_ap=$(uci get wireless."$1".multi_ap 2>/dev/null)
+	fi
+}
+
 apply_mld_config() {
         local config=$1
         local mld=
@@ -254,6 +261,17 @@ case "$CMD" in
 	DPP-NET-ACCESS-KEY)
 		wpa_cli -i"$ifname" set dpp_netaccesskey "$CONFIG"
 		wpa_cli -i"$ifname" set_network 0 dpp_netaccesskey "$CONFIG"
+
+		# EasyMesh: tag this profile as a Multi-AP backhaul STA so
+		# wpa_supplicant includes the Multi-AP element (capability
+		# MULTI_AP_BACKHAUL_STA) in the Association Request. Without
+		# it, a backhaul-only BSS rejects the STA with
+		# WLAN_STATUS_ASSOC_DENIED_UNSPEC (status 12). Only applies
+		# when the bsta interface has multi_ap enabled in wireless config.
+		multi_ap=
+		config_load wireless
+		config_foreach is_multi_ap wifi-iface
+		[ "$multi_ap" = "1" ] && wpa_cli -i"$ifname" set_network 0 multi_ap_backhaul_sta 1
 
 		wpa_cli -i"$ifname" enable_network 0
 		wpa_cli -i"$ifname" save_config
