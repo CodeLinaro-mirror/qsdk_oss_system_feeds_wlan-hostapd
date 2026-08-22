@@ -670,12 +670,6 @@ let main_obj = {
 				let iface = wpas.interfaces[ifname];
 				if (!iface)
 					continue;
-				let status = iface.status(req.args.radio);
-				if (!status)
-					continue;
-				wpas.printf(`uplink_csa_notify: state is ${status.state} ${req.args.csa}`);
-				if (status.state == "INTERFACE_DISABLED")
-					continue;
 				let freq_info = {};
 				freq_info.frequency = req.args.frequency;
 				freq_info.csa_count = req.args.csa_count ?? 10;
@@ -692,8 +686,8 @@ let main_obj = {
 					/* Backward compatibility */
 					freq_info.nol_channel = req.args.nol_channels[0];
 				}
-				wpas.printf(`notify: freq_info ${freq_info}`);
-				ret = iface.notify_uplink_csa(freq_info);
+				wpas.printf(`uplink_csa_notify: freq_info ${freq_info}`);
+				ret = iface.notify_uplink_csa(freq_info) || ret;
 			}
 			if (!ret)
 				return libubus.STATUS_UNKNOWN_ERROR;
