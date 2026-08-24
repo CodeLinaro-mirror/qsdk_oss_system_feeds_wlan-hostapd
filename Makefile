@@ -612,12 +612,30 @@ define Package/hostapd-utils
   TITLE:=IEEE 802.1x Authenticator (utils)
   URL:=http://hostap.epitest.fi/
   DEPENDS:=@$(subst $(space),||,$(foreach pkg,$(HOSTAPD_PROVIDERS),PACKAGE_$(pkg)))
-  VARIANT:=*
+  VARIANT:=wpad-mesh-openssl
+  CONFLICTS:=hostapd-utils-noextns
 endef
 
 define Package/hostapd-utils/description
  This package contains a command line utility to control the
- IEEE 802.1x/WPA/EAP/RADIUS Authenticator.
+ IEEE 802.1x/WPA/EAP/RADIUS Authenticator (with QCN extensions).
+endef
+
+define Package/hostapd-utils-noextns
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WirelessAPD
+  TITLE:=IEEE 802.1x Authenticator (utils, no QCN extn)
+  URL:=http://hostap.epitest.fi/
+  DEPENDS:=+PACKAGE_wpad-mesh-openssl-noextns:wpad-mesh-openssl-noextns
+  VARIANT:=wpad-mesh-openssl-noextns
+  DEFAULT:=m
+  CONFLICTS:=hostapd-utils
+endef
+
+define Package/hostapd-utils-noextns/description
+ This package contains a command line utility to control the
+ IEEE 802.1x/WPA/EAP/RADIUS Authenticator (without QCN extensions).
 endef
 
 define Package/wpa-cli
@@ -979,6 +997,11 @@ ifneq ($(LOCAL_VARIANT),macsec)
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd_cli $(1)/usr/sbin/
   endef
+
+  define Package/hostapd-utils-noextns/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd_cli $(1)/usr/sbin/
+  endef
 endif
 endif
 
@@ -1095,6 +1118,7 @@ $(eval $(call BuildPackage,wpa-supplicant-p2p))
 $(eval $(call BuildPackage,wpa-supplicant-mbedtls))
 $(eval $(call BuildPackage,wpa-cli))
 $(eval $(call BuildPackage,hostapd-utils))
+$(eval $(call BuildPackage,hostapd-utils-noextns))
 $(eval $(call BuildPackage,eapol-test))
 $(eval $(call BuildPackage,eapol-test-openssl))
 #$(eval $(call BuildPackage,eapol-test-wolfssl))
