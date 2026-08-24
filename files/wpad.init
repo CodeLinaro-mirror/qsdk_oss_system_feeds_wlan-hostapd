@@ -7,6 +7,11 @@ USE_PROCD=1
 NAME=wpad
 
 start_service() {
+	grep -qF 'skip_wifi' /proc/cmdline && {
+		echo "skip_wifi enabled" > /dev/console
+		return
+	}
+
 	if [ -x "/usr/sbin/hostapd" ]; then
 		mkdir -p /var/run/hostapd
 		chown network:network /var/run/hostapd

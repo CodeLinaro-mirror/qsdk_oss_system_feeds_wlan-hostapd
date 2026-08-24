@@ -161,12 +161,14 @@ case "$CMD" in
 				dpp_akm=1
 				ieee80211w=1
 				sae_require_mfp=1
+				sae_pwe=2
 				;;
 			dpp+sae|dpp-sae)
 				key_mgmt="DPP SAE"
 				encryption="sae"
 				ieee80211w=2
 				dpp_akm=1
+				sae_pwe=2
 				;;
 			dpp)
 				key_mgmt="DPP"
@@ -203,7 +205,7 @@ case "$CMD" in
 		esac
 		wpa_cli -i"$ifname"  set_network 0 ieee80211w "$ieee80211w"
 		wpa_cli -i"$ifname"  set_network 0 key_mgmt "$key_mgmt"
-		wpa_cli -i"$ifname"  set_network 0 sae_require_mfp "$key_mgmt"
+		wpa_cli -i"$ifname"  set_network 0 sae_require_mfp "$sae_require_mfp"
 		wpa_cli -i"$ifname"  set sae_pwe "$sae_pwe"
 
 		. /sbin/wifi config
@@ -244,10 +246,6 @@ case "$CMD" in
         DPP-CONNECTOR-C-SIGN-KEY)
                 wpa_cli -i"$ifname" set dpp_connector_csign "$CONFIG"
 		wpa_cli -i"$ifname" set_network 0 dpp_connector_csign "$CONFIG"
-                ;;
-        DPP-PP-KEY)
-                wpa_cli -i"$ifname" set dpp_pp_key "$CONFIG"
-		wpa_cli -i"$ifname" set_network 0 dpp_pp_key "$CONFIG"
                 ;;
 	DPP-PP-KEY)
 		wpa_cli -i"$ifname" set dpp_pp_key "$CONFIG"

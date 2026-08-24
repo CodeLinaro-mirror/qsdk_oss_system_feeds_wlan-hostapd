@@ -54,8 +54,38 @@ function bss_is_mlo(bss)
 	return bss.mld_ap != null && bss.mld_ap != "0" && bss.mld_ap != "false";
 }
 
+function bss_config_present(ifname)
+{
+	if (!ifname)
+		return false;
+
+	for (let phy, config in hostapd.data.config) {
+		if (!config || !config.bss)
+			continue;
+
+		for (let bss in config.bss)
+			if (bss.ifname == ifname)
+				return true;
+	}
+
+	for (let phy, pending in hostapd.data.pending_config) {
+		let config = pending && pending.config;
+		if (!config || !config.bss)
+			continue;
+
+		for (let bss in config.bss)
+			if (bss.ifname == ifname)
+				return true;
+	}
+
+	return false;
+}
+
 function is_mlo_bss(ifname)
 {
+	if (!ifname)
+		return false;
+
 	for (let phy, config in hostapd.data.config) {
 		if (!config || !config.bss)
 			continue;
@@ -65,7 +95,71 @@ function is_mlo_bss(ifname)
 				return true;
 	}
 
+	for (let phy, pending in hostapd.data.pending_config) {
+		let config = pending && pending.config;
+		if (!config || !config.bss)
+			continue;
+
+		for (let bss in config.bss)
+			if (bss.ifname == ifname && bss_is_mlo(bss))
+				return true;
+	}
+
 	return false;
+}
+
+function has_mlo_bss_on_radio(hw_idx)
+{
+	for (let phy, config in hostapd.data.config) {
+		if (!config || !config.bss)
+			continue;
+
+		if (hw_idx != null && hw_idx >= 0 &&
+		    (config.radio_idx == null || config.radio_idx != hw_idx))
+			continue;
+
+		for (let bss in config.bss)
+			if (bss_is_mlo(bss))
+				return true;
+	}
+
+	for (let phy, pending in hostapd.data.pending_config) {
+		let config = pending && pending.config;
+		if (!config || !config.bss)
+			continue;
+
+		if (hw_idx != null && hw_idx >= 0 &&
+		    (config.radio_idx == null || config.radio_idx != hw_idx))
+			continue;
+
+		for (let bss in config.bss)
+			if (bss_is_mlo(bss))
+				return true;
+	}
+
+	return false;
+}
+
+function infer_mlo_bss(ifname, hw_idx, old_mask)
+{
+	if (is_mlo_bss(ifname))
+		return { mlo: true, source: "ifname" };
+
+	/*
+	 * During early create/update windows, runtime BSS ifname can differ from
+	 * config ifname and temporarily fail exact-name lookup.
+	 */
+	if (has_mlo_bss_on_radio(hw_idx))
+		return { mlo: true, source: "radio_cfg" };
+
+	let bss_known = bss_config_present(ifname);
+
+	/* Fallback for early windows where only runtime mask carries MLO shape. */
+	if (!bss_known &&
+	    old_mask != null && (old_mask & (old_mask - 1)))
+		return { mlo: true, source: "old_mask" };
+
+	return { mlo: false, source: "none" };
 }
 
 function bss_radio_mask(ifname, hw_idx)
@@ -276,7 +370,7 @@ function iface_freq_info(iface, config, params)
 			cfg_bw_mhz = 80;
 		else if (width == 2)
 			cfg_bw_mhz = 160;
-		else if (width == 3)
+		else if (width == 9)
 			cfg_bw_mhz = 320;
 
 		let center_freq = (cfg_bw_mhz > 20) ? (freq + cfg_bw_mhz / 2 - 10) : freq;
@@ -444,6 +538,9 @@ function __iface_pending_next(pending, state, ret, data)
 				hostapd.printf(`[error] Failed to get radio mask for ${bss.ifname}`);
 				return null;
 			}
+
+			if (bss_is_mlo(bss))
+				radio_mask |= old_radio_mask;
 
 			if (old_radio_mask != radio_mask)
 				wdev_set_radio_mask(bss.ifname, radio_mask);
@@ -1350,6 +1447,10 @@ let main_obj = {
 
 			hostapd.printf(`set_rpt_max_phy: re-applying freq_info for ${phy}`);
 
+			freq_info.rpt_max_phy_override = 1;
+			iface.stop({ wpa_state: phy_status.state,
+				     vap_type: 0,
+				     rpt_max_phy_override: 1 });
 			iface.start(freq_info);
 
 			return 0;
@@ -1436,18 +1537,23 @@ let main_obj = {
 			}
 
 			let ret;
+
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
 				hostapd.data.bh_sta_phys[phy] = true;
 				iface.stop({ wpa_state: req.args.wpa_state,
-					     vap_type: req.args.vap_type });
-				for (let mon in mon_if_names) {
-					if (mon == null)
-						continue;
+					     vap_type: req.args.vap_type,
+					     rpt_max_phy_override: 0 });
+				//Independent repeater: mon ifaces need not go down
+				if (!config.athnewind) {
+					for (let mon in mon_if_names) {
+						if (mon == null)
+							continue;
 
-					ret = system(`ifconfig ${mon} down`);
-					if (ret) {
-						hostapd.printf(`Failed to bring down monitor interface ${mon}: ${ret}`);
+						ret = system(`ifconfig ${mon} down`);
+						if (ret) {
+							hostapd.printf(`Failed to bring down monitor interface ${mon}: ${ret}`);
+						}
 					}
 				}
 				return 0;
@@ -1457,7 +1563,8 @@ let main_obj = {
 			hostapd.data.bh_sta_phys[phy] = true;
 			let freq_info = iface_freq_info(iface, config, req.args);
 			if (!freq_info) {
-				ret = iface.start(freq_info);
+				ret = iface.start({ wpa_state: req.args.wpa_state,
+						    vap_type: req.args.vap_type });
 				if (!ret)
 					return libubus.STATUS_UNKNOWN_ERROR;
 
@@ -1469,6 +1576,7 @@ let main_obj = {
 					freq_info.wpa_state = req.args.wpa_state;
 				}
 				freq_info.vap_type = req.args.vap_type;
+				freq_info.rpt_max_phy_override = 0;
 				freq_info.mesh_origin = req.args.vap_type == 1;
 				if (req.args.csa) {
 					freq_info.csa_count = req.args.csa_count ?? 10;
@@ -1482,22 +1590,25 @@ let main_obj = {
 
 			let bw = get_bw(req.args.chan_width);
 
-                        for (let mon in mon_if_names) {
-                                ret = system(`ifconfig ${mon} up`);
+			//Independent repeater: mon ifaces need not start
+			if (!config.athnewind) {
+				for (let mon in mon_if_names) {
+					ret = system(`ifconfig ${mon} up`);
 
-				if (ret) {
-					hostapd.printf(`Failed to bring up monitor interface ${mon}: ${ret}`);
-					continue;
-				}
-				if (freq_info.frequency == freq_info.center_freq1)
-					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw}`);
-				else
-					ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1} punct ${freq_info.punct_bitmap}`);
+					if (ret) {
+						hostapd.printf(`Failed to bring up monitor interface ${mon}: ${ret}`);
+						continue;
+					}
+					if (freq_info.frequency == freq_info.center_freq1)
+						ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw}`);
+					else
+						ret = system(`iw ${mon} set freq ${freq_info.frequency} ${bw} ${freq_info.center_freq1} punct ${freq_info.punct_bitmap}`);
 
-				if (ret) {
-					hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
+					if (ret) {
+						hostapd.printf(`Failed to set frequency for monitor interface ${mon}: ${ret}`);
+					}
 				}
-                        }
+			}
 
 			// BH STA connected — start any dependent-repeater AP phy that has
 			// no BH STA of its own (e.g. unmapped 2G fixed-channel link).
@@ -1517,7 +1628,8 @@ let main_obj = {
 						continue;
 					hostapd.printf(`apsta_state: BH up on ${phy}, starting unmapped AP on ${tmp_phy}`);
 					hostapd.data.bh_sta_phys[tmp_phy] = true;
-					unmapped_bh_iface.start(null);
+					unmapped_bh_iface.start({ wpa_state: req.args.wpa_state,
+								  vap_type: req.args.vap_type });
 				}
 			}
 
@@ -1722,7 +1834,14 @@ return {
 
 		if (phy.radio_idx != null && phy.radio_idx >= 0) {
 			let radio_mask = bss_radio_mask(name, phy.radio_idx);
-			hostapd.printf(`[debug] bss_create set mask ${radio_mask} for ${name} radio_idx ${phy.radio_idx}`);
+			let old_mask = wdev_get_radio_mask(name);
+			let mlo_info = infer_mlo_bss(name, phy.radio_idx, old_mask);
+			let mlo = mlo_info.mlo;
+
+			if (mlo && old_mask != null)
+				radio_mask |= old_mask;
+
+			hostapd.printf(`[debug] bss_create set mask ${radio_mask} for ${name} radio_idx ${phy.radio_idx} old_mask ${old_mask} mlo ${mlo} mlo_src ${mlo_info.source}`);
 			if (radio_mask)
 				wdev_set_radio_mask(name, radio_mask);
 		}
@@ -1881,15 +2000,21 @@ return {
 	update_radio_mask: function(ifname, hw_idx) {
 		let old_mask = wdev_get_radio_mask(ifname);
 		let radio_mask = bss_radio_mask(ifname, hw_idx);
+		let mlo_info = infer_mlo_bss(ifname, hw_idx, old_mask);
+		let mlo = mlo_info.mlo;
 
 		if (old_mask == null || !radio_mask) {
 			hostapd.printf(`[error] Failed to get radio mask for ${ifname}`);
 			return false;
 		}
 
+		/* For MLO, avoid collapsing existing vif mask bits. */
+		if (mlo)
+			radio_mask |= old_mask;
+
 		if (old_mask != radio_mask)
 			wdev_set_radio_mask(ifname, radio_mask);
-		hostapd.printf(`[debug] radio mask ${radio_mask} set for BSS ${ifname} hw index ${hw_idx}, old mask ${old_mask}, mlo ${is_mlo_bss(ifname)}`);
+		hostapd.printf(`[debug] radio mask ${radio_mask} set for BSS ${ifname} hw index ${hw_idx}, old mask ${old_mask}, mlo ${mlo}, mlo_src ${mlo_info.source}`);
 
 		return true;
 	},
