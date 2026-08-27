@@ -89,6 +89,12 @@ hostapd_append_wpa_key_mgmt() {
 		ft-sae-ext-key)
 			append wpa_key_mgmt "FT-SAE-EXT-KEY"
 		;;
+		sae-eppke)
+			append wpa_key_mgmt "SAE SAE-EXT-KEY EPPKE"
+		;;
+		psk-sae-eppke)
+			append wpa_key_mgmt "WPA-PSK SAE SAE-EXT-KEY EPPKE"
+		;;
 		dpp)
 			append wpa_key_mgmt "DPP"
 		;;
@@ -1436,7 +1442,8 @@ wpa_supplicant_add_network() {
 		multi_ap \
 		default_disabled dpp \
 		ppe_vp \
-		ssid_protection
+		ssid_protection \
+		pmksa_caching_privacy
 
 	case "$auth_type" in
 		sae*|ft-sae*|owe|eap2|eap192|eap-eap192)
@@ -1752,6 +1759,7 @@ wpa_supplicant_add_network() {
 
 	fi
 	[ -n "$ssid_protection" ] && append network_data "ssid_protection=$ssid_protection" "$N$T"
+	[ -n "$pmksa_caching_privacy" ] && append network_data "pmksa_privacy=$pmksa_caching_privacy" "$N$T"
 
 	local ppe_vp_type=
 	case "$ppe_vp" in
