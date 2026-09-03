@@ -19,6 +19,7 @@ PKG_SOURCE_SUBMODULES:=skip
 
 PKG_BUILD_PARALLEL:=1
 PKG_ASLR_PIE_REGULAR:=1
+PKG_BUILD_DEPENDS += PACKAGE_udbg-enhanced:udbg_enhanced
 
 ifeq ($(CONFIG_USE_PRPLMESH_WHM),y)
 	HOSTAPD_PATCH_DIR:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/openwrt_patches
@@ -46,12 +47,27 @@ endif
 ifeq ($(CONFIG_PACKAGE_udbg-enhanced),y)
 UDBG_CLIENT_CORE_INC:=$(STAGING_DIR)/usr/include/udbg_enh/client
 UDBG_CLIENT_CORE_LIB:=-L$(STAGING_DIR)/usr/lib -ludbg_client_core
+UDBG_CLIENT_CORE_HEADER:=$(UDBG_CLIENT_CORE_INC)/core.h
+UDBG_CLIENT_CORE_LIBRARY:=$(STAGING_DIR)/usr/lib/libudbg_client_core.so
+UDBG_CLIENT_CORE_STAGED:=$(and $(wildcard $(UDBG_CLIENT_CORE_HEADER)),$(wildcard $(UDBG_CLIENT_CORE_LIBRARY)))
 TARGET_LDFLAGS += $(UDBG_CLIENT_CORE_LIB)
 UDBG_PACKAGE_MAKEOPTS:=CONFIG_PACKAGE_udbg-enhanced=y \
 	UDBG_CLIENT_CORE_INC="$(UDBG_CLIENT_CORE_INC)" \
 	UDBG_CLIENT_CORE_LIB="$(UDBG_CLIENT_CORE_LIB)"
+ifeq ($(UDBG_CLIENT_CORE_STAGED),)
+define Build/EnsureUdbgEnhanced
+	@echo "Missing udbg-enhanced staging files; rebuilding udbg-enhanced before hostapd"
+	rm -f "$(STAGING_DIR)/stamp/.udbg_enhanced_installed"
+	+$(MAKE) -C "$(TOPDIR)" BUILD_VARIANT= ALL_VARIANTS= package/feeds/qca_wifi_apps/udbg_enhanced/compile V=s
+endef
+else
+define Build/EnsureUdbgEnhanced
+endef
+endif
 else
 UDBG_PACKAGE_MAKEOPTS:=
+define Build/EnsureUdbgEnhanced
+endef
 endif
 
 PKG_CONFIG_DEPENDS:= \
@@ -883,6 +899,7 @@ define Build/Compile/supplicant-full-mbedtls
 endef
 
 define Build/Compile
+	$(call Build/EnsureUdbgEnhanced)
 	$(Build/Compile/$(LOCAL_TYPE))
 	$(Build/Compile/$(BUILD_VARIANT))
 endef
