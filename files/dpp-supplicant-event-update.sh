@@ -69,6 +69,9 @@ get_config_val() {
 	if [ "$key" == 'sae_pwe' ]; then
 		config_val=$(wpa_cli -i"$ifname" get "$1")
 	fi
+	if [ "$key" == 'dpp_1905_connector' ]; then
+		config_val=$(wpa_cli -i"$ifname" get "$1")
+	fi
 	if [ "$config_val" == "FAIL" ]; then
 		config_val=''
 	fi
@@ -125,6 +128,9 @@ update_wireless() {
 	get_config_val 'sae_pwe'
 	sae_pwe=${config_val}
 
+	get_config_val 'dpp_1905_connector'
+	dpp_1905_connector=${config_val}
+
 	. /sbin/wifi config
 
 	uci set wireless.${sect}.ssid=$ssid
@@ -137,6 +143,7 @@ update_wireless() {
 	uci set wireless.${sect}.dpp_csign=$dpp_csign
 	uci set wireless.${sect}.dpp_pp_key=$dpp_pp_key
 	uci set wireless.${sect}.dpp_netaccesskey=$dpp_netaccesskey
+	[ -n "$dpp_1905_connector" ] && uci set wireless.${sect}.dpp_1905_connector="$dpp_1905_connector"
 	[ -n "$encryption" ] && uci set wireless.${sect}.encryption=$encryption
 	[ -n "$mld_group" ] && uci set wireless.$mld_group.encryption=$encryption
 	[ -n "$sae_require_mfp" ] && uci set wireless.${sect}.sae_require_mfp=$sae_require_mfp
@@ -257,6 +264,22 @@ case "$CMD" in
 	DPP-PP-KEY)
 		wpa_cli -i"$ifname" set dpp_pp_key "$CONFIG"
 		wpa_cli -i"$ifname" set_network 0 dpp_pp_key "$CONFIG"
+		;;
+	DPP-1905-CONNECTOR)
+		# EasyMesh: dpp_1905_connector is a global wpa_supplicant
+		# config field (no per-network equivalent), so only "set"
+		# it, then persist to UCI directly since this event can
+		# arrive on its own, outside the DPP-NET-ACCESS-KEY chain
+		# that normally triggers update_wireless.
+		wpa_cli -i"$ifname" set dpp_1905_connector "$CONFIG"
+
+		config_load wireless
+		sect=
+		config_foreach get_section wifi-iface "$ifname" sect
+		if [ -n "$sect" ]; then
+			uci set wireless.${sect}.dpp_1905_connector="$CONFIG"
+			uci commit wireless
+		fi
 		;;
 	DPP-NET-ACCESS-KEY)
 		wpa_cli -i"$ifname" set dpp_netaccesskey "$CONFIG"
