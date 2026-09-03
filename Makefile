@@ -20,27 +20,27 @@ PKG_SOURCE_SUBMODULES:=skip
 PKG_BUILD_PARALLEL:=1
 PKG_ASLR_PIE_REGULAR:=1
 
-ifeq ($(CONFIG_USE_PRPLMESH_WHM),y)
-	HOSTAPD_PATCH_DIR:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/openwrt_patches
-	FILE_DIR_HOSTAPD:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/
-	EXTERNAL_DIR:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/
-	HOSTAPD_SRC_DIR:=$(TOPDIR)/qca/src/network/services/hostapd/
-	EXTENSIONS_DIR:=$(TOPDIR)/qca/src/wlan-app-extns/hostapd
-	QCN_APP_EXTNS_DIR:=$(TOPDIR)/qca/src/qcn-app-extns
-else ifeq ($(CONFIG_TARGET_echo),y)
-	HOSTAPD_PATCH_DIR:=$(TOPDIR)/owrt-qti-ipq-open/feeds/wlan-hostapd/hostapd/patches
-	FILE_DIR_HOSTAPD:=$(TOPDIR)/owrt-qti-ipq-open/feeds/wlan-hostapd/hostapd/
-	EXTERNAL_DIR:=$(TOPDIR)/owrt-qti-ipq-open/feeds/wlan-hostapd/hostapd/
-	HOSTAPD_SRC_DIR:=$(TOPDIR)/src/network/services/hostapd/
-	EXTENSIONS_DIR:=$(TOPDIR)/src/wlan-app-extns/hostapd
-	QCN_APP_EXTNS_DIR:=$(TOPDIR)/src/qcn-app-extns
+ifeq ($(CONFIG_TARGET_echo),y)
+        HOSTAPD_PATCH_DIR:=$(TOPDIR)/owrt-qti-ipq-open/feeds/wlan-hostapd/hostapd/patches
+        FILE_DIR_HOSTAPD:=$(TOPDIR)/owrt-qti-ipq-open/feeds/wlan-hostapd/hostapd/
+        EXTERNAL_DIR:=$(TOPDIR)/owrt-qti-ipq-open/feeds/wlan-hostapd/hostapd/
+        HOSTAPD_SRC_DIR:=$(TOPDIR)/src/network/services/hostapd/
+        EXTENSIONS_DIR:=$(TOPDIR)/src/wlan-app-extns/hostapd
+        QCN_APP_EXTNS_DIR:=$(TOPDIR)/src/qcn-app-extns
+else ifeq ($(CONFIG_USE_PRPLMESH_WHM),y)
+        HOSTAPD_PATCH_DIR:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/openwrt_patches
+        FILE_DIR_HOSTAPD:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/
+        EXTERNAL_DIR:=$(TOPDIR)/feed-qca/qca/feeds/wlan-hostapd/hostapd/
+        HOSTAPD_SRC_DIR:=$(TOPDIR)/qca/src/network/services/hostapd/
+        EXTENSIONS_DIR:=$(TOPDIR)/qca/src/wlan-app-extns/hostapd
+        QCN_APP_EXTNS_DIR:=$(TOPDIR)/qca/src/qcn-app-extns
 else
-	HOSTAPD_PATCH_DIR:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/openwrt_patches
-	FILE_DIR_HOSTAPD:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/
-	EXTERNAL_DIR:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/
-	HOSTAPD_SRC_DIR:=$(TOPDIR)/qca/src/network/services/hostapd/
-	EXTENSIONS_DIR:=$(TOPDIR)/qca/src/wlan-app-extns/hostapd
-	QCN_APP_EXTNS_DIR:=$(TOPDIR)/qca/src/qcn-app-extns
+        HOSTAPD_PATCH_DIR:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/openwrt_patches
+        FILE_DIR_HOSTAPD:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/
+        EXTERNAL_DIR:=$(TOPDIR)/qca/feeds/wlan-hostapd/hostapd/
+        HOSTAPD_SRC_DIR:=$(TOPDIR)/qca/src/network/services/hostapd/
+        EXTENSIONS_DIR:=$(TOPDIR)/qca/src/wlan-app-extns/hostapd
+        QCN_APP_EXTNS_DIR:=$(TOPDIR)/qca/src/qcn-app-extns
 endif
 
 ifeq ($(CONFIG_PACKAGE_udbg-enhanced),y)
@@ -1072,7 +1072,7 @@ $(eval $(call BuildPackage,hostapd-mini))
 $(eval $(call BuildPackage,hostapd-mbedtls))
 $(eval $(call BuildPackage,wpad))
 $(eval $(call BuildPackage,wpad-mesh-openssl))
-$(eval $(call BuildPackage,wpad-mesh-openssl-noextns))
+#$(eval $(call BuildPackage,wpad-mesh-openssl-noextns))
 #$(eval $(call BuildPackage,wpad-mesh-wolfssl))
 $(eval $(call BuildPackage,wpad-mesh-mbedtls))
 $(eval $(call BuildPackage,wpad-basic))
