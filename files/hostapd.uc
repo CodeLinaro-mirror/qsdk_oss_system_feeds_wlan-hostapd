@@ -1540,6 +1540,7 @@ let main_obj = {
 
 			if (!req.args.up) {
 				hostapd.printf(`apsta_state: Stopping interfaces for radio ${req.args.radio}`);
+				hostapd.data.bh_sta_phys[phy] = true;
 				iface.stop({ wpa_state: req.args.wpa_state,
 					     vap_type: req.args.vap_type,
 					     rpt_max_phy_override: 0 });
