@@ -1042,7 +1042,6 @@ Package/wpad-openssl/install = $(Package/wpad/install)
 Package/wpad-wolfssl/install = $(Package/wpad/install)
 Package/wpad-mbedtls/install = $(Package/wpad/install)
 Package/wpad-mesh-openssl/install = $(Package/wpad/install)
-Package/wpad-mesh-openssl-noextns/install = $(Package/wpad/install)
 Package/wpad-mesh-wolfssl/install = $(Package/wpad/install)
 Package/wpad-mesh-mbedtls/install = $(Package/wpad/install)
 
