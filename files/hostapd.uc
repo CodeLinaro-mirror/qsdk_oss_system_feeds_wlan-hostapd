@@ -343,6 +343,7 @@ function iface_freq_info(iface, config, params)
 		sec_offset = 0;
 
 	let width = 0;
+	let eht_seg0 = 0;
 	for (let line in config.radio.data) {
 		if (!sec_offset && match(line, /^ht_capab=.*HT40/)) {
 			sec_offset = null; // auto-detect
@@ -350,12 +351,16 @@ function iface_freq_info(iface, config, params)
 		}
 
 		let val = match(line, /^(vht_oper_chwidth|he_oper_chwidth|eht_oper_chwidth)=(\d+)/);
-		if (!val)
+		if (val) {
+			val = int(val[2]);
+			if (val > width)
+				width = val;
 			continue;
+		}
 
-		val = int(val[2]);
-		if (val > width)
-			width = val;
+		val = match(line, /^eht_oper_centr_freq_seg0_idx=(\d+)/);
+		if (val)
+			eht_seg0 = int(val[1]);
 	}
 
 	if (freq < 4000)
@@ -377,8 +382,11 @@ function iface_freq_info(iface, config, params)
 
 		let is_dfs = is_dfs_channel(center_freq, cfg_bw_mhz);
 
+		let cf1 = (width == 9 && freq > 5950 && eht_seg0 > 0) ?
+		          (5950 + eht_seg0 * 5) : 0;
+
 		let info = hostapd.freq_info(freq, sec_offset, width, null,
-					     0, 0, params.punct_bitmap,
+					     cf1, 0, params.punct_bitmap,
 					     is_dfs);
 		return info;
 	}
