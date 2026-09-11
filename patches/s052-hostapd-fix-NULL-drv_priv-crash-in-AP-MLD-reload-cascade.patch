@@ -1,0 +1,107 @@
+From: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+Date: Thu, 10 Sep 2026 16:30:04
+Subject: [PATCH] QSDK:PROTOCOL:HOSTAPD: AP MLD: prevent NULL drv_priv dereference during interface reconfiguration
+
+AP MLD radio reconfiguration can trigger a reload cascade across
+partner interfaces within the same MLD group. During this sequence,
+a partner interface teardown may clear drv_priv for AP MLD member
+BSSes through hostapd_cleanup_driver(), even when other links in the
+MLD group remain active.
+
+Subsequent interface reinitialization may reuse the shared AP MLD
+context and inherit a NULL drv_priv from the group's reference BSS.
+The NULL pointer is later passed to driver callbacks during
+hostapd_driver_init(), resulting in a crash when
+wpa_driver_nl80211_get_capa() dereferences the driver private context.
+
+The failure is observed during AP MLD radio disable/enable sequences,
+where cross-interface reload processing can temporarily leave AP MLD
+link state inconsistent while interfaces are being rebuilt.
+
+Fix this by:
+
+  * Validating the shared AP MLD driver's drv_priv before propagating
+    it to a non-primary AP MLD link during setup. If drv_priv is not
+    available, abort link initialization and report a setup failure
+    instead of invoking driver callbacks with a NULL context.
+
+  * Avoiding premature drv_priv invalidation for active AP MLD member
+    BSSes during interface cleanup when the MLD group still contains
+    remaining references. This prevents transient teardown operations
+    from removing driver context that may still be required by sibling
+    links during reconfiguration.
+
+With these changes, AP MLD reconfiguration failures are handled
+gracefully and no longer result in a NULL pointer dereference in the
+nl80211 driver capability path.
+
+Patch-dependency: None
+
+Signed-off-by: Sidharth Renukadevi <srenukad@qti.qualcomm.com>
+---
+--- a/hostapd/main.c
++++ b/hostapd/main.c
+@@ -179,6 +179,16 @@
+ 		h_hapd = hostapd_mld_get_first_bss(hapd);
+ 	}
+ 
++	if (h_hapd && !h_hapd->drv_priv) {
++		wpa_printf(MSG_ERROR,
++			   "MLD: first-link BSS %s of AP MLD has no driver "
++			   "context (drv_priv is NULL); aborting driver "
++			   "init of link %d (%s)",
++			   h_hapd->conf->iface, hapd->mld_link_id,
++			   hapd->conf->iface);
++		return -1;
++	}
++
+ 	if (h_hapd) {
+ 		hapd->drv_priv = h_hapd->drv_priv;
+ 		hapd->interface_added = h_hapd->interface_added;
+
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -1957,6 +1957,16 @@
+ 			struct hostapd_data *h_hapd;
+ 
+ 			h_hapd = hostapd_mld_get_first_bss(hapd);
++			if (h_hapd && !h_hapd->drv_priv) {
++				wpa_printf(MSG_ERROR,
++					   "MLD: first-link BSS %s of AP MLD "
++					   "has no driver context (drv_priv "
++					   "is NULL); aborting setup of link "
++					   "%d (%s)",
++					   h_hapd->conf->iface,
++					   hapd->mld_link_id, hapd->conf->iface);
++				return -1;
++			}
+ 			if (h_hapd) {
+ 				hapd->drv_priv = h_hapd->drv_priv;
+ 				hapd->interface_added = h_hapd->interface_added;
+@@ -4538,12 +4548,20 @@
+ 		return;
+ 
+ #ifdef CONFIG_IEEE80211BE
+-	if (!driver->is_drv_shared ||
+-	    !driver->is_drv_shared(drv_priv, iface->bss[0]->mld_link_id)) {
+-		driver->hapd_deinit(drv_priv);
+-		hostapd_mld_interface_freed(iface->bss[0]);
+-		iface->bss[0]->drv_priv = NULL;
+-		return;
++	{
++		struct hostapd_data *bss0 = iface->bss[0];
++		bool mld_has_other_members = bss0->conf->mld_ap && bss0->mld &&
++			bss0->mld->refcount > 1;
++
++		/* Keep the shared driver context while other MLD members exist. */
++		if ((!driver->is_drv_shared ||
++		     !driver->is_drv_shared(drv_priv, bss0->mld_link_id)) &&
++		    !mld_has_other_members) {
++			driver->hapd_deinit(drv_priv);
++			hostapd_mld_interface_freed(bss0);
++			bss0->drv_priv = NULL;
++			return;
++		}
+ 	}
+ 
+ 	if (iface->bss[0]->conf->mld_ap) {
