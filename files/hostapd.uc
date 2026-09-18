@@ -880,7 +880,7 @@ function iface_reload_config(name, phydev, config, old_config)
 
 		// For fullmac devices, the first interface needs to be preserved,
 		// since it's treated as the master
-		if (!i && phy_is_fullmac(phy)) {
+		if (!i && phy_is_fullmac(phydev.phy)) {
 			prev = 0;
 			prev_bss_hash[0] = null;
 		} else {
