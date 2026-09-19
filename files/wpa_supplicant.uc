@@ -738,13 +738,6 @@ let main_obj = {
 				if (iface == null)
 					continue;
 
-				let status = iface.status(req.args.radio);
-				if (status == null)
-					continue;
-
-				if (status.state == "INTERFACE_DISABLED")
-					continue;
-
 				let rcsa_info = {};
 				rcsa_info.frequency = req.args.frequency;
 				rcsa_info.channel = req.args.channel;
@@ -753,7 +746,7 @@ let main_obj = {
 				rcsa_info.optional_ie_hex = req.args.optional_ie_hex ?? "";
 
 				wpas.printf(`notify_rcsa: rcsa_info ${rcsa_info}`);
-				ret = iface.notify_rcsa(rcsa_info);
+				ret = iface.notify_rcsa(rcsa_info) || ret;
 			}
 			if (!ret)
 				return libubus.STATUS_UNKNOWN_ERROR;
