@@ -68,12 +68,24 @@ if [ "$ACTION" = "released" ] && [ "$BUTTON" = "wps" ]; then
 	wps_done=0
 	ubusobjs="$( ubus -S list wpa_supplicant.* )"
 	for ubusobj in $ubusobjs; do
-		ifname="$(echo $ubusobj | cut -d'.' -f2 )"
-		multi_ap=""
+		ifname="$(echo "$ubusobj" | cut -d'.' -f2)"
 		if [ -e "/var/run/wpa_supplicant-${ifname}.conf.is_multiap" ]; then
-			ubus -S call $ubusobj wps_start '{ "multi_ap": true }' && wps_done=1
+			multi_ap_profile="$(ubus -S call uci get "{
+				\"config\": \"wireless\",
+				\"type\": \"wifi-iface\",
+				\"match\": {
+					\"mode\": \"sta\",
+					\"ifname\": \"$ifname\"
+				}
+			}" 2>/dev/null | jsonfilter -e '@.values.*.multi_ap_profile' | head -n 1)"
+
+			if [ -n "$multi_ap_profile" ]; then
+				ubus -S call "$ubusobj" wps_start "{ \"multi_ap\": $multi_ap_profile }" && wps_done=1
+			else
+				ubus -S call "$ubusobj" wps_start "{ \"multi_ap\": 1 }" && wps_done=1
+			fi
 		else
-			ubus -S call $ubusobj wps_start && wps_done=1
+			ubus -S call "$ubusobj" wps_start && wps_done=1
 		fi
 	done
 	[ $wps_done = 0 ] || wps_catch_credentials &
