@@ -1,0 +1,154 @@
+From: Jassim Shanavaskhan <jshanava@qti.qualcomm.com>
+Subject: [PATCH] QSDK:HOSTAPD: Add BSS color parameters to hostapd_cli status
+
+The hostapd_cli status output only reported he_bss_color but was missing
+three related HE BSS color parameters:
+  - he_bss_color_collision_detection
+  - he_bss_color_cca_count
+  - he_bss_color_collision_ap_period
+
+Extend the status output to include these parameters when BSS color is
+enabled and non-zero. he_bss_color_collision_detection is read from the
+hostapd configuration (default: 1). he_bss_color_cca_count reports the
+live CCA countdown during a color change, falling back to 10 (the default
+announcement count, defined as HE_BSS_COLOR_CCA_COUNT_DEFAULT in
+ieee802_11_defs.h) when idle.
+
+Port he_bss_color_collision_ap_period as a configurable struct field in
+hostapd_config (from IPQ change 6503494), initialized to
+DOT11BSS_COLOR_COLLISION_AP_PERIOD (50 s). This replaces all hardcoded
+uses of the constant in hostapd.c. Also initialize cca_count to
+HE_BSS_COLOR_CCA_COUNT_DEFAULT at AP creation instead of 0.
+
+Fixes: QF-48195
+Change-Id: I244be337b91bddc3ccf45b4c2ad0f0847195dff7
+Signed-off-by: Jassim Shanavaskhan <jshanava@qti.qualcomm.com>
+---
+ src/ap/ap_config.c            |  1 +
+ src/ap/ap_config.h            |  3 +++
+ src/ap/ctrl_iface_ap.c        |  8 ++++++--
+ src/ap/hostapd.c              |  9 +++------
+ src/common/ieee802_11_defs.h  |  1 +
+ 5 files changed, 14 insertions(+), 8 deletions(-)
+
+diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
+index 17f45dce87c7..0b7b35cbc3e4 100644
+--- a/src/ap/ap_config.c
++++ b/src/ap/ap_config.c
+@@ -344,6 +344,7 @@ struct hostapd_config * hostapd_config_defaults(void)
+ 	conf->he_op.he_bss_color_partial = 0;
+ 	conf->he_op.he_bss_color = os_random() % 63 + 1;
+ 	conf->he_op.he_bss_color_collision_detection = 1;
++	conf->he_bss_color_collision_ap_period = DOT11BSS_COLOR_COLLISION_AP_PERIOD;
+ 	conf->he_op.he_twt_responder = 1;
+ 	conf->he_6ghz_max_mpdu = 2;
+ 	conf->he_6ghz_max_ampdu_len_exp = 7;
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index c58cd2a52ddb..90a8fde08d32 100644
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -1365,5 +1365,8 @@ struct hostapd_config {
+ 	int afc_chan_sel_config;
+ 	int cur_chan_eirp;
+
++	/* HE BSS color collision AP period (seconds) */
++	u16 he_bss_color_collision_ap_period;
++
+ };
+
+diff --git a/src/ap/ctrl_iface_ap.c b/src/ap/ctrl_iface_ap.c
+index 52769f796636..7d205f10fe8b 100644
+--- a/src/ap/ctrl_iface_ap.c
++++ b/src/ap/ctrl_iface_ap.c
+@@ -1232,8 +1232,14 @@ int hostapd_ctrl_iface_status(struct hostapd_data *hapd, char *buf,
+ 		if (!iconf->he_op.he_bss_color_disabled &&
+ 		    iconf->he_op.he_bss_color) {
+ 			ret = os_snprintf(buf + len, buflen - len,
+-					  "he_bss_color=%d\n",
+-					  iconf->he_op.he_bss_color);
++					  "he_bss_color=%d\n"
++					  "he_bss_color_collision_detection=%d\n"
++					  "he_bss_color_cca_count=%u\n"
++					  "he_bss_color_collision_ap_period=%d\n",
++					  iconf->he_op.he_bss_color,
++					  iconf->he_op.he_bss_color_collision_detection,
++					  hapd->cca_count ? hapd->cca_count : HE_BSS_COLOR_CCA_COUNT_DEFAULT,
++					  hapd->iface->conf->he_bss_color_collision_ap_period);
+ 			if (os_snprintf_error(buflen - len, ret))
+ 				return len;
+ 			len += ret;
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index 5d8acac38b74..734c2809d499 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -4909,6 +4909,7 @@ int hostapd_data_alloc(struct hostapd_iface *hapd_iface,
+ 	hapd_iface->conf = conf;
+ 	hapd_iface->num_bss = conf->num_bss;
+ 
++	hapd->cca_count = HE_BSS_COLOR_CCA_COUNT_DEFAULT;
+ 	return 0;
+ }
+ 
+@@ -6096,7 +6097,6 @@ static void hostapd_switch_color_timeout_handler(void *eloop_data,
+ 
+ void hostapd_cleanup_cca_params(struct hostapd_data *hapd)
+ {
+-	hapd->cca_count = 0;
+ 	hapd->cca_color = 0;
+ 	hapd->cca_c_off_beacon = 0;
+ 	hapd->cca_c_off_proberesp = 0;
+@@ -6168,12 +6168,9 @@ static void hostapd_color_collision_handler(void *eloop_data, void *user_ctx)
+ 	u64 neighbor_color;
+ 	struct hostapd_data *link_bss;
+ 
+-	 /* CCA can be triggered once the handler constantly receives
+-	  * color collision events to for at least
+-	  * DOT11BSS_COLOR_COLLISION_AP_PERIOD (50 s by default). */
+ 	delta_t = hapd->last_color_collision.sec -
+ 		hapd->first_color_collision.sec;
+-	if (delta_t < DOT11BSS_COLOR_COLLISION_AP_PERIOD && !hapd->no_free_color)
++	if (delta_t < hapd->iface->conf->he_bss_color_collision_ap_period && !hapd->no_free_color)
+ 		return;
+ 
+ 	neighbor_color = ap_list_get_color(hapd->iface);
+@@ -6198,9 +6198,9 @@ static void hostapd_color_collision_handler(void *eloop_data, void *user_ctx)
+ 		 /* Enabling for next check after timeout*/
+ 		 hapd->iface->conf->he_op.he_bss_color_disabled = 0;
+ 
+-		 /* start timer for DOT11BSS_COLOR_COLLISION_AP_PERIOD, and check free color on timeout */
++		 /* start timer for color collision ap period, and check free color on timeout */
+ 		 if (!eloop_is_timeout_registered(hostapd_switch_color_timeout_handler, hapd, NULL))
+-			 eloop_register_timeout(DOT11BSS_COLOR_COLLISION_AP_PERIOD, 0,
++			 eloop_register_timeout(hapd->iface->conf->he_bss_color_collision_ap_period, 0,
+ 					       hostapd_switch_color_timeout_handler, hapd, NULL);
+ 
+ 		return;
+@@ -6217,7 +6217,6 @@ static void hostapd_color_collision_handler(void *eloop_data, void *user_ctx)
+ 		os_memset(&settings, 0, sizeof(settings));
+ 		hostapd_cleanup_cca_params(bss);
+ 		bss->cca_color = r;
+-		bss->cca_count = 10;
+ 
+ 		if (hostapd_fill_cca_settings(bss, &settings)) {
+ 			hostapd_cleanup_cca_params(bss);
+@@ -6272,7 +6271,7 @@ static void hostapd_switch_color(struct hostapd_data *hapd)
+ 
+ 	hapd->first_color_collision = now;
+ 	/* 10 s window as margin for persistent color collision reporting */
+-	eloop_register_timeout(DOT11BSS_COLOR_COLLISION_AP_PERIOD + 10, 0,
++	eloop_register_timeout(hapd->iface->conf->he_bss_color_collision_ap_period + 10, 0,
+ 			       hostapd_switch_color_timeout_handler,
+ 			       hapd, NULL);
+ }
+diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
+index 52c37659f989..6def7ed371cc 100644
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -3539,6 +3539,7 @@ struct ieee80211_he_mu_edca_param_ac_rec {
+  * dot11BSSColorCollisionAPPeriod (50 seconds)
+  */
+ #define DOT11BSS_COLOR_COLLISION_AP_PERIOD	50
++#define HE_BSS_COLOR_CCA_COUNT_DEFAULT		10
+ 
+ /* Protected Vendor-specific QoS Management Action frame identifiers - WFA */
+ #define QM_ACTION_VENDOR_TYPE 0x506f9a1a
