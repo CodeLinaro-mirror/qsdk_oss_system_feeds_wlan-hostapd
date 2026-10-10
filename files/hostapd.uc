@@ -294,7 +294,11 @@ function iface_freq_info(iface, config, params)
 		let info = hostapd.freq_info(freq, sec_offset, width, null,
 					     cf1, 0, params.punct_bitmap,
 					     is_dfs);
-		return info;
+
+		if (info && iface.validate_freq && iface.validate_freq(info))
+			return info;
+
+		hostapd.printf(`iface_freq_info: max-phy enabled but invalid freq/width freq=${freq} width=${cfg_bw_mhz}; fallback to STA BW`);
 	}
 
 	if (params.chan_width != null && params.chan_width <=1)
