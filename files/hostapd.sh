@@ -151,7 +151,6 @@ hostapd_common_add_device_config() {
 
 	config_add_int airtime_mode
 	config_add_int mbssid
-	config_add_boolean cck_rx_support
 
 	hostapd_add_log_config
 }
@@ -587,7 +586,6 @@ hostapd_set_bss_options() {
 	local var="$1"
 	local phy="$2"
 	local vif="$3"
-	local cck_rx_5g_supp=0
 
 	wireless_vif_parse_encryption
 
@@ -611,13 +609,6 @@ hostapd_set_bss_options() {
 		vendor_elements fils ocv dpp ssid_protection \
 		rsn_override_key_mgmt rsn_override_pairwise rsn_override_mfp \
 		rsn_override_key_mgmt_2 rsn_override_pairwise_2 rsn_override_mfp_2
-
-	case "$band" in
-		5g|5gl|5gh)
-			[ "$cck_rx_support" = "1" ] && cck_rx_5g_supp=1
-			;;
-	esac
-	[ "$cck_rx_5g_supp" = "1" ] && append "$var" "cck_rx_5g_supp=1" "$N"
 
 
 	json_get_values sae_groups sae_groups
