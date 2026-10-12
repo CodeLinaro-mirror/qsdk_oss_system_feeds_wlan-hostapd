@@ -287,9 +287,15 @@ function iface_freq_info(iface, config, params)
 		let center_freq = (cfg_bw_mhz > 20) ? (freq + cfg_bw_mhz / 2 - 10) : freq;
 
 		let is_dfs = is_dfs_channel(center_freq, cfg_bw_mhz);
+		let sta_bw_mhz = get_bw(params.chan_width);
 
 		let cf1 = (width == 9 && freq > 5950 && eht_seg0 > 0) ?
 		          (5950 + eht_seg0 * 5) : 0;
+
+		if (is_dfs && cfg_bw_mhz > sta_bw_mhz) {
+			is_dfs = false;
+			hostapd.printf(`iface_freq_info max-phy DFS: cfg_bw ${cfg_bw_mhz} exceeds STA BW ${sta_bw_mhz}, CAC required.`);
+		}
 
 		let info = hostapd.freq_info(freq, sec_offset, width, null,
 					     cf1, 0, params.punct_bitmap,
