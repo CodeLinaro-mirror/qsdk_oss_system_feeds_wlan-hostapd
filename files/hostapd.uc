@@ -332,6 +332,8 @@ function iface_add(phy, config, phy_status)
 		return false;
 
 	let freq_info = iface_freq_info(iface, config, phy_status);
+	if (freq_info)
+		freq_info.wpa_state = phy_status.state;
 
 	return iface.start(freq_info) >= 0;
 }
