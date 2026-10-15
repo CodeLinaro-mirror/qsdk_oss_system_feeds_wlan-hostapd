@@ -445,6 +445,7 @@ function __iface_pending_next(pending, state, ret, data)
 			let err = phydev.wdev_add(bss.ifname, {
 				mode: "ap",
 				radio: phydev.radio,
+				macaddr: bss.bssid,
 			});
 			if (err) {
 				hostapd.printf(`Failed to create ${bss.ifname} on phy ${phy}: ${err}`);
