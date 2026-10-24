@@ -1269,33 +1269,6 @@ function bss_config(bss_name) {
 	}
 }
 
-function phy_ap_status(phy, radio)
-{
-	let name = phy_name(phy, radio);
-
-	if (!name)
-		return { running: false };
-
-	let config = hostapd.data.config[name];
-	let iface = hostapd.interfaces[name];
-
-	if (!config || !config.bss)
-		return { running: false };
-
-	for (let bss in config.bss) {
-		if (!bss || !bss.ifname)
-			continue;
-
-		if (iface != null &&
-		    hostapd.bss[bss_key(bss.ifname, config.phy,
-					config.radio_idx)]) {
-			return { running: true };
-		}
-	}
-
-	return { running: false };
-}
-
 function notify_csa_result_event(freq, ret) {
 	hostapd.printf(`notify_chan_switch_result_event freq=${freq} ret=${ret}`);
 	ubus.defer("wpa_supplicant", "csa_finish_event", {freq: freq, ret: ret} );
@@ -1402,18 +1375,6 @@ let main_obj = {
 			return {
 				rpt_max_phy: cur_val ? 1 : 0,
 			};
-		})
-	},
-	phy_ap_status: {
-		args: {
-			phy: "",
-			radio: 0,
-		},
-		call: ex_wrap(function(req) {
-			if (!req.args.phy)
-				return libubus.STATUS_INVALID_ARGUMENT;
-
-			return phy_ap_status(req.args.phy, req.args.radio);
 		})
 	},
 	apsta_state: {
