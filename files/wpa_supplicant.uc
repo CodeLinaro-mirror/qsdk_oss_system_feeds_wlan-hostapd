@@ -21,6 +21,114 @@ function phy_name(phy, radio)
 	return phy;
 }
 
+function mesh_base_phy_name(name)
+{
+	if (!name)
+		return null;
+
+	return split(name, ".")[0];
+}
+
+function mesh_iface_frequency(iface)
+{
+	let raw_status = null;
+
+	if (!iface)
+		return null;
+
+	try {
+		raw_status = iface.ctrl("STATUS");
+	} catch (e) {
+		raw_status = null;
+	}
+
+	if (!raw_status)
+		return null;
+
+	for (let line in split(raw_status, "\n")) {
+		let entry = split(line, "=", 2);
+
+		if (entry[0] != "freq" || entry[1] == null)
+			continue;
+
+		return +entry[1];
+	}
+
+	return null;
+}
+
+function mesh_select_iface(base_phy, radio, source_freq)
+{
+	let candidates = [];
+	let radio_freq_candidates = [];
+	let radio_candidates = [];
+	let freq_candidates = [];
+
+	for (let phy_key, candidate_phy in wpas.data.config) {
+		if (!candidate_phy || !candidate_phy.data)
+			continue;
+
+		for (let ifname in candidate_phy.data) {
+			let iface_data = candidate_phy.data[ifname];
+			let iface;
+			let candidate_base_phy;
+			let radio_mask = null;
+			let live_freq = null;
+			let candidate;
+			let radio_match = false;
+			let freq_match = false;
+
+			if (!iface_data || !iface_data.config ||
+			    iface_data.config.mode != "mesh" ||
+			    !iface_data.running)
+				continue;
+
+			iface = wpas.interfaces[ifname];
+			if (!iface)
+				continue;
+
+			candidate_base_phy =
+				mesh_base_phy_name(wpas.data.iface_phy[ifname] ?? phy_key);
+			if (candidate_base_phy != base_phy)
+				continue;
+
+			if (radio != null && radio >= 0)
+				radio_mask = wdev_get_radio_mask(ifname);
+			if (source_freq > 0)
+				live_freq = mesh_iface_frequency(iface);
+
+			radio_match = radio != null && radio >= 0 &&
+				      radio_mask != null &&
+				      !!(radio_mask & (1 << radio));
+			freq_match = source_freq > 0 && live_freq == source_freq;
+
+			candidate = {
+				ifname,
+				iface,
+			};
+
+			push(candidates, candidate);
+			if (radio_match)
+				push(radio_candidates, candidate);
+			if (freq_match)
+				push(freq_candidates, candidate);
+			if (radio_match && (source_freq <= 0 || freq_match))
+				push(radio_freq_candidates, candidate);
+		}
+	}
+
+	if (length(radio_freq_candidates) == 1)
+		return radio_freq_candidates[0];
+	if (length(radio_candidates) == 1)
+		return radio_candidates[0];
+	if (length(freq_candidates) == 1)
+		return freq_candidates[0];
+	if (length(candidates) == 1)
+		return candidates[0];
+
+	return null;
+}
+
 function is_ml_config(if_name, radio_id) {
 
 	if (radio_id == -1)
@@ -412,6 +520,7 @@ let main_obj = {
 			phy: "",
 			radio: 0,
 			frequency: 0,
+			source_frequency: 0,
 			csa_count: 0,
 			ap_beacon_int: 0,
 			block_tx: true,
@@ -430,17 +539,13 @@ let main_obj = {
 			center_freq_device: 0,
 		},
 		call: function(req) {
-			let phy = phy_name(req.args.phy, req.args.radio);
-			let phy_data;
-			let mesh_found = false;
+			let base_phy = mesh_base_phy_name(req.args.phy);
+			let source_freq = req.args.source_frequency ?? 0;
+			let candidate;
 			let csa_info;
 
-			if (!phy || !req.args.frequency || !req.args.bandwidth)
+			if (!base_phy || !req.args.frequency || !req.args.bandwidth)
 				return libubus.STATUS_INVALID_ARGUMENT;
-
-			phy_data = wpas.data.config[phy];
-			if (!phy_data || !phy_data.data)
-				return 0;
 
 			csa_info = {
 				frequency: req.args.frequency,
@@ -462,30 +567,18 @@ let main_obj = {
 				center_freq_device: req.args.center_freq_device,
 			};
 
-			for (let ifname in phy_data.data) {
-				let iface_data = phy_data.data[ifname];
-				let iface;
+			candidate = mesh_select_iface(base_phy, req.args.radio, source_freq);
+			if (!candidate)
+				return { handled: false };
 
-				if (!iface_data || !iface_data.config ||
-				    iface_data.config.mode != "mesh" ||
-				    !iface_data.running)
-					continue;
-
-				iface = wpas.interfaces[ifname];
-				if (!iface)
-					continue;
-
-				wpas.data.mesh_csa_origin[ifname] = req.args.frequency;
-				wpas.printf(`mesh_switch_chan: mirroring CSA to ${ifname} on ${phy}`);
-				if (!iface.switch_channel(csa_info)) {
-					delete wpas.data.mesh_csa_origin[ifname];
-					return libubus.STATUS_UNKNOWN_ERROR;
-				}
-
-				mesh_found = true;
+			wpas.data.mesh_csa_origin[candidate.ifname] = req.args.frequency;
+			wpas.printf(`mesh_switch_chan: mirroring CSA to ${candidate.ifname} on ${req.args.phy}`);
+			if (!candidate.iface.switch_channel(csa_info)) {
+				delete wpas.data.mesh_csa_origin[candidate.ifname];
+				return libubus.STATUS_UNKNOWN_ERROR;
 			}
 
-			return { handled: mesh_found };
+			return { handled: true };
 		}
 	},
 	get_sta_channel_per_band: {
