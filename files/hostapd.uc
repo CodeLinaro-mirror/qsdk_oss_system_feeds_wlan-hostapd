@@ -272,7 +272,7 @@ function iface_freq_info(iface, config, params)
 	if (freq < 4000)
 		width = 0;
 
-	if (rpt_max_phy) {
+	if (rpt_max_phy && !params.punct_bitmap) {
 
 		let cfg_bw_mhz = 20;
 		if (sec_offset != null && sec_offset != 0 && width == 0)
@@ -298,10 +298,13 @@ function iface_freq_info(iface, config, params)
 		}
 
 		let info = hostapd.freq_info(freq, sec_offset, width, null,
-					     cf1, 0, params.punct_bitmap,
+					     cf1, 0, 0,
 					     is_dfs);
 
 		if (info && iface.validate_freq && iface.validate_freq(info))
+			return info;
+
+		 if (cfg_bw_mhz > sta_bw_mhz && is_dfs_channel(center_freq, cfg_bw_mhz))
 			return info;
 
 		hostapd.printf(`iface_freq_info: max-phy enabled but invalid freq/width freq=${freq} width=${cfg_bw_mhz}; fallback to STA BW`);
