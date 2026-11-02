@@ -124,6 +124,9 @@ ifneq ($(filter noextns,$(subst -, ,$(BUILD_VARIANT))),)
   CONFIG_VARIANT:=$(CONFIG_VARIANT)-noextns
 endif
 
+# MinEntOpen uses a dedicated hostapd configuration and driver feature set.
+MINENTOPEN_HOSTAPD_ONLY := $(findstring QSDK_MinEntOpen,$(CONFIG_TARGET_PROFILE))
+
 ifneq ("$(wildcard $(FILE_DIR_HOSTAPD)/wlan-hostapd.mk)","")
    include $(FILE_DIR_HOSTAPD)/wlan-hostapd.mk
 endif
@@ -147,6 +150,16 @@ ifeq ($(CONFIG_PACKAGE_udbg-enhanced),y)
   CORE_DEPENDS += +udbg-enhanced
 endif
 
+ifneq ($(MINENTOPEN_HOSTAPD_ONLY),)
+DRIVER_MAKEOPTS= \
+	CONFIG_DRIVER_NL80211=y \
+	CONFIG_IEEE80211AC=y \
+	CONFIG_IEEE80211AX=y \
+	CONFIG_ACS=y \
+	CONFIG_ATF_OFFLOAD=y \
+	CONFIG_TESTING_OPTIONS=y \
+	CONFIG_PROCESS_COORDINATION=y
+else
 DRIVER_MAKEOPTS= \
 	CONFIG_ACS=y CONFIG_DRIVER_NL80211=y \
 	$(if $(HOSTAPD_IEEE80211AC),CONFIG_IEEE80211AC=$(HOSTAPD_IEEE80211AC)) \
@@ -155,6 +168,7 @@ DRIVER_MAKEOPTS= \
 	CONFIG_ATF_OFFLOAD=y \
 	CONFIG_TESTING_OPTIONS=y \
 	CONFIG_PROCESS_COORDINATION=y
+endif
 
 ifneq ($(CONFIG_WPA_MQTT_SUPPORT),)
   DRIVER_MAKEOPTS += CONFIG_MQTT=y CONFIG_MQTT_TEST_APP_FORK=y
@@ -181,7 +195,9 @@ ifeq ($(SSL_VARIANT),openssl)
     DRIVER_MAKEOPTS += CONFIG_AP=y CONFIG_MESH=y
   endif
   ifeq ($(LOCAL_VARIANT),full)
+    ifeq ($(MINENTOPEN_HOSTAPD_ONLY),)
     DRIVER_MAKEOPTS += CONFIG_OWE=y CONFIG_SUITEB192=y CONFIG_AP=y CONFIG_MESH=y
+    endif
   endif
 endif
 
@@ -728,10 +744,13 @@ endef
 
 define Build/Configure
 	$(Build/Configure/rebuild)
-	$(if $(wildcard ./files/hostapd-$(CONFIG_VARIANT).config), \
-		$(CP) ./files/hostapd-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/hostapd/.config, \
-		$(if $(wildcard ./files/hostapd-$(patsubst %-noextns,%,$(CONFIG_VARIANT)).config), \
-			$(CP) ./files/hostapd-$(patsubst %-noextns,%,$(CONFIG_VARIANT)).config $(PKG_BUILD_DIR)/hostapd/.config \
+	$(if $(MINENTOPEN_HOSTAPD_ONLY), \
+		$(CP) ./files/hostapd-minentopen.config $(PKG_BUILD_DIR)/hostapd/.config, \
+		$(if $(wildcard ./files/hostapd-$(CONFIG_VARIANT).config), \
+			$(CP) ./files/hostapd-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/hostapd/.config, \
+			$(if $(wildcard ./files/hostapd-$(patsubst %-noextns,%,$(CONFIG_VARIANT)).config), \
+				$(CP) ./files/hostapd-$(patsubst %-noextns,%,$(CONFIG_VARIANT)).config $(PKG_BUILD_DIR)/hostapd/.config \
+			) \
 		) \
 	)
 	$(if $(wildcard ./files/wpa_supplicant-$(CONFIG_VARIANT).config), \
@@ -1042,9 +1061,6 @@ Package/wpad-openssl/install = $(Package/wpad/install)
 Package/wpad-wolfssl/install = $(Package/wpad/install)
 Package/wpad-mbedtls/install = $(Package/wpad/install)
 Package/wpad-mesh-openssl/install = $(Package/wpad/install)
-ifneq ($(CONFIG_PACKAGE_wpad-mesh-openssl),y)
-Package/wpad-mesh-openssl-noextns/install = $(Package/wpad/install)
-endif
 Package/wpad-mesh-wolfssl/install = $(Package/wpad/install)
 Package/wpad-mesh-mbedtls/install = $(Package/wpad/install)
 
@@ -1109,7 +1125,7 @@ $(eval $(call BuildPackage,hostapd-basic-openssl))
 #$(eval $(call BuildPackage,hostapd-basic-wolfssl))
 $(eval $(call BuildPackage,hostapd-basic-mbedtls))
 $(eval $(call BuildPackage,hostapd-mini))
-#$(eval $(call BuildPackage,hostapd-openssl))
+$(eval $(call BuildPackage,hostapd-openssl))
 #$(eval $(call BuildPackage,hostapd-wolfssl))
 $(eval $(call BuildPackage,hostapd-mbedtls))
 $(eval $(call BuildPackage,wpad))
